@@ -1,0 +1,54 @@
+name: Test
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+          cache: true
+
+      - name: Start Chrome container for E2E tests
+        run: |
+          docker run -d -p 9222:9222 --name chrome chromedp/headless-shell:latest
+          echo "CHROMEDP_REMOTE_URL=ws://localhost:9222" >> $GITHUB_ENV
+
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Check code formatting
+        run: |
+          gofmt_output=$(go fmt ./...)
+          if [ -n "$gofmt_output" ]; then
+            echo "❌ Code is not formatted. Run 'go fmt ./...' locally."
+            echo "Files that need formatting:"
+            echo "$gofmt_output"
+            exit 1
+          fi
+          echo "✅ Code formatting is correct"
+
+      - name: Run linting
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --disable-all --enable=errcheck,unused,staticcheck,gosimple,ineffassign
+
+      - name: Run tests
+        run: go test -v ./... -timeout=120s
+
+      - name: Cleanup Chrome container
+        if: always()
+        run: docker stop chrome && docker rm chrome
