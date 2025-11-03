@@ -44,7 +44,7 @@ func TestPageModeRendering(t *testing.T) {
 	}
 
 	replaceCmd := exec.Command("go", "mod", "edit",
-		"-replace", fmt.Sprintf("github.com/livefir/livetemplate=%s", livetemplatePath))
+		"-replace", fmt.Sprintf("github.com/livetemplate/livetemplate=%s", livetemplatePath))
 	replaceCmd.Dir = appDir
 	if err := replaceCmd.Run(); err != nil {
 		t.Fatalf("Failed to add replace directive: %v", err)
