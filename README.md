@@ -34,7 +34,7 @@ LVT follows the LiveTemplate core library's major.minor version:
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines.
 
-All pull requests require passing CI checks including tests, linting, and code formatting.
+All pull requests require passing CI checks including tests and code formatting.
 
 ## Support
 
