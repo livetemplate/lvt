@@ -2,6 +2,7 @@ package testing
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"net"
 	"net/http"
@@ -14,6 +15,9 @@ import (
 
 	"github.com/chromedp/chromedp"
 )
+
+//go:embed livetemplate-client.browser.js
+var clientLibraryJS []byte
 
 const (
 	dockerImage           = "chromedp/headless-shell:latest"
@@ -298,28 +302,12 @@ func StartTestServer(t *testing.T, mainPath string, port int) *exec.Cmd {
 	return cmd
 }
 
-// ServeClientLibrary serves the LiveTemplate client browser bundle
+// ServeClientLibrary serves the LiveTemplate client browser bundle from embedded bytes.
 // This is for development/testing purposes only. In production, serve from CDN.
 func ServeClientLibrary(w http.ResponseWriter, r *http.Request) {
-	// Try multiple paths for the client library
-	// Ordered from most specific to most general
-	paths := []string{
-		"client/dist/livetemplate-client.browser.js",                       // From repo root
-		"../../client/dist/livetemplate-client.browser.js",                 // From examples/X/
-		"../../../client/dist/livetemplate-client.browser.js",              // From examples/testing/X/
-		"../../../../client/dist/livetemplate-client.browser.js",           // From deeper nesting
-		"../client/dist/livetemplate-client.browser.js",                    // From cmd/
-		"../../../livetemplate/client/dist/livetemplate-client.browser.js", // From external projects
-	}
-
-	for _, path := range paths {
-		if _, err := os.Stat(path); err == nil {
-			http.ServeFile(w, r, path)
-			return
-		}
-	}
-
-	http.Error(w, "Client library not found", http.StatusNotFound)
+	w.Header().Set("Content-Type", "application/javascript")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Write(clientLibraryJS)
 }
 
 // WaitFor polls a JavaScript condition until it returns true or timeout is reached.
