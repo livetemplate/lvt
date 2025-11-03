@@ -36,3 +36,6 @@ cmd/lvt/commands/internal/
 e2e/*/
 !e2e/*.go
 !e2e/testdata/
+
+# Git worktrees
+.worktrees/
