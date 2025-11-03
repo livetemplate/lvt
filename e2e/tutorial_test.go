@@ -97,7 +97,7 @@ func TestTutorialE2E(t *testing.T) {
 	// Protected by mutex to prevent race with parallel tests changing directory
 	chdirMutex.Lock()
 	cwd, _ := os.Getwd()
-	livetemplatePath := filepath.Join(cwd, "..", "..", "..")
+	livetemplatePath := filepath.Join(cwd, "..", "..", "livetemplate")
 	chdirMutex.Unlock()
 
 	replaceCmd := exec.Command("go", "mod", "edit", fmt.Sprintf("-replace=github.com/livetemplate/livetemplate=%s", livetemplatePath))

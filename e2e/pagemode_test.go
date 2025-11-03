@@ -36,7 +36,7 @@ func TestPageModeRendering(t *testing.T) {
 	// Protected by mutex to prevent race with parallel tests changing directory
 	chdirMutex.Lock()
 	cwd, _ := os.Getwd()
-	livetemplatePath := filepath.Join(cwd, "..", "..", "..")
+	livetemplatePath := filepath.Join(cwd, "..", "..", "livetemplate")
 	chdirMutex.Unlock()
 
 	if err := runGoModTidy(t, appDir); err != nil {

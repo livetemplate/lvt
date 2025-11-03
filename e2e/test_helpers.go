@@ -295,7 +295,7 @@ func createTestApp(t *testing.T, tmpDir, appName string, opts *AppOptions) strin
 	// Protected by mutex to prevent race with parallel tests changing directory
 	chdirMutex.Lock()
 	cwd, _ := os.Getwd()
-	livetemplatePath := filepath.Join(cwd, "..", "..", "..")
+	livetemplatePath := filepath.Join(cwd, "..", "..", "livetemplate")
 	chdirMutex.Unlock()
 
 	replaceCmd := exec.Command("go", "mod", "edit", fmt.Sprintf("-replace=github.com/livetemplate/livetemplate=%s", livetemplatePath))

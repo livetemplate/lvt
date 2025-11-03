@@ -102,12 +102,20 @@ func setupSharedResources() error {
 		// Protected by mutex to prevent race with parallel tests changing directory
 		chdirMutex.Lock()
 		cwd, _ := os.Getwd()
-		livetemplatePath := filepath.Join(cwd, "..", "..", "..")
+		// After extraction: lvt and livetemplate are sibling directories
+		// e2e/ -> lvt/ -> parent/ -> livetemplate/
+		livetemplatePath := filepath.Join(cwd, "..", "..", "livetemplate")
 		chdirMutex.Unlock()
-		replaceCmd := exec.Command("go", "mod", "edit", fmt.Sprintf("-replace=github.com/livetemplate/livetemplate=%s", livetemplatePath))
-		replaceCmd.Dir = appDir
-		if err := replaceCmd.Run(); err != nil {
-			log.Printf("Warning: Failed to add replace directive: %v", err)
+
+		// Only add replace directive if local livetemplate exists
+		if _, err := os.Stat(livetemplatePath); err == nil {
+			replaceCmd := exec.Command("go", "mod", "edit", fmt.Sprintf("-replace=github.com/livetemplate/livetemplate=%s", livetemplatePath))
+			replaceCmd.Dir = appDir
+			if err := replaceCmd.Run(); err != nil {
+				log.Printf("Warning: Failed to add replace directive: %v", err)
+			}
+		} else {
+			log.Printf("Note: Local livetemplate not found at %s, using published version", livetemplatePath)
 		}
 
 		// Run go mod tidy with mutex protection
