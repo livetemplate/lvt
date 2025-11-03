@@ -47,7 +47,50 @@ git checkout -b fix/your-bug-fix
 - Update documentation as needed
 - Ensure all tests pass
 
-### 3. Test Your Changes
+### 3. Local Development with Core Library
+
+If you're making changes that depend on unreleased core library changes, you have two options:
+
+#### Recommended: Go Workspace (Automatic)
+
+The **easiest way** - Go automatically uses local modules without any `go.mod` changes:
+
+```bash
+# From parent directory containing all repos
+cd ..
+./setup-workspace.sh
+
+# Now test with local core library
+cd lvt
+go test ./...  # Automatically uses ../livetemplate
+```
+
+The workspace setup is done once and affects all repositories. See the [core library CONTRIBUTING.md](https://github.com/livetemplate/livetemplate/blob/main/CONTRIBUTING.md#testing-core-changes-with-lvtexamples) for details.
+
+#### Alternative: Manual Replace Directives
+
+If you prefer manual control:
+
+```bash
+# Enable local development mode
+./scripts/setup-local-dev.sh
+
+# Test with local core
+go test ./...
+
+# Revert to published version
+./scripts/setup-local-dev.sh --undo
+```
+
+**Directory structure for both methods:**
+```
+parent/
+├── livetemplate/  (core library)
+├── lvt/           (this repo)
+└── examples/      (optional)
+```
+
+### 4. Test Your Changes
 
 ```bash
 # Run all tests
@@ -63,7 +106,7 @@ go test ./internal/generator -v
 go build -o lvt .
 ```
 
-### 4. Commit Your Changes
+### 5. Commit Your Changes
 
 The repository has a pre-commit hook that will:
 - Auto-format Go code
@@ -87,7 +130,7 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/):
 - `perf:` Performance improvements
 - `chore:` Build process or tooling changes
 
-### 5. Push and Create PR
+### 6. Push and Create PR
 
 ```bash
 git push origin feature/your-feature-name

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -19,10 +20,15 @@ import (
 func TestModalFunctionality(t *testing.T) {
 	// Note: Not parallel because it uses isolated Chrome container which needs sequential execution
 
-	// Find the client file
-	clientPath, err := filepath.Abs(filepath.Join("..", "..", "..", "client", "dist", "livetemplate-client.browser.js"))
+	// Find the client file (consistent with test_helpers.go)
+	cwd, err := filepath.Abs(".")
 	if err != nil {
-		t.Fatalf("Failed to resolve client path: %v", err)
+		t.Fatalf("Failed to get working directory: %v", err)
+	}
+	livetemplatePath := filepath.Join(cwd, "..", "..", "livetemplate")
+	clientPath := filepath.Join(livetemplatePath, "client", "dist", "livetemplate-client.browser.js")
+	if _, err := os.Stat(clientPath); err != nil {
+		t.Fatalf("Client bundle not found at %s: %v", clientPath, err)
 	}
 
 	// Start a simple HTTP server
