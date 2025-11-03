@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -119,13 +118,9 @@ func GetFreePort() (port int, err error) {
 }
 
 // GetChromeTestURL returns the URL for Chrome (in Docker) to access the test server
-// On Linux with host networking: use localhost
-// On macOS/Windows: use host.docker.internal
+// Chrome container uses host.docker.internal to reach the host on all platforms
 func GetChromeTestURL(port int) string {
 	portStr := fmt.Sprintf("%d", port)
-	if runtime.GOOS == "linux" {
-		return "http://localhost:" + portStr
-	}
 	return "http://host.docker.internal:" + portStr
 }
 
@@ -173,27 +168,16 @@ func StartDockerChrome(t *testing.T, debugPort int) *exec.Cmd {
 
 	// Start the container
 	t.Log("Starting Chrome headless Docker container...")
-	var cmd *exec.Cmd
 	portMapping := fmt.Sprintf("%d:9222", debugPort)
 
-	if runtime.GOOS == "linux" {
-		// On Linux, use host networking so container can access localhost
-		cmd = exec.Command("docker", "run", "--rm",
-			"--network", "host",
-			"--name", containerName,
-			dockerImage,
-		)
-	} else {
-		// On macOS/Windows, map port for remote debugging
-		// (container will use host.docker.internal to reach host)
-		// Note: Don't pass Chrome flags - the image has a built-in setup
-		cmd = exec.Command("docker", "run", "--rm",
-			"-p", portMapping,
-			"--name", containerName,
-			"--add-host", "host.docker.internal:host-gateway",
-			dockerImage,
-		)
-	}
+	// Use port mapping on all platforms for consistency and faster startup
+	// The container can reach the host via host.docker.internal
+	cmd := exec.Command("docker", "run", "--rm",
+		"-p", portMapping,
+		"--name", containerName,
+		"--add-host", "host.docker.internal:host-gateway",
+		dockerImage,
+	)
 
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("Failed to start Chrome Docker container: %v", err)
@@ -203,19 +187,31 @@ func StartDockerChrome(t *testing.T, debugPort int) *exec.Cmd {
 	t.Log("Waiting for Chrome to be ready...")
 	chromeURL := fmt.Sprintf("http://localhost:%d/json/version", debugPort)
 	ready := false
-	for i := 0; i < 60; i++ { // 60 iterations × 500ms = 30 seconds
+	var lastErr error
+	for i := 0; i < 120; i++ { // 120 iterations × 500ms = 60 seconds
 		resp, err := http.Get(chromeURL)
 		if err == nil {
 			resp.Body.Close()
 			ready = true
+			t.Logf("✅ Chrome ready after %d attempts (%.1fs)", i+1, float64(i+1)*0.5)
 			break
 		}
+		lastErr = err
 		time.Sleep(500 * time.Millisecond)
 	}
 
 	if !ready {
+		t.Logf("Chrome failed to start within 60 seconds. Last error: %v", lastErr)
+
+		// Try to get container logs for debugging
+		containerName := fmt.Sprintf("%s%d", chromeContainerPrefix, debugPort)
+		logsCmd := exec.Command("docker", "logs", "--tail", "50", containerName)
+		if output, err := logsCmd.CombinedOutput(); err == nil && len(output) > 0 {
+			t.Logf("Chrome container logs:\n%s", string(output))
+		}
+
 		_ = cmd.Process.Kill()
-		t.Fatal("Chrome failed to start within 30 seconds")
+		t.Fatal("Chrome failed to start within 60 seconds")
 	}
 
 	t.Log("✅ Chrome headless Docker container ready")
