@@ -1,0 +1,38 @@
+# Binaries
+lvt
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test binary
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Dependency directories
+vendor/
+
+# Build artifacts
+dist/
+tmp/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Test artifacts
+cmd/lvt/commands/internal/
+
+# E2E test generated files
+e2e/*/
+!e2e/*.go
+!e2e/testdata/
