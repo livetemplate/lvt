@@ -584,7 +584,7 @@ When using the type inference system, you can omit explicit types and let the sy
 The inference system is available via the `ui` package:
 
 ```go
-import "github.com/livetemplate/livetemplate/cmd/lvt/internal/ui"
+import "github.com/livetemplate/lvt/internal/ui"
 
 // Infer type from field name
 fieldType := ui.InferType("email")  // → "string"
