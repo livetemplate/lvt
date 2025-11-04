@@ -56,6 +56,8 @@ func main() {
 		err = commands.Stack(args)
 	case "serve", "server":
 		err = commands.Serve(args)
+	case "env":
+		err = commands.Env(args)
 	case "version", "--version", "-v":
 		printVersion()
 		return
@@ -143,6 +145,7 @@ func printUsage() {
 	fmt.Println("  lvt kits <command>                            Manage CSS framework kits")
 	fmt.Println("  lvt serve [options]                           Start development server with hot reload")
 	fmt.Println("  lvt parse <template-file>                     Validate and analyze template file")
+	fmt.Println("  lvt env <command>                             Manage environment variables")
 	fmt.Println("  lvt version                                   Show version information")
 	fmt.Println()
 	fmt.Println("Generate Subcommands:")
@@ -205,6 +208,9 @@ func printUsage() {
 	fmt.Println("  lvt serve --mode app                      Force app development mode")
 	fmt.Println("  lvt serve --no-browser                    Don't open browser automatically")
 	fmt.Println("  lvt serve --no-reload                     Disable live reload")
+	fmt.Println()
+	fmt.Println("Environment Commands:")
+	fmt.Println("  lvt env generate                          Generate .env.example with detected config")
 	fmt.Println()
 	fmt.Println("Type Mappings:")
 	fmt.Println("  string  -> Go: string,     SQL: TEXT")
