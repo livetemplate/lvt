@@ -113,7 +113,7 @@ func (s *Server) setupRoutes() {
 		s.setupAppRoutes()
 	}
 
-	s.mux.HandleFunc("/", s.handleRoot)
+	// Note: Each mode sets up its own "/" handler, no need for a fallback here
 }
 
 func (s *Server) setupComponentRoutes() {
