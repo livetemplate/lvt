@@ -14,7 +14,7 @@ func main() {
 
 	// Initialize database
 	dbPath := getDBPath()
-	queries, err := database.InitDB(dbPath)
+	_, err := database.InitDB(dbPath)
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}

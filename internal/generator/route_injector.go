@@ -93,6 +93,19 @@ func InjectRoute(mainGoPath string, route RouteInfo) error {
 		}
 	}
 
+	// Check if we need to enable the queries variable
+	// This happens when adding the first resource to a fresh app
+	// Only enable if the handler being added actually uses queries
+	needsQueries := strings.Contains(route.HandlerCall, "(queries)")
+
+	for i, line := range lines {
+		if needsQueries && strings.Contains(line, "_, err := database.InitDB(dbPath)") {
+			// Replace _ with queries to enable it
+			lines[i] = strings.Replace(line, "_, err := database.InitDB(dbPath)", "queries, err := database.InitDB(dbPath)", 1)
+			break
+		}
+	}
+
 	// Find where to insert route (after TODO comment)
 	routeInsertIndex := -1
 	for i, line := range lines {
