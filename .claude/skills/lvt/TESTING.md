@@ -1,6 +1,6 @@
 # Testing lvt Skills
 
-Comprehensive test scenarios for all 19 LiveTemplate skills + Phase 6 enhancements.
+Comprehensive test scenarios for all 20 LiveTemplate skills + Phase 6 enhancements (environment management).
 
 ## How to Test Skills
 
@@ -26,7 +26,7 @@ improvements, and show me how to deploy to Fly.io
 
 ---
 
-## Core Command Skills (13 skills)
+## Core Command Skills (14 skills)
 
 ### 1. lvt:new-app
 
@@ -471,7 +471,107 @@ How do I handle migrations when deploying?
 
 ## Workflow Orchestration Skills (3 skills)
 
-### 14. lvt:quickstart
+### 14. lvt:manage-env ⭐ NEW
+
+**Test 1 - Initial setup:**
+```
+Set up environment variables for my app
+```
+
+**Expected:**
+- Runs `lvt env generate` to create .env.example
+- Copies to .env
+- Runs `lvt env validate` to show missing vars
+- Guides user to set APP_ENV, DATABASE_PATH, SESSION_SECRET
+- Shows how to generate secrets: `openssl rand -hex 32`
+- Validates again to confirm success
+
+**Test 2 - List variables:**
+```
+What environment variables are configured?
+```
+
+**Expected:**
+- Uses lvt:manage-env skill
+- Runs `lvt env list`
+- Shows masked sensitive values
+- Marks required variables with [REQUIRED]
+- Suggests --show-values flag
+
+**Test 3 - Validate configuration:**
+```
+Am I ready to deploy?
+```
+
+**Expected:**
+- Uses lvt:manage-env skill
+- Runs `lvt env validate --strict`
+- Checks all required vars are set
+- Validates APP_ENV is valid
+- Checks secrets are strong (32+ chars)
+- Detects placeholder values
+- Reports ready or lists issues
+
+**Test 4 - Configure SMTP:**
+```
+Set up SMTP for production
+```
+
+**Expected:**
+- Asks for SMTP provider (Gmail, SendGrid, etc.)
+- Guides setting SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS
+- Sets EMAIL_PROVIDER=smtp
+- Shows provider-specific instructions (e.g., Gmail app password)
+- Validates configuration with strict mode
+
+**Test 5 - Missing required variables:**
+```
+Validate environment
+```
+
+**Expected (when .env incomplete):**
+- Lists missing required variables
+- Explains why each is required (with feature context)
+- Provides exact set commands
+- Shows how to fix placeholder values
+- Re-validates after fixes
+
+**Test 6 - Update existing variable:**
+```
+Change SESSION_SECRET
+```
+
+**Expected:**
+- Runs `lvt env set SESSION_SECRET $(openssl rand -hex 32)`
+- Shows old value (masked) and new value (masked)
+- Confirms update
+- Maintains other variables
+
+**Test 7 - Remove variable:**
+```
+Remove SMTP_HOST
+```
+
+**Expected:**
+- Runs `lvt env unset SMTP_HOST`
+- Confirms removal
+- Shows updated list without that variable
+
+**Test 8 - Security check:**
+```
+Check if my secrets are secure
+```
+
+**Expected:**
+- Runs `lvt env validate --strict`
+- Validates secret length (32+ chars)
+- Detects "change-me" or other placeholders
+- Confirms .env is in .gitignore
+- Checks file permissions (0600)
+
+---
+
+### 15. lvt:quickstart
 
 **Test 1 - Blog quickstart:**
 ```
@@ -512,7 +612,7 @@ Quickstart an e-commerce shop
 
 ---
 
-### 15. lvt:production-ready
+### 16. lvt:production-ready
 
 **Test 1 - Full production:**
 ```
@@ -540,7 +640,7 @@ Prepare for Docker deployment
 
 ---
 
-### 16. lvt:add-related-resources
+### 17. lvt:add-related-resources
 
 **Test 1 - Blog suggestions:**
 ```
@@ -579,7 +679,7 @@ What goes well with a tasks resource?
 
 ## Maintenance & Support Skills (3 skills)
 
-### 17. lvt:analyze
+### 18. lvt:analyze
 
 **Test 1 - App analysis:**
 ```
@@ -608,7 +708,7 @@ Review my database schema
 
 ---
 
-### 18. lvt:suggest
+### 19. lvt:suggest
 
 **Test 1 - Improvement suggestions:**
 ```
@@ -635,7 +735,7 @@ What's missing from my blog?
 
 ---
 
-### 19. lvt:troubleshoot
+### 20. lvt:troubleshoot
 
 **Test 1 - Build error:**
 ```
@@ -692,7 +792,7 @@ Port 8080 already in use
 
 ## Meta Skills (1 skill)
 
-### 20. lvt:add-skill
+### 21. lvt:add-skill
 
 **Test:**
 ```

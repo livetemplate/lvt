@@ -10,18 +10,18 @@ These skills enable Claude Code to guide you through the entire LiveTemplate dev
 
 ## 📊 Complete Coverage
 
-- **19 Skills** covering the entire development lifecycle
-- **13 Core Commands** for project development
+- **20 Skills** covering the entire development lifecycle
+- **14 Core Commands** for project development
 - **3 Workflow Orchestrations** for rapid development
 - **3 Maintenance Tools** for optimization and debugging
 - **1 Meta Skill** for extending the skill system
-- **Phase 6 Enhancements** for production-ready defaults
+- **Phase 6 Enhancements** for production-ready defaults + environment management
 
 ---
 
 ## Available Skills
 
-### 🚀 Core Commands (13 skills)
+### 🚀 Core Commands (14 skills)
 
 #### 📦 lvt:new-app
 **Create new LiveTemplate applications**
@@ -266,6 +266,45 @@ Claude: Creates Dockerfile, fly.toml, explains litestream, deploys
 
 ---
 
+#### ⚙️ lvt:manage-env
+**Manage environment variables** ⭐ **NEW IN PHASE 6**
+
+**Ask Claude:**
+- "Set up environment variables"
+- "What env vars do I need?"
+- "Configure SMTP for production"
+- "Validate my environment"
+
+**What you'll get:** Feature-aware configuration, smart validation, security best practices, masked output
+
+**Commands:**
+- `lvt env set KEY VALUE` - Set environment variable
+- `lvt env unset KEY` - Remove environment variable
+- `lvt env list` - Show all variables (masked)
+- `lvt env validate` - Check required vars are set
+- `lvt env validate --strict` - Also validate values
+
+**Example:**
+```
+User: "Configure environment for production"
+Claude:
+  - Runs validation to check what's missing
+  - Guides you to set SESSION_SECRET, CSRF_SECRET, etc.
+  - Provides secure value generation (openssl rand -hex 32)
+  - Validates EMAIL_PROVIDER and SMTP settings
+  - Confirms all required vars are set
+  - Auto-adds .env to .gitignore
+```
+
+**Features:**
+- Feature detection (auth, email, database)
+- Automatic masking of sensitive values
+- Placeholder detection (catches "change-me" values)
+- Strict validation mode for production
+- Security best practices enforcement
+
+---
+
 ### 🔄 Workflow Orchestration (3 skills)
 
 #### ⚡ lvt:quickstart
@@ -434,20 +473,48 @@ Claude: Diagnoses → missing sqlc generate → provides fix → verifies succes
 
 ## 🎯 Phase 6: CLI Enhancements
 
-### lvt env generate
-**Smart environment configuration**
+### Environment Management (`lvt env`)
+**Complete environment variable management system**
 
 **Features:**
-- Detects app features automatically (auth, database, email)
-- Generates comprehensive .env.example
-- Documents all variables
-- Security best practices included
+- ✅ Feature-aware detection (auth, database, email)
+- ✅ Smart validation with helpful error messages
+- ✅ Automatic value masking for security
+- ✅ Placeholder detection (catches "change-me" values)
+- ✅ Strict validation mode for production readiness
+- ✅ Auto-adds .env to .gitignore
 
-**Usage:**
+**Commands:**
 ```bash
+# Generate .env.example template
 lvt env generate
-# Creates .env.example with detected configuration
+
+# Set environment variables
+lvt env set APP_ENV development
+lvt env set SESSION_SECRET $(openssl rand -hex 32)
+lvt env set SMTP_HOST smtp.gmail.com
+
+# Remove environment variables
+lvt env unset KEY
+
+# List all variables (masked by default)
+lvt env list
+lvt env list --show-values      # Show actual values
+lvt env list --required-only    # Only required vars
+
+# Validate configuration
+lvt env validate                # Check required vars are set
+lvt env validate --strict       # Also validate values
 ```
+
+**What it validates:**
+- Required variables for your app's features
+- Placeholder values that need to be replaced
+- Secret strength (32+ chars)
+- Valid APP_ENV (development/staging/production)
+- Valid EMAIL_PROVIDER (console/smtp)
+- SMTP configuration when needed
+- Numeric PORT values
 
 ### Production-Ready Templates
 **Battle-tested defaults out of the box**

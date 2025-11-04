@@ -1,16 +1,19 @@
 package commands
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"sort"
 	"strings"
 )
 
 // Env handles environment variable management commands
 func Env(args []string) error {
 	if len(args) < 1 {
-		return fmt.Errorf("subcommand required\nUsage: lvt env <command> [args]\n\nCommands:\n  generate    Generate .env.example file")
+		return fmt.Errorf("subcommand required\nUsage: lvt env <command> [args]\n\nCommands:\n  generate    Generate .env.example file\n  set         Set environment variable\n  unset       Unset environment variable\n  list        List environment variables\n  validate    Validate environment configuration")
 	}
 
 	subcommand := args[0]
@@ -19,8 +22,16 @@ func Env(args []string) error {
 	switch subcommand {
 	case "generate":
 		return EnvGenerate(subArgs)
+	case "set":
+		return EnvSet(subArgs)
+	case "unset":
+		return EnvUnset(subArgs)
+	case "list":
+		return EnvList(subArgs)
+	case "validate":
+		return EnvValidate(subArgs)
 	default:
-		return fmt.Errorf("unknown env subcommand: %s\n\nAvailable commands:\n  generate    Generate .env.example file", subcommand)
+		return fmt.Errorf("unknown env subcommand: %s\n\nAvailable commands:\n  generate    Generate .env.example file\n  set         Set environment variable\n  unset       Unset environment variable\n  list        List environment variables\n  validate    Validate environment configuration", subcommand)
 	}
 }
 
@@ -273,4 +284,530 @@ func generateEnvContent(features map[string]bool) string {
 	b.WriteString("\n")
 
 	return b.String()
+}
+
+// EnvSet sets an environment variable in the .env file
+func EnvSet(args []string) error {
+	if len(args) < 2 {
+		return fmt.Errorf("usage: lvt env set KEY VALUE")
+	}
+
+	key := args[0]
+	value := strings.Join(args[1:], " ") // Join remaining args as value (supports spaces)
+
+	// Validate key format
+	if !isValidEnvKey(key) {
+		return fmt.Errorf("invalid key format: %s (must be UPPERCASE_SNAKE_CASE)", key)
+	}
+
+	// Load existing .env file or create new one
+	envFile := ".env"
+	envVars, err := parseEnvFile(envFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// Create new empty map if file doesn't exist
+			envVars = make(map[string]string)
+		} else {
+			return fmt.Errorf("failed to parse %s: %w", envFile, err)
+		}
+	}
+
+	// Set the value
+	oldValue := envVars[key]
+	envVars[key] = value
+
+	// Write back to .env file
+	if err := writeEnvFile(envFile, envVars); err != nil {
+		return fmt.Errorf("failed to write %s: %w", envFile, err)
+	}
+
+	// Ensure .env is in .gitignore
+	ensureGitignore(".env")
+
+	if oldValue == "" {
+		fmt.Printf("✅ Set %s=%s\n", key, maskValue(key, value))
+	} else {
+		fmt.Printf("✅ Updated %s (old: %s, new: %s)\n", key, maskValue(key, oldValue), maskValue(key, value))
+	}
+
+	return nil
+}
+
+// EnvUnset removes an environment variable from the .env file
+func EnvUnset(args []string) error {
+	if len(args) < 1 {
+		return fmt.Errorf("usage: lvt env unset KEY")
+	}
+
+	key := args[0]
+
+	// Load existing .env file
+	envFile := ".env"
+	envVars, err := parseEnvFile(envFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf(".env file not found")
+		}
+		return fmt.Errorf("failed to parse %s: %w", envFile, err)
+	}
+
+	// Check if key exists
+	if _, exists := envVars[key]; !exists {
+		return fmt.Errorf("key %s not found in .env", key)
+	}
+
+	// Remove the key
+	delete(envVars, key)
+
+	// Write back to .env file
+	if err := writeEnvFile(envFile, envVars); err != nil {
+		return fmt.Errorf("failed to write %s: %w", envFile, err)
+	}
+
+	fmt.Printf("✅ Unset %s\n", key)
+
+	return nil
+}
+
+// EnvList lists all environment variables from .env file
+func EnvList(args []string) error {
+	showValues := false
+	requiredOnly := false
+
+	// Parse flags
+	for _, arg := range args {
+		switch arg {
+		case "--show-values":
+			showValues = true
+		case "--required-only":
+			requiredOnly = true
+		case "-h", "--help":
+			fmt.Println("Usage: lvt env list [flags]")
+			fmt.Println("\nFlags:")
+			fmt.Println("  --show-values     Show actual values (masked by default)")
+			fmt.Println("  --required-only   Only show required variables")
+			return nil
+		}
+	}
+
+	// Load .env file
+	envFile := ".env"
+	envVars, err := parseEnvFile(envFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			fmt.Println("No .env file found")
+			fmt.Println("\nTip: Run 'lvt env generate' to create .env.example, then copy to .env")
+			return nil
+		}
+		return fmt.Errorf("failed to parse %s: %w", envFile, err)
+	}
+
+	// Detect features and get required vars
+	features := detectFeatures()
+	requiredVars := getRequiredVars(features)
+
+	// Filter if needed
+	varsToShow := envVars
+	if requiredOnly {
+		varsToShow = make(map[string]string)
+		for _, key := range requiredVars {
+			if val, exists := envVars[key]; exists {
+				varsToShow[key] = val
+			}
+		}
+	}
+
+	if len(varsToShow) == 0 {
+		fmt.Println("No environment variables found")
+		return nil
+	}
+
+	// Sort keys for consistent output
+	keys := make([]string, 0, len(varsToShow))
+	for key := range varsToShow {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	// Display
+	fmt.Printf("Environment variables from %s:\n\n", envFile)
+	for _, key := range keys {
+		value := varsToShow[key]
+		isRequired := contains(requiredVars, key)
+		requiredMark := ""
+		if isRequired {
+			requiredMark = " [REQUIRED]"
+		}
+
+		if showValues {
+			fmt.Printf("  %s=%s%s\n", key, value, requiredMark)
+		} else {
+			fmt.Printf("  %s=%s%s\n", key, maskValue(key, value), requiredMark)
+		}
+	}
+
+	fmt.Printf("\nTotal: %d variables\n", len(varsToShow))
+	if !showValues {
+		fmt.Println("\nTip: Use --show-values to see actual values")
+	}
+
+	return nil
+}
+
+// EnvValidate validates that all required environment variables are set
+func EnvValidate(args []string) error {
+	strict := false
+
+	// Parse flags
+	for _, arg := range args {
+		switch arg {
+		case "--strict":
+			strict = true
+		case "-h", "--help":
+			fmt.Println("Usage: lvt env validate [flags]")
+			fmt.Println("\nFlags:")
+			fmt.Println("  --strict    Also validate values (test connections, etc.)")
+			return nil
+		}
+	}
+
+	// Load .env file
+	envFile := ".env"
+	envVars, err := parseEnvFile(envFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			fmt.Println("❌ No .env file found")
+			fmt.Println("\nCreate one with:")
+			fmt.Println("  lvt env generate")
+			fmt.Println("  cp .env.example .env")
+			return fmt.Errorf("validation failed")
+		}
+		return fmt.Errorf("failed to parse %s: %w", envFile, err)
+	}
+
+	// Detect features
+	features := detectFeatures()
+	requiredVars := getRequiredVars(features)
+
+	// Check required variables
+	var missing []string
+	var invalid []string
+
+	for _, key := range requiredVars {
+		value, exists := envVars[key]
+		if !exists || value == "" {
+			missing = append(missing, key)
+			continue
+		}
+
+		// Check for placeholder values
+		if isPlaceholderValue(value) {
+			invalid = append(invalid, key)
+		}
+	}
+
+	// Report results
+	if len(missing) == 0 && len(invalid) == 0 {
+		fmt.Println("✅ All required environment variables are set")
+
+		if strict {
+			fmt.Println("\n🔍 Running strict validation...")
+			if err := validateValues(envVars, features); err != nil {
+				fmt.Printf("❌ Validation failed: %v\n", err)
+				return fmt.Errorf("validation failed")
+			}
+			fmt.Println("✅ All values validated successfully")
+		}
+
+		return nil
+	}
+
+	// Report errors
+	fmt.Println("❌ Environment validation failed\n")
+
+	if len(missing) > 0 {
+		fmt.Println("Missing required variables:")
+		for _, key := range missing {
+			reason := getVarReason(key, features)
+			fmt.Printf("  - %s (%s)\n", key, reason)
+		}
+		fmt.Println()
+	}
+
+	if len(invalid) > 0 {
+		fmt.Println("Invalid placeholder values (need to be replaced):")
+		for _, key := range invalid {
+			value := envVars[key]
+			fmt.Printf("  - %s=%s\n", key, value)
+		}
+		fmt.Println()
+	}
+
+	fmt.Println("Fix these issues, then run 'lvt env validate' again")
+
+	return fmt.Errorf("validation failed")
+}
+
+// Helper functions
+
+// parseEnvFile parses a .env file and returns a map of key-value pairs
+func parseEnvFile(filename string) (map[string]string, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	envVars := make(map[string]string)
+	scanner := bufio.NewScanner(file)
+	lineNum := 0
+
+	for scanner.Scan() {
+		lineNum++
+		line := strings.TrimSpace(scanner.Text())
+
+		// Skip empty lines and comments
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		// Parse KEY=VALUE
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) != 2 {
+			continue // Skip malformed lines
+		}
+
+		key := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
+
+		// Remove quotes if present
+		value = strings.Trim(value, "\"'")
+
+		envVars[key] = value
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	return envVars, nil
+}
+
+// writeEnvFile writes environment variables to a .env file
+func writeEnvFile(filename string, envVars map[string]string) error {
+	// Sort keys for consistent output
+	keys := make([]string, 0, len(envVars))
+	for key := range envVars {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	// Build content
+	var b strings.Builder
+	b.WriteString("# LiveTemplate App Environment Variables\n")
+	b.WriteString("# Managed by: lvt env\n")
+	b.WriteString("#\n")
+	b.WriteString("# IMPORTANT: Never commit this file to version control!\n")
+	b.WriteString("\n")
+
+	for _, key := range keys {
+		value := envVars[key]
+		// Quote values if they contain spaces
+		if strings.Contains(value, " ") {
+			value = fmt.Sprintf("\"%s\"", value)
+		}
+		b.WriteString(fmt.Sprintf("%s=%s\n", key, value))
+	}
+
+	// Write to file with restricted permissions
+	return os.WriteFile(filename, []byte(b.String()), 0600)
+}
+
+// isValidEnvKey checks if a key is valid (UPPERCASE_SNAKE_CASE)
+func isValidEnvKey(key string) bool {
+	match, _ := regexp.MatchString("^[A-Z][A-Z0-9_]*$", key)
+	return match
+}
+
+// maskValue masks sensitive values for display
+func maskValue(key, value string) string {
+	// List of sensitive key patterns
+	sensitivePatterns := []string{
+		"SECRET", "PASSWORD", "TOKEN", "KEY", "PASS",
+		"AUTH", "CREDENTIALS", "API",
+	}
+
+	for _, pattern := range sensitivePatterns {
+		if strings.Contains(key, pattern) {
+			if len(value) <= 4 {
+				return "****"
+			}
+			return value[:4] + "****"
+		}
+	}
+
+	return value
+}
+
+// isPlaceholderValue checks if a value is a placeholder that needs to be replaced
+func isPlaceholderValue(value string) bool {
+	placeholders := []string{
+		"change-me",
+		"your-",
+		"example",
+		"...",
+		"xxx",
+		"TODO",
+	}
+
+	lower := strings.ToLower(value)
+	for _, placeholder := range placeholders {
+		if strings.Contains(lower, placeholder) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// getRequiredVars returns list of required environment variables based on features
+func getRequiredVars(features map[string]bool) []string {
+	var required []string
+
+	// Server (always)
+	required = append(required, "APP_ENV")
+
+	// Database
+	if features["database"] {
+		required = append(required, "DATABASE_PATH")
+	}
+
+	// Auth
+	if features["auth"] {
+		required = append(required, "SESSION_SECRET")
+	}
+
+	// CSRF
+	if features["csrf"] {
+		required = append(required, "CSRF_SECRET")
+	}
+
+	// Email
+	if features["email"] {
+		required = append(required, "EMAIL_PROVIDER")
+		// SMTP vars are only required if EMAIL_PROVIDER=smtp
+	}
+
+	return required
+}
+
+// getVarReason returns a human-readable reason why a variable is required
+func getVarReason(key string, features map[string]bool) string {
+	reasons := map[string]string{
+		"APP_ENV":         "application environment",
+		"DATABASE_PATH":   "database configuration",
+		"SESSION_SECRET":  "session security (auth enabled)",
+		"CSRF_SECRET":     "CSRF protection (auth enabled)",
+		"EMAIL_PROVIDER":  "email functionality (auth with email features)",
+		"SMTP_HOST":       "SMTP email sending",
+		"SMTP_PORT":       "SMTP email sending",
+		"SMTP_USER":       "SMTP email sending",
+		"SMTP_PASS":       "SMTP email sending",
+	}
+
+	if reason, ok := reasons[key]; ok {
+		return reason
+	}
+	return "required for your app configuration"
+}
+
+// validateValues performs strict validation of environment variable values
+func validateValues(envVars map[string]string, features map[string]bool) error {
+	// Validate APP_ENV
+	if appEnv, ok := envVars["APP_ENV"]; ok {
+		validEnvs := []string{"development", "staging", "production"}
+		if !contains(validEnvs, appEnv) {
+			return fmt.Errorf("APP_ENV must be one of: %s", strings.Join(validEnvs, ", "))
+		}
+	}
+
+	// Validate secrets are not placeholder values
+	secretKeys := []string{"SESSION_SECRET", "CSRF_SECRET"}
+	for _, key := range secretKeys {
+		if value, ok := envVars[key]; ok {
+			if isPlaceholderValue(value) {
+				return fmt.Errorf("%s contains placeholder value, generate with: openssl rand -hex 32", key)
+			}
+			if len(value) < 32 {
+				return fmt.Errorf("%s is too short (minimum 32 characters for security)", key)
+			}
+		}
+	}
+
+	// Validate EMAIL_PROVIDER
+	if emailProvider, ok := envVars["EMAIL_PROVIDER"]; ok {
+		validProviders := []string{"console", "smtp"}
+		if !contains(validProviders, emailProvider) {
+			return fmt.Errorf("EMAIL_PROVIDER must be one of: %s", strings.Join(validProviders, ", "))
+		}
+
+		// If SMTP, check required SMTP vars
+		if emailProvider == "smtp" {
+			smtpVars := []string{"SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASS"}
+			for _, key := range smtpVars {
+				if _, ok := envVars[key]; !ok {
+					return fmt.Errorf("%s required when EMAIL_PROVIDER=smtp", key)
+				}
+			}
+		}
+	}
+
+	// Validate PORT is numeric
+	if port, ok := envVars["PORT"]; ok {
+		if _, err := fmt.Sscanf(port, "%d", new(int)); err != nil {
+			return fmt.Errorf("PORT must be a number, got: %s", port)
+		}
+	}
+
+	return nil
+}
+
+// ensureGitignore ensures a pattern is in .gitignore
+func ensureGitignore(pattern string) error {
+	gitignoreFile := ".gitignore"
+
+	// Read existing .gitignore
+	content, err := os.ReadFile(gitignoreFile)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	// Check if pattern already exists
+	if strings.Contains(string(content), pattern) {
+		return nil
+	}
+
+	// Append pattern
+	f, err := os.OpenFile(gitignoreFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	if len(content) > 0 && !strings.HasSuffix(string(content), "\n") {
+		f.WriteString("\n")
+	}
+	f.WriteString(fmt.Sprintf("\n# Environment variables (added by lvt)\n%s\n", pattern))
+
+	return nil
+}
+
+// contains checks if a slice contains a string
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
 }

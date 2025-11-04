@@ -39,3 +39,6 @@ e2e/*/
 
 # Git worktrees
 .worktrees/
+
+# Environment variables (added by lvt)
+.env
