@@ -92,7 +92,9 @@ func TestPageModeRendering(t *testing.T) {
 	}
 
 	// Copy client library using absolute path
-	clientSrc := filepath.Join(livetemplatePath, "client", "dist", "livetemplate-client.browser.js")
+	// Client is at monorepo root level, not inside livetemplate/
+	monorepoRoot := filepath.Join(cwd, "..", "..")
+	clientSrc := filepath.Join(monorepoRoot, "client", "dist", "livetemplate-client.browser.js")
 	clientDst := filepath.Join(appDir, "livetemplate-client.js")
 	clientContent, err := os.ReadFile(clientSrc)
 	if err != nil {

@@ -113,7 +113,9 @@ func TestTutorialE2E(t *testing.T) {
 
 	// Step 6.2: Copy client library for testing using absolute path
 	t.Log("Step 6.2: Copying client library...")
-	clientSrc := filepath.Join(livetemplatePath, "client", "dist", "livetemplate-client.browser.js")
+	// Client is at monorepo root level, not inside livetemplate/
+	monorepoRoot := filepath.Join(cwd, "..", "..")
+	clientSrc := filepath.Join(monorepoRoot, "client", "dist", "livetemplate-client.browser.js")
 	clientDst := filepath.Join(blogDir, "livetemplate-client.js")
 	clientContent, err := os.ReadFile(clientSrc)
 	if err != nil {

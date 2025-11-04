@@ -314,7 +314,9 @@ func createTestApp(t *testing.T, tmpDir, appName string, opts *AppOptions) strin
 	if opts.DevMode {
 		t.Log("Copying client library...")
 		// Use absolute path to avoid issues with parallel test execution
-		clientSrc := filepath.Join(livetemplatePath, "client", "dist", "livetemplate-client.browser.js")
+		// Client is at monorepo root level, not inside livetemplate/
+		monorepoRoot := filepath.Join(cwd, "..", "..")
+		clientSrc := filepath.Join(monorepoRoot, "client", "dist", "livetemplate-client.browser.js")
 		clientDst := filepath.Join(appDir, "livetemplate-client.js")
 		clientContent, err := os.ReadFile(clientSrc)
 		if err != nil {

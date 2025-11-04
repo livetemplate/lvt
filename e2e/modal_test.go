@@ -25,8 +25,9 @@ func TestModalFunctionality(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get working directory: %v", err)
 	}
-	livetemplatePath := filepath.Join(cwd, "..", "..", "livetemplate")
-	clientPath := filepath.Join(livetemplatePath, "client", "dist", "livetemplate-client.browser.js")
+	// Client is at monorepo root level, not inside livetemplate/
+	monorepoRoot := filepath.Join(cwd, "..", "..")
+	clientPath := filepath.Join(monorepoRoot, "client", "dist", "livetemplate-client.browser.js")
 	if _, err := os.Stat(clientPath); err != nil {
 		t.Fatalf("Client bundle not found at %s: %v", clientPath, err)
 	}
