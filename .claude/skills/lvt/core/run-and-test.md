@@ -1,5 +1,5 @@
 ---
-name: lvt-run-and-test
+name: lvt:run-and-test
 description: Use when running and testing LiveTemplate applications - covers lvt serve for development, running generated tests, debugging issues, and verifying app works
 ---
 

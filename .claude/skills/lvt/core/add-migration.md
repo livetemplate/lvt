@@ -1,5 +1,5 @@
 ---
-name: lvt-add-migration
+name: lvt:add-migration
 description: Use when adding database migrations to LiveTemplate apps - guides both auto-generated migrations (from lvt gen resource) and custom migrations (indexes, constraints, data transformations)
 ---
 

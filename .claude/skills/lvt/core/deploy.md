@@ -1,5 +1,5 @@
 ---
-name: lvt-deploy
+name: lvt:deploy
 description: Use when deploying LiveTemplate applications to production - covers Docker containerization, Fly.io deployment, Kubernetes setup, database persistence, and production best practices
 ---
 

@@ -1,5 +1,5 @@
 ---
-name: lvt-seed-data
+name: lvt:seed-data
 description: Use when generating test data for LiveTemplate apps - covers seeding resources with realistic fake data, cleanup, and understanding data generation patterns
 ---
 

@@ -1,5 +1,5 @@
 ---
-name: lvt-add-skill
+name: lvt:add-skill
 description: Use when creating new Claude Code skills for lvt CLI commands - covers TDD methodology for documentation, research process, skill structure, testing, and refinement
 ---
 

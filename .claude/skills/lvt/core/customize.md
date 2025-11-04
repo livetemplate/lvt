@@ -1,5 +1,5 @@
 ---
-name: lvt-customize
+name: lvt:customize
 description: Use when customizing generated LiveTemplate code - covers editing handlers/templates, understanding generated structure, changing behavior, and common customization patterns
 ---
 
