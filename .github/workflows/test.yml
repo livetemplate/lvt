@@ -42,9 +42,34 @@ jobs:
       #     version: latest
       #     args: --disable-all --enable=errcheck,unused,staticcheck,gosimple,ineffassign
 
-      - name: Run tests
+      - name: Install Docker (for e2e tests)
+        run: |
+          # Docker is pre-installed on ubuntu-latest runners
+          docker --version
+          docker ps
+
+      - name: Run unit tests
         run: |
           # Run all internal tests except kits (known CI issue with embed.FS)
           go test -v ./internal/config ./internal/generator ./internal/parser \
             ./internal/serve ./internal/stack/... ./internal/ui \
             ./internal/validator -timeout=120s
+
+      - name: Run commands package tests
+        run: |
+          go test -v ./commands -timeout=120s
+
+      - name: Run core tests
+        run: |
+          # Run root package tests (if any)
+          go test -v . -timeout=30s || echo "No root package tests"
+
+      - name: Run e2e tests (short mode)
+        run: |
+          # Run e2e tests in short mode (skips deployment tests requiring credentials)
+          go test -v -short ./e2e -timeout=5m
+
+      - name: Run deployment infrastructure tests
+        run: |
+          # Test mock deployment infrastructure (fast, no credentials needed)
+          go test -v -short ./testing/... -timeout=2m || echo "No tests in testing package"

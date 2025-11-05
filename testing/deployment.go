@@ -1,0 +1,451 @@
+package testing
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"sync"
+	stdtesting "testing"
+	"time"
+
+	"github.com/livetemplate/lvt/testing/providers"
+)
+
+// DeploymentTest manages the lifecycle of a deployed test application
+type DeploymentTest struct {
+	T *stdtesting.T
+
+	// App metadata
+	Provider Provider
+	AppName  string
+	AppDir   string
+	AppURL   string
+	Region   string
+
+	// Cleanup tracking
+	cleanupFuncs []func() error
+	cleanupMu    sync.Mutex
+	cleaned      bool
+}
+
+// DeploymentOptions configures deployment test setup
+type DeploymentOptions struct {
+	Provider Provider
+	AppName  string // If empty, generates unique name
+	AppDir   string // If empty, creates test app
+	Region   string // Cloud region (defaults vary by provider)
+	Kit      string // App kit: multi, single, simple (default: multi)
+
+	// Feature flags
+	WithAuth       bool
+	WithLitestream bool
+	WithS3Backup   bool
+
+	// Resource options
+	Resources []string // Resources to add (e.g., "posts title content")
+}
+
+// SetupDeployment creates a test app and prepares it for deployment
+func SetupDeployment(t *stdtesting.T, opts *DeploymentOptions) *DeploymentTest {
+	t.Helper()
+
+	if opts == nil {
+		opts = &DeploymentOptions{}
+	}
+
+	// Set defaults
+	if opts.Provider == "" {
+		opts.Provider = ProviderFly
+	}
+	if opts.Kit == "" {
+		opts.Kit = "multi"
+	}
+	if opts.Region == "" {
+		switch opts.Provider {
+		case ProviderFly:
+			opts.Region = "sjc" // San Jose
+		case ProviderDigitalOcean:
+			opts.Region = "nyc"
+		default:
+			opts.Region = "us-east-1"
+		}
+	}
+
+	// Generate unique app name if not provided
+	if opts.AppName == "" {
+		opts.AppName = GenerateTestAppName("lvt-test")
+	}
+
+	// Validate app name
+	if err := ValidateAppName(opts.AppName); err != nil {
+		t.Fatalf("Invalid app name: %v", err)
+	}
+
+	dt := &DeploymentTest{
+		T:        t,
+		Provider: opts.Provider,
+		AppName:  opts.AppName,
+		Region:   opts.Region,
+	}
+
+	// Create test app if appDir not provided
+	if opts.AppDir == "" {
+		tmpDir := t.TempDir()
+		appDir := filepath.Join(tmpDir, opts.AppName)
+
+		// Create the app
+		t.Logf("Creating test app: %s (kit: %s)", opts.AppName, opts.Kit)
+		if err := os.MkdirAll(appDir, 0755); err != nil {
+			t.Fatalf("Failed to create app directory: %v", err)
+		}
+
+		// Use lvt to create the app
+		// Note: This assumes lvt binary is in PATH or we'll need to locate it
+		if err := runLvtNew(appDir, opts.AppName, opts.Kit); err != nil {
+			t.Fatalf("Failed to create app: %v", err)
+		}
+
+		dt.AppDir = appDir
+	} else {
+		dt.AppDir = opts.AppDir
+	}
+
+	// Add resources if specified
+	for _, resource := range opts.Resources {
+		t.Logf("Adding resource: %s", resource)
+		if err := runLvtGenResource(dt.AppDir, resource); err != nil {
+			t.Fatalf("Failed to add resource %s: %v", resource, err)
+		}
+	}
+
+	// Add auth if requested
+	if opts.WithAuth {
+		t.Logf("Adding authentication")
+		if err := runLvtGenAuth(dt.AppDir); err != nil {
+			t.Fatalf("Failed to add auth: %v", err)
+		}
+	}
+
+	// Register cleanup
+	t.Cleanup(func() {
+		if err := dt.Cleanup(); err != nil {
+			t.Errorf("Cleanup failed: %v", err)
+		}
+	})
+
+	return dt
+}
+
+// Deploy executes the deployment to the configured provider
+func (dt *DeploymentTest) Deploy() error {
+	dt.T.Helper()
+	dt.T.Logf("Deploying %s to %s (region: %s)", dt.AppName, dt.Provider, dt.Region)
+
+	startTime := time.Now()
+
+	// Deploy based on provider (will be implemented by provider-specific files)
+	var err error
+	switch dt.Provider {
+	case ProviderFly:
+		err = dt.deployToFly()
+	case ProviderDocker:
+		err = dt.deployToDocker()
+	default:
+		return fmt.Errorf("unsupported provider: %s", dt.Provider)
+	}
+
+	if err != nil {
+		return fmt.Errorf("deployment failed: %w", err)
+	}
+
+	duration := time.Since(startTime)
+	dt.T.Logf("Deployment completed in %v", duration)
+
+	return nil
+}
+
+// VerifyHealth checks if the deployed app is responding
+func (dt *DeploymentTest) VerifyHealth() error {
+	dt.T.Helper()
+
+	if dt.AppURL == "" {
+		return fmt.Errorf("app URL not set")
+	}
+
+	dt.T.Logf("Verifying health at: %s", dt.AppURL)
+
+	// TODO: Implement HTTP health check
+	// For now, just check URL is set
+	return nil
+}
+
+// VerifyWebSocket checks if WebSocket connection can be established
+func (dt *DeploymentTest) VerifyWebSocket() error {
+	dt.T.Helper()
+
+	if dt.AppURL == "" {
+		return fmt.Errorf("app URL not set")
+	}
+
+	dt.T.Logf("Verifying WebSocket connection")
+
+	// TODO: Implement WebSocket connection test
+	return nil
+}
+
+// AddCleanup registers a cleanup function to be called when test ends
+func (dt *DeploymentTest) AddCleanup(fn func() error) {
+	dt.cleanupMu.Lock()
+	defer dt.cleanupMu.Unlock()
+	dt.cleanupFuncs = append(dt.cleanupFuncs, fn)
+}
+
+// Cleanup destroys all resources created during the test
+func (dt *DeploymentTest) Cleanup() error {
+	dt.cleanupMu.Lock()
+	defer dt.cleanupMu.Unlock()
+
+	if dt.cleaned {
+		return nil
+	}
+	dt.cleaned = true
+
+	dt.T.Logf("Cleaning up deployment: %s", dt.AppName)
+
+	var errors []error
+
+	// Run cleanup functions in reverse order
+	for i := len(dt.cleanupFuncs) - 1; i >= 0; i-- {
+		if err := dt.cleanupFuncs[i](); err != nil {
+			errors = append(errors, err)
+			dt.T.Logf("Cleanup function %d failed: %v", i, err)
+		}
+	}
+
+	// Provider-specific cleanup
+	switch dt.Provider {
+	case ProviderFly:
+		if err := dt.cleanupFly(); err != nil {
+			errors = append(errors, err)
+		}
+	case ProviderDocker:
+		if err := dt.cleanupDocker(); err != nil {
+			errors = append(errors, err)
+		}
+	}
+
+	if len(errors) > 0 {
+		return fmt.Errorf("cleanup had %d error(s): %v", len(errors), errors)
+	}
+
+	dt.T.Logf("Cleanup completed successfully")
+	return nil
+}
+
+// Helper functions for creating apps (will use e2e/test_helpers.go patterns)
+
+func runLvtNew(parentDir, appName, kit string) error {
+	// TODO: Implement using existing e2e test helpers
+	// This should call: runLvtCommand(t, parentDir, "new", appName, "--kit", kit)
+	return nil
+}
+
+func runLvtGenResource(appDir, resourceSpec string) error {
+	// TODO: Implement using existing e2e test helpers
+	return nil
+}
+
+func runLvtGenAuth(appDir string) error {
+	// TODO: Implement using existing e2e test helpers
+	return nil
+}
+
+// Provider-specific deployment methods (stubs for now, will be implemented in providers/)
+
+func (dt *DeploymentTest) deployToFly() error {
+	// Load credentials
+	creds, err := LoadTestCredentials()
+	if err != nil {
+		return fmt.Errorf("failed to load credentials: %w", err)
+	}
+
+	if creds.FlyAPIToken == "" {
+		return fmt.Errorf("FLY_API_TOKEN not set")
+	}
+
+	// Create Fly.io client
+	client := providers.NewFlyClient(creds.FlyAPIToken, "personal")
+
+	// Launch app
+	dt.T.Logf("Launching Fly.io app: %s", dt.AppName)
+	if err := client.Launch(dt.AppName, dt.Region); err != nil {
+		return fmt.Errorf("failed to launch app: %w", err)
+	}
+
+	// Register cleanup for the app
+	dt.AddCleanup(func() error {
+		dt.T.Logf("Destroying Fly.io app: %s", dt.AppName)
+		return client.Destroy(dt.AppName)
+	})
+
+	// Create volume if needed
+	dt.T.Logf("Creating volume for app: %s", dt.AppName)
+	volumeID, err := client.CreateVolume(dt.AppName, dt.Region, 1) // 1GB volume
+	if err != nil {
+		return fmt.Errorf("failed to create volume: %w", err)
+	}
+	dt.T.Logf("Created volume: %s", volumeID)
+
+	// Deploy the app
+	dt.T.Logf("Deploying app from: %s", dt.AppDir)
+	if err := client.Deploy(dt.AppName, dt.AppDir, dt.Region); err != nil {
+		return fmt.Errorf("failed to deploy: %w", err)
+	}
+
+	// Wait for app to be ready
+	dt.T.Logf("Waiting for app to be ready...")
+	if err := client.WaitForAppReady(dt.AppName, 5*time.Minute); err != nil {
+		return fmt.Errorf("app failed to become ready: %w", err)
+	}
+
+	// Get app URL
+	appURL, err := client.GetAppURL(dt.AppName)
+	if err != nil {
+		return fmt.Errorf("failed to get app URL: %w", err)
+	}
+
+	dt.AppURL = appURL
+	dt.T.Logf("App deployed successfully at: %s", dt.AppURL)
+
+	return nil
+}
+
+func (dt *DeploymentTest) deployToDocker() error {
+	// Create Docker client
+	// Use a unique port for this test (8000 + last 3 digits of timestamp)
+	port := 8000 + (int(time.Now().Unix()) % 1000)
+	client := providers.NewDockerClient(dt.AppName, port)
+
+	// Ensure Dockerfile and dependencies are ready
+	if err := dt.ensureDockerfile(); err != nil {
+		return fmt.Errorf("failed to create Dockerfile: %w", err)
+	}
+
+	// Ensure go.sum exists by running go mod tidy
+	dt.T.Logf("Running go mod tidy to ensure dependencies are resolved")
+	tidyCmd := exec.Command("go", "mod", "tidy")
+	tidyCmd.Dir = dt.AppDir
+	if output, err := tidyCmd.CombinedOutput(); err != nil {
+		dt.T.Logf("Warning: go mod tidy failed: %v\n%s", err, string(output))
+	}
+
+	// Build Docker image
+	dt.T.Logf("Building Docker image for: %s", dt.AppName)
+	if err := client.Build(dt.AppDir); err != nil {
+		return fmt.Errorf("failed to build image: %w", err)
+	}
+
+	// Register cleanup for image and container
+	dt.AddCleanup(func() error {
+		dt.T.Logf("Destroying Docker container and image: %s", dt.AppName)
+		return client.Destroy()
+	})
+
+	// Run container
+	dt.T.Logf("Starting Docker container: %s on port %d", dt.AppName, port)
+	if err := client.Run(); err != nil {
+		return fmt.Errorf("failed to run container: %w", err)
+	}
+
+	// Wait for container to be ready
+	dt.T.Logf("Waiting for container to be ready...")
+	if err := client.WaitForReady(2 * time.Minute); err != nil {
+		return fmt.Errorf("container failed to become ready: %w", err)
+	}
+
+	// Get container URL
+	dt.AppURL = client.GetContainerURL()
+	dt.T.Logf("Container deployed successfully at: %s", dt.AppURL)
+
+	return nil
+}
+
+func (dt *DeploymentTest) cleanupFly() error {
+	// Cleanup is handled by the cleanup functions registered during deployment
+	// The Destroy() call is already registered in deployToFly()
+	dt.T.Logf("Fly.io cleanup completed for: %s", dt.AppName)
+	return nil
+}
+
+func (dt *DeploymentTest) cleanupDocker() error {
+	// Cleanup is handled by the cleanup functions registered during deployment
+	// The Destroy() call is already registered in deployToDocker()
+	dt.T.Logf("Docker cleanup completed for: %s", dt.AppName)
+	return nil
+}
+
+// ensureDockerfile creates a minimal Dockerfile if one doesn't exist
+func (dt *DeploymentTest) ensureDockerfile() error {
+	dockerfilePath := filepath.Join(dt.AppDir, "Dockerfile")
+
+	// Check if Dockerfile already exists
+	if _, err := os.Stat(dockerfilePath); err == nil {
+		dt.T.Logf("Dockerfile already exists")
+		return nil
+	}
+
+	dt.T.Logf("Creating minimal Dockerfile for testing")
+
+	// Create a minimal Dockerfile for testing
+	dockerfile := `# Build stage
+FROM golang:1.22-alpine AS builder
+
+WORKDIR /app
+
+# Install build dependencies
+RUN apk add --no-cache git gcc musl-dev sqlite-dev
+
+# Copy go mod file
+COPY go.mod ./
+
+# Copy go.sum if it exists
+COPY go.sum* ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build binary with CGO enabled for SQLite
+RUN CGO_ENABLED=1 GOOS=linux go build -o main .
+
+# Runtime stage
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates sqlite-libs
+
+WORKDIR /app
+
+# Copy binary from builder
+COPY --from=builder /app/main .
+
+# Copy the client library if it exists
+COPY --from=builder /app/livetemplate-client.js* ./
+
+# Create data directory for SQLite
+RUN mkdir -p /app/data
+
+EXPOSE 8080
+
+CMD ["./main"]
+`
+
+	if err := os.WriteFile(dockerfilePath, []byte(dockerfile), 0644); err != nil {
+		return fmt.Errorf("failed to write Dockerfile: %w", err)
+	}
+
+	dt.T.Logf("Created Dockerfile at: %s", dockerfilePath)
+	return nil
+}

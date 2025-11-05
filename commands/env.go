@@ -523,7 +523,7 @@ func EnvValidate(args []string) error {
 	}
 
 	// Report errors
-	fmt.Println("❌ Environment validation failed\n")
+	fmt.Println("❌ Environment validation failed")
 
 	if len(missing) > 0 {
 		fmt.Println("Missing required variables:")

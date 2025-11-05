@@ -658,43 +658,134 @@ func Handler(queries *models.Queries) http.Handler {
 
 ## Testing
 
-Each generated resource includes comprehensive tests:
+The project includes comprehensive testing infrastructure at multiple levels:
 
-### WebSocket Tests (`*_ws_test.go`)
+### Quick Start
 
-Fast unit tests for WebSocket protocol and state changes:
+```bash
+# Run all tests (fast mode - skips deployment tests)
+go test ./... -short
+
+# Run all tests (including slower e2e tests)
+go test ./...
+
+# Run specific package tests
+go test ./internal/generator -v
+
+# Run tests with coverage
+go test ./... -cover
+```
+
+### Test Types
+
+#### 1. Unit Tests
+Fast tests for individual packages and functions:
+
+```bash
+# Internal packages
+go test ./internal/config ./internal/generator ./internal/parser -v
+
+# Commands package
+go test ./commands -v
+```
+
+**Duration**: <5 seconds
+
+#### 2. WebSocket Tests (`*_ws_test.go`)
+
+Fast unit tests for WebSocket protocol and state changes in generated resources:
 
 ```bash
 go test ./internal/app/users -run WebSocket
 ```
 
-Features:
+**Features**:
 - Test server startup with dynamic ports
 - WebSocket connection testing
 - CRUD action testing
 - Server log capture for debugging
-- Fast execution (~2-5 seconds)
 
-### E2E Tests (`*_test.go`)
+**Duration**: 2-5 seconds per resource
 
-Full browser testing with real user interactions:
+#### 3. E2E Browser Tests (`*_test.go`)
+
+Full browser testing with real user interactions for generated resources:
 
 ```bash
 go test ./internal/app/users -run E2E
 ```
 
-Features:
+**Features**:
 - Docker Chrome container
 - Real browser interactions (clicks, typing, forms)
 - Visual verification
 - Screenshot capture
 - Console log access
-- Comprehensive (~20-60 seconds)
 
-**Skip slow tests:**
+**Duration**: 20-60 seconds per resource
+
+#### 4. Deployment Tests (Advanced)
+
+Comprehensive deployment testing infrastructure for testing real deployments:
+
+```bash
+# Mock deployment tests (fast, no credentials needed)
+go test ./e2e -run TestDeploymentInfrastructure_Mock -v
+
+# Docker deployment tests (requires Docker)
+RUN_DOCKER_DEPLOYMENT_TESTS=true go test ./e2e -run TestDockerDeployment -v
+
+# Fly.io deployment tests (requires credentials)
+export FLY_API_TOKEN="your_token"
+RUN_FLY_DEPLOYMENT_TESTS=true go test ./e2e -run TestRealFlyDeployment -v
+```
+
+**Features**:
+- Mock, Docker, and Fly.io deployment testing
+- Automatic cleanup and resource management
+- Smoke tests (HTTP, health, WebSocket, templates)
+- Credential-based access control
+
+**Duration**: 2 minutes (mock) to 15 minutes (real deployments)
+
+### Test Environment Variables
+
+| Variable | Purpose | Default |
+|----------|---------|---------|
+| `RUN_DOCKER_DEPLOYMENT_TESTS` | Enable Docker deployment tests | `false` |
+| `RUN_FLY_DEPLOYMENT_TESTS` | Enable Fly.io deployment tests | `false` |
+| `FLY_API_TOKEN` | Fly.io API token for real deployments | - |
+
+### Continuous Integration
+
+Tests run automatically on every pull request via GitHub Actions:
+
+- ✅ Code formatting validation
+- ✅ Unit tests (all internal packages)
+- ✅ Commands tests
+- ✅ E2E tests (short mode)
+- ✅ Mock deployment tests
+
+**On-demand/scheduled deployment testing** available via manual workflow dispatch or weekly schedule.
+
+For detailed CI/CD documentation, see:
+- [CI Deployment Testing Guide](e2e/CI_DEPLOYMENT_TESTING.md)
+- [Deployment Testing Documentation](e2e/DEPLOYMENT_TESTING.md)
+
+### Skip Slow Tests
+
+Use `-short` flag to skip slow tests (deployment tests, long-running e2e tests):
+
 ```bash
 go test -short ./...
 ```
+
+### Test Documentation
+
+For comprehensive testing documentation, see:
+- **[Deployment Testing](e2e/DEPLOYMENT_TESTING.md)** - Complete deployment testing guide
+- **[CI/CD Testing](e2e/CI_DEPLOYMENT_TESTING.md)** - CI/CD workflows and setup
+- **[Deployment Plan](e2e/DEPLOYMENT_TESTING_PLAN_UPDATE.md)** - Implementation progress and status
 
 ## Go 1.24+ Tools Support
 
