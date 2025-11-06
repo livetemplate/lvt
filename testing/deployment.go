@@ -345,9 +345,19 @@ var lvtBinaryCache string
 var lvtBinaryMutex sync.Mutex
 
 // buildLvtBinary builds the lvt binary and caches it
+// If LVT_BINARY environment variable is set, uses that instead
 func buildLvtBinary(projectRoot string) (string, error) {
 	lvtBinaryMutex.Lock()
 	defer lvtBinaryMutex.Unlock()
+
+	// Check for pre-built binary via environment variable
+	if envBinary := os.Getenv("LVT_BINARY"); envBinary != "" {
+		if _, err := os.Stat(envBinary); err == nil {
+			lvtBinaryCache = envBinary
+			return envBinary, nil
+		}
+		return "", fmt.Errorf("LVT_BINARY set to %s but file does not exist", envBinary)
+	}
 
 	// Return cached binary if it exists
 	if lvtBinaryCache != "" {
