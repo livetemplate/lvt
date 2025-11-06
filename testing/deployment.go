@@ -532,6 +532,9 @@ COPY go.mod ./
 # Copy go.sum if it exists
 COPY go.sum* ./
 
+# Enable automatic toolchain management to download Go 1.25 if needed
+ENV GOTOOLCHAIN=auto
+
 # Download dependencies
 RUN go mod download
 

@@ -129,18 +129,21 @@ func (d *DockerClient) GetContainerURL() string {
 // WaitForReady waits for the container to be ready and responding to HTTP requests
 func (d *DockerClient) WaitForReady(timeout time.Duration) error {
 	deadline := time.Now().Add(timeout)
-	url := d.GetContainerURL() + "/health"
+	baseURL := d.GetContainerURL()
 
 	for time.Now().Before(deadline) {
 		// Check container status
 		status, err := d.Status()
 		if err == nil && status.Running {
-			// Try HTTP health check
-			resp, err := http.Get(url)
-			if err == nil {
-				resp.Body.Close()
-				if resp.StatusCode == http.StatusOK {
-					return nil
+			// Try HTTP health check - try root path first, then /health
+			for _, path := range []string{"/", "/health"} {
+				resp, err := http.Get(baseURL + path)
+				if err == nil {
+					resp.Body.Close()
+					// Accept any 2xx status code
+					if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+						return nil
+					}
 				}
 			}
 		}
