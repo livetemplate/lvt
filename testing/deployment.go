@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	stdtesting "testing"
 	"time"
@@ -92,21 +93,15 @@ func SetupDeployment(t *stdtesting.T, opts *DeploymentOptions) *DeploymentTest {
 	// Create test app if appDir not provided
 	if opts.AppDir == "" {
 		tmpDir := t.TempDir()
-		appDir := filepath.Join(tmpDir, opts.AppName)
 
-		// Create the app
+		// Create the app using lvt new (it will create the directory)
 		t.Logf("Creating test app: %s (kit: %s)", opts.AppName, opts.Kit)
-		if err := os.MkdirAll(appDir, 0755); err != nil {
-			t.Fatalf("Failed to create app directory: %v", err)
-		}
-
-		// Use lvt to create the app
-		// Note: This assumes lvt binary is in PATH or we'll need to locate it
-		if err := runLvtNew(appDir, opts.AppName, opts.Kit); err != nil {
+		if err := runLvtNew(tmpDir, opts.AppName, opts.Kit); err != nil {
 			t.Fatalf("Failed to create app: %v", err)
 		}
 
-		dt.AppDir = appDir
+		// Set the app directory path
+		dt.AppDir = filepath.Join(tmpDir, opts.AppName)
 	} else {
 		dt.AppDir = opts.AppDir
 	}
@@ -246,19 +241,134 @@ func (dt *DeploymentTest) Cleanup() error {
 // Helper functions for creating apps (will use e2e/test_helpers.go patterns)
 
 func runLvtNew(parentDir, appName, kit string) error {
-	// TODO: Implement using existing e2e test helpers
-	// This should call: runLvtCommand(t, parentDir, "new", appName, "--kit", kit)
-	return nil
+	// Build arguments for lvt new command
+	args := []string{appName}
+	if kit != "" {
+		args = append(args, "--kit", kit)
+	}
+
+	// Call commands.New directly
+	return runLvtCommandInDir(parentDir, "new", args...)
 }
 
 func runLvtGenResource(appDir, resourceSpec string) error {
-	// TODO: Implement using existing e2e test helpers
-	return nil
+	// Parse resource spec (e.g., "posts title content")
+	parts := strings.Fields(resourceSpec)
+	if len(parts) == 0 {
+		return fmt.Errorf("empty resource spec")
+	}
+
+	// Call commands.Gen with resource arguments
+	return runLvtCommandInDir(appDir, "gen", parts...)
 }
 
 func runLvtGenAuth(appDir string) error {
-	// TODO: Implement using existing e2e test helpers
+	// Call commands.Gen with auth arguments
+	return runLvtCommandInDir(appDir, "gen", "auth")
+}
+
+// runLvtCommandInDir executes an lvt command in a specific directory
+// This is imported from e2e/test_helpers.go pattern - calls commands directly
+func runLvtCommandInDir(workDir, command string, args ...string) error {
+	// Save and restore working directory
+	origDir, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get working directory: %w", err)
+	}
+	defer os.Chdir(origDir)
+
+	if workDir != "" {
+		if err := os.Chdir(workDir); err != nil {
+			return fmt.Errorf("failed to change directory to %s: %w", workDir, err)
+		}
+	}
+
+	// Import commands package and call directly
+	// This avoids the complexity and slowness of shelling out
+	// Note: We need to import github.com/livetemplate/lvt/commands
+	// For now, use exec to build and run from the project root
+	// Find the project root (where go.mod is) - start from current package location
+	projectRoot, err := findProjectRoot(origDir)
+	if err != nil {
+		return fmt.Errorf("failed to find project root: %w", err)
+	}
+
+	// Build lvt binary once and cache it
+	lvtBin, err := buildLvtBinary(projectRoot)
+	if err != nil {
+		return fmt.Errorf("failed to build lvt binary: %w", err)
+	}
+
+	// Run the command
+	cmdArgs := append([]string{command}, args...)
+	cmd := exec.Command(lvtBin, cmdArgs...)
+	cmd.Dir = workDir
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("command failed: lvt %s: %w\nOutput: %s", strings.Join(cmdArgs, " "), err, string(output))
+	}
+
 	return nil
+}
+
+// findProjectRoot finds the directory containing go.mod, starting from startDir
+func findProjectRoot(startDir string) (string, error) {
+	dir := startDir
+	if dir == "" {
+		var err error
+		dir, err = os.Getwd()
+		if err != nil {
+			return "", err
+		}
+	}
+
+	// Clean the path to get absolute path
+	dir, err := filepath.Abs(dir)
+	if err != nil {
+		return "", err
+	}
+
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir, nil
+		}
+
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return "", fmt.Errorf("could not find project root (go.mod)")
+		}
+		dir = parent
+	}
+}
+
+var lvtBinaryCache string
+var lvtBinaryMutex sync.Mutex
+
+// buildLvtBinary builds the lvt binary and caches it
+func buildLvtBinary(projectRoot string) (string, error) {
+	lvtBinaryMutex.Lock()
+	defer lvtBinaryMutex.Unlock()
+
+	// Return cached binary if it exists
+	if lvtBinaryCache != "" {
+		if _, err := os.Stat(lvtBinaryCache); err == nil {
+			return lvtBinaryCache, nil
+		}
+	}
+
+	// Build the binary
+	tmpDir := os.TempDir()
+	binaryPath := filepath.Join(tmpDir, "lvt-test-binary")
+
+	cmd := exec.Command("go", "build", "-o", binaryPath, ".")
+	cmd.Dir = projectRoot
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("failed to build lvt: %w\nOutput: %s", err, string(output))
+	}
+
+	lvtBinaryCache = binaryPath
+	return binaryPath, nil
 }
 
 // Provider-specific deployment methods (stubs for now, will be implemented in providers/)
