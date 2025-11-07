@@ -46,8 +46,8 @@ func main() {
 		LastUpdated: formatTime(),
 	}
 
-	// Create template - auto-discovers [[.AppName]].tmpl
-	tmpl := livetemplate.New("[[.AppName]]", livetemplate.WithDevMode([[.DevMode]]))
+	// Create template - auto-discovers index.tmpl
+	tmpl := livetemplate.New("index", livetemplate.WithDevMode([[.DevMode]]))
 
 	// Mount handler
 	http.Handle("/", tmpl.Handle(state))
