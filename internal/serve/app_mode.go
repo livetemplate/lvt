@@ -22,7 +22,6 @@ type AppMode struct {
 	mu         sync.Mutex
 	stopChan   chan struct{}
 	mainGoPath string
-	buildPath  string
 }
 
 func NewAppMode(s *Server) (*AppMode, error) {
@@ -114,7 +113,6 @@ func (am *AppMode) detectApp() error {
 	}
 
 	am.mainGoPath = mainGo
-	am.buildPath = filepath.Join(os.TempDir(), "lvt-app-"+filepath.Base(am.server.config.Dir))
 
 	log.Printf("App detected: %s", am.mainGoPath)
 	return nil
@@ -156,20 +154,10 @@ func (am *AppMode) startApp() error {
 		am.stopAppLocked()
 	}
 
-	log.Printf("Building app from %s...", am.mainGoPath)
+	log.Printf("Starting app from %s on port %d...", am.mainGoPath, am.appPort)
 
-	buildCmd := exec.Command("go", "build", "-o", am.buildPath, filepath.Dir(am.mainGoPath))
-	buildCmd.Dir = am.server.config.Dir
-	buildCmd.Stdout = os.Stdout
-	buildCmd.Stderr = os.Stderr
-
-	if err := buildCmd.Run(); err != nil {
-		return fmt.Errorf("build failed: %w", err)
-	}
-
-	log.Printf("Starting app on port %d...", am.appPort)
-
-	am.appProcess = exec.Command(am.buildPath)
+	// Use 'go run' instead of building a binary to keep templates accessible from source
+	am.appProcess = exec.Command("go", "run", am.mainGoPath)
 	am.appProcess.Dir = am.server.config.Dir
 	am.appProcess.Stdout = os.Stdout
 	am.appProcess.Stderr = os.Stderr
@@ -221,10 +209,6 @@ func (am *AppMode) Stop() {
 	am.mu.Lock()
 	defer am.mu.Unlock()
 	am.stopAppLocked()
-
-	if am.buildPath != "" {
-		os.Remove(am.buildPath)
-	}
 }
 
 func (am *AppMode) Restart() error {

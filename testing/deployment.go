@@ -536,6 +536,7 @@ func (dt *DeploymentTest) ensureDockerfile() error {
 	dt.T.Logf("Creating minimal Dockerfile for testing")
 
 	// Create a minimal Dockerfile for testing
+	// Supports both simple kit (main.go in root) and multi kit (main.go in cmd/<appname>/)
 	dockerfile := `# Build stage
 FROM golang:1.25-alpine AS builder
 
@@ -557,7 +558,12 @@ RUN go mod download
 COPY . .
 
 # Build binary with CGO enabled for SQLite
-RUN CGO_ENABLED=1 GOOS=linux go build -o main .
+# Auto-detect if main.go is in root (simple kit) or cmd/ (multi kit)
+RUN if [ -f main.go ]; then \
+      CGO_ENABLED=1 GOOS=linux go build -o main .; \
+    else \
+      CGO_ENABLED=1 GOOS=linux go build -o main ./cmd/*; \
+    fi
 
 # Runtime stage
 FROM alpine:latest
@@ -569,11 +575,13 @@ WORKDIR /app
 # Copy binary from builder
 COPY --from=builder /app/main .
 
-# Copy template files
-COPY --from=builder /app/*.tmpl ./
+# Copy all source files needed at runtime
+# Simple kit: only needs index.tmpl in root
+# Multi kit: needs internal/ directory with templates and .lvtresources
+COPY --from=builder /app .
 
-# Copy the client library if it exists
-COPY --from=builder /app/livetemplate-client.js* ./
+# Clean up build artifacts we don't need at runtime
+RUN rm -rf /app/cmd /app/go.mod /app/go.sum /app/README.md /app/.git* 2>/dev/null || true
 
 # Create data directory for SQLite
 RUN mkdir -p /app/data
