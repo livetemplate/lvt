@@ -146,10 +146,10 @@ func testHealthEndpoint(appURL string, opts *SmokeTestOptions) error {
 			return fmt.Errorf("failed to read response body: %w", err)
 		}
 
-		// Check for expected response
-		bodyStr := string(body)
+		// Check for expected response (case-insensitive)
+		bodyStr := strings.ToLower(string(body))
 		if !strings.Contains(bodyStr, "ok") && !strings.Contains(bodyStr, "healthy") {
-			return fmt.Errorf("unexpected health response: %s", bodyStr)
+			return fmt.Errorf("unexpected health response: %s", string(body))
 		}
 
 		return nil
