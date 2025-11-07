@@ -552,6 +552,9 @@ WORKDIR /app
 # Copy binary from builder
 COPY --from=builder /app/main .
 
+# Copy template files
+COPY --from=builder /app/*.tmpl ./
+
 # Copy the client library if it exists
 COPY --from=builder /app/livetemplate-client.js* ./
 
