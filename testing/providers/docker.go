@@ -135,20 +135,31 @@ func (d *DockerClient) WaitForReady(timeout time.Duration) error {
 		// Check container status
 		status, err := d.Status()
 		if err == nil && status.Running {
-			// Try HTTP health check - try root path first, then /health
-			for _, path := range []string{"/", "/health"} {
-				resp, err := http.Get(baseURL + path)
-				if err == nil {
-					resp.Body.Close()
-					// Accept any 2xx status code
-					if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-						return nil
-					}
+			// Try HTTP health check - use /health endpoint to avoid template errors
+			path := "/health"
+			resp, err := http.Get(baseURL + path)
+			if err == nil {
+				defer resp.Body.Close()
+				// DEBUG: Log what status code we're getting
+				fmt.Printf("DEBUG: Health check %s got status: %d\n", baseURL+path, resp.StatusCode)
+				// Accept any 2xx status code
+				if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+					return nil
 				}
+			} else {
+				// DEBUG: Log HTTP errors
+				fmt.Printf("DEBUG: Health check %s error: %v\n", baseURL+path, err)
+			}
+		} else {
+			// DEBUG: Log container status issues
+			if err != nil {
+				fmt.Printf("DEBUG: Container status check error: %v\n", err)
+			} else if !status.Running {
+				fmt.Printf("DEBUG: Container %s not running (status: %s)\n", d.ContainerName, status.Status)
 			}
 		}
 
-		time.Sleep(2 * time.Second)
+		time.Sleep(3 * time.Second)
 	}
 
 	// Get logs for debugging

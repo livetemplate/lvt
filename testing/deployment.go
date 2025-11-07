@@ -252,14 +252,15 @@ func runLvtNew(parentDir, appName, kit string) error {
 }
 
 func runLvtGenResource(appDir, resourceSpec string) error {
-	// Parse resource spec (e.g., "posts title content")
+	// Parse resource spec (e.g., "posts title:string content:text")
 	parts := strings.Fields(resourceSpec)
 	if len(parts) == 0 {
 		return fmt.Errorf("empty resource spec")
 	}
 
-	// Call commands.Gen with resource arguments
-	return runLvtCommandInDir(appDir, "gen", parts...)
+	// Prepend "resource" subcommand: lvt gen resource posts title:string ...
+	args := append([]string{"resource"}, parts...)
+	return runLvtCommandInDir(appDir, "gen", args...)
 }
 
 func runLvtGenAuth(appDir string) error {
@@ -519,7 +520,7 @@ func (dt *DeploymentTest) ensureDockerfile() error {
 
 	// Create a minimal Dockerfile for testing
 	dockerfile := `# Build stage
-FROM golang:1.22-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 
@@ -531,9 +532,6 @@ COPY go.mod ./
 
 # Copy go.sum if it exists
 COPY go.sum* ./
-
-# Enable automatic toolchain management to download Go 1.25 if needed
-ENV GOTOOLCHAIN=auto
 
 # Download dependencies
 RUN go mod download
