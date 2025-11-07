@@ -92,16 +92,33 @@ func SetupDeployment(t *stdtesting.T, opts *DeploymentOptions) *DeploymentTest {
 
 	// Create test app if appDir not provided
 	if opts.AppDir == "" {
-		tmpDir := t.TempDir()
+		// Use working directory instead of system temp to avoid macOS permission dialogs
+		// and to keep test artifacts accessible for debugging
+		wd, err := os.Getwd()
+		if err != nil {
+			t.Fatalf("Failed to get working directory: %v", err)
+		}
+
+		testDir := filepath.Join(wd, ".test-deployments", t.Name())
+		if err := os.MkdirAll(testDir, 0755); err != nil {
+			t.Fatalf("Failed to create test directory: %v", err)
+		}
+
+		// Register cleanup to remove test directory
+		t.Cleanup(func() {
+			if err := os.RemoveAll(testDir); err != nil {
+				t.Logf("Warning: failed to clean up test directory %s: %v", testDir, err)
+			}
+		})
 
 		// Create the app using lvt new (it will create the directory)
 		t.Logf("Creating test app: %s (kit: %s)", opts.AppName, opts.Kit)
-		if err := runLvtNew(tmpDir, opts.AppName, opts.Kit); err != nil {
+		if err := runLvtNew(testDir, opts.AppName, opts.Kit); err != nil {
 			t.Fatalf("Failed to create app: %v", err)
 		}
 
 		// Set the app directory path
-		dt.AppDir = filepath.Join(tmpDir, opts.AppName)
+		dt.AppDir = filepath.Join(testDir, opts.AppName)
 	} else {
 		dt.AppDir = opts.AppDir
 	}

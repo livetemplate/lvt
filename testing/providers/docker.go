@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -34,16 +35,18 @@ type DockerContainerStatus struct {
 	Port    int
 }
 
-// Build builds a Docker image from the app directory
+// Build builds a Docker image from the app directory with caching enabled
 func (d *DockerClient) Build(appDir string) error {
 	args := []string{
 		"build",
 		"-t", d.ImageTag,
-		".",
+		".", // Build from the app directory
 	}
 
 	cmd := exec.Command("docker", args...)
 	cmd.Dir = appDir
+	// Enable BuildKit for better caching and performance, but inherit parent env
+	cmd.Env = append(os.Environ(), "DOCKER_BUILDKIT=1")
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -246,7 +249,8 @@ func (d *DockerClient) RemoveImage() error {
 	return nil
 }
 
-// Destroy removes both the container and the image
+// Destroy removes the container and optionally the image
+// Set DOCKER_CLEANUP_IMAGES=1 to remove images (default: keep for caching)
 func (d *DockerClient) Destroy() error {
 	// Stop and remove container
 	if err := d.Stop(); err != nil {
@@ -257,9 +261,13 @@ func (d *DockerClient) Destroy() error {
 		return fmt.Errorf("failed to remove container: %w", err)
 	}
 
-	// Remove image
-	if err := d.RemoveImage(); err != nil {
-		return fmt.Errorf("failed to remove image: %w", err)
+	// Only remove image if explicitly requested via env var
+	// By default, keep images to leverage Docker's layer caching
+	cleanupImages := strings.ToLower(strings.TrimSpace(os.Getenv("DOCKER_CLEANUP_IMAGES")))
+	if cleanupImages == "1" || cleanupImages == "true" {
+		if err := d.RemoveImage(); err != nil {
+			return fmt.Errorf("failed to remove image: %w", err)
+		}
 	}
 
 	return nil
