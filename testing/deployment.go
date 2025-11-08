@@ -543,7 +543,13 @@ FROM golang:1.25-alpine AS builder
 WORKDIR /app
 
 # Install build dependencies
-RUN apk add --no-cache git gcc musl-dev sqlite-dev
+RUN apk add --no-cache git gcc musl-dev sqlite-dev curl
+
+# Install sqlc (for multi kit database code generation)
+# Detect architecture and install appropriate binary
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "aarch64" ]; then SQLC_ARCH="arm64"; else SQLC_ARCH="amd64"; fi && \
+    curl -L https://github.com/sqlc-dev/sqlc/releases/download/v1.27.0/sqlc_1.27.0_linux_${SQLC_ARCH}.tar.gz | tar -xz -C /usr/local/bin
 
 # Copy go mod file
 COPY go.mod ./
@@ -556,6 +562,12 @@ RUN go mod download
 
 # Copy source code
 COPY . .
+
+# Generate sqlc models if sqlc.yaml exists (multi kit with database)
+RUN if [ -f internal/database/sqlc.yaml ]; then \
+      echo "Running sqlc generate..." && \
+      sqlc generate -f internal/database/sqlc.yaml; \
+    fi
 
 # Build binary with CGO enabled for SQLite
 # Auto-detect if main.go is in root (simple kit) or cmd/ (multi kit)
