@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -25,9 +26,17 @@ type AppMode struct {
 }
 
 func NewAppMode(s *Server) (*AppMode, error) {
+	// Allocate a dynamic port for the app to avoid conflicts
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return nil, fmt.Errorf("failed to allocate port: %w", err)
+	}
+	appPort := listener.Addr().(*net.TCPAddr).Port
+	listener.Close()
+
 	am := &AppMode{
 		server:   s,
-		appPort:  8080, // Default app port
+		appPort:  appPort,
 		stopChan: make(chan struct{}),
 	}
 
@@ -161,7 +170,11 @@ func (am *AppMode) startApp() error {
 	am.appProcess.Dir = am.server.config.Dir
 	am.appProcess.Stdout = os.Stdout
 	am.appProcess.Stderr = os.Stderr
-	am.appProcess.Env = append(os.Environ(), fmt.Sprintf("PORT=%d", am.appPort))
+	am.appProcess.Env = append(os.Environ(),
+		fmt.Sprintf("PORT=%d", am.appPort),
+		"LVT_DEV_MODE=true", // Enable development mode for template discovery
+		fmt.Sprintf("LVT_TEMPLATE_BASE_DIR=%s", am.server.config.Dir), // Set template base directory for auto-discovery
+	)
 
 	if err := am.appProcess.Start(); err != nil {
 		return fmt.Errorf("failed to start app: %w", err)
