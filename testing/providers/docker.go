@@ -65,6 +65,7 @@ func (d *DockerClient) Run() error {
 		"--name", d.ContainerName,             // Container name
 		"-e", "PORT=8080",                     // Environment variable
 		"-e", "APP_ENV=test",                  // Test environment
+		"-e", "LVT_TEMPLATE_BASE_DIR=/app",    // Template base directory for auto-discovery
 		d.ImageTag,                            // Image to run
 	}
 
