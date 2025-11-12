@@ -59,7 +59,7 @@ func Parse(args []string) error {
 
 	// Test 2: LiveTemplate parsing
 	fmt.Println("\n3. Testing LiveTemplate parsing...")
-	lvtTmpl := livetemplate.New(name)
+	lvtTmpl := livetemplate.Must(livetemplate.New(name))
 	_, err = lvtTmpl.Parse(templateStr)
 	if err != nil {
 		fmt.Printf("   ❌ LiveTemplate parse error: %v\n", err)

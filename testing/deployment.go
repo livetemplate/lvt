@@ -24,6 +24,9 @@ type DeploymentTest struct {
 	AppURL   string
 	Region   string
 
+	// Provider-specific clients (for debugging and inspection)
+	DockerClient *providers.DockerClient
+
 	// Cleanup tracking
 	cleanupFuncs []func() error
 	cleanupMu    sync.Mutex
@@ -465,6 +468,9 @@ func (dt *DeploymentTest) deployToDocker() error {
 	port := 8000 + (int(time.Now().Unix()) % 1000)
 	client := providers.NewDockerClient(dt.AppName, port)
 
+	// Store Docker client for debugging access
+	dt.DockerClient = client
+
 	// Ensure Dockerfile and dependencies are ready
 	if err := dt.ensureDockerfile(); err != nil {
 		return fmt.Errorf("failed to create Dockerfile: %w", err)
@@ -486,6 +492,12 @@ func (dt *DeploymentTest) deployToDocker() error {
 
 	// Register cleanup for image and container
 	dt.AddCleanup(func() error {
+		// Skip cleanup if KEEP_DOCKER_CONTAINER is set (for debugging)
+		if os.Getenv("KEEP_DOCKER_CONTAINER") == "true" {
+			dt.T.Logf("KEEP_DOCKER_CONTAINER=true: Skipping container cleanup for debugging")
+			dt.T.Logf("Container: %s, Port: %d, URL: %s", dt.AppName, port, client.GetContainerURL())
+			return nil
+		}
 		dt.T.Logf("Destroying Docker container and image: %s", dt.AppName)
 		return client.Destroy()
 	})

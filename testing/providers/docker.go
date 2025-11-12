@@ -301,3 +301,56 @@ func GetDockerVersion() (string, error) {
 
 	return strings.TrimSpace(string(output)), nil
 }
+
+// Exec runs a command inside the running container
+func (d *DockerClient) Exec(command ...string) (string, error) {
+	args := append([]string{"exec", d.ContainerName}, command...)
+	cmd := exec.Command("docker", args...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return string(output), fmt.Errorf("docker exec failed: %w\nOutput: %s", err, string(output))
+	}
+	return string(output), nil
+}
+
+// InspectFilesystem logs the container's filesystem for debugging
+func (d *DockerClient) InspectFilesystem() (map[string]string, error) {
+	results := make(map[string]string)
+
+	// List /app directory
+	output, err := d.Exec("ls", "-la", "/app")
+	if err != nil {
+		results["ls_app_error"] = err.Error()
+	} else {
+		results["ls_app"] = output
+	}
+
+	// Find all template files
+	output, err = d.Exec("find", "/app", "-name", "*.tmpl", "-o", "-name", "*.html", "-o", "-name", "*.gotmpl")
+	if err != nil {
+		results["find_templates_error"] = err.Error()
+	} else {
+		results["find_templates"] = output
+	}
+
+	// Note: go.mod is intentionally not checked as it's excluded from the final Docker image
+	// (multi-stage builds only include the compiled binary in the runtime stage)
+
+	// Check for internal directory (multi-kit)
+	output, err = d.Exec("ls", "-la", "/app/internal")
+	if err != nil {
+		results["ls_internal_error"] = err.Error()
+	} else {
+		results["ls_internal"] = output
+	}
+
+	// Get environment variables
+	output, err = d.Exec("env")
+	if err != nil {
+		results["env_error"] = err.Error()
+	} else {
+		results["env"] = output
+	}
+
+	return results, nil
+}

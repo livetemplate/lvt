@@ -56,11 +56,11 @@ func TestKitRuntime_AllKits(t *testing.T) {
 			}
 			defer func() { _ = handle.Shutdown() }()
 
-			// Give server a moment to start
-			time.Sleep(500 * time.Millisecond)
+			// Wait for server to be ready
+			url := fmt.Sprintf("http://localhost:%s", tt.port)
+			waitForServer(t, url, 10*time.Second)
 
 			// Verify HTTP 200
-			url := fmt.Sprintf("http://localhost:%s", tt.port)
 			resp, err := http.Get(url)
 			if err != nil {
 				t.Fatalf("Server not responding for %s: %v", tt.kit, err)
@@ -89,7 +89,7 @@ func TestKitRuntime_AllKits(t *testing.T) {
 
 // TestKitRuntime_TemplateRendering is a focused regression test for template name matching.
 // This test specifically verifies that templates are correctly discovered and rendered,
-// preventing bugs like the one where main.go used livetemplate.New("[[.AppName]]", ...)
+// preventing bugs like the one where main.go used livetemplate.Must(livetemplate.New("[[.AppName]]", ...))
 // but the actual template file was named index.tmpl.
 func TestKitRuntime_TemplateRendering(t *testing.T) {
 	tests := []struct {
@@ -149,10 +149,11 @@ func TestKitRuntime_TemplateRendering(t *testing.T) {
 			}
 			defer func() { _ = handle.Shutdown() }()
 
-			time.Sleep(500 * time.Millisecond)
+			// Wait for server to be ready
+			url := fmt.Sprintf("http://localhost:%s", tt.port)
+			waitForServer(t, url, 10*time.Second)
 
 			// Fetch root page
-			url := fmt.Sprintf("http://localhost:%s", tt.port)
 			resp, err := http.Get(url)
 			if err != nil {
 				t.Fatalf("Failed to fetch page: %v", err)

@@ -123,11 +123,47 @@ func TestDockerDeploymentWithResources(t *testing.T) {
 	dt := lvttesting.SetupDeployment(t, opts)
 	t.Logf("Created test deployment with resources: %s", dt.AppName)
 
+	// Keep container running on failure if requested
+	defer func() {
+		if dt.DockerClient != nil && t.Failed() && os.Getenv("KEEP_DOCKER_CONTAINER") == "true" {
+			t.Logf("\n========== CONTAINER KEPT RUNNING ==========")
+			t.Logf("Container name: %s", dt.DockerClient.ContainerName)
+			t.Logf("To inspect: docker exec -it %s sh", dt.DockerClient.ContainerName)
+			t.Logf("To view logs: docker logs %s", dt.DockerClient.ContainerName)
+			t.Logf("To stop: docker stop %s", dt.DockerClient.ContainerName)
+			t.Logf("To remove: docker rm -f %s", dt.DockerClient.ContainerName)
+			t.Logf("===========================================\n")
+		}
+	}()
+
 	if err := dt.Deploy(); err != nil {
 		t.Fatalf("Deployment failed: %v", err)
 	}
 
 	t.Logf("App deployed successfully at: %s", dt.AppURL)
+
+	// Inspect container filesystem for debugging
+	if dt.DockerClient != nil {
+		t.Log("========== CONTAINER FILESYSTEM INSPECTION ==========")
+		inspection, err := dt.DockerClient.InspectFilesystem()
+		if err != nil {
+			t.Logf("Warning: Failed to inspect container filesystem: %v", err)
+		} else {
+			for key, value := range inspection {
+				t.Logf("\n--- %s ---\n%s", key, value)
+			}
+		}
+		t.Log("===================================================")
+
+		// Get application logs for debugging
+		logs, err := dt.DockerClient.Logs(100)
+		if err != nil {
+			t.Logf("Warning: Failed to get container logs: %v", err)
+		} else {
+			t.Logf("========== CONTAINER LOGS (last 100 lines) ==========\n%s", logs)
+			t.Log("====================================================")
+		}
+	}
 
 	// Run smoke tests
 	smokeOpts := lvttesting.DefaultSmokeTestOptions()

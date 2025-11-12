@@ -115,7 +115,7 @@ func TestTemplate_E2E_CompleteRenderingSequence(t *testing.T) {
 	}
 
 	// Create template
-	tmpl := livetemplate.New("e2e-test")
+	tmpl := livetemplate.Must(livetemplate.New("e2e-test"))
 	_, err := tmpl.ParseFiles("testdata/e2e/todos/input.tmpl")
 	if err != nil {
 		t.Fatalf("Failed to parse template: %v", err)
@@ -151,7 +151,7 @@ func TestTemplate_E2E_CompleteRenderingSequence(t *testing.T) {
 		}
 
 		// Generate the initial tree structure for TypeScript client (force first render)
-		tmplForTree := livetemplate.New("e2e-tree-test")
+		tmplForTree := livetemplate.Must(livetemplate.New("e2e-tree-test"))
 		_, err = tmplForTree.ParseFiles("testdata/e2e/todos/input.tmpl")
 		if err == nil {
 			var treeBuf bytes.Buffer
@@ -183,7 +183,7 @@ func TestTemplate_E2E_CompleteRenderingSequence(t *testing.T) {
 	// Step 2: Add todos update - demonstrates adding new items
 	t.Run("2_Add_Todos_Update", func(t *testing.T) {
 		// Create a fresh template instance for the first update to include statics
-		tmplFirstUpdate := livetemplate.New("e2e-first-update")
+		tmplFirstUpdate := livetemplate.Must(livetemplate.New("e2e-first-update"))
 		_, err := tmplFirstUpdate.ParseFiles("testdata/e2e/todos/input.tmpl")
 		if err != nil {
 			t.Fatalf("Failed to parse template: %v", err)
@@ -1069,7 +1069,7 @@ func TestTemplate_E2E_CompleteRenderingSequence(t *testing.T) {
 	// Step 7: Verify caching behavior with identical data
 	t.Run("7_No_Change_Update", func(t *testing.T) {
 		// Use the same sequence as step 4 to ensure proper fingerprint comparison
-		tmplSequence3 := livetemplate.New("e2e-sequence-3")
+		tmplSequence3 := livetemplate.Must(livetemplate.New("e2e-sequence-3"))
 		_, err := tmplSequence3.ParseFiles("testdata/e2e/todos/input.tmpl")
 		if err != nil {
 			t.Fatalf("Failed to parse template: %v", err)
@@ -1143,7 +1143,7 @@ func (s *LoadingTestState) Change(ctx *livetemplate.ActionContext) error {
 func TestLoadingIndicator(t *testing.T) {
 	state := &LoadingTestState{Message: "Hello, Loading Test!"}
 
-	tmpl := livetemplate.New("loading-test")
+	tmpl := livetemplate.Must(livetemplate.New("loading-test"))
 	templateStr := `<!DOCTYPE html>
 <html>
 <head>
@@ -1274,7 +1274,7 @@ func TestLoadingIndicator(t *testing.T) {
 func TestLoadingIndicatorDisabled(t *testing.T) {
 	state := &LoadingTestState{Message: "No Loading Test"}
 
-	tmpl := livetemplate.New("no-loading-test", livetemplate.WithLoadingDisabled())
+	tmpl := livetemplate.Must(livetemplate.New("no-loading-test", livetemplate.WithLoadingDisabled()))
 	templateStr := `<!DOCTYPE html>
 <html>
 <head>
@@ -1393,7 +1393,7 @@ func TestFocusPreservation(t *testing.T) {
 		Counter: 0,
 	}
 
-	tmpl := livetemplate.New("focus-test")
+	tmpl := livetemplate.Must(livetemplate.New("focus-test"))
 
 	templateStr := `<!DOCTYPE html>
 <html>
@@ -1527,7 +1527,7 @@ func TestFocusPreservationMultipleInputs(t *testing.T) {
 		Counter: 0,
 	}
 
-	tmpl := livetemplate.New("focus-multi-test")
+	tmpl := livetemplate.Must(livetemplate.New("focus-multi-test"))
 
 	templateStr := `<!DOCTYPE html>
 <html>
@@ -1786,7 +1786,7 @@ func TestTemplate_E2E_SimpleCounter(t *testing.T) {
 	}
 
 	// Create template
-	tmpl := livetemplate.New("counter-e2e-test")
+	tmpl := livetemplate.Must(livetemplate.New("counter-e2e-test"))
 	_, err := tmpl.ParseFiles("testdata/e2e/counter/input.tmpl")
 	if err != nil {
 		t.Fatalf("Failed to parse template: %v", err)
@@ -1823,7 +1823,7 @@ func TestTemplate_E2E_SimpleCounter(t *testing.T) {
 		}
 
 		// Generate the initial tree structure for TypeScript client (force first render)
-		tmplForTree := livetemplate.New("counter-tree-test")
+		tmplForTree := livetemplate.Must(livetemplate.New("counter-tree-test"))
 		_, err = tmplForTree.ParseFiles("testdata/e2e/counter/input.tmpl")
 		if err == nil {
 			var treeBuf bytes.Buffer
@@ -1854,7 +1854,7 @@ func TestTemplate_E2E_SimpleCounter(t *testing.T) {
 
 	// Step 2: Increment counter
 	t.Run("2_Increment_Update", func(t *testing.T) {
-		tmplFirstUpdate := livetemplate.New("counter-first-update")
+		tmplFirstUpdate := livetemplate.Must(livetemplate.New("counter-first-update"))
 		_, err := tmplFirstUpdate.ParseFiles("testdata/e2e/counter/input.tmpl")
 		if err != nil {
 			t.Fatalf("Failed to parse template: %v", err)
@@ -2201,7 +2201,7 @@ func TestTemplate_E2E_SimpleCounter(t *testing.T) {
 
 	// Step 7: No-change test (verify caching)
 	t.Run("7_No_Change_Update", func(t *testing.T) {
-		tmplSequence := livetemplate.New("counter-sequence")
+		tmplSequence := livetemplate.Must(livetemplate.New("counter-sequence"))
 		_, err := tmplSequence.ParseFiles("testdata/e2e/counter/input.tmpl")
 		if err != nil {
 			t.Fatalf("Failed to parse template: %v", err)
@@ -2294,7 +2294,7 @@ func TestTemplate_E2E_ComponentBased(t *testing.T) {
 	}
 
 	// Create template using component-based template file
-	tmpl := livetemplate.New("component-test")
+	tmpl := livetemplate.Must(livetemplate.New("component-test"))
 	_, err := tmpl.ParseFiles("testdata/e2e/components/input.tmpl")
 	if err != nil {
 		t.Fatalf("Failed to parse component-based template: %v", err)

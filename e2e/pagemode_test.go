@@ -239,7 +239,7 @@ func TestPageModeRendering(t *testing.T) {
 				t.Log("⚠️  Server logs are EMPTY - server may not be starting or output not being captured")
 			} else {
 				t.Logf("Server logs (%d bytes):\n%s", len(logsStr), logsStr)
-				// Check for the actual log format: livetemplate.New("name"): DevMode=true
+				// Check for the actual log format: livetemplate.Must(livetemplate.New("name")): DevMode=true
 				if strings.Contains(logsStr, "DevMode=true") {
 					t.Log("✅ Server logs confirm DevMode=true")
 				} else if strings.Contains(logsStr, "DevMode=false") {
