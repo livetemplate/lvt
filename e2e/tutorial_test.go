@@ -298,7 +298,7 @@ func TestTutorialE2E(t *testing.T) {
 			chromedp.WaitVisible(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery),
 			chromedp.Click(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery),
 			// Wait for modal to appear
-			waitFor(`document.querySelector('[role="dialog"]') && !document.querySelector('[role="dialog"]').hasAttribute('hidden')`, 3*time.Second),
+			waitFor(`document.querySelector('[role="dialog"]') && !document.querySelector('[role="dialog"]').hasAttribute('hidden')`, 10*time.Second),
 
 			// Fill in the form in the modal
 			chromedp.WaitVisible(`input[name="title"]`, chromedp.ByQuery),
@@ -321,7 +321,7 @@ func TestTutorialE2E(t *testing.T) {
 			`, 5*time.Second),
 			chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
 			// Wait for page to load
-			waitFor(`document.readyState === 'complete'`, 3*time.Second),
+			waitFor(`document.readyState === 'complete'`, 10*time.Second),
 		)
 		if err != nil {
 			t.Fatalf("Failed to add post: %v", err)
@@ -487,7 +487,7 @@ func TestTutorialE2E(t *testing.T) {
 				})()
 			`, &editButtonFound),
 			// Wait for modal to open
-			waitFor(`document.querySelector('input[name="title"]') !== null`, 3*time.Second),
+			waitFor(`document.querySelector('input[name="title"]') !== null`, 10*time.Second),
 		)
 		if err != nil {
 			t.Fatalf("Failed to click edit button: %v", err)
@@ -658,7 +658,7 @@ func TestTutorialE2E(t *testing.T) {
 			})()
 			`, targetTitle), &postExists),
 			// Wait for modal controls to be ready before continuing
-			waitFor(`document.querySelector('button[lvt-click="delete"]') !== null`, 3*time.Second),
+			waitFor(`document.querySelector('button[lvt-click="delete"]') !== null`, 10*time.Second),
 		)
 		if err != nil {
 			t.Fatalf("Failed to open edit modal: %v", err)
@@ -693,7 +693,7 @@ func TestTutorialE2E(t *testing.T) {
 			waitForWebSocketReady(5*time.Second),
 			chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
 			// Wait for page to load
-			waitFor(`document.readyState === 'complete'`, 3*time.Second),
+			waitFor(`document.readyState === 'complete'`, 10*time.Second),
 		)
 		if err != nil {
 			t.Fatalf("Failed to delete post: %v", err)
@@ -757,7 +757,7 @@ func TestTutorialE2E(t *testing.T) {
 			`, nil),
 
 			// Wait for validation response - form should still be visible
-			waitFor(`document.querySelector('form[lvt-submit]') !== null`, 3*time.Second),
+			waitFor(`document.querySelector('form[lvt-submit]') !== null`, 10*time.Second),
 
 			// Debug: Capture the form HTML
 			chromedp.Evaluate(`document.querySelector('form[lvt-submit]')?.outerHTML || 'Form not found'`, &formHTML),
@@ -907,7 +907,7 @@ func ensureTutorialPostExists(ctx context.Context, baseURL string) error {
 		chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
 		chromedp.WaitVisible(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery),
 		chromedp.Click(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery),
-		waitFor(`document.querySelector('[role="dialog"]') && !document.querySelector('[role="dialog"]').hasAttribute('hidden')`, 3*time.Second),
+		waitFor(`document.querySelector('[role="dialog"]') && !document.querySelector('[role="dialog"]').hasAttribute('hidden')`, 10*time.Second),
 		chromedp.WaitVisible(`input[name="title"]`, chromedp.ByQuery),
 		chromedp.Evaluate(`document.querySelector('input[name="title"]').value = ''`, nil),
 		chromedp.Evaluate(`document.querySelector('textarea[name="content"]').value = ''`, nil),
@@ -917,6 +917,6 @@ func ensureTutorialPostExists(ctx context.Context, baseURL string) error {
 		chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
 		waitFor(existenceCheck, 5*time.Second),
 		chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
-		waitFor(`document.readyState === 'complete'`, 3*time.Second),
+		waitFor(`document.readyState === 'complete'`, 10*time.Second),
 	)
 }

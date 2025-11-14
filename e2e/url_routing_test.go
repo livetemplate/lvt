@@ -86,10 +86,11 @@ func TestPageModeURLRouting(t *testing.T) {
 		defer timeoutCancel()
 
 		// Navigate to products page and wait for it to load
+		// Increased timeout for Docker container environments
 		err := chromedp.Run(testCtx,
 			chromedp.Navigate(testURL),
-			e2etest.WaitForWebSocketReady(5*time.Second),
-			waitFor(`document.readyState === 'complete'`, 3*time.Second),
+			e2etest.WaitForWebSocketReady(10*time.Second),
+			waitFor(`document.readyState === 'complete'`, 10*time.Second),
 		)
 		if err != nil {
 			t.Fatalf("Failed to load page: %v", err)
@@ -138,8 +139,8 @@ func TestPageModeURLRouting(t *testing.T) {
 
 		err := chromedp.Run(testCtx,
 			chromedp.Navigate(testURL),
-			e2etest.WaitForWebSocketReady(5*time.Second),
-			waitFor(`document.readyState === 'complete'`, 3*time.Second),
+			e2etest.WaitForWebSocketReady(10*time.Second),
+			waitFor(`document.readyState === 'complete'`, 10*time.Second),
 			// Check if anchor link exists
 			chromedp.Evaluate(`document.querySelector('table tbody tr a') !== null`, &linkExists),
 		)
@@ -164,7 +165,7 @@ func TestPageModeURLRouting(t *testing.T) {
 		// Don't wait for WebSocket after click since it's a new page load
 		err = chromedp.Run(testCtx,
 			chromedp.Click(`table tbody tr a`, chromedp.ByQuery),
-			waitFor(`document.readyState === 'complete'`, 3*time.Second),
+			waitFor(`document.readyState === 'complete'`, 10*time.Second),
 			chromedp.Location(&currentURL),
 		)
 		if err != nil {
@@ -192,8 +193,8 @@ func TestPageModeURLRouting(t *testing.T) {
 		var firstResourceHref string
 		err := chromedp.Run(testCtx,
 			chromedp.Navigate(testURL),
-			e2etest.WaitForWebSocketReady(5*time.Second),
-			waitFor(`document.readyState === 'complete'`, 3*time.Second),
+			e2etest.WaitForWebSocketReady(10*time.Second),
+			waitFor(`document.readyState === 'complete'`, 10*time.Second),
 			chromedp.Evaluate(`document.querySelector('table tbody tr a')?.getAttribute('href') || null`, &firstResourceHref),
 		)
 		if err != nil || firstResourceHref == "" {
@@ -239,8 +240,8 @@ func TestPageModeURLRouting(t *testing.T) {
 		// First check if anchor links exist
 		err := chromedp.Run(testCtx,
 			chromedp.Navigate(testURL),
-			e2etest.WaitForWebSocketReady(5*time.Second),
-			waitFor(`document.readyState === 'complete'`, 3*time.Second),
+			e2etest.WaitForWebSocketReady(10*time.Second),
+			waitFor(`document.readyState === 'complete'`, 10*time.Second),
 			chromedp.Evaluate(`document.querySelector('table tbody tr a') !== null`, &linkExists),
 		)
 		if err != nil {
@@ -253,9 +254,9 @@ func TestPageModeURLRouting(t *testing.T) {
 
 		err = chromedp.Run(testCtx,
 			chromedp.Click(`table tbody tr a`, chromedp.ByQuery),
-			waitFor(`document.readyState === 'complete'`, 3*time.Second),
+			waitFor(`document.readyState === 'complete'`, 10*time.Second),
 			chromedp.Evaluate(`history.back()`, nil),
-			waitFor(`document.readyState === 'complete'`, 3*time.Second),
+			waitFor(`document.readyState === 'complete'`, 10*time.Second),
 			chromedp.Evaluate(`document.querySelector('table') !== null`, &backToList),
 		)
 		if err != nil {
@@ -283,8 +284,8 @@ func TestPageModeURLRouting(t *testing.T) {
 		// First check if anchor links exist
 		err := chromedp.Run(testCtx,
 			chromedp.Navigate(testURL),
-			e2etest.WaitForWebSocketReady(5*time.Second),
-			waitFor(`document.readyState === 'complete'`, 3*time.Second),
+			e2etest.WaitForWebSocketReady(10*time.Second),
+			waitFor(`document.readyState === 'complete'`, 10*time.Second),
 			chromedp.Evaluate(`document.querySelector('table tbody tr a') !== null`, &linkExists),
 		)
 		if err != nil {
@@ -297,9 +298,9 @@ func TestPageModeURLRouting(t *testing.T) {
 
 		err = chromedp.Run(testCtx,
 			chromedp.Click(`table tbody tr a`, chromedp.ByQuery),
-			waitFor(`document.readyState === 'complete'`, 3*time.Second),
+			waitFor(`document.readyState === 'complete'`, 10*time.Second),
 			chromedp.Evaluate(`history.back()`, nil),
-			waitFor(`document.readyState === 'complete'`, 3*time.Second),
+			waitFor(`document.readyState === 'complete'`, 10*time.Second),
 			chromedp.Location(&finalURL),
 		)
 		if err != nil {

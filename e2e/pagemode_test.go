@@ -157,7 +157,7 @@ func TestPageModeRendering(t *testing.T) {
 	err := chromedp.Run(ctx,
 		chromedp.Navigate(testURL),
 		// Wait for page to fully load
-		waitFor(`document.readyState === 'complete'`, 3*time.Second),
+		waitFor(`document.readyState === 'complete'`, 10*time.Second),
 		chromedp.Evaluate(`document.querySelector('script[src*="livetemplate-client"]') !== null`, &scriptTagExists),
 		chromedp.Evaluate(`(document.querySelector('script[src*="livetemplate-client"]') || {}).src || "not found"`, &scriptSrc),
 	)
@@ -167,7 +167,7 @@ func TestPageModeRendering(t *testing.T) {
 	t.Logf("Script tag exists: %v, src: %s", scriptTagExists, scriptSrc)
 
 	err = chromedp.Run(ctx,
-		e2etest.WaitForWebSocketReady(5*time.Second),           // Wait for WebSocket init and first update
+		e2etest.WaitForWebSocketReady(10*time.Second),           // Wait for WebSocket init and first update
 		e2etest.ValidateNoTemplateExpressions("[data-lvt-id]"), // Validate no raw template expressions
 		chromedp.OuterHTML("html", &pageHTML),
 		chromedp.Evaluate(`document.querySelector('[lvt-modal-open="add-modal"]') !== null`, &addButtonExists),
