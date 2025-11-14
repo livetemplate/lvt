@@ -284,7 +284,7 @@ func CheckDockerInstalled() error {
 
 	// Verify docker daemon is running
 	cmd = exec.Command("docker", "ps")
-	if err := cmd.Run(); err != nil {
+	if _, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("docker daemon not running: %w", err)
 	}
 

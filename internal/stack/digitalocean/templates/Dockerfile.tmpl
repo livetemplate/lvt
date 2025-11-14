@@ -1,20 +1,40 @@
 # Build stage
-FROM golang:1.22-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 
 # Install build dependencies
-RUN apk add --no-cache git{{if eq .Database "sqlite"}} gcc musl-dev{{end}}
+RUN apk add --no-cache git gcc musl-dev sqlite-dev curl
+
+# Install sqlc for database code generation
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "aarch64" ]; then SQLC_ARCH="arm64"; else SQLC_ARCH="amd64"; fi && \
+    curl -L https://github.com/sqlc-dev/sqlc/releases/download/v1.27.0/sqlc_1.27.0_linux_${SQLC_ARCH}.tar.gz | tar -xz -C /usr/local/bin
 
 # Copy go mod files
-COPY go.mod go.sum ./
+COPY go.mod ./
+COPY go.sum* ./
+
+# Tidy and download dependencies
+RUN go mod tidy
 RUN go mod download
 
 # Copy source code
 COPY . .
 
+# Generate sqlc models if sqlc.yaml exists
+RUN if [ -f internal/database/sqlc.yaml ]; then \
+      echo "Running sqlc generate..." && \
+      sqlc generate -f internal/database/sqlc.yaml; \
+    fi
+
 # Build binary
-RUN CGO_ENABLED={{if eq .Database "sqlite"}}1{{else}}0{{end}} GOOS=linux go build -o main .
+# Auto-detect if main.go is in root (simple kit) or cmd/ (multi kit)
+RUN if [ -f main.go ]; then \
+      CGO_ENABLED={{if eq .Database "sqlite"}}1{{else}}0{{end}} GOOS=linux go build -o main .; \
+    else \
+      CGO_ENABLED={{if eq .Database "sqlite"}}1{{else}}0{{end}} GOOS=linux go build -o main ./cmd/*; \
+    fi
 
 # Runtime stage
 FROM alpine:latest
@@ -34,9 +54,13 @@ WORKDIR /app
 # Copy binary from builder
 COPY --from=builder /app/main .
 
-# Copy templates and static files
-COPY --from=builder /app/templates ./templates
-COPY --from=builder /app/static ./static
+# Copy all source files needed at runtime
+# Simple kit: needs templates in root
+# Multi/Single kit: needs internal/ directory with templates and .lvtresources
+COPY --from=builder /app .
+
+# Clean up build artifacts we don't need at runtime
+RUN rm -rf /app/cmd /app/go.mod /app/go.sum /app/README.md /app/.git* 2>/dev/null || true
 
 {{- if eq .Backup "litestream" }}
 # Copy Litestream config

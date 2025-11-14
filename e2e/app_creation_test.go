@@ -50,8 +50,7 @@ func TestAppCreation_CustomKitCSS(t *testing.T) {
 
 	// Create app with single kit
 	opts := &AppOptions{
-		Kit:     "single",
-		DevMode: true,
+		Kit: "single",
 	}
 	appDir := createTestApp(t, tmpDir, "testapp", opts)
 
@@ -72,8 +71,7 @@ func TestAppCreation_SimpleKit(t *testing.T) {
 
 	// Create app with simple kit
 	opts := &AppOptions{
-		Kit:     "simple",
-		DevMode: true,
+		Kit: "simple",
 	}
 	appDir := createTestApp(t, tmpDir, "testapp", opts)
 
@@ -94,8 +92,7 @@ func TestAppCreation_CustomModule(t *testing.T) {
 
 	// Create app with custom module
 	opts := &AppOptions{
-		Module:  "github.com/testuser/customapp",
-		DevMode: true,
+		Module: "github.com/testuser/customapp",
 	}
 	appDir := createTestApp(t, tmpDir, "testapp", opts)
 

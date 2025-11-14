@@ -432,7 +432,10 @@ func Handler(queries *models.Queries) http.Handler {
 		log.Printf("Failed to initialize [[.ResourceNameLower]] state: %v", err)
 	}
 
-	baseTmpl := livetemplate.New("[[.ResourceNameLower]]", livetemplate.WithDevMode([[.DevMode]]))
+	baseTmpl, err := livetemplate.New("[[.ResourceNameLower]]", livetemplate.WithDevMode([[.DevMode]]))
+	if err != nil {
+		log.Fatalf("Failed to create template: %v", err)
+	}
 	if _, err := baseTmpl.ParseFiles("internal/app/[[.ResourceNameLower]]/[[.ResourceNameLower]].tmpl"); err != nil {
 		log.Fatalf("Failed to parse template: %v", err)
 	}

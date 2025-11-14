@@ -1,7 +1,6 @@
 package providers
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"os/exec"
@@ -226,7 +225,7 @@ func (f *FlyClient) destroyVolumes(appName string) error {
 		}
 
 		deleteCmd := f.buildCommand(deleteArgs...)
-		if err := deleteCmd.Run(); err != nil {
+		if _, err := deleteCmd.CombinedOutput(); err != nil {
 			fmt.Printf("Warning: failed to delete volume %s: %v\n", volumeID, err)
 		}
 	}
@@ -294,12 +293,11 @@ func CheckFlyctlInstalled() error {
 // GetFlyctlVersion returns the installed flyctl version
 func GetFlyctlVersion() (string, error) {
 	cmd := exec.Command("flyctl", "version")
-	var out bytes.Buffer
-	cmd.Stdout = &out
-
-	if err := cmd.Run(); err != nil {
+	// Use Output() to properly close pipes and avoid I/O wait
+	output, err := cmd.Output()
+	if err != nil {
 		return "", fmt.Errorf("failed to get flyctl version: %w", err)
 	}
 
-	return strings.TrimSpace(out.String()), nil
+	return strings.TrimSpace(string(output)), nil
 }

@@ -3,9 +3,6 @@ package e2e
 import (
 	"context"
 	"fmt"
-	"net/http"
-	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -22,49 +19,14 @@ func TestPageModeURLRouting(t *testing.T) {
 	tmpDir := t.TempDir()
 	appDir := filepath.Join(tmpDir, "testapp")
 
-	// Create app with --dev flag
-	if err := runLvtCommand(t, tmpDir, "new", "testapp", "--dev"); err != nil {
+	// Create app (production mode for Docker compatibility)
+	if err := runLvtCommand(t, tmpDir, "new", "testapp"); err != nil {
 		t.Fatalf("Failed to create app: %v", err)
 	}
 
 	// Generate resource with page mode
 	if err := runLvtCommand(t, appDir, "gen", "resource", "products", "name", "--edit-mode", "page"); err != nil {
 		t.Fatalf("Failed to generate resource: %v", err)
-	}
-
-	// Setup go.mod for local livetemplate
-	// Protected by mutex to prevent race with parallel tests changing directory
-	chdirMutex.Lock()
-	cwd, _ := os.Getwd()
-	livetemplatePath := filepath.Join(cwd, "..", "..", "livetemplate")
-	chdirMutex.Unlock()
-
-	if err := runGoModTidy(t, appDir); err != nil {
-		t.Fatalf("Failed to run go mod tidy: %v", err)
-	}
-
-	replaceCmd := exec.Command("go", "mod", "edit",
-		"-replace", fmt.Sprintf("github.com/livetemplate/livetemplate=%s", livetemplatePath))
-	replaceCmd.Dir = appDir
-	if err := replaceCmd.Run(); err != nil {
-		t.Fatalf("Failed to add replace directive: %v", err)
-	}
-
-	if err := runGoModTidy(t, appDir); err != nil {
-		t.Fatalf("Failed to run go mod tidy after replace: %v", err)
-	}
-
-	// Copy client library using absolute path
-	// Client is at monorepo root level, not inside livetemplate/
-	monorepoRoot := filepath.Join(cwd, "..", "..")
-	clientSrc := filepath.Join(monorepoRoot, "client", "dist", "livetemplate-client.browser.js")
-	clientDst := filepath.Join(appDir, "livetemplate-client.js")
-	clientContent, err := os.ReadFile(clientSrc)
-	if err != nil {
-		t.Fatalf("Failed to read client library: %v", err)
-	}
-	if err := os.WriteFile(clientDst, clientContent, 0644); err != nil {
-		t.Fatalf("Failed to write client library: %v", err)
 	}
 
 	// Run migration
@@ -96,95 +58,17 @@ func TestPageModeURLRouting(t *testing.T) {
 		t.Log("✅ Test data seeded successfully")
 	}
 
-	// Start the app server - use unique port for parallel testing
+	// Build Docker image and start container
+	// Use stable image name to leverage Docker build cache across test runs
 	port := allocateTestPort()
+	imageName := "lvt-test-urlrouting:latest"
+	buildDockerImage(t, appDir, imageName)
+	_ = runDockerContainer(t, imageName, port)
 
-	// Kill any process using this port before starting (cleanup from failed test runs)
-	for attempt := 0; attempt < 5; attempt++ {
-		killCmd := exec.Command("lsof", "-ti", fmt.Sprintf(":%d", port))
-		if pidBytes, err := killCmd.Output(); err == nil && len(pidBytes) > 0 {
-			pids := strings.TrimSpace(string(pidBytes))
-			t.Logf("Found process on port %d (PIDs: %s), killing...", port, pids)
-			for _, pid := range strings.Split(pids, "\n") {
-				if pid != "" {
-					killProcCmd := exec.Command("kill", "-9", pid)
-					_ = killProcCmd.Run()
-				}
-			}
-			time.Sleep(1 * time.Second) // Give OS time to release port
-		} else {
-			// No process found, port is free
-			break
-		}
-	}
-
-	// Verify port is actually free
-	time.Sleep(500 * time.Millisecond)
-	checkCmd := exec.Command("lsof", "-ti", fmt.Sprintf(":%d", port))
-	if pidBytes, err := checkCmd.Output(); err == nil && len(pidBytes) > 0 {
-		t.Logf("Warning: Port %d still in use after cleanup attempts", port)
-	}
-
-	// Build the server binary
-	serverBinary := filepath.Join(tmpDir, "testapp-server")
-	buildServerCmd := exec.Command("go", "build", "-o", serverBinary, "./cmd/testapp")
-	buildServerCmd.Dir = appDir
-	buildServerCmd.Env = append(os.Environ(), "GOWORK=off")
-	buildOutput, buildErr := buildServerCmd.CombinedOutput()
-	if buildErr != nil {
-		t.Fatalf("Failed to build server: %v\nOutput: %s", buildErr, string(buildOutput))
-	}
-
-	serverCmd := exec.Command(serverBinary)
-	serverCmd.Dir = appDir
-	serverCmd.Env = append(os.Environ(), fmt.Sprintf("PORT=%d", port))
-	serverCmd.Stdout = os.Stdout
-	serverCmd.Stderr = os.Stderr
-
-	if err := serverCmd.Start(); err != nil {
-		t.Fatalf("Failed to start server: %v", err)
-	}
-	defer func() {
-		if serverCmd.Process != nil {
-			_ = serverCmd.Process.Kill()
-			_ = serverCmd.Wait()
-		}
-	}()
-
-	// Wait for server to start and verify it's actually running
-	serverReady := false
-	var lastErr error
-	consecutiveSuccesses := 0
-	const requiredSuccesses = 2
-
-	for i := 0; i < 30; i++ {
-		time.Sleep(quickPollDelay)
-
-		resp, err := http.Get(fmt.Sprintf("http://localhost:%d/", port))
-		if err == nil {
-			if resp.StatusCode == 200 {
-				resp.Body.Close()
-				consecutiveSuccesses++
-				if consecutiveSuccesses >= requiredSuccesses {
-					// Extra time for WebSocket handler initialization
-					time.Sleep(100 * time.Millisecond)
-					serverReady = true
-					t.Logf("✅ Server ready on port %d", port)
-					break
-				}
-			} else {
-				resp.Body.Close()
-				lastErr = fmt.Errorf("server returned status %d", resp.StatusCode)
-				consecutiveSuccesses = 0
-			}
-		} else {
-			lastErr = err
-			consecutiveSuccesses = 0
-		}
-	}
-	if !serverReady {
-		t.Fatalf("Server did not start within 6 seconds on port %d. Last error: %v", port, lastErr)
-	}
+	// Wait for server to start
+	serverURL := fmt.Sprintf("http://localhost:%d", port)
+	waitForServer(t, serverURL, 10*time.Second)
+	t.Logf("✅ Server ready on port %d", port)
 
 	// Use isolated Chrome container for parallel execution
 	ctx, cancel := getIsolatedChromeContext(t)

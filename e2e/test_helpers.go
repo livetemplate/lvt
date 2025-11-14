@@ -27,31 +27,10 @@ var chdirMutex sync.Mutex
 // go mod tidy operations can interfere with each other through the shared Go module cache
 var goModMutex sync.Mutex
 
-// runGoModTidy runs go mod tidy with mutex protection to avoid race conditions
-func runGoModTidy(t *testing.T, dir string) error {
-	t.Helper()
-
-	goModMutex.Lock()
-	defer goModMutex.Unlock()
-
-	t.Log("Running go mod tidy...")
-	tidyCmd := exec.Command("go", "mod", "tidy")
-	tidyCmd.Dir = dir
-	tidyCmd.Env = append(os.Environ(), "GOWORK=off") // Disable workspace mode to avoid conflicts
-
-	output, err := tidyCmd.CombinedOutput()
-	if err != nil {
-		t.Logf("go mod tidy failed: %v\nOutput: %s", err, string(output))
-		return fmt.Errorf("go mod tidy failed: %w\nOutput: %s", err, string(output))
-	}
-	return nil
-}
-
 // AppOptions contains options for creating a test app
 type AppOptions struct {
-	Kit     string // Kit name (multi, single, simple)
-	Module  string // Go module name
-	DevMode bool   // Use local client library
+	Kit    string // Kit name (multi, single, simple)
+	Module string // Go module name
 }
 
 // runLvtCommand executes an lvt command directly by calling the command functions
@@ -135,9 +114,16 @@ func runLvtCommandWithOutput(t *testing.T, workDir string, args ...string) (stri
 		cmdErr = fmt.Errorf("unknown command: %s", command)
 	}
 
-	// Restore stdout/stderr and wait for output
+	// Restore stdout/stderr FIRST to prevent inheritance by any late spawned processes
+	os.Stdout = oldStdout
+	os.Stderr = oldStderr
+
+	// Then close the write end of the pipe
 	w.Close()
+
+	// Close the read end explicitly after reading is done to prevent lingering
 	<-outputDone
+	r.Close()
 
 	output := outputBuf.String()
 
@@ -249,11 +235,22 @@ func startServeInBackground(t *testing.T, workDir string, args ...string) (*Serv
 	// Give server a moment to start
 	time.Sleep(100 * time.Millisecond)
 
-	return &ServerHandle{
+	handle := &ServerHandle{
 		server:  server,
 		cancel:  cancel,
 		errChan: errChan,
-	}, nil
+	}
+
+	// Register cleanup handler to shut down server on test completion/failure
+	t.Cleanup(func() {
+		if err := handle.Shutdown(); err != nil {
+			t.Logf("Warning: Failed to shutdown server: %v", err)
+		} else {
+			t.Log("✅ Server shutdown complete")
+		}
+	})
+
+	return handle, nil
 }
 
 // createTestApp creates a new test application and sets it up for testing
@@ -264,8 +261,7 @@ func createTestApp(t *testing.T, tmpDir, appName string, opts *AppOptions) strin
 	// Set defaults
 	if opts == nil {
 		opts = &AppOptions{
-			Kit:     "multi",
-			DevMode: true,
+			Kit: "multi",
 		}
 	}
 
@@ -280,10 +276,6 @@ func createTestApp(t *testing.T, tmpDir, appName string, opts *AppOptions) strin
 		args = append(args, "--module", opts.Module)
 	}
 
-	if opts.DevMode {
-		args = append(args, "--dev")
-	}
-
 	// Create app
 	if err := runLvtCommand(t, tmpDir, args...); err != nil {
 		t.Fatalf("Failed to create app: %v", err)
@@ -291,99 +283,191 @@ func createTestApp(t *testing.T, tmpDir, appName string, opts *AppOptions) strin
 
 	appDir := filepath.Join(tmpDir, appName)
 
-	// Add replace directive to use local livetemplate (for testing with latest changes)
-	// Protected by mutex to prevent race with parallel tests changing directory
-	chdirMutex.Lock()
-	cwd, _ := os.Getwd()
-	livetemplatePath := filepath.Join(cwd, "..", "..", "livetemplate")
-	chdirMutex.Unlock()
-
-	replaceCmd := exec.Command("go", "mod", "edit", fmt.Sprintf("-replace=github.com/livetemplate/livetemplate=%s", livetemplatePath))
-	replaceCmd.Dir = appDir
-	if err := replaceCmd.Run(); err != nil {
-		t.Fatalf("Failed to add replace directive: %v", err)
-	}
-
-	// Run go mod tidy with mutex protection
+	// Run go mod tidy to ensure go.mod is up to date
+	// This is needed for tests that run apps locally (e.g., TestServe*)
 	t.Log("Running go mod tidy...")
-	if err := runGoModTidy(t, appDir); err != nil {
-		t.Fatalf("Failed to run go mod tidy: %v", err)
+	tidyCmd := exec.Command("go", "mod", "tidy")
+	tidyCmd.Dir = appDir
+	if output, err := tidyCmd.CombinedOutput(); err != nil {
+		t.Fatalf("Failed to run go mod tidy: %v\nOutput: %s", err, output)
 	}
+	t.Log("✅ go mod tidy completed")
 
-	// Copy client library for dev mode
-	if opts.DevMode {
-		t.Log("Copying client library...")
-		// Use absolute path to avoid issues with parallel test execution
-		// Client is at monorepo root level, not inside livetemplate/
-		monorepoRoot := filepath.Join(cwd, "..", "..")
-		clientSrc := filepath.Join(monorepoRoot, "client", "dist", "livetemplate-client.browser.js")
-		clientDst := filepath.Join(appDir, "livetemplate-client.js")
-		clientContent, err := os.ReadFile(clientSrc)
-		if err != nil {
-			t.Fatalf("Failed to read client library: %v", err)
+	// Register cleanup handler to remove app directory on test completion/failure
+	// This is registered at the END to ensure it only runs after successful setup
+	t.Cleanup(func() {
+		if err := os.RemoveAll(appDir); err != nil {
+			t.Logf("Warning: Failed to cleanup app directory %s: %v", appDir, err)
+		} else {
+			t.Logf("✅ Cleaned up app directory: %s", appDir)
 		}
-		if err := os.WriteFile(clientDst, clientContent, 0644); err != nil {
-			t.Fatalf("Failed to write client library: %v", err)
-		}
-		t.Logf("✅ Client library copied (%d bytes)", len(clientContent))
-	}
+	})
 
 	t.Log("✅ Test app created")
 	return appDir
 }
 
-// runSqlcGenerate runs sqlc generate to generate database code
-func runSqlcGenerate(t *testing.T, appDir string) {
-	t.Helper()
-	t.Log("Running sqlc generate...")
-
-	sqlcCmd := exec.Command("go", "run", "github.com/sqlc-dev/sqlc/cmd/sqlc@latest", "generate", "-f", "internal/database/sqlc.yaml")
-	sqlcCmd.Dir = appDir
-	sqlcCmd.Stdout = os.Stdout
-	sqlcCmd.Stderr = os.Stderr
-	if err := sqlcCmd.Run(); err != nil {
-		t.Fatalf("Failed to run sqlc generate: %v", err)
-	}
-	t.Log("✅ sqlc generate complete")
+// DockerContainerHandle provides control over a running Docker container
+type DockerContainerHandle struct {
+	containerID string
+	port        int
 }
 
-// buildGeneratedApp builds the generated application binary
-func buildGeneratedApp(t *testing.T, appDir string) string {
+// Stop stops and removes the Docker container
+func (h *DockerContainerHandle) Stop(t *testing.T) {
 	t.Helper()
-	t.Log("Building generated app...")
+	if h.containerID == "" {
+		return
+	}
 
-	appName := filepath.Base(appDir)
-	appBinary := filepath.Join(appDir, appName)
+	t.Logf("Stopping Docker container %s...", h.containerID)
 
-	buildCmd := exec.Command("go", "build", "-o", appBinary, "./cmd/"+appName)
+	// Stop container
+	stopCmd := exec.Command("docker", "stop", h.containerID)
+	if output, err := stopCmd.CombinedOutput(); err != nil {
+		t.Logf("Warning: Failed to stop container: %v\nOutput: %s", err, output)
+	}
+
+	// Remove container
+	rmCmd := exec.Command("docker", "rm", h.containerID)
+	if output, err := rmCmd.CombinedOutput(); err != nil {
+		t.Logf("Warning: Failed to remove container: %v\nOutput: %s", err, output)
+	} else {
+		t.Logf("✅ Container %s stopped and removed", h.containerID)
+	}
+}
+
+// buildDockerImage builds a Docker image from the app directory
+func buildDockerImage(t *testing.T, appDir, imageName string) {
+	t.Helper()
+	t.Logf("Building Docker image: %s", imageName)
+
+	// Ensure Dockerfile exists (generate if needed)
+	ensureDockerfile(t, appDir)
+
+	buildCmd := exec.Command("docker", "build", "-t", imageName, ".")
 	buildCmd.Dir = appDir
 
 	output, err := buildCmd.CombinedOutput()
 	if err != nil {
-		t.Fatalf("❌ Generated app failed to compile: %v\n%s", err, output)
+		t.Fatalf("Docker build failed: %v\nOutput: %s", err, output)
 	}
 
-	t.Log("✅ Generated app compiled successfully")
-	return appBinary
+	t.Log("✅ Docker image built successfully")
 }
 
-// startAppServer starts the application server on the given port
-func startAppServer(t *testing.T, appBinary string, port int) *exec.Cmd {
+// runDockerContainer starts a Docker container and returns a handle
+func runDockerContainer(t *testing.T, imageName string, port int) *DockerContainerHandle {
 	t.Helper()
-	t.Logf("Starting app server on port %d...", port)
+	t.Logf("Starting Docker container from %s on port %d", imageName, port)
 
-	cmd := exec.Command(appBinary)
-	cmd.Dir = filepath.Dir(appBinary)
-	cmd.Env = append(os.Environ(), fmt.Sprintf("PORT=%d", port))
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	containerID := fmt.Sprintf("lvt-test-%d-%d", time.Now().Unix(), port)
 
-	if err := cmd.Start(); err != nil {
-		t.Fatalf("Failed to start server: %v", err)
+	runCmd := exec.Command("docker", "run", "-d",
+		"--name", containerID,
+		"-p", fmt.Sprintf("%d:8080", port),
+		imageName)
+
+	output, err := runCmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("Docker run failed: %v\nOutput: %s", err, output)
 	}
 
-	t.Logf("✅ Server started (PID: %d)", cmd.Process.Pid)
-	return cmd
+	handle := &DockerContainerHandle{
+		containerID: containerID,
+		port:        port,
+	}
+
+	// Register cleanup
+	t.Cleanup(func() {
+		handle.Stop(t)
+	})
+
+	t.Logf("✅ Container started: %s", containerID)
+	return handle
+}
+
+// ensureDockerfile creates a Dockerfile if it doesn't exist
+func ensureDockerfile(t *testing.T, appDir string) {
+	t.Helper()
+
+	dockerfilePath := filepath.Join(appDir, "Dockerfile")
+	if _, err := os.Stat(dockerfilePath); err == nil {
+		return // Already exists
+	}
+
+	t.Log("Generating Dockerfile...")
+
+	// Use the multi-stage Dockerfile pattern from testing/deployment.go
+	dockerfile := `# Build stage
+FROM golang:1.25-alpine AS builder
+
+WORKDIR /app
+
+# Install build dependencies
+RUN apk add --no-cache git gcc musl-dev sqlite-dev curl
+
+# Install sqlc for database code generation
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "aarch64" ]; then SQLC_ARCH="arm64"; else SQLC_ARCH="amd64"; fi && \
+    curl -L https://github.com/sqlc-dev/sqlc/releases/download/v1.27.0/sqlc_1.27.0_linux_${SQLC_ARCH}.tar.gz | tar -xz -C /usr/local/bin
+
+# Copy go mod files
+COPY go.mod ./
+COPY go.sum* ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Tidy after copying source (in case source files affect dependencies)
+RUN go mod tidy
+
+# Generate sqlc models if sqlc.yaml exists (multi kit with database)
+RUN if [ -f internal/database/sqlc.yaml ]; then \
+      echo "Running sqlc generate..." && \
+      sqlc generate -f internal/database/sqlc.yaml; \
+    fi
+
+# Build binary with CGO enabled for SQLite
+# Auto-detect if main.go is in root (simple kit) or cmd/ (multi kit)
+RUN if [ -f main.go ]; then \
+      CGO_ENABLED=1 GOOS=linux go build -o main .; \
+    else \
+      CGO_ENABLED=1 GOOS=linux go build -o main ./cmd/*; \
+    fi
+
+# Runtime stage
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates sqlite-libs
+
+WORKDIR /app
+
+# Copy binary from builder
+COPY --from=builder /app/main .
+
+# Copy all source files needed at runtime
+COPY --from=builder /app .
+
+# Clean up build artifacts we don't need at runtime
+RUN rm -rf /app/cmd /app/go.mod /app/go.sum /app/README.md /app/.git* 2>/dev/null || true
+
+# Create data directory for SQLite
+RUN mkdir -p /app/data
+
+EXPOSE 8080
+
+CMD ["./main"]
+`
+
+	if err := os.WriteFile(dockerfilePath, []byte(dockerfile), 0644); err != nil {
+		t.Fatalf("Failed to write Dockerfile: %v", err)
+	}
+
+	t.Log("✅ Dockerfile generated")
 }
 
 // waitForServer waits for the server to be ready and responding

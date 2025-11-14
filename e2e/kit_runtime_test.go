@@ -42,8 +42,7 @@ func TestKitRuntime_AllKits(t *testing.T) {
 
 			// Create app with specific kit
 			opts := &AppOptions{
-				Kit:     tt.kit,
-				DevMode: true,
+				Kit: tt.kit,
 			}
 			appDir := createTestApp(t, tmpDir, "testapp", opts)
 
@@ -136,8 +135,7 @@ func TestKitRuntime_TemplateRendering(t *testing.T) {
 			tmpDir := t.TempDir()
 
 			opts := &AppOptions{
-				Kit:     tt.kit,
-				DevMode: true,
+				Kit: tt.kit,
 			}
 			appDir := createTestApp(t, tmpDir, "testapp", opts)
 

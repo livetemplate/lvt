@@ -35,8 +35,7 @@ func TestKitCSSFrameworks(t *testing.T) {
 
 			// Create app with specific kit
 			opts := &AppOptions{
-				Kit:     tc.kit,
-				DevMode: true,
+				Kit: tc.kit,
 			}
 			appDir := createTestApp(t, tmpDir, "testapp", opts)
 

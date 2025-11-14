@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -22,8 +21,8 @@ func TestPageModeRendering(t *testing.T) {
 	tmpDir := t.TempDir()
 	appDir := filepath.Join(tmpDir, "testapp")
 
-	// Create app with --dev flag to use local client library
-	if err := runLvtCommand(t, tmpDir, "new", "testapp", "--dev"); err != nil {
+	// Create app (production mode for Docker compatibility)
+	if err := runLvtCommand(t, tmpDir, "new", "testapp"); err != nil {
 		t.Fatalf("Failed to create app: %v", err)
 	}
 
@@ -32,85 +31,10 @@ func TestPageModeRendering(t *testing.T) {
 		t.Fatalf("Failed to generate resource: %v", err)
 	}
 
-	// Setup go.mod for local livetemplate (same as tutorial test)
-	// Protected by mutex to prevent race with parallel tests changing directory
-	chdirMutex.Lock()
-	cwd, _ := os.Getwd()
-	livetemplatePath := filepath.Join(cwd, "..", "..", "livetemplate")
-	chdirMutex.Unlock()
-
-	if err := runGoModTidy(t, appDir); err != nil {
-		t.Fatalf("Failed to run go mod tidy: %v", err)
-	}
-
-	replaceCmd := exec.Command("go", "mod", "edit",
-		"-replace", fmt.Sprintf("github.com/livetemplate/livetemplate=%s", livetemplatePath))
-	replaceCmd.Dir = appDir
-	if err := replaceCmd.Run(); err != nil {
-		t.Fatalf("Failed to add replace directive: %v", err)
-	}
-
-	if err := runGoModTidy(t, appDir); err != nil {
-		t.Fatalf("Failed to run go mod tidy after replace: %v", err)
-	}
-
-	// Debug: Verify go.mod has replace directive
-	goModPath := filepath.Join(appDir, "go.mod")
-	goModContent, modErr := os.ReadFile(goModPath)
-	if modErr != nil {
-		t.Logf("Warning: Could not read go.mod: %v", modErr)
-	} else {
-		if strings.Contains(string(goModContent), "replace github.com/livetemplate/livetemplate") {
-			t.Log("✅ go.mod has replace directive")
-			// Show the replace line
-			lines := strings.Split(string(goModContent), "\n")
-			for _, line := range lines {
-				if strings.Contains(line, "replace github.com/livetemplate/livetemplate") {
-					t.Logf("  %s", strings.TrimSpace(line))
-				}
-			}
-		} else {
-			t.Error("❌ go.mod does NOT have replace directive - this is the bug!")
-		}
-	}
-
-	// Debug: Check .lvtrc file
-	lvtrcPath := filepath.Join(appDir, ".lvtrc")
-	lvtrcContent, lvtrcErr := os.ReadFile(lvtrcPath)
-	if lvtrcErr != nil {
-		t.Logf("Warning: Could not read .lvtrc: %v", lvtrcErr)
-	} else {
-		if strings.Contains(string(lvtrcContent), "dev_mode=true") {
-			t.Log("✅ .lvtrc has dev_mode=true")
-		} else if strings.Contains(string(lvtrcContent), "dev_mode=false") {
-			t.Error("❌ .lvtrc has dev_mode=false - should be true!")
-			t.Logf("  .lvtrc content: %s", string(lvtrcContent))
-		} else {
-			t.Log("⚠️  .lvtrc does not have dev_mode setting")
-			t.Logf("  .lvtrc content: %s", string(lvtrcContent))
-		}
-	}
-
-	// Copy client library using absolute path
-	// Client is at monorepo root level, not inside livetemplate/
-	monorepoRoot := filepath.Join(cwd, "..", "..")
-	clientSrc := filepath.Join(monorepoRoot, "client", "dist", "livetemplate-client.browser.js")
-	clientDst := filepath.Join(appDir, "livetemplate-client.js")
-	clientContent, err := os.ReadFile(clientSrc)
-	if err != nil {
-		t.Fatalf("Failed to read client library: %v", err)
-	}
-	if err := os.WriteFile(clientDst, clientContent, 0644); err != nil {
-		t.Fatalf("Failed to write client library: %v", err)
-	}
-
 	// Run migration
 	if err := runLvtCommand(t, appDir, "migration", "up"); err != nil {
 		t.Fatalf("Failed to run migration: %v", err)
 	}
-
-	// The replace directive in go.mod ensures local livetemplate is used
-	// No need to clean caches - replace takes precedence
 
 	// Debug: Check if WithDevMode option is used in generated code
 	productsGoPath := filepath.Join(appDir, "internal/app/products/products.go")
@@ -156,60 +80,15 @@ func TestPageModeRendering(t *testing.T) {
 		}
 	}
 
-	// Start the app server - use unique port for parallel testing
+	// Build Docker image and start container
+	// Use stable image name to leverage Docker build cache across test runs
 	port := allocateTestPort()
+	imageName := "lvt-test-pagemode:latest"
+	buildDockerImage(t, appDir, imageName)
+	_ = runDockerContainer(t, imageName, port)
 
-	// Build the server binary - this ensures we're using freshly compiled code with replace directive
-	serverBinary := filepath.Join(tmpDir, "testapp-server")
-	buildServerCmd := exec.Command("go", "build", "-o", serverBinary, "./cmd/testapp")
-	buildServerCmd.Dir = appDir
-	buildServerCmd.Env = append(os.Environ(), "GOWORK=off")
-	buildOutput, buildErr := buildServerCmd.CombinedOutput()
-	if buildErr != nil {
-		t.Fatalf("Failed to build server: %v\nOutput: %s", buildErr, string(buildOutput))
-	}
-	t.Logf("Built server binary: %s", serverBinary)
-
-	// Capture server logs to check DevMode value
-	serverLogFile := filepath.Join(tmpDir, "server.log")
-	logFile, err := os.Create(serverLogFile)
-	if err != nil {
-		t.Fatalf("Failed to create log file: %v", err)
-	}
-	defer logFile.Close()
-
-	serverCmd := exec.Command(serverBinary)
-	serverCmd.Dir = appDir
-	serverCmd.Env = append(os.Environ(), fmt.Sprintf("PORT=%d", port), "TEST_MODE=1")
-	serverCmd.Stdout = logFile
-	serverCmd.Stderr = logFile
-
-	if err := serverCmd.Start(); err != nil {
-		t.Fatalf("Failed to start server: %v", err)
-	}
-	defer func() {
-		if serverCmd.Process != nil {
-			_ = serverCmd.Process.Kill()
-			_ = serverCmd.Wait() // Wait for I/O to complete
-		}
-	}()
-
-	// Wait for server to start - poll until it responds
-	serverReady := false
-	for i := 0; i < 30; i++ {
-		time.Sleep(200 * time.Millisecond)
-		resp, err := http.Get(fmt.Sprintf("http://localhost:%d/", port))
-		if err == nil {
-			resp.Body.Close()
-			if resp.StatusCode == 200 {
-				serverReady = true
-				break
-			}
-		}
-	}
-	if !serverReady {
-		t.Fatal("Server did not start within 6 seconds")
-	}
+	// Wait for server to start
+	waitForServer(t, fmt.Sprintf("http://localhost:%d/", port), 10*time.Second)
 
 	// Use isolated Chrome container for parallel execution
 	ctx, cancel := getIsolatedChromeContext(t)
@@ -228,29 +107,6 @@ func TestPageModeRendering(t *testing.T) {
 		htmlBytes, _ := io.ReadAll(httpResp.Body)
 		htmlStr := string(htmlBytes)
 		t.Logf("Raw HTML length: %d bytes", len(htmlStr))
-
-		// Check server logs for DevMode value
-		time.Sleep(500 * time.Millisecond) // Give log writes time to flush
-		_ = logFile.Sync()
-		serverLogs, logErr := os.ReadFile(serverLogFile)
-		if logErr == nil {
-			logsStr := string(serverLogs)
-			if len(logsStr) == 0 {
-				t.Log("⚠️  Server logs are EMPTY - server may not be starting or output not being captured")
-			} else {
-				t.Logf("Server logs (%d bytes):\n%s", len(logsStr), logsStr)
-				// Check for the actual log format: livetemplate.Must(livetemplate.New("name")): DevMode=true
-				if strings.Contains(logsStr, "DevMode=true") {
-					t.Log("✅ Server logs confirm DevMode=true")
-				} else if strings.Contains(logsStr, "DevMode=false") {
-					t.Error("❌ Server logs show DevMode=false - should be true!")
-				} else {
-					t.Log("⚠️  DevMode log statement not found in server logs")
-				}
-			}
-		} else {
-			t.Logf("Failed to read server logs: %v", logErr)
-		}
 
 		// Check script tag in raw HTML
 		if strings.Contains(htmlStr, "<script src=\"/livetemplate-client.js\"></script>") {
@@ -298,7 +154,7 @@ func TestPageModeRendering(t *testing.T) {
 	// First navigate and check if script tag exists
 	var scriptTagExists bool
 	var scriptSrc string
-	err = chromedp.Run(ctx,
+	err := chromedp.Run(ctx,
 		chromedp.Navigate(testURL),
 		// Wait for page to fully load
 		waitFor(`document.readyState === 'complete'`, 3*time.Second),

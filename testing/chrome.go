@@ -125,11 +125,12 @@ func GetChromeTestURL(port int) string {
 }
 
 // StartDockerChrome starts the chromedp headless-shell Docker container
-func StartDockerChrome(t *testing.T, debugPort int) *exec.Cmd {
+// Returns an error if the container fails to start or Chrome fails to become ready
+func StartDockerChrome(t *testing.T, debugPort int) error {
 	t.Helper()
 
 	// Check if Docker is available
-	if err := exec.Command("docker", "version").Run(); err != nil {
+	if _, err := exec.Command("docker", "version").CombinedOutput(); err != nil {
 		t.Skip("Docker not available, skipping E2E test")
 	}
 
@@ -138,50 +139,46 @@ func StartDockerChrome(t *testing.T, debugPort int) *exec.Cmd {
 
 	// Check if image exists, if not try to pull it (with timeout)
 	checkCmd := exec.Command("docker", "image", "inspect", dockerImage)
-	if err := checkCmd.Run(); err != nil {
+	if _, err := checkCmd.CombinedOutput(); err != nil {
 		// Image doesn't exist, try to pull with timeout
 		t.Log("Pulling chromedp/headless-shell Docker image...")
-		pullCmd := exec.Command("docker", "pull", dockerImage)
-		if err := pullCmd.Start(); err != nil {
-			t.Fatalf("Failed to start docker pull: %v", err)
-		}
 
-		// Wait for pull with timeout
-		pullDone := make(chan error, 1)
-		go func() {
-			pullDone <- pullCmd.Wait()
-		}()
+		// Use a context with timeout for the pull operation
+		pullCtx, pullCancel := context.WithTimeout(context.Background(), 60*time.Second)
+		defer pullCancel()
 
-		select {
-		case err := <-pullDone:
-			if err != nil {
-				t.Fatalf("Failed to pull Docker image: %v", err)
+		pullCmd := exec.CommandContext(pullCtx, "docker", "pull", dockerImage)
+		// Use Output() to properly close pipes and avoid I/O wait
+		if output, err := pullCmd.CombinedOutput(); err != nil {
+			if pullCtx.Err() == context.DeadlineExceeded {
+				t.Fatal("Docker pull timed out after 60 seconds")
 			}
-			t.Log("✅ Docker image pulled successfully")
-		case <-time.After(60 * time.Second):
-			_ = pullCmd.Process.Kill()
-			t.Fatal("Docker pull timed out after 60 seconds")
+			t.Fatalf("Failed to pull Docker image: %v\nOutput: %s", err, output)
 		}
+		t.Log("✅ Docker image pulled successfully")
 	} else {
 		t.Log("✅ Docker image already exists, skipping pull")
 	}
 
-	// Start the container
+	// Start the container in detached mode to avoid I/O wait issues
 	t.Log("Starting Chrome headless Docker container...")
 	portMapping := fmt.Sprintf("%d:9222", debugPort)
 
-	// Use port mapping on all platforms for consistency and faster startup
-	// The container can reach the host via host.docker.internal
-	cmd := exec.Command("docker", "run", "--rm",
+	// Run in detached mode (-d) to avoid process I/O issues during cleanup
+	// Don't use --rm here; we'll clean up manually in StopDockerChrome
+	cmd := exec.Command("docker", "run", "-d",
 		"-p", portMapping,
 		"--name", containerName,
 		"--add-host", "host.docker.internal:host-gateway",
 		dockerImage,
 	)
 
-	if err := cmd.Start(); err != nil {
-		t.Fatalf("Failed to start Chrome Docker container: %v", err)
+	// Use Output() instead of Run() to properly close pipes and avoid I/O wait
+	if _, err := cmd.Output(); err != nil {
+		return fmt.Errorf("failed to start Chrome Docker container: %w", err)
 	}
+
+	// Container runs independently in detached mode
 
 	// Wait for Chrome to be ready (increased timeout for slower systems)
 	t.Log("Waiting for Chrome to be ready...")
@@ -204,56 +201,37 @@ func StartDockerChrome(t *testing.T, debugPort int) *exec.Cmd {
 		t.Logf("Chrome failed to start within 60 seconds. Last error: %v", lastErr)
 
 		// Try to get container logs for debugging
-		containerName := fmt.Sprintf("%s%d", chromeContainerPrefix, debugPort)
 		logsCmd := exec.Command("docker", "logs", "--tail", "50", containerName)
 		if output, err := logsCmd.CombinedOutput(); err == nil && len(output) > 0 {
 			t.Logf("Chrome container logs:\n%s", string(output))
 		}
 
-		_ = cmd.Process.Kill()
-		t.Fatal("Chrome failed to start within 60 seconds")
+		// Clean up the container since Chrome didn't start properly
+		_, _ = exec.Command("docker", "rm", "-f", containerName).CombinedOutput()
+		return fmt.Errorf("Chrome failed to start within 60 seconds: %w", lastErr)
 	}
 
 	t.Log("✅ Chrome headless Docker container ready")
-	return cmd
+	return nil
 }
 
-// StopDockerChrome stops the Chrome Docker container
-func StopDockerChrome(t *testing.T, cmd *exec.Cmd, debugPort int) {
+// StopDockerChrome stops and removes the Chrome Docker container
+func StopDockerChrome(t *testing.T, debugPort int) {
 	t.Helper()
 	t.Log("Stopping Chrome Docker container...")
 
 	containerName := fmt.Sprintf("chrome-e2e-test-%d", debugPort)
 
-	// Check if container exists before trying to stop it
-	filterName := fmt.Sprintf("name=%s", containerName)
-	checkCmd := exec.Command("docker", "ps", "-a", "-q", "-f", filterName)
-	output, _ := checkCmd.Output()
-
-	if len(output) > 0 {
-		// Container exists, stop it gracefully with timeout
-		stopCmd := exec.Command("docker", "stop", "-t", "2", containerName)
-		stopDone := make(chan error, 1)
-		go func() {
-			stopDone <- stopCmd.Run()
-		}()
-
-		// Wait for stop with 5 second timeout
-		select {
-		case err := <-stopDone:
-			if err != nil {
-				t.Logf("Warning: Failed to stop Docker container: %v", err)
-			}
-		case <-time.After(5 * time.Second):
-			// Force kill if graceful stop hangs
-			t.Logf("Warning: docker stop timed out, forcing kill")
-			_ = exec.Command("docker", "kill", containerName).Run()
+	// docker rm -f will stop and remove the container in one command
+	// The -f flag forces removal even if the container is running
+	rmCmd := exec.Command("docker", "rm", "-f", containerName)
+	// Use Output() to properly close pipes and avoid I/O wait
+	if output, err := rmCmd.CombinedOutput(); err != nil {
+		// Only log if it's not a "no such container" error (which is fine)
+		errMsg := string(output)
+		if !strings.Contains(errMsg, "No such container") && !strings.Contains(err.Error(), "No such container") {
+			t.Logf("Warning: Failed to remove Docker container: %v (output: %s)", err, errMsg)
 		}
-	}
-
-	// Kill the process if still running
-	if cmd != nil && cmd.Process != nil {
-		_ = cmd.Process.Kill()
 	}
 }
 
@@ -293,6 +271,20 @@ func StartTestServer(t *testing.T, mainPath string, port int) *exec.Cmd {
 		_ = cmd.Process.Kill()
 		t.Fatal("Server failed to start within 5 seconds")
 	}
+
+	// Register cleanup handler to kill server process on test completion/failure
+	t.Cleanup(func() {
+		if cmd.Process != nil {
+			t.Logf("Killing test server process (PID: %d)...", cmd.Process.Pid)
+			if err := cmd.Process.Kill(); err != nil {
+				t.Logf("Warning: Failed to kill test server process (PID: %d): %v", cmd.Process.Pid, err)
+			} else {
+				t.Logf("✅ Test server process killed (PID: %d)", cmd.Process.Pid)
+			}
+			// Wait for the process to exit to clean up zombie processes and avoid I/O wait
+			_ = cmd.Wait()
+		}
+	})
 
 	t.Logf("✅ Test server ready at %s", serverURL)
 	return cmd

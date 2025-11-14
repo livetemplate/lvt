@@ -408,7 +408,10 @@ func Handler(queries *models.Queries) http.Handler {
 		log.Printf("Failed to initialize user state: %v", err)
 	}
 
-	baseTmpl := livetemplate.New("user", livetemplate.WithDevMode(false))
+	baseTmpl, err := livetemplate.New("user", livetemplate.WithDevMode(false))
+	if err != nil {
+		log.Fatalf("Failed to create template: %v", err)
+	}
 	if _, err := baseTmpl.ParseFiles("internal/app/user/user.tmpl"); err != nil {
 		log.Fatalf("Failed to parse template: %v", err)
 	}

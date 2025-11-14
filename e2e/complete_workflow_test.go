@@ -27,8 +27,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 	// Step 2: Create blog app
 	t.Log("Step 2: Creating blog app...")
 	appDir := createTestApp(t, tmpDir, "blog", &AppOptions{
-		Kit:     "multi",
-		DevMode: true,
+		Kit: "multi",
 	})
 	t.Log("✅ Blog app created")
 
@@ -89,27 +88,17 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 	}
 	t.Log("✅ Migrations complete")
 
-	// Step 7.5: Run sqlc generate
-	runSqlcGenerate(t, appDir)
-
-	// Step 8: Build the app
-	t.Log("Step 8: Building blog app...")
-	appBinary := buildGeneratedApp(t, appDir)
-	t.Log("✅ Blog app compiled successfully")
-
-	// Step 9: Start the app (use unique port for parallel execution)
-	t.Log("Step 9: Starting blog app...")
+	// Step 7.5: Build Docker image and start container
+	// Use stable image name to leverage Docker build cache across test runs
+	t.Log("Step 7.5: Building Docker image...")
 	serverPort := allocateTestPort()
-	serverCmd := startAppServer(t, appBinary, serverPort)
-	defer func() {
-		if serverCmd != nil && serverCmd.Process != nil {
-			_ = serverCmd.Process.Kill()
-		}
-	}()
+	imageName := "lvt-test-complete:latest"
+	buildDockerImage(t, appDir, imageName)
+	_ = runDockerContainer(t, imageName, serverPort)
 
 	serverURL := fmt.Sprintf("http://localhost:%d", serverPort)
 	waitForServer(t, serverURL+"/posts", 10*time.Second)
-	t.Log("✅ Blog app running")
+	t.Log("✅ Blog app running in Docker")
 
 	// Step 10: Use isolated Chrome container for parallel execution
 	t.Log("Step 10: Starting isolated Docker Chrome...")

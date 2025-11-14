@@ -476,13 +476,8 @@ func (dt *DeploymentTest) deployToDocker() error {
 		return fmt.Errorf("failed to create Dockerfile: %w", err)
 	}
 
-	// Ensure go.sum exists by running go mod tidy
-	dt.T.Logf("Running go mod tidy to ensure dependencies are resolved")
-	tidyCmd := exec.Command("go", "mod", "tidy")
-	tidyCmd.Dir = dt.AppDir
-	if output, err := tidyCmd.CombinedOutput(); err != nil {
-		dt.T.Logf("Warning: go mod tidy failed: %v\n%s", err, string(output))
-	}
+	// Note: go mod tidy is now handled in the Dockerfile during docker build
+	// This ensures builds use the latest tagged version without local modifications
 
 	// Build Docker image
 	dt.T.Logf("Building Docker image for: %s", dt.AppName)
@@ -574,6 +569,9 @@ RUN go mod download
 
 # Copy source code
 COPY . .
+
+# Tidy after copying source (in case source files affect dependencies)
+RUN go mod tidy
 
 # Generate sqlc models if sqlc.yaml exists (multi kit with database)
 RUN if [ -f internal/database/sqlc.yaml ]; then \
