@@ -167,7 +167,7 @@ func TestPageModeRendering(t *testing.T) {
 	t.Logf("Script tag exists: %v, src: %s", scriptTagExists, scriptSrc)
 
 	err = chromedp.Run(ctx,
-		e2etest.WaitForWebSocketReady(10*time.Second),           // Wait for WebSocket init and first update
+		e2etest.WaitForWebSocketReady(30*time.Second),           // Wait for CDN loading + WebSocket init and first update
 		e2etest.ValidateNoTemplateExpressions("[data-lvt-id]"), // Validate no raw template expressions
 		chromedp.OuterHTML("html", &pageHTML),
 		chromedp.Evaluate(`document.querySelector('[lvt-modal-open="add-modal"]') !== null`, &addButtonExists),

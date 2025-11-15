@@ -547,7 +547,7 @@ func verifyWebSocketConnected(t *testing.T, ctx context.Context, url string) {
 
 	err := chromedp.Run(ctx,
 		chromedp.Navigate(url),
-		e2etest.WaitForWebSocketReady(5*time.Second),
+		e2etest.WaitForWebSocketReady(30*time.Second), // Increased for CDN loading + WebSocket init
 		chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
 		chromedp.Evaluate(`window.liveTemplateClient && window.liveTemplateClient.ws ? window.liveTemplateClient.ws.url : null`, &wsURL),
 		chromedp.Evaluate(`window.liveTemplateClient && window.liveTemplateClient.ws ? window.liveTemplateClient.ws.readyState : -1`, &wsReadyState),

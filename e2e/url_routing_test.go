@@ -89,7 +89,7 @@ func TestPageModeURLRouting(t *testing.T) {
 		// Increased timeout for Docker container environments
 		err := chromedp.Run(testCtx,
 			chromedp.Navigate(testURL),
-			e2etest.WaitForWebSocketReady(10*time.Second),
+			e2etest.WaitForWebSocketReady(30*time.Second), // Increased for CDN loading + WebSocket init
 			waitFor(`document.readyState === 'complete'`, 10*time.Second),
 		)
 		if err != nil {
@@ -139,7 +139,7 @@ func TestPageModeURLRouting(t *testing.T) {
 
 		err := chromedp.Run(testCtx,
 			chromedp.Navigate(testURL),
-			e2etest.WaitForWebSocketReady(10*time.Second),
+			e2etest.WaitForWebSocketReady(30*time.Second), // Increased for CDN loading + WebSocket init
 			waitFor(`document.readyState === 'complete'`, 10*time.Second),
 			// Check if anchor link exists
 			chromedp.Evaluate(`document.querySelector('table tbody tr a') !== null`, &linkExists),
@@ -193,7 +193,7 @@ func TestPageModeURLRouting(t *testing.T) {
 		var firstResourceHref string
 		err := chromedp.Run(testCtx,
 			chromedp.Navigate(testURL),
-			e2etest.WaitForWebSocketReady(10*time.Second),
+			e2etest.WaitForWebSocketReady(30*time.Second), // Increased for CDN loading + WebSocket init
 			waitFor(`document.readyState === 'complete'`, 10*time.Second),
 			chromedp.Evaluate(`document.querySelector('table tbody tr a')?.getAttribute('href') || null`, &firstResourceHref),
 		)
@@ -240,7 +240,7 @@ func TestPageModeURLRouting(t *testing.T) {
 		// First check if anchor links exist
 		err := chromedp.Run(testCtx,
 			chromedp.Navigate(testURL),
-			e2etest.WaitForWebSocketReady(10*time.Second),
+			e2etest.WaitForWebSocketReady(30*time.Second), // Increased for CDN loading + WebSocket init
 			waitFor(`document.readyState === 'complete'`, 10*time.Second),
 			chromedp.Evaluate(`document.querySelector('table tbody tr a') !== null`, &linkExists),
 		)
@@ -284,7 +284,7 @@ func TestPageModeURLRouting(t *testing.T) {
 		// First check if anchor links exist
 		err := chromedp.Run(testCtx,
 			chromedp.Navigate(testURL),
-			e2etest.WaitForWebSocketReady(10*time.Second),
+			e2etest.WaitForWebSocketReady(30*time.Second), // Increased for CDN loading + WebSocket init
 			waitFor(`document.readyState === 'complete'`, 10*time.Second),
 			chromedp.Evaluate(`document.querySelector('table tbody tr a') !== null`, &linkExists),
 		)
