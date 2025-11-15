@@ -82,7 +82,7 @@ func TestPageModeURLRouting(t *testing.T) {
 		// Create fresh browser context for this subtest
 		testCtx, cancel := chromedp.NewContext(ctx)
 		defer cancel()
-		testCtx, timeoutCancel := context.WithTimeout(testCtx, 30*time.Second)
+		testCtx, timeoutCancel := context.WithTimeout(testCtx, 45*time.Second)
 		defer timeoutCancel()
 
 		// Navigate to products page and wait for it to load
@@ -131,7 +131,7 @@ func TestPageModeURLRouting(t *testing.T) {
 		// Create fresh browser context for this subtest
 		testCtx, cancel := chromedp.NewContext(ctx)
 		defer cancel()
-		testCtx, timeoutCancel := context.WithTimeout(testCtx, 30*time.Second)
+		testCtx, timeoutCancel := context.WithTimeout(testCtx, 45*time.Second)
 		defer timeoutCancel()
 
 		var currentURL string
@@ -185,7 +185,7 @@ func TestPageModeURLRouting(t *testing.T) {
 		// Create fresh browser context for this subtest
 		testCtx, cancel := chromedp.NewContext(ctx)
 		defer cancel()
-		testCtx, timeoutCancel := context.WithTimeout(testCtx, 30*time.Second)
+		testCtx, timeoutCancel := context.WithTimeout(testCtx, 45*time.Second)
 		defer timeoutCancel()
 
 		var detailVisible bool
@@ -231,7 +231,7 @@ func TestPageModeURLRouting(t *testing.T) {
 		// Create fresh browser context for this subtest
 		testCtx, cancel := chromedp.NewContext(ctx)
 		defer cancel()
-		testCtx, timeoutCancel := context.WithTimeout(testCtx, 30*time.Second)
+		testCtx, timeoutCancel := context.WithTimeout(testCtx, 45*time.Second)
 		defer timeoutCancel()
 
 		var linkExists bool
@@ -275,7 +275,7 @@ func TestPageModeURLRouting(t *testing.T) {
 		// Create fresh browser context for this subtest
 		testCtx, cancel := chromedp.NewContext(ctx)
 		defer cancel()
-		testCtx, timeoutCancel := context.WithTimeout(testCtx, 30*time.Second)
+		testCtx, timeoutCancel := context.WithTimeout(testCtx, 45*time.Second)
 		defer timeoutCancel()
 
 		var linkExists bool

@@ -157,24 +157,10 @@ func testHealthEndpoint(appURL string, opts *SmokeTestOptions) error {
 }
 
 // Test 3: Static Assets
+// Note: Apps use CDN client from unpkg.com, so no local client library to test
 func testStaticAssets(appURL string, opts *SmokeTestOptions) error {
-	clientLibURL := fmt.Sprintf("%s/livetemplate-client.js", strings.TrimRight(appURL, "/"))
-
-	return retryHTTP(opts, func() error {
-		resp, err := http.Get(clientLibURL)
-		if err != nil {
-			return fmt.Errorf("failed to GET %s: %w", clientLibURL, err)
-		}
-		defer resp.Body.Close()
-
-		// Accept both 200 (file exists) and 404 (not found is okay for some deployments)
-		// But must not be 500 server error
-		if resp.StatusCode >= 500 {
-			return fmt.Errorf("server error %d for static asset", resp.StatusCode)
-		}
-
-		return nil
-	})
+	// Skip - apps use CDN client, not local /livetemplate-client.js
+	return nil
 }
 
 // Test 4: WebSocket Connection

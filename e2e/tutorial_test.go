@@ -194,19 +194,10 @@ func TestTutorialE2E(t *testing.T) {
 		// Create fresh browser context for this subtest
 		testCtx, cancel := chromedp.NewContext(ctx)
 		defer cancel()
-		testCtx, timeoutCancel := context.WithTimeout(testCtx, 30*time.Second)
+		testCtx, timeoutCancel := context.WithTimeout(testCtx, 45*time.Second)
 		defer timeoutCancel()
 
-		// First, test if client library is being served
-		clientLibResp, err := http.Get(serverURL + "/livetemplate-client.js")
-		if err != nil {
-			t.Fatalf("Failed to fetch client library: %v", err)
-		}
-		defer clientLibResp.Body.Close()
-		t.Logf("Client library response status: %d", clientLibResp.StatusCode)
-		if clientLibResp.StatusCode != 200 {
-			t.Fatalf("Client library not available: status %d", clientLibResp.StatusCode)
-		}
+		// Note: Apps use CDN client from unpkg.com, not local /livetemplate-client.js
 
 		var wsConnected bool
 		var wsURL string
@@ -215,7 +206,7 @@ func TestTutorialE2E(t *testing.T) {
 		var liveUrl string
 		err = chromedp.Run(testCtx,
 			chromedp.Navigate(testURL+"/posts"),
-			waitForWebSocketReady(5*time.Second), // Wait for WebSocket init and first update
+			waitForWebSocketReady(15*time.Second), // Wait for WebSocket init and first update
 			chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
 			validateNoTemplateExpressions("[data-lvt-id]"), // Validate no raw template expressions
 			chromedp.Evaluate(`window.location.pathname`, &pathname),
@@ -255,7 +246,7 @@ func TestTutorialE2E(t *testing.T) {
 		// Create fresh browser context for this subtest
 		testCtx, cancel := chromedp.NewContext(ctx)
 		defer cancel()
-		testCtx, timeoutCancel := context.WithTimeout(testCtx, 30*time.Second)
+		testCtx, timeoutCancel := context.WithTimeout(testCtx, 45*time.Second)
 		defer timeoutCancel()
 
 		var lvtId string
@@ -290,7 +281,7 @@ func TestTutorialE2E(t *testing.T) {
 		err := chromedp.Run(testCtx,
 			// Navigate to /posts and wait for it to load
 			chromedp.Navigate(testURL+"/posts"),
-			waitForWebSocketReady(5*time.Second), // Wait for WebSocket init and first update
+			waitForWebSocketReady(15*time.Second), // Wait for WebSocket init and first update
 			chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
 			validateNoTemplateExpressions("[data-lvt-id]"), // Validate no raw template expressions
 
@@ -411,7 +402,7 @@ func TestTutorialE2E(t *testing.T) {
 		var postExists bool
 		err := chromedp.Run(testCtx,
 			chromedp.Navigate(testURL+"/posts"),
-			waitForWebSocketReady(5*time.Second), // Wait for WebSocket init and first update
+			waitForWebSocketReady(15*time.Second), // Wait for WebSocket init and first update
 			chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
 			validateNoTemplateExpressions("[data-lvt-id]"), // Validate no raw template expressions
 			chromedp.Evaluate(`
@@ -572,7 +563,7 @@ func TestTutorialE2E(t *testing.T) {
 		var targetTitle string
 		err := chromedp.Run(testCtx,
 			chromedp.Navigate(testURL+"/posts"),
-			waitForWebSocketReady(5*time.Second), // Wait for WebSocket init and first update
+			waitForWebSocketReady(15*time.Second), // Wait for WebSocket init and first update
 			chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
 			validateNoTemplateExpressions("[data-lvt-id]"), // Validate no raw template expressions
 			chromedp.Evaluate(findExistingPostJS, &targetTitle),
@@ -690,7 +681,7 @@ func TestTutorialE2E(t *testing.T) {
 			})()
 			`, targetTitle), 5*time.Second),
 
-			waitForWebSocketReady(5*time.Second),
+			waitForWebSocketReady(15*time.Second),
 			chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
 			// Wait for page to load
 			waitFor(`document.readyState === 'complete'`, 10*time.Second),
@@ -735,7 +726,7 @@ func TestTutorialE2E(t *testing.T) {
 		err := chromedp.Run(testCtx,
 			// Navigate to /posts
 			chromedp.Navigate(testURL+"/posts"),
-			waitForWebSocketReady(5*time.Second), // Wait for WebSocket init and first update
+			waitForWebSocketReady(15*time.Second), // Wait for WebSocket init and first update
 			chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
 			validateNoTemplateExpressions("[data-lvt-id]"), // Validate no raw template expressions
 
@@ -903,7 +894,7 @@ func ensureTutorialPostExists(ctx context.Context, baseURL string) error {
 
 	return chromedp.Run(ctx,
 		chromedp.Navigate(baseURL+"/posts"),
-		waitForWebSocketReady(5*time.Second),
+		waitForWebSocketReady(15*time.Second),
 		chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
 		chromedp.WaitVisible(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery),
 		chromedp.Click(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery),

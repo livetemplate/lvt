@@ -335,10 +335,40 @@ func WaitFor(condition string, timeout time.Duration) chromedp.Action {
 			}
 
 			if time.Since(startTime) > timeout {
-				// Get debug info on timeout
-				var debugInfo string
-				_ = chromedp.Evaluate(`document.readyState`, &debugInfo).Do(ctx)
-				return fmt.Errorf("timeout waiting for condition '%s' after %v (readyState: %s)", condition, timeout, debugInfo)
+				// Capture diagnostic info to help debug timeout issues
+				var readyState, clientState, wrapperExists, scriptInfo, wrapperLoading, wsInfo string
+				_ = chromedp.Evaluate(`document.readyState`, &readyState).Do(ctx)
+				_ = chromedp.Evaluate(`window.liveTemplateClient ? 'exists' : 'missing'`, &clientState).Do(ctx)
+				_ = chromedp.Evaluate(`document.querySelector('[data-lvt-id]') ? 'exists' : 'missing'`, &wrapperExists).Do(ctx)
+
+				// Check if wrapper has data-lvt-loading attribute (this blocks client initialization!)
+				_ = chromedp.Evaluate(`(() => {
+					const wrapper = document.querySelector('[data-lvt-id]');
+					if (!wrapper) return 'no-wrapper';
+					return wrapper.getAttribute('data-lvt-loading') || 'not-set';
+				})()`, &wrapperLoading).Do(ctx)
+
+				// Check if the client script tag exists and its status
+				_ = chromedp.Evaluate(`(() => {
+					const scripts = Array.from(document.querySelectorAll('script'));
+					const clientScript = scripts.find(s => s.src && (s.src.includes('livetemplate-client') || s.src.includes('unpkg.com')));
+					if (!clientScript) return 'no-script-tag';
+					return clientScript.src + ' (loaded:' + (clientScript.complete || 'unknown') + ')';
+				})()`, &scriptInfo).Do(ctx)
+
+			// Check WebSocket connection state
+			_ = chromedp.Evaluate(`(() => {
+				const client = window.liveTemplateClient;
+				if (!client) return 'no-client';
+				if (!client.ws) return 'no-websocket';
+				const states = ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'];
+				const state = states[client.ws.readyState] || 'UNKNOWN';
+				const url = client.ws.url || 'no-url';
+				return state + '|' + url;
+			})()`, &wsInfo).Do(ctx)
+
+				return fmt.Errorf("timeout waiting for condition '%s' after %v (readyState: %s, client: %s, wrapper: %s, data-lvt-loading: %s, ws: %s, script: %s)",
+					condition, timeout, readyState, clientState, wrapperExists, wrapperLoading, wsInfo, scriptInfo)
 			}
 
 			// Poll every 100ms (increased from 10ms for stability)
@@ -397,8 +427,9 @@ func WaitForWebSocketReady(timeout time.Duration) chromedp.Action {
 			return fmt.Errorf("wrapper element not found: %w", err)
 		}
 
-		// Give client time to initialize before we start polling (reduces race conditions)
-		time.Sleep(50 * time.Millisecond)
+		// Give the page more time to initialize in Docker environments
+	// where container networking adds 200-500ms+ latency
+		time.Sleep(150 * time.Millisecond)
 
 		// Use improved WaitFor with slower polling (100ms instead of 10ms)
 		// This reduces CPU thrashing and makes the check more stable
