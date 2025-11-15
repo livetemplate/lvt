@@ -336,18 +336,10 @@ func WaitFor(condition string, timeout time.Duration) chromedp.Action {
 
 			if time.Since(startTime) > timeout {
 				// Capture diagnostic info to help debug timeout issues
-				var readyState, clientState, wrapperExists, scriptInfo, wrapperLoading, wsInfo, consoleErrors string
+				var readyState, clientState, wrapperExists, scriptInfo, wrapperLoading, wsInfo string
 				_ = chromedp.Evaluate(`document.readyState`, &readyState).Do(ctx)
 				_ = chromedp.Evaluate(`window.liveTemplateClient ? 'exists' : 'missing'`, &clientState).Do(ctx)
 				_ = chromedp.Evaluate(`document.querySelector('[data-lvt-id]') ? 'exists' : 'missing'`, &wrapperExists).Do(ctx)
-
-				// Capture JavaScript errors from console
-				_ = chromedp.Evaluate(`(() => {
-					if (window.__jsErrors && window.__jsErrors.length > 0) {
-						return window.__jsErrors.map(e => e.message || e).join('; ');
-					}
-					return 'none';
-				})()`, &consoleErrors).Do(ctx)
 
 				// Check if wrapper has data-lvt-loading attribute (this blocks client initialization!)
 				_ = chromedp.Evaluate(`(() => {
@@ -375,8 +367,8 @@ func WaitFor(condition string, timeout time.Duration) chromedp.Action {
 				return state + '|' + url;
 			})()`, &wsInfo).Do(ctx)
 
-				return fmt.Errorf("timeout waiting for condition '%s' after %v (readyState: %s, client: %s, wrapper: %s, data-lvt-loading: %s, ws: %s, script: %s, jsErrors: %s)",
-					condition, timeout, readyState, clientState, wrapperExists, wrapperLoading, wsInfo, scriptInfo, consoleErrors)
+				return fmt.Errorf("timeout waiting for condition '%s' after %v (readyState: %s, client: %s, wrapper: %s, data-lvt-loading: %s, ws: %s, script: %s)",
+					condition, timeout, readyState, clientState, wrapperExists, wrapperLoading, wsInfo, scriptInfo)
 			}
 
 			// Poll every 100ms (increased from 10ms for stability)
