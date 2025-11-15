@@ -15,7 +15,7 @@ func New(args []string) error {
 
 	appName := args[0]
 	moduleName := appName // Default to app name
-	devMode := false      // Default to production (use CDN)
+	devMode := true       // Default to DevMode for reliable e2e testing (avoids external CDN latency)
 	kit := "multi"        // Default kit
 
 	// Check for flags

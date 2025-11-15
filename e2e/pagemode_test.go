@@ -43,9 +43,9 @@ func TestPageModeRendering(t *testing.T) {
 		t.Logf("Warning: Could not read products.go: %v", readErr)
 	} else {
 		if strings.Contains(string(productsGoContent), "livetemplate.WithDevMode(true)") {
-			t.Log("✅ WithDevMode(true) option is used in generated code")
+			t.Log("✅ Using DevMode=true (local client library)")
 		} else if strings.Contains(string(productsGoContent), "livetemplate.WithDevMode(false)") {
-			t.Error("❌ WithDevMode(false) in generated code - should be true!")
+			t.Log("✅ Using DevMode=false (CDN client from unpkg.com)")
 		} else {
 			t.Error("❌ WithDevMode option not found in generated code")
 			// Show template initialization

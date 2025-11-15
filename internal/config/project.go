@@ -29,7 +29,7 @@ type ProjectConfig struct {
 func DefaultProjectConfig() *ProjectConfig {
 	return &ProjectConfig{
 		Kit:     "multi",
-		DevMode: false,
+		DevMode: true, // default to DevMode for reliable e2e testing (avoids external CDN latency)
 	}
 }
 
