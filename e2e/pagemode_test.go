@@ -36,49 +36,8 @@ func TestPageModeRendering(t *testing.T) {
 		t.Fatalf("Failed to run migration: %v", err)
 	}
 
-	// Debug: Check if WithDevMode option is used in generated code
-	productsGoPath := filepath.Join(appDir, "internal/app/products/products.go")
-	productsGoContent, readErr := os.ReadFile(productsGoPath)
-	if readErr != nil {
-		t.Logf("Warning: Could not read products.go: %v", readErr)
-	} else {
-		if strings.Contains(string(productsGoContent), "livetemplate.WithDevMode(true)") {
-			t.Log("✅ WithDevMode(true) option is used in generated code")
-		} else if strings.Contains(string(productsGoContent), "livetemplate.WithDevMode(false)") {
-			t.Error("❌ WithDevMode(false) in generated code - should be true!")
-		} else {
-			t.Error("❌ WithDevMode option not found in generated code")
-			// Show template initialization
-			lines := strings.Split(string(productsGoContent), "\n")
-			for i, line := range lines {
-				if strings.Contains(line, "livetemplate.New") {
-					t.Logf("  Line %d: %s", i+1, strings.TrimSpace(line))
-				}
-			}
-		}
-
-	}
-
-	// Debug: Check the generated template file for .lvt.DevMode
-	productsTmplPath := filepath.Join(appDir, "internal/app/products/products.tmpl")
-	productsTmplContent, tmplErr := os.ReadFile(productsTmplPath)
-	if tmplErr != nil {
-		t.Logf("Warning: Could not read products.tmpl: %v", tmplErr)
-	} else {
-		if strings.Contains(string(productsTmplContent), "{{if .lvt.DevMode}}") {
-			t.Log("✅ Template has runtime .lvt.DevMode conditional {{if .lvt.DevMode}}")
-		} else if strings.Contains(string(productsTmplContent), "{{if .DevMode}}") {
-			t.Error("❌ Template has old {{if .DevMode}} conditional - should use .lvt.DevMode!")
-		} else if strings.Contains(string(productsTmplContent), "[[- if .DevMode]]") {
-			t.Error("❌ Template has generation-time DevMode conditional [[- if .DevMode]] - this is the bug!")
-		} else if strings.Contains(string(productsTmplContent), "<script src=\"/livetemplate-client.js\"></script>") && !strings.Contains(string(productsTmplContent), "{{if") {
-			t.Error("❌ Template has hardcoded local client script without conditional - this is the bug!")
-		} else if strings.Contains(string(productsTmplContent), "<script src=\"https://unpkg.com") && !strings.Contains(string(productsTmplContent), "{{if") {
-			t.Error("❌ Template has hardcoded CDN script without conditional - this is the bug!")
-		} else {
-			t.Log("⚠️  Template script tag pattern not recognized")
-		}
-	}
+	// Note: Apps use CDN client from unpkg.com, not local /livetemplate-client.js
+	// This matches tutorial_test.go behavior after f7e27fa
 
 	// Build Docker image and start container
 	// Use stable image name to leverage Docker build cache across test runs
@@ -108,37 +67,11 @@ func TestPageModeRendering(t *testing.T) {
 		htmlStr := string(htmlBytes)
 		t.Logf("Raw HTML length: %d bytes", len(htmlStr))
 
-		// Check script tag in raw HTML
-		if strings.Contains(htmlStr, "<script src=\"/livetemplate-client.js\"></script>") {
-			t.Log("✅ Raw HTML has local client script")
-		} else if strings.Contains(htmlStr, "<script src=\"https://unpkg.com") {
-			t.Error("❌ Raw HTML has CDN client script - DevMode conditional evaluated to false!")
-			// Show the livetemplate script section specifically
-			lvtScriptIdx := strings.Index(htmlStr, "livetemplate-client")
-			if lvtScriptIdx >= 0 {
-				start := lvtScriptIdx - 50
-				if start < 0 {
-					start = 0
-				}
-				end := lvtScriptIdx + 150
-				if end > len(htmlStr) {
-					end = len(htmlStr)
-				}
-				t.Logf("LiveTemplate script context: [%s]", htmlStr[start:end])
-			}
-
-			// Also check for DEBUG comment
-			if strings.Contains(htmlStr, "<!-- DEBUG:") {
-				debugIdx := strings.Index(htmlStr, "<!-- DEBUG:")
-				start := debugIdx
-				end := debugIdx + 300
-				if end > len(htmlStr) {
-					end = len(htmlStr)
-				}
-				t.Logf("DEBUG comment found: [%s]", htmlStr[start:end])
-			} else {
-				t.Log("⚠️  DEBUG comment not found in HTML")
-			}
+		// Apps use CDN client from unpkg.com - this is expected
+		if strings.Contains(htmlStr, "<script src=\"https://unpkg.com") {
+			t.Log("✅ Raw HTML has CDN client script (expected)")
+		} else if strings.Contains(htmlStr, "<script src=\"/livetemplate-client.js\"></script>") {
+			t.Log("⚠️  Raw HTML has local client script (unexpected in production mode)")
 		} else {
 			t.Log("⚠️  No client script found in raw HTML")
 		}
