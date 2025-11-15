@@ -30,6 +30,9 @@ func TestTutorialE2E(t *testing.T) {
 	}
 	t.Log("✅ Blog app created")
 
+	// Enable DevMode BEFORE generating resources so DevMode=true gets baked into handler code
+	enableDevMode(t, blogDir)
+
 	// Step 2: Generate posts resource
 	t.Log("Step 2: Generating posts resource...")
 	if err := runLvtCommand(t, blogDir, "gen", "resource", "posts", "title", "content", "published:bool"); err != nil {
@@ -91,6 +94,10 @@ func TestTutorialE2E(t *testing.T) {
 	// Use stable image name to leverage Docker build cache across test runs
 	t.Log("Step 6: Building Docker image...")
 	imageName := "lvt-test-tutorial:latest"
+
+	// Write embedded client library before Docker build (DevMode already enabled before gen)
+	writeEmbeddedClientLibrary(t, blogDir)
+
 	buildDockerImage(t, blogDir, imageName)
 	t.Log("✅ Docker image built successfully (includes dependencies, sqlc, and compilation)")
 

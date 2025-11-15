@@ -18,6 +18,11 @@ import (
 //go:embed livetemplate-client.browser.js
 var clientLibraryJS []byte
 
+// GetClientLibraryJS returns the embedded client library for e2e tests
+func GetClientLibraryJS() []byte {
+	return clientLibraryJS
+}
+
 const (
 	dockerImage           = "chromedp/headless-shell:latest"
 	chromeContainerPrefix = "chrome-e2e-test-"

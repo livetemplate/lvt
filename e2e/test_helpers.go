@@ -337,6 +337,37 @@ func (h *DockerContainerHandle) Stop(t *testing.T) {
 	}
 }
 
+// enableDevMode enables development mode for the test app by writing .lvtrc config
+// In DevMode, the app serves the local client library instead of using CDN
+func enableDevMode(t *testing.T, appDir string) {
+	t.Helper()
+	lvtrcPath := filepath.Join(appDir, ".lvtrc")
+	lvtrcContent := "dev_mode=true\n"
+	if err := os.WriteFile(lvtrcPath, []byte(lvtrcContent), 0644); err != nil {
+		t.Fatalf("Failed to write .lvtrc: %v", err)
+	}
+	t.Log("✅ Enabled DevMode for test app")
+}
+
+// writeEmbeddedClientLibrary writes the embedded client library to the app directory
+// This allows Docker-based e2e tests to serve it locally instead of using CDN
+func writeEmbeddedClientLibrary(t *testing.T, appDir string) {
+	t.Helper()
+	clientPath := filepath.Join(appDir, "livetemplate-client.js")
+	if err := os.WriteFile(clientPath, e2etest.GetClientLibraryJS(), 0644); err != nil {
+		t.Fatalf("Failed to write client library: %v", err)
+	}
+	t.Logf("✅ Wrote embedded client library to %s (%d bytes)", clientPath, len(e2etest.GetClientLibraryJS()))
+}
+
+// setupLocalClientLibrary configures the test app to use the embedded local client library
+// Call this before building Docker images for Docker-based e2e tests
+func setupLocalClientLibrary(t *testing.T, appDir string) {
+	t.Helper()
+	enableDevMode(t, appDir)
+	writeEmbeddedClientLibrary(t, appDir)
+}
+
 // buildDockerImage builds a Docker image from the app directory
 func buildDockerImage(t *testing.T, appDir, imageName string) {
 	t.Helper()

@@ -24,6 +24,9 @@ func TestPageModeURLRouting(t *testing.T) {
 		t.Fatalf("Failed to create app: %v", err)
 	}
 
+	// Enable DevMode BEFORE generating resources so DevMode=true gets baked into handler code
+	enableDevMode(t, appDir)
+
 	// Generate resource with page mode
 	if err := runLvtCommand(t, appDir, "gen", "resource", "products", "name", "--edit-mode", "page"); err != nil {
 		t.Fatalf("Failed to generate resource: %v", err)
@@ -62,6 +65,10 @@ func TestPageModeURLRouting(t *testing.T) {
 	// Use stable image name to leverage Docker build cache across test runs
 	port := allocateTestPort()
 	imageName := "lvt-test-urlrouting:latest"
+
+	// Write embedded client library before Docker build (DevMode already enabled before gen)
+	writeEmbeddedClientLibrary(t, appDir)
+
 	buildDockerImage(t, appDir, imageName)
 	_ = runDockerContainer(t, imageName, port)
 
