@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -31,12 +32,19 @@ func buildBaseImage(t *testing.T) {
 
 	t.Log("Building base Docker image (one-time setup)...")
 
+	// Get the directory where this test file lives
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("Failed to get current file path")
+	}
+	e2eDir := filepath.Dir(filename)
+
 	cmd := exec.Command("docker", "build",
 		"-f", "Dockerfile.base",
 		"-t", "lvt-base:latest",
 		".",
 	)
-	cmd.Dir = "e2e"
+	cmd.Dir = e2eDir
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
