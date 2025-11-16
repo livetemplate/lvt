@@ -67,6 +67,9 @@ var (
 	// Port allocation for parallel tests
 	portMutex    sync.Mutex
 	nextTestPort int = 8800
+
+	// Chrome pool for parallel test execution
+	chromePool *ChromePool
 )
 
 // TestMain sets up shared resources before running tests and cleans up after
@@ -76,6 +79,15 @@ func TestMain(m *testing.M) {
 	os.Setenv("SKIP_GO_MOD_TIDY", "1")
 
 	cleanupChromeContainers()
+
+	// Create mock testing.T for setup (TestMain doesn't have one)
+	setupT := &testing.T{}
+
+	// Build base Docker image
+	buildBaseImage(setupT)
+
+	// Start Chrome pool (4 containers for parallel tests)
+	chromePool = NewChromePool(setupT, 4)
 
 	// Setup shared resources
 	if err := setupSharedResources(); err != nil {
@@ -88,6 +100,12 @@ func TestMain(m *testing.M) {
 
 	// Cleanup shared resources
 	cleanupSharedResources()
+
+	// Cleanup Chrome pool
+	if chromePool != nil {
+		chromePool.Cleanup()
+	}
+
 	cleanupChromeContainers()
 
 	os.Exit(code)
