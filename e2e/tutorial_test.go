@@ -17,7 +17,7 @@ import (
 
 // TestTutorialE2E tests the complete blog tutorial workflow
 func TestTutorialE2E(t *testing.T) {
-	// Note: Not parallel because tests use chdirMutex and need sequential execution
+	t.Parallel() // Can run concurrently with Chrome pool
 
 	// Create temp directory for test blog
 	tmpDir := t.TempDir()
@@ -175,9 +175,9 @@ func TestTutorialE2E(t *testing.T) {
 	// Step 9: E2E UI Testing with Chrome
 	t.Log("Step 9: Testing UI with Chrome...")
 
-	// Use isolated Chrome container for parallel execution
-	ctx, cancel := getIsolatedChromeContext(t)
-	defer cancel()
+	// Use Chrome from pool for parallel execution
+	ctx, _, cleanup := GetPooledChrome(t)
+	defer cleanup()
 
 	// Determine URL for Chrome to access (Docker networking)
 	testURL := getTestURL(serverPort)

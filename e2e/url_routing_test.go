@@ -14,7 +14,7 @@ import (
 
 // TestPageModeURLRouting tests URL routing functionality in page mode
 func TestPageModeURLRouting(t *testing.T) {
-	// Note: Not parallel because tests use chdirMutex and need sequential execution
+	t.Parallel() // Can run concurrently with Chrome pool
 
 	tmpDir := t.TempDir()
 	appDir := filepath.Join(tmpDir, "testapp")
@@ -77,9 +77,9 @@ func TestPageModeURLRouting(t *testing.T) {
 	waitForServer(t, serverURL, 10*time.Second)
 	t.Logf("✅ Server ready on port %d", port)
 
-	// Use isolated Chrome container for parallel execution
-	ctx, cancel := getIsolatedChromeContext(t)
-	defer cancel()
+	// Use Chrome from pool for parallel execution
+	ctx, _, cleanup := GetPooledChrome(t)
+	defer cleanup()
 
 	testURL := fmt.Sprintf("%s/products", e2etest.GetChromeTestURL(port))
 	t.Logf("Testing URL routing at: %s", testURL)

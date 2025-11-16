@@ -18,7 +18,7 @@ import (
 // TestModalFunctionality tests all modal interactions end-to-end
 // This test verifies the critical modal bug fix where modals wouldn't reopen after being closed
 func TestModalFunctionality(t *testing.T) {
-	// Note: Not parallel because it uses isolated Chrome container which needs sequential execution
+	t.Parallel() // Can run concurrently with Chrome pool
 
 	// Find the client file (consistent with test_helpers.go)
 	cwd, err := filepath.Abs(".")
@@ -122,9 +122,9 @@ func TestModalFunctionality(t *testing.T) {
 	var consoleLogs []string
 	var consoleLogsMutex sync.Mutex
 
-	// Use isolated Chrome container for parallel execution
-	ctx, cancel := getIsolatedChromeContext(t)
-	defer cancel()
+	// Use Chrome from pool for parallel execution
+	ctx, _, cleanup := GetPooledChrome(t)
+	defer cleanup()
 
 	// Enable Runtime domain and listen for console messages
 	chromedp.ListenTarget(ctx, func(ev interface{}) {
@@ -138,8 +138,8 @@ func TestModalFunctionality(t *testing.T) {
 	})
 
 	// Set timeout
-	ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
+	ctx, timeoutCancel := context.WithTimeout(ctx, 30*time.Second)
+	defer timeoutCancel()
 
 	// Run the tests
 	err = chromedp.Run(ctx,

@@ -15,7 +15,7 @@ import (
 
 // TestPageModeRendering tests that page mode actually renders content, not empty divs
 func TestPageModeRendering(t *testing.T) {
-	// Note: Not parallel because tests use chdirMutex and need sequential execution
+	t.Parallel() // Can run concurrently with Chrome pool
 
 	tmpDir := t.TempDir()
 	appDir := filepath.Join(tmpDir, "testapp")
@@ -55,9 +55,9 @@ func TestPageModeRendering(t *testing.T) {
 	// Wait for server to start
 	waitForServer(t, fmt.Sprintf("http://localhost:%d/", port), 10*time.Second)
 
-	// Use isolated Chrome container for parallel execution
-	ctx, cancel := getIsolatedChromeContext(t)
-	defer cancel()
+	// Use Chrome from pool for parallel execution
+	ctx, _, cleanup := GetPooledChrome(t)
+	defer cleanup()
 
 	// Navigate to products page
 	testURL := fmt.Sprintf("%s/products", e2etest.GetChromeTestURL(port))
