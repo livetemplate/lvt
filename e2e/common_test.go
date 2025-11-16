@@ -28,9 +28,21 @@ func waitFor(condition string, timeout time.Duration) chromedp.Action {
 }
 
 func waitForWebSocketReady(timeout time.Duration) chromedp.Action {
-	return e2etest.WaitForWebSocketReady(timeout)
+	// Use optimized timeout: 10s local, 30s CI (unless explicitly overridden)
+	optimizedTimeout := getTimeout("WEBSOCKET_TIMEOUT", 10*time.Second, 30*time.Second)
+	// If caller passes a custom timeout, respect it
+	if timeout > 0 && timeout != 30*time.Second {
+		optimizedTimeout = timeout
+	}
+	return e2etest.WaitForWebSocketReady(optimizedTimeout)
 }
 
 func validateNoTemplateExpressions(selector string) chromedp.Action {
 	return e2etest.ValidateNoTemplateExpressions(selector)
+}
+
+// getBrowserTimeout returns optimized browser operation timeout
+// Local: 20s (faster feedback), CI: 60s (more lenient for slower environments)
+func getBrowserTimeout() time.Duration {
+	return getTimeout("BROWSER_TIMEOUT", 20*time.Second, 60*time.Second)
 }

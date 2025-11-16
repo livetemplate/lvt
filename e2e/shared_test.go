@@ -21,6 +21,19 @@ var (
 	baseImageMutex sync.Mutex
 )
 
+// getTimeout returns local or CI timeout based on environment
+func getTimeout(envVar string, localDefault, ciDefault time.Duration) time.Duration {
+	if os.Getenv("CI") == "true" {
+		return ciDefault
+	}
+	if val := os.Getenv(envVar); val != "" {
+		if d, err := time.ParseDuration(val); err == nil {
+			return d
+		}
+	}
+	return localDefault
+}
+
 // buildBaseImage builds the shared base Docker image once
 func buildBaseImage(t *testing.T) {
 	baseImageMutex.Lock()

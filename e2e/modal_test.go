@@ -138,7 +138,7 @@ func TestModalFunctionality(t *testing.T) {
 	})
 
 	// Set timeout
-	ctx, timeoutCancel := context.WithTimeout(ctx, 30*time.Second)
+	ctx, timeoutCancel := context.WithTimeout(ctx, getBrowserTimeout())
 	defer timeoutCancel()
 
 	// Run the tests

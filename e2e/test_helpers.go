@@ -19,8 +19,9 @@ import (
 	e2etest "github.com/livetemplate/lvt/testing"
 )
 
-// Note: Previously used mutexes for os.Chdir and go mod tidy
-// These are no longer needed as we use cmd.Dir and skip go mod tidy
+// chdirMutex protects os.Chdir calls in parallel tests
+// os.Chdir affects the entire process, so we need to serialize these operations
+var chdirMutex sync.Mutex
 
 // AppOptions contains options for creating a test app
 type AppOptions struct {

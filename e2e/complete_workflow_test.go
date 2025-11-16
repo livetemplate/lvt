@@ -143,7 +143,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 	t.Run("WebSocket Connection", func(t *testing.T) {
 		ctx, cancel := createBrowserContext()
 		defer cancel()
-		ctx, timeoutCancel := context.WithTimeout(ctx, 30*time.Second)
+		ctx, timeoutCancel := context.WithTimeout(ctx, getBrowserTimeout())
 		defer timeoutCancel()
 		verifyWebSocketConnected(t, ctx, testURL+"/posts")
 	})
@@ -152,7 +152,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 	t.Run("Posts Page Loads", func(t *testing.T) {
 		ctx, cancel := createBrowserContext()
 		defer cancel()
-		ctx, timeoutCancel := context.WithTimeout(ctx, 30*time.Second)
+		ctx, timeoutCancel := context.WithTimeout(ctx, getBrowserTimeout())
 		defer timeoutCancel()
 
 		verifyNoTemplateErrors(t, ctx, testURL+"/posts")
@@ -179,7 +179,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 	t.Run("Create and Edit Post", func(t *testing.T) {
 		ctx, cancel := createBrowserContext()
 		defer cancel()
-		ctx, timeoutCancel := context.WithTimeout(ctx, 60*time.Second)
+		ctx, timeoutCancel := context.WithTimeout(ctx, getBrowserTimeout())
 		defer timeoutCancel()
 
 		// Step 1: Create post
@@ -317,7 +317,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 	t.Run("Delete Post", func(t *testing.T) {
 		ctx, cancel := createBrowserContext()
 		defer cancel()
-		ctx, timeoutCancel := context.WithTimeout(ctx, 30*time.Second)
+		ctx, timeoutCancel := context.WithTimeout(ctx, getBrowserTimeout())
 		defer timeoutCancel()
 
 		err := chromedp.Run(ctx,
@@ -433,7 +433,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 	t.Run("Validation Errors", func(t *testing.T) {
 		ctx, cancel := createBrowserContext()
 		defer cancel()
-		ctx, timeoutCancel := context.WithTimeout(ctx, 30*time.Second)
+		ctx, timeoutCancel := context.WithTimeout(ctx, getBrowserTimeout())
 		defer timeoutCancel()
 
 		var errorsVisible bool

@@ -201,7 +201,7 @@ func TestTutorialE2E(t *testing.T) {
 		// Create fresh browser context for this subtest
 		testCtx, cancel := chromedp.NewContext(ctx)
 		defer cancel()
-		testCtx, timeoutCancel := context.WithTimeout(testCtx, 45*time.Second)
+		testCtx, timeoutCancel := context.WithTimeout(testCtx, getBrowserTimeout())
 		defer timeoutCancel()
 
 		// Note: Apps use CDN client from unpkg.com, not local /livetemplate-client.js
@@ -253,7 +253,7 @@ func TestTutorialE2E(t *testing.T) {
 		// Create fresh browser context for this subtest
 		testCtx, cancel := chromedp.NewContext(ctx)
 		defer cancel()
-		testCtx, timeoutCancel := context.WithTimeout(testCtx, 45*time.Second)
+		testCtx, timeoutCancel := context.WithTimeout(testCtx, getBrowserTimeout())
 		defer timeoutCancel()
 
 		var lvtId string
@@ -278,7 +278,7 @@ func TestTutorialE2E(t *testing.T) {
 		// Create per-subtest context with individual timeout
 		testCtx, cancel := chromedp.NewContext(ctx)
 		defer cancel()
-		testCtx, timeoutCancel := context.WithTimeout(testCtx, 60*time.Second)
+		testCtx, timeoutCancel := context.WithTimeout(testCtx, getBrowserTimeout())
 		defer timeoutCancel()
 
 		var titleValueBeforeSubmit string
@@ -402,7 +402,7 @@ func TestTutorialE2E(t *testing.T) {
 		// Create per-subtest context with individual timeout
 		testCtx, cancel := chromedp.NewContext(ctx)
 		defer cancel()
-		testCtx, timeoutCancel := context.WithTimeout(testCtx, 60*time.Second)
+		testCtx, timeoutCancel := context.WithTimeout(testCtx, getBrowserTimeout())
 		defer timeoutCancel()
 
 		// First, verify the post exists
@@ -543,7 +543,7 @@ func TestTutorialE2E(t *testing.T) {
 		// Create per-subtest context with individual timeout
 		testCtx, cancel := chromedp.NewContext(ctx)
 		defer cancel()
-		testCtx, timeoutCancel := context.WithTimeout(testCtx, 60*time.Second)
+		testCtx, timeoutCancel := context.WithTimeout(testCtx, getBrowserTimeout())
 		defer timeoutCancel()
 
 		const (
@@ -720,7 +720,7 @@ func TestTutorialE2E(t *testing.T) {
 		// Create per-subtest context with individual timeout
 		testCtx, cancel := chromedp.NewContext(ctx)
 		defer cancel()
-		testCtx, timeoutCancel := context.WithTimeout(testCtx, 60*time.Second)
+		testCtx, timeoutCancel := context.WithTimeout(testCtx, getBrowserTimeout())
 		defer timeoutCancel()
 
 		var (
