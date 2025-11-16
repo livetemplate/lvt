@@ -87,10 +87,6 @@ var (
 
 // TestMain sets up shared resources before running tests and cleans up after
 func TestMain(m *testing.M) {
-	// Skip go mod tidy in commands.New() to prevent "Test I/O incomplete" errors
-	// caused by background processes spawned by Go module tooling
-	os.Setenv("SKIP_GO_MOD_TIDY", "1")
-
 	cleanupChromeContainers()
 
 	// Create mock testing.T for setup (TestMain doesn't have one)

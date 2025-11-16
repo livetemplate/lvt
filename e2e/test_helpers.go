@@ -25,8 +25,9 @@ var chdirMutex sync.Mutex
 
 // AppOptions contains options for creating a test app
 type AppOptions struct {
-	Kit    string // Kit name (multi, single, simple)
-	Module string // Go module name
+	Kit          string // Kit name (multi, single, simple)
+	Module       string // Go module name
+	SkipGoModTidy bool   // Skip go mod tidy (for Docker-based tests that run it inside Docker)
 }
 
 // runLvtCommand executes an lvt command directly by calling the command functions
@@ -279,9 +280,9 @@ func createTestApp(t *testing.T, tmpDir, appName string, opts *AppOptions) strin
 
 	appDir := filepath.Join(tmpDir, appName)
 
-	// Skip go mod tidy if SKIP_GO_MOD_TIDY is set (e.g., when using base Docker image with deps)
-	// For local tests that need it, this can be run explicitly
-	if os.Getenv("SKIP_GO_MOD_TIDY") != "1" {
+	// Skip go mod tidy if requested (e.g., for Docker-based tests that run it inside Docker)
+	// For non-Docker tests (lvt serve), go mod tidy is required to work properly
+	if !opts.SkipGoModTidy {
 		t.Log("Running go mod tidy...")
 		tidyCmd := exec.Command("go", "mod", "tidy")
 		tidyCmd.Dir = appDir
@@ -290,7 +291,7 @@ func createTestApp(t *testing.T, tmpDir, appName string, opts *AppOptions) strin
 		}
 		t.Log("✅ go mod tidy completed")
 	} else {
-		t.Log("⏭️  Skipping go mod tidy (SKIP_GO_MOD_TIDY=1)")
+		t.Log("⏭️  Skipping go mod tidy (will be run in Docker)")
 	}
 
 	// Register cleanup handler to remove app directory on test completion/failure
