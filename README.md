@@ -658,7 +658,20 @@ func Handler(queries *models.Queries) http.Handler {
 
 ## Testing
 
-The project includes comprehensive testing infrastructure at multiple levels:
+The project includes comprehensive testing infrastructure at multiple levels.
+
+### Make Targets (Recommended)
+
+Use these convenient make targets for different testing workflows:
+
+```bash
+make test-fast     # Unit tests only (~30s)
+make test-commit   # Before committing (~3-4min)
+make test-all      # Full suite (~5-6min)
+make test-clean    # Clean Docker resources
+```
+
+See [Testing Guide](docs/testing.md) for detailed documentation on test optimization and architecture.
 
 ### Quick Start
 
