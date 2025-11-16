@@ -19,13 +19,8 @@ import (
 	e2etest "github.com/livetemplate/lvt/testing"
 )
 
-// chdirMutex protects os.Chdir calls in parallel tests
-// os.Chdir affects the entire process, so we need to serialize these operations
-var chdirMutex sync.Mutex
-
-// goModMutex protects go mod tidy operations in parallel tests
-// go mod tidy operations can interfere with each other through the shared Go module cache
-var goModMutex sync.Mutex
+// Note: Previously used mutexes for os.Chdir and go mod tidy
+// These are no longer needed as we use cmd.Dir and skip go mod tidy
 
 // AppOptions contains options for creating a test app
 type AppOptions struct {
@@ -283,15 +278,19 @@ func createTestApp(t *testing.T, tmpDir, appName string, opts *AppOptions) strin
 
 	appDir := filepath.Join(tmpDir, appName)
 
-	// Run go mod tidy to ensure go.mod is up to date
-	// This is needed for tests that run apps locally (e.g., TestServe*)
-	t.Log("Running go mod tidy...")
-	tidyCmd := exec.Command("go", "mod", "tidy")
-	tidyCmd.Dir = appDir
-	if output, err := tidyCmd.CombinedOutput(); err != nil {
-		t.Fatalf("Failed to run go mod tidy: %v\nOutput: %s", err, output)
+	// Skip go mod tidy if SKIP_GO_MOD_TIDY is set (e.g., when using base Docker image with deps)
+	// For local tests that need it, this can be run explicitly
+	if os.Getenv("SKIP_GO_MOD_TIDY") != "1" {
+		t.Log("Running go mod tidy...")
+		tidyCmd := exec.Command("go", "mod", "tidy")
+		tidyCmd.Dir = appDir
+		if output, err := tidyCmd.CombinedOutput(); err != nil {
+			t.Fatalf("Failed to run go mod tidy: %v\nOutput: %s", err, output)
+		}
+		t.Log("✅ go mod tidy completed")
+	} else {
+		t.Log("⏭️  Skipping go mod tidy (SKIP_GO_MOD_TIDY=1)")
 	}
-	t.Log("✅ go mod tidy completed")
 
 	// Register cleanup handler to remove app directory on test completion/failure
 	// This is registered at the END to ensure it only runs after successful setup
@@ -368,14 +367,67 @@ func setupLocalClientLibrary(t *testing.T, appDir string) {
 	writeEmbeddedClientLibrary(t, appDir)
 }
 
+// copyFile copies a file from src to dst
+func copyFile(src, dst string) error {
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(dst, data, 0644)
+}
+
 // buildDockerImage builds a Docker image from the app directory
 func buildDockerImage(t *testing.T, appDir, imageName string) {
 	t.Helper()
 	t.Logf("Building Docker image: %s", imageName)
 
-	// Ensure Dockerfile exists (generate if needed)
-	ensureDockerfile(t, appDir)
+	// Ensure base image exists
+	buildBaseImage(t)
 
+	// Create Dockerfile that builds on base
+	// The base image has common dependencies cached, so go mod tidy will be fast
+	dockerfile := `FROM lvt-base:latest
+
+# Copy app-specific code
+COPY . .
+
+# Tidy and download dependencies (fast because base deps are cached)
+RUN go mod tidy && go mod download
+
+# Generate database code if sqlc.yaml exists
+RUN if [ -f internal/database/sqlc.yaml ]; then \
+      echo "Running sqlc generate..." && \
+      sqlc generate -f internal/database/sqlc.yaml; \
+    fi
+
+# Build the app
+# Auto-detect if main.go is in root (simple kit) or cmd/ (multi kit)
+RUN if [ -f main.go ]; then \
+      CGO_ENABLED=1 go build -o app .; \
+    else \
+      CGO_ENABLED=1 go build -o app ./cmd/*; \
+    fi
+
+# Runtime stage
+FROM alpine:latest
+RUN apk add --no-cache ca-certificates sqlite-libs
+WORKDIR /app
+COPY --from=0 /app/app /app/app
+# Copy directories that might exist (use shell to handle missing dirs)
+COPY --from=0 /app /app/
+# Clean up build artifacts we don't need at runtime
+RUN rm -rf /app/cmd /app/go.mod /app/go.sum /app/README.md /app/.git* 2>/dev/null || true
+RUN mkdir -p /app/data
+EXPOSE 8080
+CMD ["./app"]
+`
+
+	dockerfilePath := filepath.Join(appDir, "Dockerfile")
+	if err := os.WriteFile(dockerfilePath, []byte(dockerfile), 0644); err != nil {
+		t.Fatalf("Failed to write Dockerfile: %v", err)
+	}
+
+	// Build only the app layer (fast, ~5-10 seconds)
 	buildCmd := exec.Command("docker", "build", "-t", imageName, ".")
 	buildCmd.Dir = appDir
 
