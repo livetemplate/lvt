@@ -1,0 +1,20 @@
+# Base image with all common dependencies for lvt-generated apps
+FROM golang:1.25-alpine AS base
+
+# Install build dependencies for CGO (SQLite)
+RUN apk add --no-cache gcc musl-dev sqlite-dev
+
+# Install sqlc code generator
+RUN go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.27.0
+
+# Set up workspace
+WORKDIR /app
+
+# Copy template go.mod/go.sum (identical for all lvt apps)
+COPY template-go.mod go.mod
+COPY template-go.sum go.sum
+
+# Download all dependencies (cached in this layer)
+RUN go mod download
+
+# This base image is ~450MB and contains everything except app-specific code

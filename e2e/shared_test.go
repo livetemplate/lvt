@@ -15,6 +15,38 @@ import (
 	e2etest "github.com/livetemplate/lvt/testing"
 )
 
+var (
+	baseImageBuilt bool
+	baseImageMutex sync.Mutex
+)
+
+// buildBaseImage builds the shared base Docker image once
+func buildBaseImage(t *testing.T) {
+	baseImageMutex.Lock()
+	defer baseImageMutex.Unlock()
+
+	if baseImageBuilt {
+		return
+	}
+
+	t.Log("Building base Docker image (one-time setup)...")
+
+	cmd := exec.Command("docker", "build",
+		"-f", "Dockerfile.base",
+		"-t", "lvt-base:latest",
+		".",
+	)
+	cmd.Dir = "e2e"
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("Failed to build base image: %v\nOutput: %s", err, output)
+	}
+
+	t.Log("Base image built successfully")
+	baseImageBuilt = true
+}
+
 // Shared test resources that persist across all tests
 var (
 	sharedChromePort  int = 9222
