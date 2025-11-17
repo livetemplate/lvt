@@ -38,22 +38,10 @@ func TestPageModeRendering(t *testing.T) {
 		t.Fatalf("Failed to run migration: %v", err)
 	}
 
-	// Note: Apps use CDN client from unpkg.com, not local /livetemplate-client.js
-	// This matches tutorial_test.go behavior after f7e27fa
-
-	// Build Docker image and start container
-	// Use stable image name to leverage Docker build cache across test runs
+	// Build and run app natively (much faster than Docker)
+	// This test focuses on page mode rendering, not deployment
 	port := allocateTestPort()
-	imageName := "lvt-test-pagemode:latest"
-
-	// Write embedded client library before Docker build (DevMode already enabled before gen)
-	writeEmbeddedClientLibrary(t, appDir)
-
-	buildDockerImage(t, appDir, imageName)
-	_ = runDockerContainer(t, imageName, port)
-
-	// Wait for server to start
-	waitForServer(t, fmt.Sprintf("http://localhost:%d/", port), 10*time.Second)
+	_ = buildAndRunNative(t, appDir, port)
 
 	// Use Chrome from pool for parallel execution
 	ctx, _, cleanup := GetPooledChrome(t)

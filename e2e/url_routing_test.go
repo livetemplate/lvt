@@ -61,20 +61,10 @@ func TestPageModeURLRouting(t *testing.T) {
 		t.Log("✅ Test data seeded successfully")
 	}
 
-	// Build Docker image and start container
-	// Use stable image name to leverage Docker build cache across test runs
+	// Build and run app natively (much faster than Docker)
+	// This test focuses on URL routing functionality, not deployment
 	port := allocateTestPort()
-	imageName := "lvt-test-urlrouting:latest"
-
-	// Write embedded client library before Docker build (DevMode already enabled before gen)
-	writeEmbeddedClientLibrary(t, appDir)
-
-	buildDockerImage(t, appDir, imageName)
-	_ = runDockerContainer(t, imageName, port)
-
-	// Wait for server to start
-	serverURL := fmt.Sprintf("http://localhost:%d", port)
-	waitForServer(t, serverURL, 10*time.Second)
+	_ = buildAndRunNative(t, appDir, port)
 	t.Logf("✅ Server ready on port %d", port)
 
 	// Use Chrome from pool for parallel execution
