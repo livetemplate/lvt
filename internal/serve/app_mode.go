@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sync"
+	"testing"
 	"time"
 )
 
@@ -168,8 +169,17 @@ func (am *AppMode) startApp() error {
 	// Use 'go run' instead of building a binary to keep templates accessible from source
 	am.appProcess = exec.Command("go", "run", am.mainGoPath)
 	am.appProcess.Dir = am.server.config.Dir
-	am.appProcess.Stdout = os.Stdout
-	am.appProcess.Stderr = os.Stderr
+
+	// In test mode, discard output to prevent I/O hanging
+	// Otherwise, pipe to os.Stdout/os.Stderr for visibility
+	if testing.Testing() {
+		am.appProcess.Stdout = nil
+		am.appProcess.Stderr = nil
+	} else {
+		am.appProcess.Stdout = os.Stdout
+		am.appProcess.Stderr = os.Stderr
+	}
+
 	am.appProcess.Env = append(os.Environ(),
 		fmt.Sprintf("PORT=%d", am.appPort),
 		"LVT_DEV_MODE=true", // Enable development mode for template discovery
