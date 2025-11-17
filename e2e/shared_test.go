@@ -43,6 +43,11 @@ func buildBaseImage(t *testing.T) {
 		return
 	}
 
+	// Check if Docker is available
+	if _, err := exec.Command("docker", "version").CombinedOutput(); err != nil {
+		t.Skip("Docker not available, skipping test that requires Docker image build")
+	}
+
 	t.Log("Building base Docker image (one-time setup)...")
 
 	// Get the directory where this test file lives
@@ -80,41 +85,25 @@ var (
 	// Port allocation for parallel tests
 	portMutex    sync.Mutex
 	nextTestPort int = 8800
-
-	// Chrome pool for parallel test execution
-	chromePool *ChromePool
 )
 
 // TestMain sets up shared resources before running tests and cleans up after
 func TestMain(m *testing.M) {
+	// Cleanup any leftover containers from previous runs
+	// This is safe to run even if Docker is not available - it will just log a warning
 	cleanupChromeContainers()
-
-	// Create mock testing.T for setup (TestMain doesn't have one)
-	setupT := &testing.T{}
-
-	// Build base Docker image
-	buildBaseImage(setupT)
-
-	// Start Chrome pool (4 containers for parallel tests)
-	chromePool = NewChromePool(setupT, 4)
-
-	// Setup shared resources
-	if err := setupSharedResources(); err != nil {
-		log.Printf("Failed to setup shared resources: %v", err)
-		os.Exit(1)
-	}
 
 	// Run tests
 	code := m.Run()
 
-	// Cleanup shared resources
-	cleanupSharedResources()
-
-	// Cleanup Chrome pool
+	// Cleanup Chrome pool if it was initialized
+	chromePoolMu.Lock()
 	if chromePool != nil {
 		chromePool.Cleanup()
 	}
+	chromePoolMu.Unlock()
 
+	// Final cleanup of any remaining containers
 	cleanupChromeContainers()
 
 	os.Exit(code)
@@ -229,7 +218,7 @@ func cleanupSharedResources() {
 
 		// Stop shared Chrome container
 		log.Println("Stopping shared Docker Chrome...")
-		e2etest.StopDockerChrome(&testing.T{}, sharedChromePort)
+		e2etest.StopDockerChrome(nil, sharedChromePort)
 		log.Println("✅ Shared Docker Chrome stopped")
 
 		// Clean up shared test app directory

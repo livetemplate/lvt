@@ -4,11 +4,19 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os/exec"
 	"sync"
 	"testing"
 
 	"github.com/chromedp/chromedp"
 	e2etest "github.com/livetemplate/lvt/testing"
+)
+
+// Chrome pool singleton variables for lazy initialization
+var (
+	chromePool     *ChromePool
+	chromePoolOnce sync.Once
+	chromePoolMu   sync.Mutex
 )
 
 // ChromePool manages a pool of reusable Chrome containers
@@ -120,20 +128,36 @@ func (p *ChromePool) resetChrome(container *ChromeContainer) {
 }
 
 // Cleanup stops all Chrome containers
+// Called from TestMain after all tests complete, so we pass nil to avoid logging to completed test
 func (p *ChromePool) Cleanup() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
 	for _, container := range p.containers {
-		e2etest.StopDockerChrome(p.t, container.port)
+		e2etest.StopDockerChrome(nil, container.port)
 	}
 
 	log.Println("✅ Chrome pool cleaned up")
 }
 
 // GetPooledChrome returns a Chrome context from the pool
+// Lazily initializes the Chrome pool on first call
 func GetPooledChrome(t *testing.T) (context.Context, context.CancelFunc, func()) {
 	t.Helper()
+
+	// Check if Docker is available
+	if _, err := exec.Command("docker", "version").CombinedOutput(); err != nil {
+		t.Skip("Docker not available, skipping E2E test")
+	}
+
+	// Lazily initialize the Chrome pool
+	chromePoolOnce.Do(func() {
+		chromePoolMu.Lock()
+		defer chromePoolMu.Unlock()
+
+		t.Log("Initializing Chrome pool (first use)...")
+		chromePool = NewChromePool(t, 4)
+	})
 
 	container := chromePool.Get()
 

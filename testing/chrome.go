@@ -4,6 +4,7 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -221,9 +222,14 @@ func StartDockerChrome(t *testing.T, debugPort int) error {
 }
 
 // StopDockerChrome stops and removes the Chrome Docker container
+// t can be nil for cleanup scenarios (e.g., TestMain cleanup)
 func StopDockerChrome(t *testing.T, debugPort int) {
-	t.Helper()
-	t.Log("Stopping Chrome Docker container...")
+	if t != nil {
+		t.Helper()
+		t.Log("Stopping Chrome Docker container...")
+	} else {
+		log.Println("Stopping Chrome Docker container...")
+	}
 
 	containerName := fmt.Sprintf("chrome-e2e-test-%d", debugPort)
 
@@ -235,7 +241,11 @@ func StopDockerChrome(t *testing.T, debugPort int) {
 		// Only log if it's not a "no such container" error (which is fine)
 		errMsg := string(output)
 		if !strings.Contains(errMsg, "No such container") && !strings.Contains(err.Error(), "No such container") {
-			t.Logf("Warning: Failed to remove Docker container: %v (output: %s)", err, errMsg)
+			if t != nil {
+				t.Logf("Warning: Failed to remove Docker container: %v (output: %s)", err, errMsg)
+			} else {
+				log.Printf("Warning: Failed to remove Docker container: %v (output: %s)", err, errMsg)
+			}
 		}
 	}
 }
