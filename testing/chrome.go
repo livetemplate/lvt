@@ -265,6 +265,11 @@ func StartTestServer(t *testing.T, mainPath string, port int) *exec.Cmd {
 		"LVT_DEV_MODE=true", // Use local client library in tests
 	}, cmd.Environ()...)
 
+	// Redirect output to prevent hanging I/O pipes
+	// Use nil to discard output (tests don't need server logs)
+	cmd.Stdout = nil
+	cmd.Stderr = nil
+
 	// Start the server
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("Failed to start server: %v", err)
