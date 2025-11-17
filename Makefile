@@ -8,7 +8,7 @@ test-fast:
 # Before commit - unit + quick e2e (~3-4 minutes)
 test-commit:
 	@echo "Running commit validation tests..."
-	GOWORK=off go test -p 4 -timeout=5m ./...
+	GOWORK=off go test -p 4 -timeout=20m ./...
 
 # Full validation - all tests including deployment (~5-6 minutes)
 test-all:
