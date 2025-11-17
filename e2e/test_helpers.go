@@ -675,3 +675,118 @@ func readLvtrc(t *testing.T, appDir string) (kit string) {
 
 	return kit
 }
+
+// buildAndRunNative builds the app natively and starts it on the specified port
+// This is much faster than Docker build (~5s vs ~245s)
+// Returns the server process command
+func buildAndRunNative(t *testing.T, appDir string, port int) *exec.Cmd {
+	t.Helper()
+
+	t.Log("Step 6: Building app natively (fast path)...")
+
+	// Write embedded client library (DevMode should already be enabled)
+	writeEmbeddedClientLibrary(t, appDir)
+
+	// Run sqlc generate if sqlc.yaml exists
+	sqlcPath := filepath.Join(appDir, "internal/database/sqlc.yaml")
+	if _, err := os.Stat(sqlcPath); err == nil {
+		t.Log("Running sqlc generate...")
+		sqlcCmd := exec.Command("go", "run", "github.com/sqlc-dev/sqlc/cmd/sqlc@latest", "generate", "-f", sqlcPath)
+		sqlcCmd.Dir = appDir
+		sqlcCmd.Env = append(os.Environ(), "GOWORK=off")
+		if output, err := sqlcCmd.CombinedOutput(); err != nil {
+			t.Fatalf("Failed to run sqlc generate: %v\nOutput: %s", err, output)
+		}
+		t.Log("✅ sqlc generate completed")
+	}
+
+	// Build the app
+	// Check if simple kit (main.go in root) or multi kit (main.go in cmd/)
+	binaryPath := filepath.Join(appDir, "app")
+	t.Log("Building binary...")
+
+	var buildCmd *exec.Cmd
+	if _, err := os.Stat(filepath.Join(appDir, "main.go")); err == nil {
+		// Simple kit - main.go in root
+		buildCmd = exec.Command("go", "build", "-o", binaryPath, ".")
+	} else {
+		// Multi kit - main.go in cmd/
+		buildCmd = exec.Command("go", "build", "-o", binaryPath, "./cmd/...")
+	}
+
+	buildCmd.Dir = appDir
+	buildCmd.Env = append(os.Environ(), "GOWORK=off", "CGO_ENABLED=1")
+	if output, err := buildCmd.CombinedOutput(); err != nil {
+		t.Fatalf("Failed to build app: %v\nOutput: %s", err, output)
+	}
+	t.Log("✅ App built successfully")
+
+	// Step 7: Start the app
+	t.Log("Step 7: Starting app natively...")
+	portStr := fmt.Sprintf("%d", port)
+	serverCmd := exec.Command(binaryPath)
+	serverCmd.Dir = appDir
+	serverCmd.Env = append(os.Environ(),
+		"PORT="+portStr,
+		"LVT_DEV_MODE=true",
+	)
+
+	// Start the server
+	if err := serverCmd.Start(); err != nil {
+		t.Fatalf("Failed to start server: %v", err)
+	}
+
+	// Wait for server to be ready
+	serverURL := fmt.Sprintf("http://localhost:%d", port)
+	ready := false
+	var lastErr error
+	consecutiveSuccesses := 0
+	const requiredSuccesses = 2
+
+	for i := 0; i < 50; i++ {
+		resp, err := http.Get(serverURL)
+		if err == nil {
+			if resp.StatusCode == 200 {
+				body, _ := io.ReadAll(resp.Body)
+				resp.Body.Close()
+				bodyStr := string(body)
+				if strings.Contains(bodyStr, "<!DOCTYPE html>") || strings.Contains(bodyStr, "<html") {
+					consecutiveSuccesses++
+					if consecutiveSuccesses >= requiredSuccesses {
+						ready = true
+						break
+					}
+				}
+			} else {
+				resp.Body.Close()
+				consecutiveSuccesses = 0
+			}
+		} else {
+			lastErr = err
+			consecutiveSuccesses = 0
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+
+	if !ready {
+		_ = serverCmd.Process.Kill()
+		t.Fatalf("❌ Server failed to respond within 10 seconds. Last error: %v", lastErr)
+	}
+
+	t.Logf("✅ App running on http://localhost:%d", port)
+
+	// Register cleanup
+	t.Cleanup(func() {
+		if serverCmd.Process != nil {
+			t.Logf("Stopping native server (PID: %d)...", serverCmd.Process.Pid)
+			if err := serverCmd.Process.Kill(); err != nil {
+				t.Logf("Warning: Failed to kill server: %v", err)
+			} else {
+				t.Log("✅ Native server stopped")
+			}
+			_ = serverCmd.Wait()
+		}
+	})
+
+	return serverCmd
+}

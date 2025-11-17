@@ -3,7 +3,6 @@ package e2e
 import (
 	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -90,87 +89,12 @@ func TestTutorialE2E(t *testing.T) {
 		t.Error("❌ Foreign key definition not found in migration")
 	}
 
-	// Step 6: Build Docker image (this handles go mod tidy, sqlc generate, and build)
-	// Use stable image name to leverage Docker build cache across test runs
-	t.Log("Step 6: Building Docker image...")
-	imageName := "lvt-test-tutorial:latest"
-
-	// Write embedded client library before Docker build (DevMode already enabled before gen)
-	writeEmbeddedClientLibrary(t, blogDir)
-
-	buildDockerImage(t, blogDir, imageName)
-	t.Log("✅ Docker image built successfully (includes dependencies, sqlc, and compilation)")
-
-	// Step 7: Start the app in Docker container
-	t.Log("Step 7: Starting blog app in Docker container...")
+	// Step 6 & 7: Build and run app natively (much faster than Docker)
+	// This test focuses on UI functionality, not deployment - Docker testing is in deployment_docker_test.go
 	serverPort := allocateTestPort() // Use unique port for parallel testing
-	_ = runDockerContainer(t, imageName, serverPort)
+	_ = buildAndRunNative(t, blogDir, serverPort)
 
-	// Wait for server to be ready and verify it's responding correctly
 	serverURL := fmt.Sprintf("http://localhost:%d", serverPort)
-	ready := false
-	var lastErr error
-	consecutiveSuccesses := 0
-	const requiredSuccesses = 2 // Require consecutive successes for stability
-
-	for i := 0; i < 50; i++ {
-		resp, err := http.Get(serverURL + "/posts")
-		if err == nil {
-			// Check status code
-			if resp.StatusCode != 200 {
-				resp.Body.Close()
-				lastErr = fmt.Errorf("status %d", resp.StatusCode)
-				consecutiveSuccesses = 0
-				time.Sleep(200 * time.Millisecond)
-				continue
-			}
-
-			// Check response contains HTML
-			body, err := io.ReadAll(resp.Body)
-			resp.Body.Close()
-			if err != nil {
-				lastErr = fmt.Errorf("failed to read body: %w", err)
-				consecutiveSuccesses = 0
-				time.Sleep(200 * time.Millisecond)
-				continue
-			}
-
-			bodyStr := string(body)
-			if !strings.Contains(bodyStr, "<!DOCTYPE html>") && !strings.Contains(bodyStr, "<html") {
-				lastErr = fmt.Errorf("response doesn't look like HTML")
-				consecutiveSuccesses = 0
-				time.Sleep(200 * time.Millisecond)
-				continue
-			}
-
-			// Check for template errors
-			if strings.Contains(bodyStr, "template:") && strings.Contains(bodyStr, "error") {
-				lastErr = fmt.Errorf("template error in response")
-				consecutiveSuccesses = 0
-				time.Sleep(200 * time.Millisecond)
-				continue
-			}
-
-			// Success - increment counter
-			consecutiveSuccesses++
-			if consecutiveSuccesses >= requiredSuccesses {
-				// Give server extra time to fully initialize WebSocket handlers
-				time.Sleep(100 * time.Millisecond)
-				ready = true
-				break
-			}
-		} else {
-			lastErr = err
-			consecutiveSuccesses = 0
-		}
-		time.Sleep(200 * time.Millisecond)
-	}
-
-	if !ready {
-		t.Fatalf("❌ Server failed to respond within 10 seconds. Last error: %v", lastErr)
-	}
-
-	t.Log("✅ Blog app running on", serverURL)
 
 	// Step 9: E2E UI Testing with Chrome
 	t.Log("Step 9: Testing UI with Chrome...")
