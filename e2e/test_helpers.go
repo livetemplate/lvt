@@ -731,6 +731,11 @@ func buildAndRunNative(t *testing.T, appDir string, port int) *exec.Cmd {
 		"LVT_DEV_MODE=true",
 	)
 
+	// Redirect output to prevent hanging I/O pipes
+	// Use os.DevNull to discard output (tests don't need server logs)
+	serverCmd.Stdout = nil
+	serverCmd.Stderr = nil
+
 	// Start the server
 	if err := serverCmd.Start(); err != nil {
 		t.Fatalf("Failed to start server: %v", err)
