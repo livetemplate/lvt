@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"os"
-	"path/filepath"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
+	e2etest "github.com/livetemplate/lvt/testing"
 )
 
 // TestModalFunctionality tests all modal interactions end-to-end
@@ -20,16 +19,10 @@ import (
 func TestModalFunctionality(t *testing.T) {
 	t.Parallel() // Can run concurrently with Chrome pool
 
-	// Find the client file (consistent with test_helpers.go)
-	cwd, err := filepath.Abs(".")
-	if err != nil {
-		t.Fatalf("Failed to get working directory: %v", err)
-	}
-	// Client is at monorepo root level, not inside livetemplate/
-	monorepoRoot := filepath.Join(cwd, "..", "..")
-	clientPath := filepath.Join(monorepoRoot, "client", "dist", "livetemplate-client.browser.js")
-	if _, err := os.Stat(clientPath); err != nil {
-		t.Fatalf("Client bundle not found at %s: %v", clientPath, err)
+	// Use embedded client library (avoids working directory issues in parallel tests)
+	clientJS := e2etest.GetClientLibraryJS()
+	if len(clientJS) == 0 {
+		t.Fatal("Client library not embedded")
 	}
 
 	// Start a simple HTTP server
@@ -46,9 +39,10 @@ func TestModalFunctionality(t *testing.T) {
 
 	mux := http.NewServeMux()
 
-	// Serve the client file
+	// Serve the embedded client library
 	mux.HandleFunc("/livetemplate-client.js", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, clientPath)
+		w.Header().Set("Content-Type", "application/javascript")
+		w.Write(clientJS)
 	})
 
 	// Create a test HTML page with modal
