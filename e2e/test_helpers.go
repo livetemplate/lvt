@@ -565,6 +565,10 @@ func waitForServer(t *testing.T, url string, timeout time.Duration) {
 	consecutiveSuccesses := 0
 	const requiredSuccesses = 2 // Require 2 consecutive successful responses for stability
 
+	// Use exponential backoff for faster server detection
+	retryDelay := 10 * time.Millisecond
+	const maxRetryDelay = 100 * time.Millisecond
+
 	for time.Now().Before(deadline) {
 		resp, err := http.Get(url)
 		if err == nil {
@@ -573,10 +577,12 @@ func waitForServer(t *testing.T, url string, timeout time.Duration) {
 				consecutiveSuccesses++
 				if consecutiveSuccesses >= requiredSuccesses {
 					// Give server a bit more time to fully initialize WebSocket handlers
-					time.Sleep(100 * time.Millisecond)
+					time.Sleep(50 * time.Millisecond)
 					t.Logf("✅ Server ready (verified with %d consecutive successful requests)", requiredSuccesses)
 					return
 				}
+				// Reset delay on success
+				retryDelay = 10 * time.Millisecond
 			} else {
 				resp.Body.Close()
 				lastErr = fmt.Errorf("server returned status %d", resp.StatusCode)
@@ -586,7 +592,13 @@ func waitForServer(t *testing.T, url string, timeout time.Duration) {
 			lastErr = err
 			consecutiveSuccesses = 0
 		}
-		time.Sleep(200 * time.Millisecond)
+
+		time.Sleep(retryDelay)
+		// Exponential backoff up to max
+		retryDelay = retryDelay * 2
+		if retryDelay > maxRetryDelay {
+			retryDelay = maxRetryDelay
+		}
 	}
 
 	t.Fatalf("❌ Server failed to respond within %v. Last error: %v", timeout, lastErr)
