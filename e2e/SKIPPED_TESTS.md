@@ -106,47 +106,75 @@ The test had TWO issues:
 
 ### 3. TestTutorialE2E/Validation_Errors
 
-**File**: `e2e/tutorial_test.go:643`
+**File**: `e2e/tutorial_test.go:655`
 
-**Status**: ❌ Skipped - Product bug
+**Status**: ❌ Skipped - Core library bug (2025-11-18: Investigated)
 
 **Current Skip Message**:
 ```go
 t.Skip("Skipping until conditional rendering bug is fixed")
 ```
 
-**Root Cause**:
-- Conditional rendering bug in product code
-- Validation errors not displaying correctly
-- Likely related to template conditional rendering
+**Root Cause** (Investigated 2025-11-18):
+The issue is NOT with conditional rendering in templates. The templates are correctly generated with:
+```html
+{{if .lvt.HasError "fieldname"}}
+<small style="color: #c00;">{{.lvt.Error "fieldname"}}</small>
+{{end}}
+```
 
-**Context**:
-This appears to be a known product bug rather than a test issue. The test is correctly written but the feature it tests is broken.
+The actual problem is in the **handler code generation**:
+- When `ctx.BindAndValidate()` fails (line 91 in handler.go.tmpl), it returns an error
+- However, it does NOT capture the field-level validation errors and store them in a format accessible to templates
+- The template never receives the validation error data to display
 
-**Remediation**:
+**Code Evidence**:
+```go
+// In handler.go.tmpl line 91-92:
+if err := ctx.BindAndValidate(&input, validate); err != nil {
+    return err  // ← This just returns generic error, doesn't store field errors
+}
+```
 
-**Step 1: Identify the Bug**
-- Run test with skip removed
-- Capture exact failure mode
-- Check if validation errors render in browser
-- Review template conditional logic
+**Test Results**:
+When test submits empty form:
+- Server receives validation error
+- Handler returns error to livepage
+- Form HTML shows NO `<small>` tags (errors not rendered)
+- Template conditionals never execute because `.lvt.HasError()` returns false
 
-**Step 2: Fix Product Bug**
-- Fix conditional rendering in templates
-- Ensure validation errors display properly
-- May require template engine changes
+**Required Fix**:
+This requires changes to the **livepage library** or **handler template**:
 
-**Step 3: Re-enable Test**
-- Remove skip
-- Verify test passes
-- Add to CI
+**Option A: Fix in livepage library**
+- Modify `BindAndValidate` to automatically capture validation errors
+- Store field-level errors in context accessible via `.lvt.HasError()` and `.lvt.Error()`
 
-**Estimated Effort**: Unknown (depends on bug complexity)
-- Could be simple template fix (2-4 hours)
-- Could require engine changes (8-16 hours)
-- Needs investigation first
+**Option B: Fix in handler template** (Simpler)
+- Catch validation errors in handler
+- Extract field-level errors from validator.ValidationErrors
+- Call context method to store errors (e.g., `ctx.SetFieldError(field, message)`)
+- Return error that triggers re-render WITH errors
 
-**Priority**: Medium - Validation is important UX feature
+**Example Fix Pattern**:
+```go
+if err := ctx.BindAndValidate(&input, validate); err != nil {
+    // Extract field errors from validator.ValidationErrors
+    if validationErrors, ok := err.(validator.ValidationErrors); ok {
+        for _, fieldError := range validationErrors {
+            ctx.SetFieldError(fieldError.Field(), fieldError.Error())
+        }
+    }
+    return err // Re-render with errors
+}
+```
+
+**Estimated Effort**: Medium-High (8-16 hours)
+- Requires understanding livepage library architecture
+- May need to modify core library OR handler template
+- Needs testing across all generated handlers
+
+**Priority**: Medium-High - Validation UX is important, but workaround exists (HTML5 validation)
 
 ---
 
