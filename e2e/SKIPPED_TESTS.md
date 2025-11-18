@@ -74,35 +74,33 @@ t.Skip("Temporarily skipped: Client library loading issue in Docker - needs unpk
 
 **File**: `e2e/tutorial_test.go:323`
 
-**Status**: 🔄 In Progress - Partially Fixed
+**Status**: ✅ **FIXED** (2025-11-18)
 
-**Changes Made** (2025-11-18):
+**Changes Made**:
 1. ✅ Removed `t.Skip()` statement
 2. ✅ Added `ensureTutorialPostExists()` call to make test independent
 3. ✅ Added delete button with `lvt-confirm` attribute to edit modal template (internal/kits/system/multi/templates/resource/template.tmpl.tmpl:156)
-4. ✅ Verified embedded template contains the delete button
+4. ✅ Fixed modal selector to wait for correct edit modal (`form[lvt-submit="update"]`)
 
-**Current Issue**:
-Test passes when run in isolation but fails when run as part of full `TestTutorialE2E` suite. The delete button is not being found in the modal during full suite execution.
+**Root Cause**:
+The test had TWO issues:
+1. **Test dependency**: Test depended on data from previous "Add Post" test
+2. **Wrong modal selector**: Test was waiting for `input[name="title"]` which exists in BOTH add and edit modals. When "Add Post" test ran first, its add modal was still in the DOM, causing the selector to find the wrong modal.
 
-**Root Cause Analysis**:
-- Original issue: Test depended on data from previous test ("My First Blog Post")
-- Original issue: Delete button was missing from edit modal template
-- **Fixed**: Added post creation at start of test via `ensureTutorialPostExists()`
-- **Fixed**: Added delete button to edit modal template
-- **Remaining**: Test cache or build cache issue preventing template changes from being consistently applied in full suite runs
+**Solution**:
+- Made test independent by calling `ensureTutorialPostExists()` to create its own data
+- Changed wait condition from `input[name="title"]` to `form[lvt-submit="update"]` to specifically wait for the edit modal
+- Added delete button with `lvt-confirm` to edit modal template
 
 **Test Results**:
 - ✅ Passes: `go test -run "TestTutorialE2E/Modal_Delete_with_Confirmation$"`  (isolation)
-- ❌ Fails: `go test -run "^TestTutorialE2E$"` (full suite)
-- ✅ Embedded template verified to contain `lvt-confirm` attribute
+- ✅ Passes: `go test -run "^TestTutorialE2E$"` (full suite)
 
-**Next Steps**:
-1. Investigate why full suite run doesn't pick up template changes
-2. May need to add explicit cache busting or build steps
-3. Consider adding debug output to capture actual modal HTML during test
+**Commits**:
+- `9ed743c`: Add delete button to edit modal template
+- `5f668f5`: Fix modal selector to wait for correct edit modal
 
-**Priority**: Medium - Core functionality is implemented, need to resolve test execution issue
+**Priority**: ✅ COMPLETE
 
 ---
 
