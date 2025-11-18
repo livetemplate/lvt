@@ -412,8 +412,8 @@ func TestTutorialE2E(t *testing.T) {
 					return false;
 				})()
 			`, &editButtonFound),
-			// Wait for modal to open
-			waitFor(`document.querySelector('input[name="title"]') !== null`, 10*time.Second),
+			// Wait for EDIT modal to open (has lvt-submit="update", not "add")
+			waitFor(`document.querySelector('form[lvt-submit="update"]') !== null`, 10*time.Second),
 		)
 		if err != nil {
 			t.Fatalf("Failed to click edit button: %v", err)
@@ -427,7 +427,15 @@ func TestTutorialE2E(t *testing.T) {
 		// Verify delete button exists in modal with lvt-confirm attribute
 		var deleteButtonInModal bool
 		var hasConfirmAttr bool
+		var modalHTML string
 		err = chromedp.Run(testCtx,
+			// Capture the edit form HTML for debugging (not add modal)
+			chromedp.Evaluate(`
+				(() => {
+					const editForm = document.querySelector('form[lvt-submit="update"]');
+					return editForm ? editForm.outerHTML : 'Edit form not found';
+				})()
+			`, &modalHTML),
 			chromedp.Evaluate(`
 				(() => {
 					const deleteButton = document.querySelector('button[lvt-click="delete"]');
@@ -446,6 +454,7 @@ func TestTutorialE2E(t *testing.T) {
 		}
 
 		if !deleteButtonInModal {
+			t.Logf("❌ Modal HTML:\n%s", modalHTML)
 			t.Fatal("❌ Delete button not found in modal")
 		}
 		t.Log("✅ Delete button found in modal")
