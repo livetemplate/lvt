@@ -320,16 +320,20 @@ func TestTutorialE2E(t *testing.T) {
 	})
 
 	// Test Modal Delete with Confirmation
-	// TODO: Skip due to flaky timing issue - test depends on data from previous test
 	t.Run("Modal Delete with Confirmation", func(t *testing.T) {
-		t.Skip("Skipping due to flaky test dependency")
 		// Create per-subtest context with individual timeout
 		testCtx, cancel := chromedp.NewContext(ctx)
 		defer cancel()
 		testCtx, timeoutCancel := context.WithTimeout(testCtx, getBrowserTimeout())
 		defer timeoutCancel()
 
-		// First, verify the post exists
+		// First, ensure a post exists for this test (make test independent)
+		t.Log("Creating post fixture for modal delete test")
+		if err := ensureTutorialPostExists(testCtx, testURL); err != nil {
+			t.Fatalf("Failed to create post fixture: %v", err)
+		}
+
+		// Verify the post exists
 		var postExists bool
 		err := chromedp.Run(testCtx,
 			chromedp.Navigate(testURL+"/posts"),
