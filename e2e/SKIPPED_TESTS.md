@@ -72,73 +72,37 @@ t.Skip("Temporarily skipped: Client library loading issue in Docker - needs unpk
 
 ### 2. TestTutorialE2E/Modal_Delete_with_Confirmation
 
-**File**: `e2e/tutorial_test.go:325`
+**File**: `e2e/tutorial_test.go:323`
 
-**Status**: ❌ Skipped - Test dependency issue
+**Status**: 🔄 In Progress - Partially Fixed
 
-**Current Skip Message**:
-```go
-t.Skip("Skipping due to flaky test dependency")
-```
+**Changes Made** (2025-11-18):
+1. ✅ Removed `t.Skip()` statement
+2. ✅ Added `ensureTutorialPostExists()` call to make test independent
+3. ✅ Added delete button with `lvt-confirm` attribute to edit modal template (internal/kits/system/multi/templates/resource/template.tmpl.tmpl:156)
+4. ✅ Verified embedded template contains the delete button
 
-**Root Cause**:
-- Test depends on data from previous test: "My First Blog Post"
-- Comment says: "Skip due to flaky timing issue - test depends on data from previous test"
-- Violates test independence principle
-- Timing-dependent - previous test may not have completed
+**Current Issue**:
+Test passes when run in isolation but fails when run as part of full `TestTutorialE2E` suite. The delete button is not being found in the modal during full suite execution.
 
-**Code Evidence**:
-```go
-// Lines 340-349: Looking for post created by previous test
-const postExists bool
-err := chromedp.Evaluate(`
-    (() => {
-        const table = document.querySelector('table');
-        if (!table) return false;
-        const rows = Array.from(table.querySelectorAll('tbody tr'));
-        return rows.some(row => {
-            const cells = row.querySelectorAll('td');
-            return cells.length > 0 && cells[0].textContent.trim() === 'My First Blog Post';
-        });
-    })()
-`, &postExists)
-```
+**Root Cause Analysis**:
+- Original issue: Test depended on data from previous test ("My First Blog Post")
+- Original issue: Delete button was missing from edit modal template
+- **Fixed**: Added post creation at start of test via `ensureTutorialPostExists()`
+- **Fixed**: Added delete button to edit modal template
+- **Remaining**: Test cache or build cache issue preventing template changes from being consistently applied in full suite runs
 
-**Remediation**:
+**Test Results**:
+- ✅ Passes: `go test -run "TestTutorialE2E/Modal_Delete_with_Confirmation$"`  (isolation)
+- ❌ Fails: `go test -run "^TestTutorialE2E$"` (full suite)
+- ✅ Embedded template verified to contain `lvt-confirm` attribute
 
-**Option A: Make Test Independent** (Recommended)
-```go
-t.Run("Modal Delete with Confirmation", func(t *testing.T) {
-    // Create fresh browser context
-    testCtx, cancel := chromedp.NewContext(ctx)
-    defer cancel()
-    testCtx, timeoutCancel := context.WithTimeout(testCtx, getBrowserTimeout())
-    defer timeoutCancel()
+**Next Steps**:
+1. Investigate why full suite run doesn't pick up template changes
+2. May need to add explicit cache busting or build steps
+3. Consider adding debug output to capture actual modal HTML during test
 
-    // Step 1: Create a post specifically for this test
-    err := chromedp.Run(testCtx,
-        chromedp.Navigate(testURL+"/posts"),
-        waitForWebSocketReady(5*time.Second),
-        chromedp.WaitVisible(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery),
-        chromedp.Click(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery),
-        chromedp.WaitVisible(`input[name="title"]`, chromedp.ByQuery),
-        chromedp.SendKeys(`input[name="title"]`, "Post To Delete", chromedp.ByQuery),
-        chromedp.SendKeys(`textarea[name="content"]`, "This will be deleted", chromedp.ByQuery),
-        chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
-        waitFor(`/* wait for post in table */`, 10*time.Second),
-    )
-
-    // Step 2: Now test deletion (existing code)
-    // ...
-})
-```
-
-**Estimated Effort**: Low (1-2 hours)
-- Add post creation steps at start of test
-- Verify test passes independently
-- No external dependencies
-
-**Priority**: High - Simple fix, improves test reliability
+**Priority**: Medium - Core functionality is implemented, need to resolve test execution issue
 
 ---
 
