@@ -652,7 +652,7 @@ func TestTutorialE2E(t *testing.T) {
 
 	// Test Validation Errors
 	t.Run("Validation Errors", func(t *testing.T) {
-		t.Skip("Errors captured in WS meta but template not re-rendered - tree is empty. See SKIPPED_TESTS.md")
+		t.Skip("Client library doesn't handle meta.errors - window.liveTemplateClient.errors stays empty")
 		// Create per-subtest context with individual timeout
 		testCtx, cancel := chromedp.NewContext(ctx)
 		defer cancel()
@@ -737,12 +737,20 @@ func TestTutorialE2E(t *testing.T) {
 			t.Fatalf("Failed to test validation: %v", err)
 		}
 
-		// Debug: Log form HTML
+		// Debug: Check what the client has
+		var lastWSMessage, clientErrors string
+		chromedp.Run(testCtx,
+			chromedp.Evaluate(`window.__lastWSMessage || 'No WS message'`, &lastWSMessage),
+			chromedp.Evaluate(`JSON.stringify(window.liveTemplateClient?.errors || {})`, &clientErrors),
+		)
+
+		t.Logf("Last WS message: %s", lastWSMessage)
+		t.Logf("Client errors state: %s", clientErrors)
 		t.Logf("Form HTML (first 500 chars): %s", formHTML[:min(500, len(formHTML))])
 
 		// Verify errors are displayed in the UI (server-side rendered)
 		if !errorsVisible {
-			t.Fatal("❌ Error messages are not visible in the UI")
+			t.Error("❌ Error messages are not visible in the UI")
 		}
 		t.Log("✅ Error messages are visible in the UI")
 

@@ -108,7 +108,7 @@ The test had TWO issues:
 
 **File**: `e2e/tutorial_test.go:655`
 
-**Status**: 🔍 **ROOT CAUSE IDENTIFIED** - 2025-11-19
+**Status**: 🔍 **ROOT CAUSE IDENTIFIED** - Client library bug - 2025-11-19
 
 **WebSocket Response Analysis** (v0.3.1):
 ```json
@@ -125,17 +125,27 @@ The test had TWO issues:
 }
 ```
 
-**Finding**: ✅ Validation errors ARE being captured and sent in `meta.errors`
-**Problem**: ❌ The `tree` is empty - template is NOT being re-rendered with errors
+**Client State After Response**:
+```javascript
+window.liveTemplateClient.errors = {}  // ❌ EMPTY!
+```
+
+**Root Cause**: The **JavaScript client library** is NOT handling `meta.errors` from the WebSocket response!
 
 **What's Working**:
-- MultiError handling extracts field errors ✅
-- Errors sent in WebSocket response metadata ✅
+- ✅ Server captures validation errors via MultiError
+- ✅ Server sends errors in `meta.errors` in WebSocket response
 
-**What's Missing**:
-- Template re-rendering with error context to generate HTML with `<small>` tags
-- The `tree` should contain the re-rendered form HTML but it's empty
-- Client receives errors in metadata but no updated HTML to display
+**What's Broken**:
+- ❌ Client library doesn't extract `meta.errors` from response
+- ❌ Client library doesn't store errors in `window.liveTemplateClient.errors`
+- ❌ Client library doesn't inject error HTML (`<small>` tags) into the form
+
+**Expected Flow**:
+1. Server sends `meta.errors` in WebSocket response ✅
+2. Client extracts errors from response and stores them ❌
+3. Client dynamically injects `<small>` error tags into form ❌
+4. User sees validation errors ❌
 
 **Root Cause** (Investigated 2025-11-18):
 The issue is NOT with conditional rendering in templates. The templates are correctly generated with:
@@ -191,25 +201,44 @@ if err := ctx.BindAndValidate(&input, validate); err != nil {
 }
 ```
 
-**Required Fix**:
-When validation errors occur (`state.setError()` is called), the template MUST be re-rendered with the error context and the resulting HTML sent back in the `tree` field. Currently:
-1. Errors are captured ✅
-2. Errors sent in metadata ✅
-3. Template re-rendering with errors ❌ (MISSING)
+**Required Fix** (Client Library):
+The JavaScript client needs to be updated to handle validation errors from WebSocket responses:
 
-**Possible Solutions**:
-1. After `state.setError()` calls, trigger template re-execution with error context
-2. Ensure the re-rendered HTML (with `<small>` tags) is included in the WebSocket response `tree`
-3. OR: Client library should re-fetch/re-render when it receives `meta.errors`
+1. **Extract errors from response**: When `meta.errors` exists in WebSocket response, store them
+2. **Update client state**: Store errors in accessible client state (e.g., `window.liveTemplateClient.errors`)
+3. **Inject error HTML**: Dynamically inject `<small>` error tags into the form for each field error
+4. **Clear errors on success**: Clear stored errors when `meta.success === true`
+
+**Example Fix** (pseudocode for client library):
+```javascript
+// In WebSocket message handler
+if (response.meta.errors) {
+  // Store errors
+  this.errors = response.meta.errors;
+
+  // Inject error HTML for each field
+  Object.entries(this.errors).forEach(([field, message]) => {
+    const input = form.querySelector(`[name="${field}"]`);
+    if (input) {
+      input.setAttribute('aria-invalid', 'true');
+      // Insert <small> tag after input
+      const errorEl = document.createElement('small');
+      errorEl.style.color = '#c00';
+      errorEl.textContent = message;
+      input.parentNode.appendChild(errorEl);
+    }
+  });
+}
+```
 
 **To Enable Test**:
-1. Fix template re-rendering when validation errors exist
-2. Ensure `tree` contains updated HTML with error messages
-3. Test that `<small>` tags with error text appear in the form
+1. Update JavaScript client library to handle `meta.errors`
+2. Ensure errors are injected into DOM as `<small>` tags
+3. Test passes when error messages are visible
 
-**Estimated Effort**: Medium (4-8 hours) - requires understanding template rendering flow
+**Estimated Effort**: Low-Medium (2-4 hours) - client-side JavaScript changes
 
-**Priority**: High - Errors are captured but not displayed to users
+**Priority**: High - Validation UX completely broken without this
 
 ---
 
