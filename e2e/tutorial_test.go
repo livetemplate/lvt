@@ -651,9 +651,8 @@ func TestTutorialE2E(t *testing.T) {
 	})
 
 	// Test Validation Errors
-	// TODO: Skip until core library bug is fixed - see BUG-VALIDATION-CONDITIONALS.md
 	t.Run("Validation Errors", func(t *testing.T) {
-		t.Skip("Skipping until conditional rendering bug is fixed")
+		t.Skip("Errors captured in WS meta but template not re-rendered - tree is empty. See SKIPPED_TESTS.md")
 		// Create per-subtest context with individual timeout
 		testCtx, cancel := chromedp.NewContext(ctx)
 		defer cancel()

@@ -108,12 +108,34 @@ The test had TWO issues:
 
 **File**: `e2e/tutorial_test.go:655`
 
-**Status**: ❌ Skipped - Core library bug (2025-11-18: Investigated)
+**Status**: 🔍 **ROOT CAUSE IDENTIFIED** - 2025-11-19
 
-**Current Skip Message**:
-```go
-t.Skip("Skipping until conditional rendering bug is fixed")
+**WebSocket Response Analysis** (v0.3.1):
+```json
+{
+  "tree": {},
+  "meta": {
+    "success": false,
+    "errors": {
+      "Content": "Content is required",
+      "Title": "Title is required"
+    },
+    "action": "add"
+  }
+}
 ```
+
+**Finding**: ✅ Validation errors ARE being captured and sent in `meta.errors`
+**Problem**: ❌ The `tree` is empty - template is NOT being re-rendered with errors
+
+**What's Working**:
+- MultiError handling extracts field errors ✅
+- Errors sent in WebSocket response metadata ✅
+
+**What's Missing**:
+- Template re-rendering with error context to generate HTML with `<small>` tags
+- The `tree` should contain the re-rendered form HTML but it's empty
+- Client receives errors in metadata but no updated HTML to display
 
 **Root Cause** (Investigated 2025-11-18):
 The issue is NOT with conditional rendering in templates. The templates are correctly generated with:
@@ -169,12 +191,25 @@ if err := ctx.BindAndValidate(&input, validate); err != nil {
 }
 ```
 
-**Estimated Effort**: Medium-High (8-16 hours)
-- Requires understanding livepage library architecture
-- May need to modify core library OR handler template
-- Needs testing across all generated handlers
+**Required Fix**:
+When validation errors occur (`state.setError()` is called), the template MUST be re-rendered with the error context and the resulting HTML sent back in the `tree` field. Currently:
+1. Errors are captured ✅
+2. Errors sent in metadata ✅
+3. Template re-rendering with errors ❌ (MISSING)
 
-**Priority**: Medium-High - Validation UX is important, but workaround exists (HTML5 validation)
+**Possible Solutions**:
+1. After `state.setError()` calls, trigger template re-execution with error context
+2. Ensure the re-rendered HTML (with `<small>` tags) is included in the WebSocket response `tree`
+3. OR: Client library should re-fetch/re-render when it receives `meta.errors`
+
+**To Enable Test**:
+1. Fix template re-rendering when validation errors exist
+2. Ensure `tree` contains updated HTML with error messages
+3. Test that `<small>` tags with error text appear in the form
+
+**Estimated Effort**: Medium (4-8 hours) - requires understanding template rendering flow
+
+**Priority**: High - Errors are captured but not displayed to users
 
 ---
 
