@@ -155,10 +155,6 @@ func (s *[[.ResourceName]]State) Change(ctx *livetemplate.ActionContext) error {
 			return err
 		}
 
-		// For modal mode: Clear editing ID to close modal
-		// Keep Editing[[.ResourceName]] for potential use in response
-		s.EditingID = ""
-
 	case "cancel_edit":
 		s.EditingID = ""
 		s.Editing[[.ResourceName]] = nil
@@ -288,6 +284,9 @@ func (s *[[.ResourceName]]State) Change(ctx *livetemplate.ActionContext) error {
 }
 
 func (s *[[.ResourceName]]State) Init() error {
+	// Clear any editing state from previous session
+	s.EditingID = ""
+	s.Editing[[.ResourceName]] = nil
 	return s.load[[.ResourceName]]s(context.Background())
 }
 
