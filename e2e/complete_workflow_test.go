@@ -17,7 +17,6 @@ import (
 // TestCompleteWorkflow_BlogApp tests the complete blog application workflow
 // This is a comprehensive integration test that validates the entire stack
 func TestCompleteWorkflow_BlogApp(t *testing.T) {
-	t.Skip("Temporarily skipped: Client library loading issue in Docker - needs unpkg CDN fix or local embed")
 	t.Parallel() // Can run concurrently with Chrome pool
 
 	tmpDir := t.TempDir()
@@ -30,6 +29,11 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 		Kit: "multi",
 	})
 	t.Log("✅ Blog app created")
+
+	// Step 2.5: Setup local client library BEFORE generating resources
+	// This ensures DevMode=true is set when resources are generated
+	t.Log("Step 2.5: Setting up local client library...")
+	setupLocalClientLibrary(t, appDir)
 
 	// Step 3: Generate posts resource
 	t.Log("Step 3: Generating posts resource...")
@@ -88,7 +92,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 	}
 	t.Log("✅ Migrations complete")
 
-	// Step 7.5: Build Docker image and start container
+	// Step 7.5: Build Docker image
 	// Use stable image name to leverage Docker build cache across test runs
 	t.Log("Step 7.5: Building Docker image...")
 	serverPort := allocateTestPort()
