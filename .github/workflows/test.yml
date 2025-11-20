@@ -42,6 +42,23 @@ jobs:
       #     version: latest
       #     args: --disable-all --enable=errcheck,unused,staticcheck,gosimple,ineffassign
 
+      - name: Free Disk Space
+        run: |
+          echo "Disk space before cleanup:"
+          df -h
+
+          # Remove unnecessary pre-installed software to free up ~14GB
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+
+          # Clean up Docker to start fresh
+          docker system prune -af --volumes || true
+
+          echo "Disk space after cleanup:"
+          df -h
+
       - name: Install Docker (for e2e tests)
         run: |
           # Docker is pre-installed on ubuntu-latest runners
