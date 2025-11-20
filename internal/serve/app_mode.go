@@ -182,7 +182,7 @@ func (am *AppMode) startApp() error {
 
 	am.appProcess.Env = append(os.Environ(),
 		fmt.Sprintf("PORT=%d", am.appPort),
-		"LVT_DEV_MODE=true", // Enable development mode for template discovery
+		"LVT_DEV_MODE=true",                                           // Enable development mode for template discovery
 		fmt.Sprintf("LVT_TEMPLATE_BASE_DIR=%s", am.server.config.Dir), // Set template base directory for auto-discovery
 	)
 

@@ -31,16 +31,16 @@ func DefaultSmokeTestOptions() *SmokeTestOptions {
 
 // SmokeTestResult represents the result of a single smoke test
 type SmokeTestResult struct {
-	Name    string
-	Passed  bool
-	Error   error
+	Name     string
+	Passed   bool
+	Error    error
 	Duration time.Duration
 }
 
 // SmokeTestSuite represents the results of all smoke tests
 type SmokeTestSuite struct {
-	AppURL string
-	Results []SmokeTestResult
+	AppURL        string
+	Results       []SmokeTestResult
 	TotalDuration time.Duration
 }
 
@@ -51,7 +51,7 @@ func RunSmokeTests(appURL string, opts *SmokeTestOptions) (*SmokeTestSuite, erro
 	}
 
 	suite := &SmokeTestSuite{
-		AppURL: appURL,
+		AppURL:  appURL,
 		Results: []SmokeTestResult{},
 	}
 
@@ -102,9 +102,9 @@ func runTest(name string, fn func() error) SmokeTestResult {
 	err := fn()
 
 	return SmokeTestResult{
-		Name: name,
-		Passed: err == nil,
-		Error: err,
+		Name:     name,
+		Passed:   err == nil,
+		Error:    err,
 		Duration: time.Since(startTime),
 	}
 }

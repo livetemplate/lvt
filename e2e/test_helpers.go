@@ -25,8 +25,8 @@ var chdirMutex sync.Mutex
 
 // AppOptions contains options for creating a test app
 type AppOptions struct {
-	Kit          string // Kit name (multi, single, simple)
-	Module       string // Go module name
+	Kit           string // Kit name (multi, single, simple)
+	Module        string // Go module name
 	SkipGoModTidy bool   // Skip go mod tidy (for Docker-based tests that run it inside Docker)
 }
 

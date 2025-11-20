@@ -60,13 +60,13 @@ func (d *DockerClient) Build(appDir string) error {
 func (d *DockerClient) Run() error {
 	args := []string{
 		"run",
-		"-d",                                   // Detached mode
-		"-p", fmt.Sprintf("%d:8080", d.Port),  // Port mapping
-		"--name", d.ContainerName,             // Container name
-		"-e", "PORT=8080",                     // Environment variable
-		"-e", "APP_ENV=test",                  // Test environment
-		"-e", "LVT_TEMPLATE_BASE_DIR=/app",    // Template base directory for auto-discovery
-		d.ImageTag,                            // Image to run
+		"-d",                                 // Detached mode
+		"-p", fmt.Sprintf("%d:8080", d.Port), // Port mapping
+		"--name", d.ContainerName, // Container name
+		"-e", "PORT=8080", // Environment variable
+		"-e", "APP_ENV=test", // Test environment
+		"-e", "LVT_TEMPLATE_BASE_DIR=/app", // Template base directory for auto-discovery
+		d.ImageTag, // Image to run
 	}
 
 	cmd := exec.Command("docker", args...)

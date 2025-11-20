@@ -376,8 +376,8 @@ func WaitFor(condition string, timeout time.Duration) chromedp.Action {
 					return clientScript.src + ' (loaded:' + (clientScript.complete || 'unknown') + ')';
 				})()`, &scriptInfo).Do(ctx)
 
-			// Check WebSocket connection state
-			_ = chromedp.Evaluate(`(() => {
+				// Check WebSocket connection state
+				_ = chromedp.Evaluate(`(() => {
 				const client = window.liveTemplateClient;
 				if (!client) return 'no-client';
 				if (!client.ws) return 'no-websocket';
@@ -448,7 +448,7 @@ func WaitForWebSocketReady(timeout time.Duration) chromedp.Action {
 		}
 
 		// Give the page more time to initialize in Docker environments
-	// where container networking adds 200-500ms+ latency
+		// where container networking adds 200-500ms+ latency
 		time.Sleep(150 * time.Millisecond)
 
 		// Use improved WaitFor with slower polling (100ms instead of 10ms)

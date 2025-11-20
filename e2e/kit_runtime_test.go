@@ -92,10 +92,10 @@ func TestKitRuntime_AllKits(t *testing.T) {
 // but the actual template file was named index.tmpl.
 func TestKitRuntime_TemplateRendering(t *testing.T) {
 	tests := []struct {
-		name             string
-		kit              string
-		port             string
-		expectedInHTML   []string // Content that should appear in rendered HTML
+		name           string
+		kit            string
+		port           string
+		expectedInHTML []string // Content that should appear in rendered HTML
 	}{
 		{
 			name: "simple kit template",

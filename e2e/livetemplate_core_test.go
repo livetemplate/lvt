@@ -1,7 +1,6 @@
 package e2e_test
 
 import (
-	"reflect"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -10,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -1700,8 +1700,6 @@ func compareWithGoldenFile(t *testing.T, appType, updateName string, generatedUp
 		t.Logf("✅ %s matches golden file perfectly", updateName)
 	}
 }
-
-
 
 // showDifferences shows detailed differences between expected and actual
 func showDifferences(t *testing.T, expected, actual map[string]interface{}, prefix string) {

@@ -68,12 +68,12 @@ func EnvGenerate(args []string) error {
 // detectFeatures analyzes the app structure to detect what features are in use
 func detectFeatures() map[string]bool {
 	features := map[string]bool{
-		"database":  false,
-		"auth":      false,
-		"email":     false,
-		"server":    false,
-		"sessions":  false,
-		"csrf":      false,
+		"database": false,
+		"auth":     false,
+		"email":    false,
+		"server":   false,
+		"sessions": false,
+		"csrf":     false,
 	}
 
 	// Check for database (schema.sql or migrations)
@@ -704,15 +704,15 @@ func getRequiredVars(features map[string]bool) []string {
 // getVarReason returns a human-readable reason why a variable is required
 func getVarReason(key string, features map[string]bool) string {
 	reasons := map[string]string{
-		"APP_ENV":         "application environment",
-		"DATABASE_PATH":   "database configuration",
-		"SESSION_SECRET":  "session security (auth enabled)",
-		"CSRF_SECRET":     "CSRF protection (auth enabled)",
-		"EMAIL_PROVIDER":  "email functionality (auth with email features)",
-		"SMTP_HOST":       "SMTP email sending",
-		"SMTP_PORT":       "SMTP email sending",
-		"SMTP_USER":       "SMTP email sending",
-		"SMTP_PASS":       "SMTP email sending",
+		"APP_ENV":        "application environment",
+		"DATABASE_PATH":  "database configuration",
+		"SESSION_SECRET": "session security (auth enabled)",
+		"CSRF_SECRET":    "CSRF protection (auth enabled)",
+		"EMAIL_PROVIDER": "email functionality (auth with email features)",
+		"SMTP_HOST":      "SMTP email sending",
+		"SMTP_PORT":      "SMTP email sending",
+		"SMTP_USER":      "SMTP email sending",
+		"SMTP_PASS":      "SMTP email sending",
 	}
 
 	if reason, ok := reasons[key]; ok {
