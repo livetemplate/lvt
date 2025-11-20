@@ -150,14 +150,14 @@ func (s *[[.ResourceName]]State) Change(ctx *livetemplate.ActionContext) error {
 		// For page mode: Exit edit mode and stay on detail view
 		s.IsEditingMode = false
 
-		// For modal mode: Clear editing state after successful update
-		s.EditingID = ""
-		s.Editing[[.ResourceName]] = nil
-
 		// Reload the updated resource
 		if err := s.load[[.ResourceName]]s(dbCtx); err != nil {
 			return err
 		}
+
+		// For modal mode: Clear editing ID to close modal
+		// Keep Editing[[.ResourceName]] for potential use in response
+		s.EditingID = ""
 
 	case "cancel_edit":
 		s.EditingID = ""

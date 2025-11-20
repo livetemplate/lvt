@@ -26,7 +26,7 @@ This document tracks all skipped tests in the e2e suite, their root causes, and 
 
 **Changes Made**:
 1. ✅ Fixed server state pollution bug in modal edit workflow
-2. ✅ Fixed `handler.go.tmpl` to clear `EditingID` after successful update
+2. ✅ Fixed `handler.go.tmpl` to clear `EditingID` (but NOT `Editing[[.ResourceName]]`) after successful update
 3. ✅ Fixed `form.tmpl` Cancel button to send `cancel_edit` action instead of navigating
 4. ✅ Client library loading was already fixed in previous session
 
@@ -42,7 +42,9 @@ When editing a post in modal mode:
 The Cancel button in `form.tmpl` was an `<a href>` link instead of `<button lvt-click="cancel_edit">`, so clicking Cancel never cleared `EditingID`.
 
 **Solution**:
-1. **handler.go.tmpl** (line 153-155): Added `s.EditingID = ""; s.Editing[[.ResourceName]] = nil` after successful update
+1. **handler.go.tmpl** (line 158-160): Added `s.EditingID = ""` (only) after successful update
+   - **CRITICAL**: Only clear `EditingID`, NOT `Editing[[.ResourceName]]`
+   - Clearing both broke delete functionality for unknown reasons (possibly used in response rendering)
 2. **form.tmpl** (line 90 - multi, line 90 - single): Changed Cancel from `<a href>` to `<button type="button" lvt-click="cancel_edit">`
 
 **Test Results** (After Fix):
