@@ -139,18 +139,6 @@ func (s *UserState) Change(ctx *livetemplate.ActionContext) error {
 			return err
 		}
 
-		// Re-fetch the updated resource for display
-		users, err := s.Queries.GetAllUsers(dbCtx)
-		if err == nil {
-			for _, item := range users {
-				if item.ID == input.ID {
-					itemCopy := item
-					s.EditingUser = &itemCopy
-					break
-				}
-			}
-		}
-
 	case "cancel_edit":
 		s.EditingID = ""
 		s.EditingUser = nil
@@ -280,6 +268,9 @@ func (s *UserState) Change(ctx *livetemplate.ActionContext) error {
 }
 
 func (s *UserState) Init() error {
+	// Clear any editing state from previous session
+	s.EditingID = ""
+	s.EditingUser = nil
 	return s.loadUsers(context.Background())
 }
 
