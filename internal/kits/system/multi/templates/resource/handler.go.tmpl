@@ -150,21 +150,13 @@ func (s *[[.ResourceName]]State) Change(ctx *livetemplate.ActionContext) error {
 		// For page mode: Exit edit mode and stay on detail view
 		s.IsEditingMode = false
 
+		// For modal mode: Clear editing state after successful update
+		s.EditingID = ""
+		s.Editing[[.ResourceName]] = nil
+
 		// Reload the updated resource
 		if err := s.load[[.ResourceName]]s(dbCtx); err != nil {
 			return err
-		}
-
-		// Re-fetch the updated resource for display
-		[[.ResourceNameLower]]s, err := s.Queries.GetAll[[.ResourceNamePlural]](dbCtx)
-		if err == nil {
-			for _, item := range [[.ResourceNameLower]]s {
-				if item.ID == input.ID {
-					itemCopy := item
-					s.Editing[[.ResourceName]] = &itemCopy
-					break
-				}
-			}
 		}
 
 	case "cancel_edit":

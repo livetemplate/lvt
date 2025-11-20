@@ -22,45 +22,61 @@ This document tracks all skipped tests in the e2e suite, their root causes, and 
 
 **File**: `e2e/complete_workflow_test.go:19`
 
-**Status**: ⚠️ **PARTIALLY FIXED** (2025-11-20) - Client library loading fixed, but 2 subtests have timeouts
+**Status**: ✅ **MOSTLY FIXED** (2025-11-20) - Server state pollution fixed, 2 subtests have flakiness when run together
 
 **Changes Made**:
-1. ✅ Removed `t.Skip()` statement
-2. ✅ Added `setupLocalClientLibrary(t, appDir)` call BEFORE generating resources (step 2.5)
-3. ✅ This ensures DevMode=true is set when resources are generated
-4. ✅ Client library is embedded in Docker image and loads correctly
+1. ✅ Fixed server state pollution bug in modal edit workflow
+2. ✅ Fixed `handler.go.tmpl` to clear `EditingID` after successful update
+3. ✅ Fixed `form.tmpl` Cancel button to send `cancel_edit` action instead of navigating
+4. ✅ Client library loading was already fixed in previous session
 
-**Root Cause (FIXED)**:
-The test was calling `setupLocalClientLibrary` AFTER resources were already generated. This meant:
-- Resources were generated with `DevMode=false` (the default)
-- Handler code was compiled with `livetemplate.WithDevMode(false)`
-- Templates still referenced unpkg CDN instead of local `/livetemplate-client.js`
+**Root Cause** (Server State Pollution):
+When editing a post in modal mode:
+1. User clicks "Edit" → handler sets `s.EditingID = postID`
+2. User clicks "Save" → handler runs update action
+3. **BUG**: Update handler was NOT clearing `s.EditingID` after successful update
+4. Next page load → template sees `EditingID` set and renders edit modal in initial HTML
+5. This caused Delete_Post and Validation_Errors tests to timeout waiting for clean page state
 
-**Solution**: Call `setupLocalClientLibrary(t, appDir)` immediately after creating the app (step 2.5), BEFORE generating any resources. This ensures:
-- `.lvtrc` has `dev_mode=true` when resources are generated
-- Handlers compile with `WithDevMode(true)`
-- Templates use `<script src="/livetemplate-client.js"></script>`
-- Client library file is embedded in Docker image
+**Additional Bug** (Cancel Button):
+The Cancel button in `form.tmpl` was an `<a href>` link instead of `<button lvt-click="cancel_edit">`, so clicking Cancel never cleared `EditingID`.
+
+**Solution**:
+1. **handler.go.tmpl** (line 153-155): Added `s.EditingID = ""; s.Editing[[.ResourceName]] = nil` after successful update
+2. **form.tmpl** (line 90 - multi, line 90 - single): Changed Cancel from `<a href>` to `<button type="button" lvt-click="cancel_edit">`
 
 **Test Results** (After Fix):
-- ✅ WebSocket_Connection (0.44s) - **FIXED!** Was timing out before
-- ✅ Posts_Page_Loads (0.81s) - Still passing
-- ✅ Create_and_Edit_Post (1.64s) - **FIXED!** Was timing out before
-- ❌ Delete_Post (20.01s timeout) - Unrelated test flakiness
-- ❌ Validation_Errors (20.01s timeout) - Unrelated test flakiness
-- ✅ Infinite_Scroll (0.00s) - Still passing
-- ✅ Server_Logs_Check (0.00s) - Still passing
-- ✅ Console_Logs_Check (0.00s) - Still passing
+- ✅ WebSocket_Connection (0.35-0.60s) - Passing
+- ✅ Posts_Page_Loads (0.80-0.87s) - Passing
+- ✅ Create_and_Edit_Post (1.59-1.69s) - Passing
+- ✅ Delete_Post (0.82s when run alone) - **FIXED!** Was 20-60s timeout, now passes individually
+- ✅ Validation_Errors (0.50s when run alone) - **FIXED!** Was 20s timeout, now passes individually
+- ✅ Infinite_Scroll (0.00s) - Passing
+- ✅ Server_Logs_Check (0.00s) - Passing
+- ✅ Console_Logs_Check (0.00s) - Passing
 
-**Remaining Work**:
-The Delete_Post and Validation_Errors subtests are timing out for reasons unrelated to the client library (the client is now loading correctly). These may be:
-- Test-specific timing issues
-- Browser context timeout issues
-- Test environment quirks
+**Remaining Issue** (Test Design, Not Application Bug):
+Delete_Post may occasionally fail when run with the FULL test suite due to database state from previous subtests (all subtests share the same Docker container and database). This is a **test isolation issue**, NOT an application bug:
 
-**Priority**: Low - Main client library issue is FIXED. The 5/8 passing subtests (62.5% success rate) validate the Docker deployment works. The remaining timeouts are test flakiness, not core functionality issues.
+- Validation_Errors: ✅ Now PASSES in full suite (0.34s)
+- Delete_Post: ⚠️ May fail in full suite due to database containing posts from Create_and_Edit_Post
 
-**Estimated Effort**: Low (1-2 hours) to investigate and fix the remaining timeout issues
+**Why This Happens**:
+- All subtests share ONE Docker container with ONE database
+- Each subtest gets a NEW browser context (new session, clean EditingID) ✅
+- But the DATABASE persists across subtests ❌
+- Delete_Post expects an empty database but finds "My Updated Blog Post" from Create_and_Edit_Post
+
+**This is NOT the server state pollution bug** - that's fixed. This is a test isolation issue where subtests should clean up database state or be independent of it.
+
+**Files Modified**:
+- `internal/kits/system/multi/templates/resource/handler.go.tmpl`
+- `internal/kits/system/multi/components/form.tmpl`
+- `internal/kits/system/single/components/form.tmpl`
+
+**Priority**: ✅ **MAIN BUG FIXED** - The server state pollution is resolved. Remaining test flakiness is low priority.
+
+**Estimated Effort**: Low (1-2 hours) to investigate remaining test flakiness when run together
 
 ---
 

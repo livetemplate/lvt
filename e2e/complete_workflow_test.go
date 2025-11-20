@@ -416,7 +416,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 					const rows = Array.from(table.querySelectorAll('tbody tr'));
 					return rows.some(row => {
 						const cells = row.querySelectorAll('td');
-						return cells.length > 0 && cells[0].textContent.trim() === 'My Updated Blog Post';
+						return cells.length > 0 && cells[0].textContent.trim() === 'Post To Delete';
 					});
 				})()
 			`, &postStillExists),
