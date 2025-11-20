@@ -1,16 +1,17 @@
 # Skipped E2E Tests - Investigation and Remediation Plan
 
-**Last Updated**: 2025-11-18
-**Status**: 7 tests currently skipped (3 need fixes, 4 intentionally disabled)
+**Last Updated**: 2025-11-19
+**Status**: 6 tests currently skipped (2 need fixes, 4 intentionally disabled)
 
 ## Summary
 
 This document tracks all skipped tests in the e2e suite, their root causes, and remediation plans.
 
 ### Quick Stats
-- **Total skipped**: 7 tests
-- **Need fixing**: 3 tests (TestCompleteWorkflow_BlogApp + 2 TutorialE2E subtests)
+- **Total skipped**: 6 tests
+- **Need fixing**: 2 tests (TestCompleteWorkflow_BlogApp + 1 TutorialE2E subtest)
 - **Intentionally disabled**: 4 tests (deployment tests - by design)
+- **Recently fixed**: 2 tests (Modal_Delete_with_Confirmation, Validation_Errors)
 
 ---
 
@@ -106,9 +107,9 @@ The test had TWO issues:
 
 ### 3. TestTutorialE2E/Validation_Errors
 
-**File**: `e2e/tutorial_test.go:655`
+**File**: `e2e/tutorial_test.go:653`
 
-**Status**: 🔍 **ROOT CAUSE IDENTIFIED** - Client library bug - 2025-11-19
+**Status**: ✅ **FIXED** (2025-11-19)
 
 **WebSocket Response Analysis** (v0.3.1):
 ```json
@@ -147,98 +148,87 @@ window.liveTemplateClient.errors = {}  // ❌ EMPTY!
 3. Client dynamically injects `<small>` error tags into form ❌
 4. User sees validation errors ❌
 
-**Root Cause** (Investigated 2025-11-18):
-The issue is NOT with conditional rendering in templates. The templates are correctly generated with:
+**Root Cause** (Found 2025-11-19):
+The issue was a **field name casing mismatch** in the livetemplate library:
+
+Templates check for errors using lowercase field names (matching HTML form inputs):
 ```html
-{{if .lvt.HasError "fieldname"}}
-<small style="color: #c00;">{{.lvt.Error "fieldname"}}</small>
+{{if .lvt.HasError "title"}}
+<small style="color: #c00;">{{.lvt.Error "title"}}</small>
 {{end}}
 ```
 
-The actual problem is in the **handler code generation**:
-- When `ctx.BindAndValidate()` fails (line 91 in handler.go.tmpl), it returns an error
-- However, it does NOT capture the field-level validation errors and store them in a format accessible to templates
-- The template never receives the validation error data to display
-
-**Code Evidence**:
-```go
-// In handler.go.tmpl line 91-92:
-if err := ctx.BindAndValidate(&input, validate); err != nil {
-    return err  // ← This just returns generic error, doesn't store field errors
+But the server was sending validation errors with PascalCase field names (matching Go struct fields):
+```json
+{
+  "errors": {
+    "Title": "Title is required",    // ❌ PascalCase
+    "Content": "Content is required"  // ❌ PascalCase
+  }
 }
 ```
+
+This caused `.lvt.HasError "title"` to return false, so error conditionals never rendered.
+
+**Fix Applied** (livetemplate v0.3.2):
+Modified `ValidationToMultiError()` in `action.go` to convert struct field names to lowercase:
+
+```go
+for _, e := range validationErrs {
+    structFieldName := e.Field()         // "Title"
+    formFieldName := strings.ToLower(structFieldName)  // "title"
+
+    fieldErrors = append(fieldErrors, FieldError{
+        Field:   formFieldName,  // ✅ Use lowercase to match HTML input names
+        Message: message,
+    })
+}
+```
+
+**Changes Made**:
+1. ✅ Fixed `ValidationToMultiError` in livetemplate library (action.go:295-319)
+2. ✅ Released livetemplate v0.3.2 with the fix
+3. ✅ Updated lvt to use livetemplate v0.3.2
+4. ✅ Verified all livetemplate library tests pass
+5. ✅ Removed `t.Skip()` from test (was never needed after fix)
+
+**Files Modified**:
+- **Livetemplate Library** (`github.com/livetemplate/livetemplate`):
+  - `action.go`: Fixed field name casing in ValidationToMultiError
+- **LVT** (`github.com/livetemplate/lvt`):
+  - `go.mod`: Updated to livetemplate v0.3.2
 
 **Test Results**:
-When test submits empty form:
-- Server receives validation error
-- Handler returns error to livepage
-- Form HTML shows NO `<small>` tags (errors not rendered)
-- Template conditionals never execute because `.lvt.HasError()` returns false
+- ✅ Passes: `go test -run "TestTutorialE2E/Validation_Errors$"` (isolation)
+- ✅ Passes: Full E2E suite `go test ./e2e/`
+- ✅ Error messages correctly displayed in UI:
+  ```
+  Title is required
+  Content is required
+  ```
 
-**Required Fix**:
-This requires changes to the **livepage library** or **handler template**:
-
-**Option A: Fix in livepage library**
-- Modify `BindAndValidate` to automatically capture validation errors
-- Store field-level errors in context accessible via `.lvt.HasError()` and `.lvt.Error()`
-
-**Option B: Fix in handler template** (Simpler)
-- Catch validation errors in handler
-- Extract field-level errors from validator.ValidationErrors
-- Call context method to store errors (e.g., `ctx.SetFieldError(field, message)`)
-- Return error that triggers re-render WITH errors
-
-**Example Fix Pattern**:
-```go
-if err := ctx.BindAndValidate(&input, validate); err != nil {
-    // Extract field errors from validator.ValidationErrors
-    if validationErrors, ok := err.(validator.ValidationErrors); ok {
-        for _, fieldError := range validationErrors {
-            ctx.SetFieldError(fieldError.Field(), fieldError.Error())
-        }
+**WebSocket Response** (After Fix):
+```json
+{
+  "tree": {
+    "9": {"0": "Title is required", "s": [...]},
+    "11": {"0": "Content is required", "s": [...]}
+  },
+  "meta": {
+    "success": false,
+    "errors": {
+      "title": "Title is required",    // ✅ lowercase!
+      "content": "Content is required"  // ✅ lowercase!
     }
-    return err // Re-render with errors
+  }
 }
 ```
 
-**Required Fix** (Client Library):
-The JavaScript client needs to be updated to handle validation errors from WebSocket responses:
+**Commits**:
+- livetemplate: `a6343bae` - fix: convert validation error field names to lowercase
+- lvt: Pending - Update to livetemplate v0.3.2
 
-1. **Extract errors from response**: When `meta.errors` exists in WebSocket response, store them
-2. **Update client state**: Store errors in accessible client state (e.g., `window.liveTemplateClient.errors`)
-3. **Inject error HTML**: Dynamically inject `<small>` error tags into the form for each field error
-4. **Clear errors on success**: Clear stored errors when `meta.success === true`
-
-**Example Fix** (pseudocode for client library):
-```javascript
-// In WebSocket message handler
-if (response.meta.errors) {
-  // Store errors
-  this.errors = response.meta.errors;
-
-  // Inject error HTML for each field
-  Object.entries(this.errors).forEach(([field, message]) => {
-    const input = form.querySelector(`[name="${field}"]`);
-    if (input) {
-      input.setAttribute('aria-invalid', 'true');
-      // Insert <small> tag after input
-      const errorEl = document.createElement('small');
-      errorEl.style.color = '#c00';
-      errorEl.textContent = message;
-      input.parentNode.appendChild(errorEl);
-    }
-  });
-}
-```
-
-**To Enable Test**:
-1. Update JavaScript client library to handle `meta.errors`
-2. Ensure errors are injected into DOM as `<small>` tags
-3. Test passes when error messages are visible
-
-**Estimated Effort**: Low-Medium (2-4 hours) - client-side JavaScript changes
-
-**Priority**: High - Validation UX completely broken without this
+**Priority**: ✅ COMPLETE - Server-side validation rendering now working correctly
 
 ---
 
@@ -296,12 +286,12 @@ These tests are correctly disabled and require explicit opt-in via environment v
 
 ## Remediation Priority
 
-### High Priority (Simple Fixes)
-1. ✅ **TestTutorialE2E/Modal_Delete_with_Confirmation** - Make test independent (1-2 hours)
+### Completed ✅
+1. ✅ **TestTutorialE2E/Modal_Delete_with_Confirmation** - Fixed (2025-11-18)
+2. ✅ **TestTutorialE2E/Validation_Errors** - Fixed (2025-11-19)
 
 ### Medium Priority (Moderate Effort)
-2. **TestCompleteWorkflow_BlogApp** - Embed client library in Docker (4-8 hours)
-3. **TestTutorialE2E/Validation_Errors** - Investigate and fix product bug (2-16 hours)
+3. **TestCompleteWorkflow_BlogApp** - Embed client library in Docker (4-8 hours)
 
 ### No Action Needed
 4-7. Deployment tests - Intentionally disabled by design ✅

@@ -652,7 +652,6 @@ func TestTutorialE2E(t *testing.T) {
 
 	// Test Validation Errors
 	t.Run("Validation Errors", func(t *testing.T) {
-		t.Skip("Client library doesn't handle meta.errors - window.liveTemplateClient.errors stays empty")
 		// Create per-subtest context with individual timeout
 		testCtx, cancel := chromedp.NewContext(ctx)
 		defer cancel()
@@ -692,6 +691,9 @@ func TestTutorialE2E(t *testing.T) {
 
 			// Wait for validation response - form should still be visible
 			waitFor(`document.querySelector('form[lvt-submit]') !== null`, 10*time.Second),
+
+			// Wait a bit for error messages to be injected by client library
+			chromedp.Sleep(2*time.Second),
 
 			// Debug: Capture the form HTML
 			chromedp.Evaluate(`document.querySelector('form[lvt-submit]')?.outerHTML || 'Form not found'`, &formHTML),
@@ -738,14 +740,26 @@ func TestTutorialE2E(t *testing.T) {
 		}
 
 		// Debug: Check what the client has
-		var lastWSMessage, clientErrors string
+		var lastWSMessage, clientErrors, activeFormStatus, handleResponseCalled, renderCalled, responseMeta, allWSMessages, errorElementsCount string
 		chromedp.Run(testCtx,
 			chromedp.Evaluate(`window.__lastWSMessage || 'No WS message'`, &lastWSMessage),
 			chromedp.Evaluate(`JSON.stringify(window.liveTemplateClient?.errors || {})`, &clientErrors),
+			chromedp.Evaluate(`window.liveTemplateClient?.formLifecycleManager?.activeForm ? 'active' : 'not-active'`, &activeFormStatus),
+			chromedp.Evaluate(`window.__lvtHandleResponseCalled ? 'yes' : 'no'`, &handleResponseCalled),
+			chromedp.Evaluate(`window.__lvtRenderFieldErrorsCalled ? 'yes' : 'no'`, &renderCalled),
+			chromedp.Evaluate(`JSON.stringify(window.__lvtResponseMeta || {})`, &responseMeta),
+			chromedp.Evaluate(`JSON.stringify(window.__wsMessages?.slice(-5) || [])`, &allWSMessages),
+			chromedp.Evaluate(`document.querySelectorAll('small[data-lvt-error]').length.toString()`, &errorElementsCount),
 		)
 
 		t.Logf("Last WS message: %s", lastWSMessage)
+		t.Logf("All WS messages (last 5): %s", allWSMessages)
 		t.Logf("Client errors state: %s", clientErrors)
+		t.Logf("Active form status: %s", activeFormStatus)
+		t.Logf("HandleResponse called: %s", handleResponseCalled)
+		t.Logf("RenderFieldErrors called: %s", renderCalled)
+		t.Logf("Response meta: %s", responseMeta)
+		t.Logf("Error elements count: %s", errorElementsCount)
 		t.Logf("Form HTML (first 500 chars): %s", formHTML[:min(500, len(formHTML))])
 
 		// Verify errors are displayed in the UI (server-side rendered)
