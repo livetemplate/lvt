@@ -207,16 +207,29 @@ func TestPageModeURLRouting(t *testing.T) {
 
 		// Now navigate directly to that resource
 		directURL := fmt.Sprintf("%s/%s", testURL, firstResourceID)
+		var bodyText string
+		var hasTable bool
 		err = chromedp.Run(testCtx,
 			chromedp.Navigate(directURL),
+			e2etest.WaitForWebSocketReady(30*time.Second), // Wait for WebSocket after direct navigation
 			waitFor(`document.readyState === 'complete'`, 5*time.Second),
+			chromedp.Evaluate(`document.body.innerText`, &bodyText),
+			chromedp.Evaluate(`document.querySelector('table') !== null`, &hasTable),
 			chromedp.Evaluate(`document.body.innerText.includes('Details') || document.body.innerText.includes('Back')`, &detailVisible),
 		)
 		if err != nil {
 			t.Fatalf("Failed to navigate directly: %v", err)
 		}
 
-		if !detailVisible {
+		// Detail view should show "Details" or "Back" and should NOT show the list table
+		if !detailVisible || hasTable {
+			t.Logf("Body text (first 500 chars): %s", func() string {
+				if len(bodyText) > 500 {
+					return bodyText[:500]
+				}
+				return bodyText
+			}())
+			t.Logf("Has table (should be false): %v, Has Details/Back text: %v", hasTable, detailVisible)
 			t.Error("Detail view not shown when navigating directly to resource URL")
 		} else {
 			t.Log("✅ Direct navigation works")
