@@ -393,8 +393,11 @@ func buildDockerImage(t *testing.T, appDir, imageName string) {
 # Copy app-specific code
 COPY . .
 
-# Tidy and download dependencies (fast because base deps are cached)
-RUN go mod tidy && go mod download
+# Tidy and download dependencies using cache mount to avoid re-downloading across builds
+# This shares the Go module cache across all parallel Docker builds
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go mod tidy && go mod download
 
 # Generate database code if sqlc.yaml exists
 RUN if [ -f internal/database/sqlc.yaml ]; then \
@@ -430,8 +433,10 @@ CMD ["./app"]
 	}
 
 	// Build only the app layer (fast, ~5-10 seconds)
+	// Enable BuildKit for cache mount support
 	buildCmd := exec.Command("docker", "build", "-t", imageName, ".")
 	buildCmd.Dir = appDir
+	buildCmd.Env = append(os.Environ(), "DOCKER_BUILDKIT=1")
 
 	output, err := buildCmd.CombinedOutput()
 	if err != nil {
