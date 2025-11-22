@@ -268,9 +268,10 @@ func (s *UserState) Change(ctx *livetemplate.ActionContext) error {
 }
 
 func (s *UserState) Init() error {
-	// Clear any editing state from previous session
-	s.EditingID = ""
-	s.EditingUser = nil
+	// Clear any editing state from previous session (but preserve if already set for URL routing)
+	if s.EditingID == "" {
+		s.EditingUser = nil
+	}
 	return s.loadUsers(context.Background())
 }
 

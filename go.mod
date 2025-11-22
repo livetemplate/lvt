@@ -2,7 +2,7 @@ module github.com/livetemplate/lvt
 
 go 1.25
 
-require github.com/livetemplate/livetemplate v0.3.2
+require github.com/livetemplate/livetemplate v0.4.1
 
 require (
 	github.com/brianvoe/gofakeit/v7 v7.8.2
@@ -86,3 +86,6 @@ require (
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
 )
+
+// Use local livetemplate with debug logging
+// replace github.com/livetemplate/livetemplate => /Users/adnaan/code/livetemplate/livetemplate

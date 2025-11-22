@@ -17,7 +17,8 @@ import (
 // TestCompleteWorkflow_BlogApp tests the complete blog application workflow
 // This is a comprehensive integration test that validates the entire stack
 func TestCompleteWorkflow_BlogApp(t *testing.T) {
-	t.Parallel() // Can run concurrently with Chrome pool
+	// Do NOT run in parallel - this test builds Docker images which is resource-intensive
+	// and can cause timeouts when competing with other parallel tests for CPU/memory/disk.
 
 	tmpDir := t.TempDir()
 
@@ -321,7 +322,9 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 	t.Run("Delete Post", func(t *testing.T) {
 		ctx, cancel := createBrowserContext()
 		defer cancel()
-		ctx, timeoutCancel := context.WithTimeout(ctx, getBrowserTimeout())
+		// Use 60s timeout - this test does multiple operations (create, open modal, edit, delete)
+		// Under heavy load when running full test suite in parallel, operations can be very slow.
+		ctx, timeoutCancel := context.WithTimeout(ctx, 60*time.Second)
 		defer timeoutCancel()
 
 		err := chromedp.Run(ctx,
@@ -437,7 +440,9 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 	t.Run("Validation Errors", func(t *testing.T) {
 		ctx, cancel := createBrowserContext()
 		defer cancel()
-		ctx, timeoutCancel := context.WithTimeout(ctx, getBrowserTimeout())
+		// Use 60s timeout - validation test does multiple operations and can be slow
+		// under heavy load when running full test suite in parallel.
+		ctx, timeoutCancel := context.WithTimeout(ctx, 60*time.Second)
 		defer timeoutCancel()
 
 		var errorsVisible bool
