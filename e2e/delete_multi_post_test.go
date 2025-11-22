@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -354,6 +355,53 @@ func TestDeleteWithMultiplePosts(t *testing.T) {
 		}
 		t.Log("✅ Clicked delete button")
 
+		// Capture DOM state before waiting for deletion
+		var tableHTML string
+		var postData string
+		err = chromedp.Run(ctx,
+			// Get full table HTML
+			chromedp.Evaluate(`
+				(() => {
+					const table = document.querySelector('table');
+					return table ? table.outerHTML : 'NO TABLE FOUND';
+				})()
+			`, &tableHTML),
+			// Get all post data from table
+			chromedp.Evaluate(`
+				(() => {
+					const rows = Array.from(document.querySelectorAll('table tbody tr'));
+					return rows.map(row => {
+						const cells = Array.from(row.querySelectorAll('td'));
+						return {
+							title: cells[0]?.textContent.trim(),
+							content: cells[1]?.textContent.trim(),
+							published: cells[2]?.textContent.trim(),
+							id: row.querySelector('[lvt-data-id]')?.getAttribute('lvt-data-id') || 'NO-ID'
+						};
+					});
+				})()
+			`, &postData),
+		)
+		if err == nil {
+			// Save table HTML to file
+			if err := os.WriteFile("/tmp/delete_test_table.html", []byte(tableHTML), 0644); err == nil {
+				t.Logf("📝 Table HTML saved: /tmp/delete_test_table.html")
+			}
+			t.Logf("📊 Posts in table: %s", postData)
+		}
+
+		// Capture screenshot before waiting for deletion
+		var beforeDeleteScreenshot []byte
+		err = chromedp.Run(ctx,
+			chromedp.CaptureScreenshot(&beforeDeleteScreenshot),
+		)
+		if err == nil {
+			screenshotPath := "/tmp/delete_test_before_wait.png"
+			if err := os.WriteFile(screenshotPath, beforeDeleteScreenshot, 0644); err == nil {
+				t.Logf("📸 Screenshot saved: %s", screenshotPath)
+			}
+		}
+
 		// Wait for post to disappear
 		err = chromedp.Run(ctx,
 			waitFor(`
@@ -371,6 +419,19 @@ func TestDeleteWithMultiplePosts(t *testing.T) {
 				})()
 			`, 10*time.Second),
 		)
+
+		// Capture screenshot after timeout/completion
+		var afterScreenshot []byte
+		_ = chromedp.Run(ctx,
+			chromedp.CaptureScreenshot(&afterScreenshot),
+		)
+		if len(afterScreenshot) > 0 {
+			screenshotPath := "/tmp/delete_test_after_wait.png"
+			if err := os.WriteFile(screenshotPath, afterScreenshot, 0644); err == nil {
+				t.Logf("📸 Screenshot saved: %s", screenshotPath)
+			}
+		}
+
 		if err != nil {
 			t.Fatalf("Failed to delete second post: %v", err)
 		}

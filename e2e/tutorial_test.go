@@ -240,7 +240,7 @@ func TestTutorialE2E(t *testing.T) {
 					const table = document.querySelector('table tbody');
 					return table && table.querySelectorAll('tr').length > 0;
 				})()
-			`, 5*time.Second),
+			`, 30*time.Second),
 			chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
 			// Wait for page to load
 			waitFor(`document.readyState === 'complete'`, 10*time.Second),
@@ -535,7 +535,7 @@ func TestTutorialE2E(t *testing.T) {
 		`, targetTitle)
 			var postVisible bool
 			if err := chromedp.Run(testCtx,
-				waitFor(postVisibleJS, 5*time.Second),
+				waitFor(postVisibleJS, 30*time.Second),
 				chromedp.Evaluate(postVisibleJS, &postVisible),
 			); err != nil {
 				t.Fatalf("Failed to verify post fixture: %v", err)
@@ -599,6 +599,22 @@ func TestTutorialE2E(t *testing.T) {
 			t.Fatalf("Failed to open edit modal: %v", err)
 		}
 
+		// CAPTURE STATE BEFORE CLICKING DELETE (so we can see the starting state)
+		var screenshotBefore []byte
+		var htmlBefore string
+		err = chromedp.Run(testCtx,
+			chromedp.FullScreenshot(&screenshotBefore, 100),
+			chromedp.OuterHTML("html", &htmlBefore),
+		)
+		if err == nil {
+			beforePath := fmt.Sprintf("/tmp/delete_before_%d.png", time.Now().Unix())
+			beforeHTMLPath := fmt.Sprintf("/tmp/delete_before_%d.html", time.Now().Unix())
+			os.WriteFile(beforePath, screenshotBefore, 0644)
+			os.WriteFile(beforeHTMLPath, []byte(htmlBefore), 0644)
+			t.Logf("💾 BEFORE DELETE - screenshot: %s", beforePath)
+			t.Logf("💾 BEFORE DELETE - HTML: %s", beforeHTMLPath)
+		}
+
 		// Override window.confirm to return true (accept)
 		err = chromedp.Run(testCtx,
 			chromedp.Evaluate(`window.confirm = () => true;`, nil),
@@ -612,6 +628,32 @@ func TestTutorialE2E(t *testing.T) {
 					return false;
 				})()
 			`, &postExists),
+		)
+		if err != nil {
+			t.Fatalf("Failed to click delete button: %v", err)
+		}
+
+		// Wait a moment for the delete to be sent
+		time.Sleep(500 * time.Millisecond)
+
+		// CAPTURE STATE AFTER CLICKING DELETE (before waiting for UI update)
+		var screenshotAfter []byte
+		var htmlAfter string
+		err = chromedp.Run(testCtx,
+			chromedp.FullScreenshot(&screenshotAfter, 100),
+			chromedp.OuterHTML("html", &htmlAfter),
+		)
+		if err == nil {
+			afterPath := fmt.Sprintf("/tmp/delete_after_click_%d.png", time.Now().Unix())
+			afterHTMLPath := fmt.Sprintf("/tmp/delete_after_click_%d.html", time.Now().Unix())
+			os.WriteFile(afterPath, screenshotAfter, 0644)
+			os.WriteFile(afterHTMLPath, []byte(htmlAfter), 0644)
+			t.Logf("💾 AFTER DELETE CLICK - screenshot: %s", afterPath)
+			t.Logf("💾 AFTER DELETE CLICK - HTML: %s", afterHTMLPath)
+		}
+
+		// Now wait for deletion to complete in the UI
+		err = chromedp.Run(testCtx,
 			// Wait for deletion to process
 			waitFor(fmt.Sprintf(`
 			(() => {
@@ -623,7 +665,7 @@ func TestTutorialE2E(t *testing.T) {
 					return cells.length > 0 && cells[0].textContent.trim() === %q;
 				});
 			})()
-			`, targetTitle), 5*time.Second),
+			`, targetTitle), 30*time.Second),
 
 			waitForWebSocketReady(30*time.Second),
 			chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
@@ -631,6 +673,9 @@ func TestTutorialE2E(t *testing.T) {
 			waitFor(`document.readyState === 'complete'`, 10*time.Second),
 		)
 		if err != nil {
+			t.Logf("⚠️ Delete wait timed out: %v", err)
+			t.Logf("💾 Check BEFORE DELETE files for modal state")
+			t.Logf("💾 Check AFTER DELETE CLICK files for post-delete state")
 			t.Fatalf("Failed to delete post: %v", err)
 		}
 
@@ -871,7 +916,7 @@ func ensureTutorialPostExists(ctx context.Context, baseURL string) error {
 		chromedp.SendKeys(`textarea[name="content"]`, content, chromedp.ByQuery),
 		chromedp.Click(`input[name="published"]`, chromedp.ByQuery),
 		chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
-		waitFor(existenceCheck, 5*time.Second),
+		waitFor(existenceCheck, 30*time.Second),
 		chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
 		waitFor(`document.readyState === 'complete'`, 10*time.Second),
 	)

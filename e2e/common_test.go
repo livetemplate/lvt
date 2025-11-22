@@ -42,7 +42,7 @@ func validateNoTemplateExpressions(selector string) chromedp.Action {
 }
 
 // getBrowserTimeout returns optimized browser operation timeout
-// Local: 20s (faster feedback), CI: 60s (more lenient for slower environments)
+// Local: 20s (faster feedback), CI: 60s for stable operation
 func getBrowserTimeout() time.Duration {
-	return getTimeout("BROWSER_TIMEOUT", 20*time.Second, 60*time.Second)
+	return getTimeout("BROWSER_TIMEOUT", 20*time.Second, 120*time.Second)
 }

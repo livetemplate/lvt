@@ -387,8 +387,20 @@ func WaitFor(condition string, timeout time.Duration) chromedp.Action {
 				return state + '|' + url;
 			})()`, &wsInfo).Do(ctx)
 
-				return fmt.Errorf("timeout waiting for condition '%s' after %v (readyState: %s, client: %s, wrapper: %s, data-lvt-loading: %s, ws: %s, script: %s)",
-					condition, timeout, readyState, clientState, wrapperExists, wrapperLoading, wsInfo, scriptInfo)
+				// Check detailed client.isReady() state
+				var isReadyInfo string
+				_ = chromedp.Evaluate(`(() => {
+					const client = window.liveTemplateClient;
+					if (!client) return 'no-client';
+					const wrapper = client.wrapperElement;
+					const hasLoadingAttr = wrapper && wrapper.hasAttribute('data-lvt-loading');
+					const wsManagerState = client.webSocketManager?.getReadyState?.();
+					const isReady = typeof client.isReady === 'function' ? client.isReady() : 'not-a-function';
+					return 'isReady=' + isReady + ',hasLoadingAttr=' + hasLoadingAttr + ',wsManagerState=' + wsManagerState + ',useHTTP=' + client.useHTTP;
+				})()`, &isReadyInfo).Do(ctx)
+
+				return fmt.Errorf("timeout waiting for condition '%s' after %v (readyState: %s, client: %s, wrapper: %s, data-lvt-loading: %s, ws: %s, script: %s, isReadyDetails: %s)",
+					condition, timeout, readyState, clientState, wrapperExists, wrapperLoading, wsInfo, scriptInfo, isReadyInfo)
 			}
 
 			// Poll every 100ms (increased from 10ms for stability)

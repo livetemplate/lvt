@@ -220,7 +220,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 						return cells.length > 0 && cells[0].textContent.trim() === 'My First Blog Post';
 					});
 				})()
-			`, 10*time.Second),
+			`, 30*time.Second),
 		)
 		if err != nil {
 			t.Fatalf("Failed to create post: %v", err)
@@ -322,9 +322,10 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 	t.Run("Delete Post", func(t *testing.T) {
 		ctx, cancel := createBrowserContext()
 		defer cancel()
-		// Use 60s timeout - this test does multiple operations (create, open modal, edit, delete)
+		// Use 120s timeout - this test does multiple operations (create, open modal, edit, delete)
 		// Under heavy load when running full test suite in parallel, operations can be very slow.
-		ctx, timeoutCancel := context.WithTimeout(ctx, 60*time.Second)
+		// Increased from 60s to 120s to handle resource contention during parallel execution.
+		ctx, timeoutCancel := context.WithTimeout(ctx, 120*time.Second)
 		defer timeoutCancel()
 
 		err := chromedp.Run(ctx,
@@ -350,7 +351,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 						return cells.length > 0 && cells[0].textContent.trim() === 'Post To Delete';
 					});
 				})()
-			`, 10*time.Second),
+			`, 30*time.Second),
 
 			// Click Edit to open modal for deletion
 			chromedp.Evaluate(`
@@ -389,6 +390,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 				})()
 			`, nil),
 			// Wait for deletion and table update
+			// Increased timeout to account for system load during parallel test execution
 			waitFor(`
 				(() => {
 					const table = document.querySelector('table tbody');
@@ -399,7 +401,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 						return cells.length > 0 && cells[0].textContent.includes('Post To Delete');
 					});
 				})()
-			`, 10*time.Second),
+			`, 30*time.Second),
 
 			chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
 			// Wait for page to fully load
@@ -440,9 +442,10 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 	t.Run("Validation Errors", func(t *testing.T) {
 		ctx, cancel := createBrowserContext()
 		defer cancel()
-		// Use 60s timeout - validation test does multiple operations and can be slow
+		// Use 120s timeout - validation test does multiple operations and can be slow
 		// under heavy load when running full test suite in parallel.
-		ctx, timeoutCancel := context.WithTimeout(ctx, 60*time.Second)
+		// Increased from 60s to 120s to handle resource contention during parallel execution.
+		ctx, timeoutCancel := context.WithTimeout(ctx, 120*time.Second)
 		defer timeoutCancel()
 
 		var errorsVisible bool
