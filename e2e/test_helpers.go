@@ -818,18 +818,18 @@ func buildAndRunNative(t *testing.T, appDir string, port int) *exec.Cmd {
 		if serverLogFile != nil {
 			serverLogFile.Close()
 
-			// Read and print [TIMING] logs
+			// Read and print debug logs ([TIMING], [PUMP], [SEND])
 			if content, err := os.ReadFile(serverLogPath); err == nil {
 				lines := strings.Split(string(content), "\n")
-				timingLines := []string{}
+				debugLines := []string{}
 				for _, line := range lines {
-					if strings.Contains(line, "[TIMING]") {
-						timingLines = append(timingLines, line)
+					if strings.Contains(line, "[TIMING]") || strings.Contains(line, "[PUMP]") || strings.Contains(line, "[SEND]") {
+						debugLines = append(debugLines, line)
 					}
 				}
-				if len(timingLines) > 0 {
-					t.Log("📊 TIMING LOGS:")
-					for _, line := range timingLines {
+				if len(debugLines) > 0 {
+					t.Log("📊 DEBUG LOGS ([TIMING], [PUMP], [SEND]):")
+					for _, line := range debugLines {
 						t.Log(line)
 					}
 				}
