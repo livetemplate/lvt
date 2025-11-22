@@ -480,6 +480,20 @@ func TestTutorialE2E(t *testing.T) {
 		// Create per-subtest context with individual timeout
 		testCtx, cancel := chromedp.NewContext(ctx)
 		defer cancel()
+
+		// Add console log listener for this specific test
+		chromedp.ListenTarget(testCtx, func(ev interface{}) {
+			if consoleEvent, ok := ev.(*runtime.EventConsoleAPICalled); ok {
+				for _, arg := range consoleEvent.Args {
+					if arg.Type == runtime.TypeString {
+						logMsg := string(arg.Value)
+						// Log ALL console messages for debugging
+						t.Logf("🔍 Browser console: %s", logMsg)
+					}
+				}
+			}
+		})
+
 		testCtx, timeoutCancel := context.WithTimeout(testCtx, getBrowserTimeout())
 		defer timeoutCancel()
 
@@ -615,6 +629,108 @@ func TestTutorialE2E(t *testing.T) {
 			t.Logf("💾 BEFORE DELETE - HTML: %s", beforeHTMLPath)
 		}
 
+		// Install WebSocket message interceptor to log all messages
+		// Use a more robust approach that waits for the client to be ready
+		var interceptorResult string
+		err = chromedp.Run(testCtx,
+			chromedp.Evaluate(`
+				(() => {
+					if (window.wsMessagesLogged) {
+						return 'Already installed, count=' + window.wsMessageCount;
+					}
+
+					window.wsMessageCount = 0;
+					window.wsMessages = [];
+
+					// Try multiple ways to find the WebSocket
+					let ws = null;
+
+					// Method 1: Via window.liveTemplateClient (exposed by client)
+					const client = window.liveTemplateClient;
+					if (client && client.webSocketManager) {
+						ws = client.webSocketManager.getSocket();
+						if (ws) {
+							console.log('[WS-LOG] Found WebSocket via window.liveTemplateClient');
+						}
+					}
+
+					// Method 2: Intercept WebSocket constructor (for future connections)
+					if (!ws) {
+						console.log('[WS-LOG] Client not ready, will intercept next WebSocket creation');
+						const OriginalWebSocket = window.WebSocket;
+						window.WebSocket = function(url, protocols) {
+							const ws = new OriginalWebSocket(url, protocols);
+							console.log('[WS-LOG] New WebSocket created:', url);
+							window.currentWebSocket = ws;
+
+							// Install interceptor on this new WebSocket
+							const originalOnMessage = ws.onmessage;
+							ws.onmessage = function(event) {
+								window.wsMessageCount++;
+								const msg = JSON.parse(event.data);
+								window.wsMessages.push({
+									count: window.wsMessageCount,
+									time: new Date().toISOString(),
+									action: msg.meta?.action,
+									success: msg.meta?.success,
+									size: event.data.length
+								});
+								console.log('[WS-RECV #' + window.wsMessageCount + ']',
+									'action=' + msg.meta?.action,
+									'success=' + msg.meta?.success,
+									'size=' + event.data.length + 'B');
+
+								if (originalOnMessage) {
+									originalOnMessage.call(this, event);
+								}
+							};
+
+							return ws;
+						};
+						window.wsMessagesLogged = true;
+						return 'Installed WebSocket constructor interceptor';
+					}
+
+					// Install interceptor on existing WebSocket
+					console.log('[WS-LOG] Installing interceptor on existing WebSocket, readyState:', ws.readyState);
+
+					const originalOnMessage = ws.onmessage;
+					console.log('[WS-LOG] Original onmessage handler exists:', !!originalOnMessage);
+					ws.onmessage = function(event) {
+						window.wsMessageCount++;
+						const msg = JSON.parse(event.data);
+						window.wsMessages.push({
+							count: window.wsMessageCount,
+							time: new Date().toISOString(),
+							action: msg.meta?.action,
+							success: msg.meta?.success,
+							size: event.data.length
+						});
+						console.log('[WS-RECV #' + window.wsMessageCount + ']',
+							'action=' + msg.meta?.action,
+							'success=' + msg.meta?.success,
+							'size=' + event.data.length + 'B');
+
+						if (originalOnMessage) {
+							console.log('[WS-LOG] Calling original handler');
+							originalOnMessage.call(this, event);
+							console.log('[WS-LOG] Original handler returned');
+						} else {
+							console.log('[WS-LOG] WARNING: No original handler to call!');
+						}
+					};
+
+					window.wsMessagesLogged = true;
+					return 'Interceptor installed on existing WebSocket (readyState=' + ws.readyState + ')';
+				})()
+			`, &interceptorResult),
+		)
+		if err != nil {
+			t.Logf("⚠️ Failed to install WebSocket interceptor: %v", err)
+		} else {
+			t.Logf("📡 WebSocket interceptor: %s", interceptorResult)
+		}
+
 		// Override window.confirm to return true (accept)
 		err = chromedp.Run(testCtx,
 			chromedp.Evaluate(`window.confirm = () => true;`, nil),
@@ -635,6 +751,21 @@ func TestTutorialE2E(t *testing.T) {
 
 		// Wait a moment for the delete to be sent
 		time.Sleep(500 * time.Millisecond)
+
+		// Check WebSocket messages received so far
+		var wsMessageInfo string
+		err = chromedp.Run(testCtx,
+			chromedp.Evaluate(`
+				(() => {
+					if (!window.wsMessages) return 'No WebSocket interceptor installed';
+					return 'Received ' + window.wsMessageCount + ' messages: ' +
+						JSON.stringify(window.wsMessages.slice(-3)); // Last 3 messages
+				})()
+			`, &wsMessageInfo),
+		)
+		if err == nil {
+			t.Logf("📡 WebSocket messages after delete click: %s", wsMessageInfo)
+		}
 
 		// CAPTURE STATE AFTER CLICKING DELETE (before waiting for UI update)
 		var screenshotAfter []byte
@@ -674,6 +805,20 @@ func TestTutorialE2E(t *testing.T) {
 		)
 		if err != nil {
 			t.Logf("⚠️ Delete wait timed out: %v", err)
+
+			// Check final WebSocket message count
+			var finalWSInfo string
+			chromedp.Run(testCtx,
+				chromedp.Evaluate(`
+					(() => {
+						if (!window.wsMessages) return 'No WebSocket interceptor';
+						return 'Total messages: ' + window.wsMessageCount +
+							', Last 5: ' + JSON.stringify(window.wsMessages.slice(-5));
+					})()
+				`, &finalWSInfo),
+			)
+			t.Logf("📡 Final WebSocket state: %s", finalWSInfo)
+
 			t.Logf("💾 Check BEFORE DELETE files for modal state")
 			t.Logf("💾 Check AFTER DELETE CLICK files for post-delete state")
 			t.Fatalf("Failed to delete post: %v", err)
