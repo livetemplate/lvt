@@ -748,10 +748,15 @@ func buildAndRunNative(t *testing.T, appDir string, port int) *exec.Cmd {
 		"LVT_DEV_MODE=true",
 	)
 
-	// Redirect output to prevent hanging I/O pipes
-	// Use os.DevNull to discard output (tests don't need server logs)
-	serverCmd.Stdout = nil
-	serverCmd.Stderr = nil
+	// Redirect output to file for debugging
+	serverLogPath := filepath.Join(appDir, "server.log")
+	serverLogFile, err := os.Create(serverLogPath)
+	if err != nil {
+		t.Fatalf("Failed to create server log file: %v", err)
+	}
+	serverCmd.Stdout = serverLogFile
+	serverCmd.Stderr = serverLogFile
+	t.Logf("📝 Server logs will be written to: %s", serverLogPath)
 
 	// Start the server
 	if err := serverCmd.Start(); err != nil {
@@ -807,6 +812,28 @@ func buildAndRunNative(t *testing.T, appDir string, port int) *exec.Cmd {
 				t.Log("✅ Native server stopped")
 			}
 			_ = serverCmd.Wait()
+		}
+
+		// Close log file and print timing logs
+		if serverLogFile != nil {
+			serverLogFile.Close()
+
+			// Read and print [TIMING] logs
+			if content, err := os.ReadFile(serverLogPath); err == nil {
+				lines := strings.Split(string(content), "\n")
+				timingLines := []string{}
+				for _, line := range lines {
+					if strings.Contains(line, "[TIMING]") {
+						timingLines = append(timingLines, line)
+					}
+				}
+				if len(timingLines) > 0 {
+					t.Log("📊 TIMING LOGS:")
+					for _, line := range timingLines {
+						t.Log(line)
+					}
+				}
+			}
 		}
 	})
 
