@@ -585,6 +585,30 @@ func TestTutorialE2E(t *testing.T) {
 			t.Fatalf("❌ Target post %q not found before deletion", targetTitle)
 		}
 
+		// Find the specific data-key of the row we're going to delete
+		var targetDataKey string
+		err = chromedp.Run(testCtx,
+			chromedp.Evaluate(fmt.Sprintf(`
+				(() => {
+					const table = document.querySelector('table');
+					if (!table) return '';
+					const rows = Array.from(table.querySelectorAll('tbody tr'));
+					const targetRow = rows.find(row => {
+						const cells = row.querySelectorAll('td');
+						return cells.length > 0 && cells[0].textContent.trim() === %q;
+					});
+					return targetRow ? targetRow.getAttribute('data-key') : '';
+				})()
+			`, targetTitle), &targetDataKey),
+		)
+		if err != nil {
+			t.Fatalf("Failed to find target row data-key: %v", err)
+		}
+		if targetDataKey == "" {
+			t.Fatalf("❌ Could not find data-key for post %q", targetTitle)
+		}
+		t.Logf("🎯 Target post data-key: %s", targetDataKey)
+
 		// Click Edit button to open modal
 		err = chromedp.Run(testCtx,
 			chromedp.Evaluate(fmt.Sprintf(`
@@ -784,19 +808,17 @@ func TestTutorialE2E(t *testing.T) {
 		}
 
 		// Now wait for deletion to complete in the UI
+		// Wait for the specific row with this data-key to be removed
 		err = chromedp.Run(testCtx,
-			// Wait for deletion to process
+			// Wait for deletion to process - check that the specific data-key is gone
 			waitFor(fmt.Sprintf(`
 			(() => {
 				const table = document.querySelector('table tbody');
 				if (!table) return true;
-				const rows = Array.from(table.querySelectorAll('tr'));
-				return !rows.some(row => {
-					const cells = row.querySelectorAll('td');
-					return cells.length > 0 && cells[0].textContent.trim() === %q;
-				});
+				const targetRow = table.querySelector('tr[data-key=%q]');
+				return targetRow === null; // Row with this data-key should be gone
 			})()
-			`, targetTitle), 30*time.Second),
+			`, targetDataKey), 30*time.Second),
 
 			waitForWebSocketReady(30*time.Second),
 			chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
@@ -824,17 +846,24 @@ func TestTutorialE2E(t *testing.T) {
 			t.Fatalf("Failed to delete post: %v", err)
 		}
 
-		// Verify the post is no longer in the table
+		// Verify the specific row with this data-key is no longer in the table
 		var postStillExists bool
 		err = chromedp.Run(testCtx,
-			chromedp.Evaluate(checkPostExistsJS, &postStillExists),
+			chromedp.Evaluate(fmt.Sprintf(`
+				(() => {
+					const table = document.querySelector('table tbody');
+					if (!table) return false;
+					const targetRow = table.querySelector('tr[data-key=%q]');
+					return targetRow !== null; // Returns true if row still exists
+				})()
+			`, targetDataKey), &postStillExists),
 		)
 		if err != nil {
 			t.Fatalf("Failed to check if post was deleted: %v", err)
 		}
 
 		if postStillExists {
-			t.Fatalf("❌ Post %q still exists after deletion", targetTitle)
+			t.Fatalf("❌ Post with data-key %q still exists after deletion", targetDataKey)
 		}
 
 		t.Logf("✅ Post %q deleted successfully after confirming", targetTitle)
