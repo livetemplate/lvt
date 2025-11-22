@@ -322,10 +322,10 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 	t.Run("Delete Post", func(t *testing.T) {
 		ctx, cancel := createBrowserContext()
 		defer cancel()
-		// Use 120s timeout - this test does multiple operations (create, open modal, edit, delete)
-		// Under heavy load when running full test suite in parallel, operations can be very slow.
-		// Increased from 60s to 120s to handle resource contention during parallel execution.
-		ctx, timeoutCancel := context.WithTimeout(ctx, 120*time.Second)
+		// Use 180s timeout - this test does multiple operations (create, open modal, edit, delete)
+		// Running against Docker container adds significant overhead compared to local server.
+		// Increased from 120s to 180s to handle Docker networking and resource contention.
+		ctx, timeoutCancel := context.WithTimeout(ctx, 180*time.Second)
 		defer timeoutCancel()
 
 		err := chromedp.Run(ctx,
@@ -352,16 +352,40 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 					});
 				})()
 			`, 30*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Failed to create post: %v", err)
+		}
 
-			// Click Edit to open modal for deletion
+		// Capture the specific data-key of the row we're going to delete
+		var targetDataKey string
+		err = chromedp.Run(ctx,
 			chromedp.Evaluate(`
 				(() => {
 					const table = document.querySelector('table');
+					if (!table) return '';
 					const rows = Array.from(table.querySelectorAll('tbody tr'));
 					const targetRow = rows.find(row => {
 						const cells = row.querySelectorAll('td');
 						return cells.length > 0 && cells[0].textContent.trim() === 'Post To Delete';
 					});
+					return targetRow ? targetRow.getAttribute('data-key') : '';
+				})()
+			`, &targetDataKey),
+		)
+		if err != nil {
+			t.Fatalf("Failed to capture data-key: %v", err)
+		}
+		if targetDataKey == "" {
+			t.Fatal("Failed to find data-key for target post")
+		}
+
+		err = chromedp.Run(ctx,
+			// Click Edit to open modal for deletion using data-key
+			chromedp.Evaluate(fmt.Sprintf(`
+				(() => {
+					const table = document.querySelector('table tbody');
+					const targetRow = table.querySelector('tr[data-key=%q]');
 					if (targetRow) {
 						const editButton = targetRow.querySelector('button[lvt-click="edit"]');
 						if (editButton) {
@@ -371,7 +395,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 					}
 					return false;
 				})()
-			`, nil),
+			`, targetDataKey), nil),
 			// Wait for edit modal to open
 			waitFor(`document.querySelector('button[lvt-click="delete"]') !== null`, 3*time.Second),
 
@@ -389,19 +413,15 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 					return false;
 				})()
 			`, nil),
-			// Wait for deletion and table update
-			// Increased timeout to account for system load during parallel test execution
-			waitFor(`
+			// Wait for specific data-key to disappear (not just any post with the title)
+			waitFor(fmt.Sprintf(`
 				(() => {
 					const table = document.querySelector('table tbody');
 					if (!table) return true;
-					const rows = Array.from(table.querySelectorAll('tr'));
-					return !rows.some(row => {
-						const cells = row.querySelectorAll('td');
-						return cells.length > 0 && cells[0].textContent.includes('Post To Delete');
-					});
+					const targetRow = table.querySelector('tr[data-key=%q]');
+					return targetRow === null;
 				})()
-			`, 30*time.Second),
+			`, targetDataKey), 30*time.Second),
 
 			chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
 			// Wait for page to fully load
@@ -411,20 +431,17 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 			t.Fatalf("Failed to delete post: %v", err)
 		}
 
-		// Verify post is gone
+		// Verify specific post is gone by data-key
 		var postStillExists bool
 		err = chromedp.Run(ctx,
-			chromedp.Evaluate(`
+			chromedp.Evaluate(fmt.Sprintf(`
 				(() => {
-					const table = document.querySelector('table');
+					const table = document.querySelector('table tbody');
 					if (!table) return false;
-					const rows = Array.from(table.querySelectorAll('tbody tr'));
-					return rows.some(row => {
-						const cells = row.querySelectorAll('td');
-						return cells.length > 0 && cells[0].textContent.trim() === 'Post To Delete';
-					});
+					const targetRow = table.querySelector('tr[data-key=%q]');
+					return targetRow !== null;
 				})()
-			`, &postStillExists),
+			`, targetDataKey), &postStillExists),
 		)
 		if err != nil {
 			t.Fatalf("Failed to verify deletion: %v", err)
@@ -442,10 +459,10 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 	t.Run("Validation Errors", func(t *testing.T) {
 		ctx, cancel := createBrowserContext()
 		defer cancel()
-		// Use 120s timeout - validation test does multiple operations and can be slow
-		// under heavy load when running full test suite in parallel.
-		// Increased from 60s to 120s to handle resource contention during parallel execution.
-		ctx, timeoutCancel := context.WithTimeout(ctx, 120*time.Second)
+		// Use 180s timeout - validation test does multiple operations and can be slow
+		// Running against Docker container adds significant overhead compared to local server.
+		// Increased from 120s to 180s to handle Docker networking and resource contention.
+		ctx, timeoutCancel := context.WithTimeout(ctx, 180*time.Second)
 		defer timeoutCancel()
 
 		var errorsVisible bool
