@@ -17,8 +17,8 @@ import (
 // TestCompleteWorkflow_BlogApp tests the complete blog application workflow
 // This is a comprehensive integration test that validates the entire stack
 func TestCompleteWorkflow_BlogApp(t *testing.T) {
-	t.Skip("Temporarily skipped: Known bug with range appearing for first time (fixing in Phase 2)")
-	// Note: Not parallel because tests use chdirMutex and need sequential execution
+	// Do NOT run in parallel - this test builds Docker images which is resource-intensive
+	// and can cause timeouts when competing with other parallel tests for CPU/memory/disk.
 
 	tmpDir := t.TempDir()
 
@@ -27,10 +27,14 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 	// Step 2: Create blog app
 	t.Log("Step 2: Creating blog app...")
 	appDir := createTestApp(t, tmpDir, "blog", &AppOptions{
-		Kit:     "multi",
-		DevMode: true,
+		Kit: "multi",
 	})
 	t.Log("✅ Blog app created")
+
+	// Step 2.5: Setup local client library BEFORE generating resources
+	// This ensures DevMode=true is set when resources are generated
+	t.Log("Step 2.5: Setting up local client library...")
+	setupLocalClientLibrary(t, appDir)
 
 	// Step 3: Generate posts resource
 	t.Log("Step 3: Generating posts resource...")
@@ -89,32 +93,22 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 	}
 	t.Log("✅ Migrations complete")
 
-	// Step 7.5: Run sqlc generate
-	runSqlcGenerate(t, appDir)
-
-	// Step 8: Build the app
-	t.Log("Step 8: Building blog app...")
-	appBinary := buildGeneratedApp(t, appDir)
-	t.Log("✅ Blog app compiled successfully")
-
-	// Step 9: Start the app (use unique port for parallel execution)
-	t.Log("Step 9: Starting blog app...")
+	// Step 7.5: Build Docker image
+	// Use stable image name to leverage Docker build cache across test runs
+	t.Log("Step 7.5: Building Docker image...")
 	serverPort := allocateTestPort()
-	serverCmd := startAppServer(t, appBinary, serverPort)
-	defer func() {
-		if serverCmd != nil && serverCmd.Process != nil {
-			_ = serverCmd.Process.Kill()
-		}
-	}()
+	imageName := "lvt-test-complete:latest"
+	buildDockerImage(t, appDir, imageName)
+	_ = runDockerContainer(t, imageName, serverPort)
 
 	serverURL := fmt.Sprintf("http://localhost:%d", serverPort)
 	waitForServer(t, serverURL+"/posts", 10*time.Second)
-	t.Log("✅ Blog app running")
+	t.Log("✅ Blog app running in Docker")
 
-	// Step 10: Use isolated Chrome container for parallel execution
-	t.Log("Step 10: Starting isolated Docker Chrome...")
-	ctx, cancel := getIsolatedChromeContext(t)
-	defer cancel()
+	// Step 10: Use Chrome from pool for parallel execution
+	t.Log("Step 10: Getting Chrome from pool...")
+	ctx, _, cleanup := GetPooledChrome(t)
+	defer cleanup()
 
 	// Get test URL for Chrome (Docker networking)
 	testURL := getTestURL(serverPort)
@@ -154,7 +148,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 	t.Run("WebSocket Connection", func(t *testing.T) {
 		ctx, cancel := createBrowserContext()
 		defer cancel()
-		ctx, timeoutCancel := context.WithTimeout(ctx, 30*time.Second)
+		ctx, timeoutCancel := context.WithTimeout(ctx, getBrowserTimeout())
 		defer timeoutCancel()
 		verifyWebSocketConnected(t, ctx, testURL+"/posts")
 	})
@@ -163,7 +157,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 	t.Run("Posts Page Loads", func(t *testing.T) {
 		ctx, cancel := createBrowserContext()
 		defer cancel()
-		ctx, timeoutCancel := context.WithTimeout(ctx, 30*time.Second)
+		ctx, timeoutCancel := context.WithTimeout(ctx, getBrowserTimeout())
 		defer timeoutCancel()
 
 		verifyNoTemplateErrors(t, ctx, testURL+"/posts")
@@ -190,7 +184,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 	t.Run("Create and Edit Post", func(t *testing.T) {
 		ctx, cancel := createBrowserContext()
 		defer cancel()
-		ctx, timeoutCancel := context.WithTimeout(ctx, 60*time.Second)
+		ctx, timeoutCancel := context.WithTimeout(ctx, getBrowserTimeout())
 		defer timeoutCancel()
 
 		// Step 1: Create post
@@ -226,7 +220,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 						return cells.length > 0 && cells[0].textContent.trim() === 'My First Blog Post';
 					});
 				})()
-			`, 10*time.Second),
+			`, 30*time.Second),
 		)
 		if err != nil {
 			t.Fatalf("Failed to create post: %v", err)
@@ -328,7 +322,10 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 	t.Run("Delete Post", func(t *testing.T) {
 		ctx, cancel := createBrowserContext()
 		defer cancel()
-		ctx, timeoutCancel := context.WithTimeout(ctx, 30*time.Second)
+		// Use 180s timeout - this test does multiple operations (create, open modal, edit, delete)
+		// Running against Docker container adds significant overhead compared to local server.
+		// Increased from 120s to 180s to handle Docker networking and resource contention.
+		ctx, timeoutCancel := context.WithTimeout(ctx, 180*time.Second)
 		defer timeoutCancel()
 
 		err := chromedp.Run(ctx,
@@ -354,17 +351,41 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 						return cells.length > 0 && cells[0].textContent.trim() === 'Post To Delete';
 					});
 				})()
-			`, 10*time.Second),
+			`, 30*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Failed to create post: %v", err)
+		}
 
-			// Click Edit to open modal for deletion
+		// Capture the specific data-key of the row we're going to delete
+		var targetDataKey string
+		err = chromedp.Run(ctx,
 			chromedp.Evaluate(`
 				(() => {
 					const table = document.querySelector('table');
+					if (!table) return '';
 					const rows = Array.from(table.querySelectorAll('tbody tr'));
 					const targetRow = rows.find(row => {
 						const cells = row.querySelectorAll('td');
 						return cells.length > 0 && cells[0].textContent.trim() === 'Post To Delete';
 					});
+					return targetRow ? targetRow.getAttribute('data-key') : '';
+				})()
+			`, &targetDataKey),
+		)
+		if err != nil {
+			t.Fatalf("Failed to capture data-key: %v", err)
+		}
+		if targetDataKey == "" {
+			t.Fatal("Failed to find data-key for target post")
+		}
+
+		err = chromedp.Run(ctx,
+			// Click Edit to open modal for deletion using data-key
+			chromedp.Evaluate(fmt.Sprintf(`
+				(() => {
+					const table = document.querySelector('table tbody');
+					const targetRow = table.querySelector('tr[data-key=%q]');
 					if (targetRow) {
 						const editButton = targetRow.querySelector('button[lvt-click="edit"]');
 						if (editButton) {
@@ -374,7 +395,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 					}
 					return false;
 				})()
-			`, nil),
+			`, targetDataKey), nil),
 			// Wait for edit modal to open
 			waitFor(`document.querySelector('button[lvt-click="delete"]') !== null`, 3*time.Second),
 
@@ -392,18 +413,15 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 					return false;
 				})()
 			`, nil),
-			// Wait for deletion and table update
-			waitFor(`
+			// Wait for specific data-key to disappear (not just any post with the title)
+			waitFor(fmt.Sprintf(`
 				(() => {
 					const table = document.querySelector('table tbody');
 					if (!table) return true;
-					const rows = Array.from(table.querySelectorAll('tr'));
-					return !rows.some(row => {
-						const cells = row.querySelectorAll('td');
-						return cells.length > 0 && cells[0].textContent.includes('Post To Delete');
-					});
+					const targetRow = table.querySelector('tr[data-key=%q]');
+					return targetRow === null;
 				})()
-			`, 10*time.Second),
+			`, targetDataKey), 30*time.Second),
 
 			chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
 			// Wait for page to fully load
@@ -413,20 +431,17 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 			t.Fatalf("Failed to delete post: %v", err)
 		}
 
-		// Verify post is gone
+		// Verify specific post is gone by data-key
 		var postStillExists bool
 		err = chromedp.Run(ctx,
-			chromedp.Evaluate(`
+			chromedp.Evaluate(fmt.Sprintf(`
 				(() => {
-					const table = document.querySelector('table');
+					const table = document.querySelector('table tbody');
 					if (!table) return false;
-					const rows = Array.from(table.querySelectorAll('tbody tr'));
-					return rows.some(row => {
-						const cells = row.querySelectorAll('td');
-						return cells.length > 0 && cells[0].textContent.trim() === 'My Updated Blog Post';
-					});
+					const targetRow = table.querySelector('tr[data-key=%q]');
+					return targetRow !== null;
 				})()
-			`, &postStillExists),
+			`, targetDataKey), &postStillExists),
 		)
 		if err != nil {
 			t.Fatalf("Failed to verify deletion: %v", err)
@@ -444,7 +459,10 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 	t.Run("Validation Errors", func(t *testing.T) {
 		ctx, cancel := createBrowserContext()
 		defer cancel()
-		ctx, timeoutCancel := context.WithTimeout(ctx, 30*time.Second)
+		// Use 180s timeout - validation test does multiple operations and can be slow
+		// Running against Docker container adds significant overhead compared to local server.
+		// Increased from 120s to 180s to handle Docker networking and resource contention.
+		ctx, timeoutCancel := context.WithTimeout(ctx, 180*time.Second)
 		defer timeoutCancel()
 
 		var errorsVisible bool

@@ -1,0 +1,31 @@
+# Dockerfile for running deployment tests in a container
+FROM golang:1.23-alpine
+
+# Install Docker CLI and other dependencies
+RUN apk add --no-cache \
+    docker-cli \
+    git \
+    gcc \
+    musl-dev \
+    sqlite-dev
+
+WORKDIR /workspace
+
+# Copy go.mod and go.sum first for better caching
+COPY go.mod go.sum ./
+
+# Enable automatic toolchain management to download Go 1.25 if needed
+ENV GOTOOLCHAIN=auto
+RUN go mod download
+
+# Copy the entire project
+COPY . .
+
+# Build the lvt binary once
+RUN go build -o /usr/local/bin/lvt .
+
+# Set environment variable to use the pre-built binary
+ENV LVT_BINARY=/usr/local/bin/lvt
+
+# Default command runs deployment tests
+CMD ["go", "test", "./e2e", "-run", "TestDeploymentInfrastructure_Mock", "-v", "-timeout=5m"]

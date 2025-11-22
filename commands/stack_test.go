@@ -3,6 +3,7 @@ package commands
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/livetemplate/lvt/internal/stack"
@@ -54,7 +55,7 @@ func TestStack_Subcommands(t *testing.T) {
 				if err == nil {
 					t.Fatal("Stack() error = nil, want error")
 				}
-				if tt.errContains != "" && !contains(err.Error(), tt.errContains) {
+				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
 					t.Errorf("Stack() error = %v, want error containing %q", err, tt.errContains)
 				}
 				return
@@ -74,7 +75,7 @@ func TestStackValidate_NoStack(t *testing.T) {
 	if err == nil {
 		t.Fatal("StackValidate() should fail when no stack exists")
 	}
-	if !contains(err.Error(), "no stack found") {
+	if !strings.Contains(err.Error(), "no stack found") {
 		t.Errorf("Error should mention 'no stack found', got: %v", err)
 	}
 }
@@ -133,7 +134,7 @@ func TestStackInfo_NoStack(t *testing.T) {
 	if err == nil {
 		t.Fatal("StackInfo() should fail when no stack exists")
 	}
-	if !contains(err.Error(), "no stack found") {
+	if !strings.Contains(err.Error(), "no stack found") {
 		t.Errorf("Error should mention 'no stack found', got: %v", err)
 	}
 }

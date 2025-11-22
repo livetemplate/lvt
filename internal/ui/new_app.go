@@ -308,7 +308,8 @@ func (m newAppModel) generateApp() tea.Msg {
 	// Install dependencies
 	cmd := exec.Command("go", "mod", "tidy")
 	cmd.Dir = m.appName
-	_ = cmd.Run() // Silently install, errors are not critical
+	// Use CombinedOutput() to properly close pipes and avoid I/O wait
+	_, _ = cmd.CombinedOutput() // Silently install, errors are not critical
 
 	m.stage = 3
 	return m

@@ -3,6 +3,7 @@ package commands
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/livetemplate/lvt/internal/stack"
@@ -140,7 +141,7 @@ func TestGenStack_FlagParsing(t *testing.T) {
 				if err == nil {
 					t.Fatal("GenStack() error = nil, want error")
 				}
-				if tt.errContains != "" && !contains(err.Error(), tt.errContains) {
+				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
 					t.Errorf("GenStack() error = %v, want error containing %q", err, tt.errContains)
 				}
 				return
@@ -205,7 +206,7 @@ func TestGenStack_ForceOverwrite(t *testing.T) {
 	if err == nil {
 		t.Fatal("Second GenStack() without --force should fail")
 	}
-	if !contains(err.Error(), "already exists") {
+	if !strings.Contains(err.Error(), "already exists") {
 		t.Errorf("Error should mention 'already exists', got: %v", err)
 	}
 
@@ -262,18 +263,4 @@ func TestGenStack_ProviderRouting(t *testing.T) {
 			}
 		})
 	}
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
-		(len(s) > 0 && len(substr) > 0 && findSubstring(s, substr)))
-}
-
-func findSubstring(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }

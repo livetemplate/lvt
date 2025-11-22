@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -15,9 +16,65 @@ import (
 	e2etest "github.com/livetemplate/lvt/testing"
 )
 
+var (
+	baseImageBuilt bool
+	baseImageMutex sync.Mutex
+)
+
+// getTimeout returns local or CI timeout based on environment
+func getTimeout(envVar string, localDefault, ciDefault time.Duration) time.Duration {
+	if os.Getenv("CI") == "true" {
+		return ciDefault
+	}
+	if val := os.Getenv(envVar); val != "" {
+		if d, err := time.ParseDuration(val); err == nil {
+			return d
+		}
+	}
+	return localDefault
+}
+
+// buildBaseImage builds the shared base Docker image once
+func buildBaseImage(t *testing.T) {
+	baseImageMutex.Lock()
+	defer baseImageMutex.Unlock()
+
+	if baseImageBuilt {
+		return
+	}
+
+	// Check if Docker is available
+	if _, err := exec.Command("docker", "version").CombinedOutput(); err != nil {
+		t.Skip("Docker not available, skipping test that requires Docker image build")
+	}
+
+	t.Log("Building base Docker image (one-time setup)...")
+
+	// Get the directory where this test file lives
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("Failed to get current file path")
+	}
+	e2eDir := filepath.Dir(filename)
+
+	cmd := exec.Command("docker", "build",
+		"-f", "Dockerfile.base",
+		"-t", "lvt-base:latest",
+		".",
+	)
+	cmd.Dir = e2eDir
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("Failed to build base image: %v\nOutput: %s", err, output)
+	}
+
+	t.Log("Base image built successfully")
+	baseImageBuilt = true
+}
+
 // Shared test resources that persist across all tests
 var (
-	sharedChrome      *exec.Cmd
 	sharedChromePort  int = 9222
 	sharedTestApp     string
 	sharedTestAppDir  string
@@ -32,19 +89,21 @@ var (
 
 // TestMain sets up shared resources before running tests and cleans up after
 func TestMain(m *testing.M) {
+	// Cleanup any leftover containers from previous runs
+	// This is safe to run even if Docker is not available - it will just log a warning
 	cleanupChromeContainers()
-
-	// Setup shared resources
-	if err := setupSharedResources(); err != nil {
-		log.Printf("Failed to setup shared resources: %v", err)
-		os.Exit(1)
-	}
 
 	// Run tests
 	code := m.Run()
 
-	// Cleanup shared resources
-	cleanupSharedResources()
+	// Cleanup Chrome pool if it was initialized
+	chromePoolMu.Lock()
+	if chromePool != nil {
+		chromePool.Cleanup()
+	}
+	chromePoolMu.Unlock()
+
+	// Final cleanup of any remaining containers
 	cleanupChromeContainers()
 
 	os.Exit(code)
@@ -58,9 +117,8 @@ func setupSharedResources() error {
 
 		// 1. Start shared Docker Chrome container
 		log.Printf("Starting shared Docker Chrome on port %d...", sharedChromePort)
-		sharedChrome = e2etest.StartDockerChrome(&testing.T{}, sharedChromePort)
-		if sharedChrome == nil {
-			setupErr = fmt.Errorf("failed to start shared Chrome container")
+		if err := e2etest.StartDockerChrome(&testing.T{}, sharedChromePort); err != nil {
+			setupErr = fmt.Errorf("failed to start shared Chrome container: %w", err)
 			return
 		}
 
@@ -98,50 +156,43 @@ func setupSharedResources() error {
 			return
 		}
 
-		// Setup go.mod for local livetemplate
-		// Protected by mutex to prevent race with parallel tests changing directory
-		chdirMutex.Lock()
-		cwd, _ := os.Getwd()
-		// After extraction: lvt and livetemplate are sibling directories
-		// e2e/ -> lvt/ -> parent/ -> livetemplate/
-		livetemplatePath := filepath.Join(cwd, "..", "..", "livetemplate")
-		chdirMutex.Unlock()
+		// Run go mod tidy and vendor in a Docker container to isolate background processes
+		// This prevents background processes from affecting the test process
+		// Using the published version of livetemplate (no replace directive)
+		log.Println("Running go mod tidy and vendor in Docker container...")
+		dockerCmd := exec.Command("docker", "run", "--rm",
+			"-v", fmt.Sprintf("%s:/app", appDir),
+			"-w", "/app",
+			"-e", "GOWORK=off",
+			"golang:1.25",
+			"sh", "-c", "go mod tidy && go mod vendor")
 
-		// Only add replace directive if local livetemplate exists
-		if _, err := os.Stat(livetemplatePath); err == nil {
-			replaceCmd := exec.Command("go", "mod", "edit", fmt.Sprintf("-replace=github.com/livetemplate/livetemplate=%s", livetemplatePath))
-			replaceCmd.Dir = appDir
-			if err := replaceCmd.Run(); err != nil {
-				log.Printf("Warning: Failed to add replace directive: %v", err)
-			}
-		} else {
-			log.Printf("Note: Local livetemplate not found at %s, using published version", livetemplatePath)
-		}
-
-		// Run go mod tidy with mutex protection
-		goModMutex.Lock()
-		log.Println("Running go mod tidy in TestMain...")
-		tidyCmd := exec.Command("go", "mod", "tidy")
-		tidyCmd.Dir = appDir
-		tidyCmd.Env = append(os.Environ(), "GOWORK=off") // Disable workspace mode to avoid conflicts
-		tidyOutput, tidyErr := tidyCmd.CombinedOutput()
-		goModMutex.Unlock()
-		if tidyErr != nil {
-			setupErr = fmt.Errorf("failed to run go mod tidy: %w\nOutput: %s", tidyErr, string(tidyOutput))
+		dockerOutput, err := dockerCmd.CombinedOutput()
+		if err != nil {
+			setupErr = fmt.Errorf("failed to run go mod tidy/vendor in Docker: %w\nOutput: %s", err, string(dockerOutput))
 			return
 		}
+		log.Println("✅ go mod tidy and vendor completed in Docker")
 
-		// Run sqlc generate
-		sqlcCmd := exec.Command("go", "run", "github.com/sqlc-dev/sqlc/cmd/sqlc@latest", "generate", "-f", "internal/database/sqlc.yaml")
-		sqlcCmd.Dir = appDir
-		if err := sqlcCmd.Run(); err != nil {
-			setupErr = fmt.Errorf("failed to run sqlc: %w", err)
+		// Run sqlc generate in Docker to isolate background processes
+		log.Println("Running sqlc generate...")
+		sqlcDockerCmd := exec.Command("docker", "run", "--rm",
+			"-v", fmt.Sprintf("%s:/app", appDir),
+			"-w", "/app",
+			"-e", "GOWORK=off",
+			"golang:1.25",
+			"go", "run", "github.com/sqlc-dev/sqlc/cmd/sqlc@latest", "generate", "-f", "internal/database/sqlc.yaml")
+
+		sqlcOutput, err := sqlcDockerCmd.CombinedOutput()
+		if err != nil {
+			setupErr = fmt.Errorf("failed to run sqlc in Docker: %w\nOutput: %s", err, string(sqlcOutput))
 			return
 		}
+		log.Println("✅ sqlc generate completed")
 
-		// Build the app
+		// Build the app using vendored dependencies
 		appBinary := filepath.Join(appDir, "sharedapp")
-		buildCmd := exec.Command("go", "build", "-o", appBinary, "./cmd/sharedapp")
+		buildCmd := exec.Command("go", "build", "-mod=vendor", "-o", appBinary, "./cmd/sharedapp")
 		buildCmd.Dir = appDir
 		if output, err := buildCmd.CombinedOutput(); err != nil {
 			setupErr = fmt.Errorf("failed to build shared app: %w\n%s", err, output)
@@ -162,12 +213,13 @@ func cleanupSharedResources() {
 	sharedCleanupOnce.Do(func() {
 		log.Println("🧹 Cleaning up shared test resources...")
 
+		// Note: go mod tidy spawns background processes that may cause I/O wait warnings
+		// These are harmless and don't affect test results
+
 		// Stop shared Chrome container
-		if sharedChrome != nil {
-			log.Println("Stopping shared Docker Chrome...")
-			e2etest.StopDockerChrome(&testing.T{}, sharedChrome, sharedChromePort)
-			log.Println("✅ Shared Docker Chrome stopped")
-		}
+		log.Println("Stopping shared Docker Chrome...")
+		e2etest.StopDockerChrome(nil, sharedChromePort)
+		log.Println("✅ Shared Docker Chrome stopped")
 
 		// Clean up shared test app directory
 		if sharedTestAppDir != "" {
@@ -191,7 +243,9 @@ func getIsolatedChromeContext(t *testing.T) (context.Context, context.CancelFunc
 	}
 
 	// Start dedicated Chrome container for this test
-	chromeCmd := e2etest.StartDockerChrome(t, port)
+	if err := e2etest.StartDockerChrome(t, port); err != nil {
+		t.Fatalf("Failed to start isolated Chrome container: %v", err)
+	}
 
 	// Create allocator context for isolated Chrome
 	allocCtx, allocCancel := chromedp.NewRemoteAllocator(context.Background(),
@@ -204,7 +258,7 @@ func getIsolatedChromeContext(t *testing.T) (context.Context, context.CancelFunc
 	combinedCancel := func() {
 		cancel()
 		allocCancel()
-		e2etest.StopDockerChrome(t, chromeCmd, port)
+		e2etest.StopDockerChrome(t, port)
 	}
 
 	return ctx, combinedCancel

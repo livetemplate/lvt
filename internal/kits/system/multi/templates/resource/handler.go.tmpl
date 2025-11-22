@@ -155,18 +155,6 @@ func (s *[[.ResourceName]]State) Change(ctx *livetemplate.ActionContext) error {
 			return err
 		}
 
-		// Re-fetch the updated resource for display
-		[[.ResourceNameLower]]s, err := s.Queries.GetAll[[.ResourceNamePlural]](dbCtx)
-		if err == nil {
-			for _, item := range [[.ResourceNameLower]]s {
-				if item.ID == input.ID {
-					itemCopy := item
-					s.Editing[[.ResourceName]] = &itemCopy
-					break
-				}
-			}
-		}
-
 	case "cancel_edit":
 		s.EditingID = ""
 		s.Editing[[.ResourceName]] = nil
@@ -296,6 +284,10 @@ func (s *[[.ResourceName]]State) Change(ctx *livetemplate.ActionContext) error {
 }
 
 func (s *[[.ResourceName]]State) Init() error {
+	// Clear any editing state from previous session (but preserve if already set for URL routing)
+	if s.EditingID == "" {
+		s.Editing[[.ResourceName]] = nil
+	}
 	return s.load[[.ResourceName]]s(context.Background())
 }
 
@@ -432,7 +424,10 @@ func Handler(queries *models.Queries) http.Handler {
 		log.Printf("Failed to initialize [[.ResourceNameLower]] state: %v", err)
 	}
 
-	baseTmpl := livetemplate.New("[[.ResourceNameLower]]", livetemplate.WithDevMode([[.DevMode]]))
+	baseTmpl, err := livetemplate.New("[[.ResourceNameLower]]", livetemplate.WithDevMode([[.DevMode]]))
+	if err != nil {
+		log.Fatalf("Failed to create template: %v", err)
+	}
 	if _, err := baseTmpl.ParseFiles("internal/app/[[.ResourceNameLower]]/[[.ResourceNameLower]].tmpl"); err != nil {
 		log.Fatalf("Failed to parse template: %v", err)
 	}
@@ -476,21 +471,24 @@ func Handler(queries *models.Queries) http.Handler {
 				LastUpdated:    formatTime(),
 				CSSFramework:   "[[.CSSFramework]]",
 				IsEditingMode:  isEditMode,
+				EditingID:      resourceID, // Set EditingID before Init to prevent it from being cleared
 			}
 
-			if err := resourceState.Init(); err == nil {
-				// Find and set the editing resource
-				[[.ResourceNameLower]]s, err := queries.GetAll[[.ResourceNamePlural]](context.Background())
-				if err == nil {
-					for _, item := range [[.ResourceNameLower]]s {
-						if item.ID == resourceID {
-							resourceState.EditingID = resourceID
-							itemCopy := item
-							resourceState.Editing[[.ResourceName]] = &itemCopy
-							break
-						}
+			// Find and set the editing resource BEFORE calling Init
+			[[.ResourceNameLower]]s, err := queries.GetAll[[.ResourceNamePlural]](context.Background())
+			if err == nil {
+				for _, item := range [[.ResourceNameLower]]s {
+					if item.ID == resourceID {
+						itemCopy := item
+						resourceState.Editing[[.ResourceName]] = &itemCopy
+						break
 					}
 				}
+			}
+
+			// Initialize the state (will load all resources but preserve EditingID/Editing[[.ResourceName]])
+			if err := resourceState.Init(); err != nil {
+				log.Printf("Failed to initialize resource state: %v", err)
 			}
 
 			// Handle with custom state

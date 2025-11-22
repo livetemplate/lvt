@@ -112,8 +112,6 @@ func (s *Server) setupRoutes() {
 	case ModeApp:
 		s.setupAppRoutes()
 	}
-
-	// Note: Each mode sets up its own "/" handler, no need for a fallback here
 }
 
 func (s *Server) setupComponentRoutes() {
@@ -121,7 +119,11 @@ func (s *Server) setupComponentRoutes() {
 
 	cm, err := NewComponentMode(s)
 	if err != nil {
-		log.Printf("Warning: Failed to initialize component mode: %v", err)
+		log.Printf("Error: Failed to initialize component mode: %v", err)
+		// Register error handler to prevent unhandled routes
+		s.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, fmt.Sprintf("Component mode failed to initialize: %v", err), http.StatusInternalServerError)
+		})
 		return
 	}
 	s.componentMode = cm
@@ -139,7 +141,11 @@ func (s *Server) setupKitRoutes() {
 
 	km, err := NewKitMode(s)
 	if err != nil {
-		log.Printf("Warning: Failed to initialize kit mode: %v", err)
+		log.Printf("Error: Failed to initialize kit mode: %v", err)
+		// Register error handler to prevent unhandled routes
+		s.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, fmt.Sprintf("Kit mode failed to initialize: %v", err), http.StatusInternalServerError)
+		})
 		return
 	}
 	s.kitMode = km
@@ -156,7 +162,11 @@ func (s *Server) setupAppRoutes() {
 
 	am, err := NewAppMode(s)
 	if err != nil {
-		log.Printf("Warning: Failed to initialize app mode: %v", err)
+		log.Printf("Error: Failed to initialize app mode: %v", err)
+		// Register error handler to prevent unhandled routes
+		s.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, fmt.Sprintf("App mode failed to initialize: %v", err), http.StatusInternalServerError)
+		})
 		return
 	}
 	s.appMode = am

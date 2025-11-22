@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -24,8 +27,8 @@ func TestServe_Defaults(t *testing.T) {
 	}
 	defer func() { _ = handle.Shutdown() }()
 
-	// Give server a moment to start
-	time.Sleep(500 * time.Millisecond)
+	// Wait for server to be ready
+	waitForServer(t, "http://localhost:9870", 10*time.Second)
 
 	// Verify server is running
 	resp, err := http.Get("http://localhost:9870")
@@ -58,11 +61,11 @@ func TestServe_CustomPort(t *testing.T) {
 	}
 	defer func() { _ = handle.Shutdown() }()
 
-	// Give server a moment to start
-	time.Sleep(500 * time.Millisecond)
+	// Wait for server to be ready
+	url := fmt.Sprintf("http://localhost:%d", port)
+	waitForServer(t, url, 10*time.Second)
 
 	// Verify server is running on custom port
-	url := fmt.Sprintf("http://localhost:%d", port)
 	resp, err := http.Get(url)
 	if err != nil {
 		t.Fatalf("Server not responding on port %d: %v", port, err)
@@ -83,6 +86,28 @@ func TestServe_ModeComponent(t *testing.T) {
 	// Create app
 	appDir := createTestApp(t, tmpDir, "testapp", nil)
 
+	// Create a minimal component.yaml for component mode
+	componentYAML := `name: testcomponent
+version: 1.0.0
+description: Test component
+category: test
+kit: multi
+tags:
+  - test
+templates:
+  - test.tmpl
+`
+	componentPath := filepath.Join(appDir, "component.yaml")
+	if err := os.WriteFile(componentPath, []byte(componentYAML), 0644); err != nil {
+		t.Fatalf("Failed to create component.yaml: %v", err)
+	}
+
+	// Create a minimal test template
+	testTmplPath := filepath.Join(appDir, "test.tmpl")
+	if err := os.WriteFile(testTmplPath, []byte("<div>Test Component</div>"), 0644); err != nil {
+		t.Fatalf("Failed to create test template: %v", err)
+	}
+
 	// Test that server accepts --mode component flag
 	t.Log("Testing serve command with mode=component...")
 
@@ -92,8 +117,8 @@ func TestServe_ModeComponent(t *testing.T) {
 	}
 	defer func() { _ = handle.Shutdown() }()
 
-	// Give server a moment to start
-	time.Sleep(500 * time.Millisecond)
+	// Wait for server to be ready
+	waitForServer(t, "http://localhost:9877", 10*time.Second)
 
 	// Verify server is running
 	resp, err := http.Get("http://localhost:9877")
@@ -112,10 +137,28 @@ func TestServe_ModeKit(t *testing.T) {
 	// Create app first
 	appDir := createTestApp(t, tmpDir, "testapp", nil)
 
-	// Create a test kit
+	// Create a test kit structure
 	t.Log("Creating test kit structure...")
 	if err := runLvtCommand(t, appDir, "kits", "create", "testkit"); err != nil {
 		t.Fatalf("Failed to create test kit: %v", err)
+	}
+
+	// Copy kit.yaml from .lvt/kits/testkit/ to root for kit mode
+	// Kit mode expects kit.yaml in the root directory with name matching the directory
+	kitYAMLSrc := filepath.Join(appDir, ".lvt", "kits", "testkit", "kit.yaml")
+	kitYAMLDest := filepath.Join(appDir, "kit.yaml")
+	kitData, err := os.ReadFile(kitYAMLSrc)
+	if err != nil {
+		t.Fatalf("Failed to read kit.yaml: %v", err)
+	}
+
+	// Update the kit name to match the directory name (testapp)
+	// Kit mode uses the directory name to load the kit
+	kitDataStr := string(kitData)
+	kitDataStr = strings.Replace(kitDataStr, "name: testkit", "name: testapp", 1)
+
+	if err := os.WriteFile(kitYAMLDest, []byte(kitDataStr), 0644); err != nil {
+		t.Fatalf("Failed to write kit.yaml to root: %v", err)
 	}
 
 	// Test that server accepts --mode kit flag
@@ -127,8 +170,8 @@ func TestServe_ModeKit(t *testing.T) {
 	}
 	defer func() { _ = handle.Shutdown() }()
 
-	// Give server a moment to start
-	time.Sleep(500 * time.Millisecond)
+	// Wait for server to be ready
+	waitForServer(t, "http://localhost:9882", 10*time.Second)
 
 	// Verify server is running
 	resp, err := http.Get("http://localhost:9882")
@@ -156,8 +199,8 @@ func TestServe_ModeApp(t *testing.T) {
 	}
 	defer func() { _ = handle.Shutdown() }()
 
-	// Give server a moment to start
-	time.Sleep(500 * time.Millisecond)
+	// Wait for server to be ready
+	waitForServer(t, "http://localhost:9878", 10*time.Second)
 
 	// Verify server is running
 	resp, err := http.Get("http://localhost:9878")
@@ -185,8 +228,8 @@ func TestServe_NoBrowser(t *testing.T) {
 	}
 	defer func() { _ = handle.Shutdown() }()
 
-	// Give server a moment to start
-	time.Sleep(500 * time.Millisecond)
+	// Wait for server to be ready
+	waitForServer(t, "http://localhost:9879", 10*time.Second)
 
 	// Verify server is running
 	resp, err := http.Get("http://localhost:9879")
@@ -214,8 +257,8 @@ func TestServe_NoReload(t *testing.T) {
 	}
 	defer func() { _ = handle.Shutdown() }()
 
-	// Give server a moment to start
-	time.Sleep(500 * time.Millisecond)
+	// Wait for server to be ready
+	waitForServer(t, "http://localhost:9880", 10*time.Second)
 
 	// Verify server is running
 	resp, err := http.Get("http://localhost:9880")
@@ -244,11 +287,11 @@ func TestServe_VerifyServerResponds(t *testing.T) {
 	}
 	defer func() { _ = handle.Shutdown() }()
 
-	// Wait for server to start
-	time.Sleep(500 * time.Millisecond)
+	// Wait for server to be ready
+	url := fmt.Sprintf("http://localhost:%d", port)
+	waitForServer(t, url, 10*time.Second)
 
 	// Try to connect to server
-	url := fmt.Sprintf("http://localhost:%d", port)
 	t.Logf("Testing connection to %s...", url)
 
 	client := &http.Client{Timeout: 2 * time.Second}
@@ -283,8 +326,8 @@ func TestServe_ContextCancellation(t *testing.T) {
 		t.Fatalf("Failed to start server: %v", err)
 	}
 
-	// Give server a moment to start
-	time.Sleep(500 * time.Millisecond)
+	// Wait for server to be ready
+	waitForServer(t, "http://localhost:9883", 10*time.Second)
 
 	// Verify server is running
 	resp, err := http.Get("http://localhost:9883")

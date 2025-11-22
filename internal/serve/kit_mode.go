@@ -279,6 +279,17 @@ func (km *KitMode) handleIndex(w http.ResponseWriter, r *http.Request) {
 func (km *KitMode) generateTestCards() string {
 	helpers := km.kit.Helpers
 
+	// If kit doesn't have helpers (custom kits), show a message
+	if helpers == nil {
+		return `<div class="test-card">
+			<div class="test-card-header">No Helpers Available</div>
+			<div class="test-card-body">
+				<p>This kit does not have CSS helpers. CSS helpers are only available for system kits (tailwind, bulma, pico).</p>
+				<p>Custom kits can use raw CSS or include their own framework CDN in the kit manifest.</p>
+			</div>
+		</div>`
+	}
+
 	cards := []string{
 		km.testCard("Container", helpers.ContainerClass()),
 		km.testCard("Section", helpers.SectionClass()),

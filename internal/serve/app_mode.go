@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -11,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sync"
+	"testing"
 	"time"
 )
 
@@ -22,13 +24,20 @@ type AppMode struct {
 	mu         sync.Mutex
 	stopChan   chan struct{}
 	mainGoPath string
-	buildPath  string
 }
 
 func NewAppMode(s *Server) (*AppMode, error) {
+	// Allocate a dynamic port for the app to avoid conflicts
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return nil, fmt.Errorf("failed to allocate port: %w", err)
+	}
+	appPort := listener.Addr().(*net.TCPAddr).Port
+	listener.Close()
+
 	am := &AppMode{
 		server:   s,
-		appPort:  8080, // Default app port
+		appPort:  appPort,
 		stopChan: make(chan struct{}),
 	}
 
@@ -114,7 +123,6 @@ func (am *AppMode) detectApp() error {
 	}
 
 	am.mainGoPath = mainGo
-	am.buildPath = filepath.Join(os.TempDir(), "lvt-app-"+filepath.Base(am.server.config.Dir))
 
 	log.Printf("App detected: %s", am.mainGoPath)
 	return nil
@@ -156,24 +164,27 @@ func (am *AppMode) startApp() error {
 		am.stopAppLocked()
 	}
 
-	log.Printf("Building app from %s...", am.mainGoPath)
+	log.Printf("Starting app from %s on port %d...", am.mainGoPath, am.appPort)
 
-	buildCmd := exec.Command("go", "build", "-o", am.buildPath, filepath.Dir(am.mainGoPath))
-	buildCmd.Dir = am.server.config.Dir
-	buildCmd.Stdout = os.Stdout
-	buildCmd.Stderr = os.Stderr
+	// Use 'go run' instead of building a binary to keep templates accessible from source
+	am.appProcess = exec.Command("go", "run", am.mainGoPath)
+	am.appProcess.Dir = am.server.config.Dir
 
-	if err := buildCmd.Run(); err != nil {
-		return fmt.Errorf("build failed: %w", err)
+	// In test mode, discard output to prevent I/O hanging
+	// Otherwise, pipe to os.Stdout/os.Stderr for visibility
+	if testing.Testing() {
+		am.appProcess.Stdout = nil
+		am.appProcess.Stderr = nil
+	} else {
+		am.appProcess.Stdout = os.Stdout
+		am.appProcess.Stderr = os.Stderr
 	}
 
-	log.Printf("Starting app on port %d...", am.appPort)
-
-	am.appProcess = exec.Command(am.buildPath)
-	am.appProcess.Dir = am.server.config.Dir
-	am.appProcess.Stdout = os.Stdout
-	am.appProcess.Stderr = os.Stderr
-	am.appProcess.Env = append(os.Environ(), fmt.Sprintf("PORT=%d", am.appPort))
+	am.appProcess.Env = append(os.Environ(),
+		fmt.Sprintf("PORT=%d", am.appPort),
+		"LVT_DEV_MODE=true",                                           // Enable development mode for template discovery
+		fmt.Sprintf("LVT_TEMPLATE_BASE_DIR=%s", am.server.config.Dir), // Set template base directory for auto-discovery
+	)
 
 	if err := am.appProcess.Start(); err != nil {
 		return fmt.Errorf("failed to start app: %w", err)
@@ -221,10 +232,6 @@ func (am *AppMode) Stop() {
 	am.mu.Lock()
 	defer am.mu.Unlock()
 	am.stopAppLocked()
-
-	if am.buildPath != "" {
-		os.Remove(am.buildPath)
-	}
 }
 
 func (am *AppMode) Restart() error {

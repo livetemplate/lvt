@@ -1,5 +1,5 @@
 # Binaries
-lvt
+/lvt
 *.exe
 *.dll
 *.so
@@ -37,5 +37,11 @@ e2e/*/
 !e2e/*.go
 !e2e/testdata/
 
+# Deployment test directories
+.test-deployments/
+
 # Git worktrees
 .worktrees/
+
+# Environment variables (added by lvt)
+.env

@@ -3,9 +3,6 @@ package e2e
 import (
 	"context"
 	"fmt"
-	"net/http"
-	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -17,54 +14,22 @@ import (
 
 // TestPageModeURLRouting tests URL routing functionality in page mode
 func TestPageModeURLRouting(t *testing.T) {
-	// Note: Not parallel because tests use chdirMutex and need sequential execution
+	t.Parallel() // Can run concurrently with Chrome pool
 
 	tmpDir := t.TempDir()
 	appDir := filepath.Join(tmpDir, "testapp")
 
-	// Create app with --dev flag
-	if err := runLvtCommand(t, tmpDir, "new", "testapp", "--dev"); err != nil {
+	// Create app (production mode for Docker compatibility)
+	if err := runLvtCommand(t, tmpDir, "new", "testapp"); err != nil {
 		t.Fatalf("Failed to create app: %v", err)
 	}
+
+	// Enable DevMode BEFORE generating resources so DevMode=true gets baked into handler code
+	enableDevMode(t, appDir)
 
 	// Generate resource with page mode
 	if err := runLvtCommand(t, appDir, "gen", "resource", "products", "name", "--edit-mode", "page"); err != nil {
 		t.Fatalf("Failed to generate resource: %v", err)
-	}
-
-	// Setup go.mod for local livetemplate
-	// Protected by mutex to prevent race with parallel tests changing directory
-	chdirMutex.Lock()
-	cwd, _ := os.Getwd()
-	livetemplatePath := filepath.Join(cwd, "..", "..", "livetemplate")
-	chdirMutex.Unlock()
-
-	if err := runGoModTidy(t, appDir); err != nil {
-		t.Fatalf("Failed to run go mod tidy: %v", err)
-	}
-
-	replaceCmd := exec.Command("go", "mod", "edit",
-		"-replace", fmt.Sprintf("github.com/livetemplate/livetemplate=%s", livetemplatePath))
-	replaceCmd.Dir = appDir
-	if err := replaceCmd.Run(); err != nil {
-		t.Fatalf("Failed to add replace directive: %v", err)
-	}
-
-	if err := runGoModTidy(t, appDir); err != nil {
-		t.Fatalf("Failed to run go mod tidy after replace: %v", err)
-	}
-
-	// Copy client library using absolute path
-	// Client is at monorepo root level, not inside livetemplate/
-	monorepoRoot := filepath.Join(cwd, "..", "..")
-	clientSrc := filepath.Join(monorepoRoot, "client", "dist", "livetemplate-client.browser.js")
-	clientDst := filepath.Join(appDir, "livetemplate-client.js")
-	clientContent, err := os.ReadFile(clientSrc)
-	if err != nil {
-		t.Fatalf("Failed to read client library: %v", err)
-	}
-	if err := os.WriteFile(clientDst, clientContent, 0644); err != nil {
-		t.Fatalf("Failed to write client library: %v", err)
 	}
 
 	// Run migration
@@ -96,99 +61,15 @@ func TestPageModeURLRouting(t *testing.T) {
 		t.Log("✅ Test data seeded successfully")
 	}
 
-	// Start the app server - use unique port for parallel testing
+	// Build and run app natively (much faster than Docker)
+	// This test focuses on URL routing functionality, not deployment
 	port := allocateTestPort()
+	_ = buildAndRunNative(t, appDir, port)
+	t.Logf("✅ Server ready on port %d", port)
 
-	// Kill any process using this port before starting (cleanup from failed test runs)
-	for attempt := 0; attempt < 5; attempt++ {
-		killCmd := exec.Command("lsof", "-ti", fmt.Sprintf(":%d", port))
-		if pidBytes, err := killCmd.Output(); err == nil && len(pidBytes) > 0 {
-			pids := strings.TrimSpace(string(pidBytes))
-			t.Logf("Found process on port %d (PIDs: %s), killing...", port, pids)
-			for _, pid := range strings.Split(pids, "\n") {
-				if pid != "" {
-					killProcCmd := exec.Command("kill", "-9", pid)
-					_ = killProcCmd.Run()
-				}
-			}
-			time.Sleep(1 * time.Second) // Give OS time to release port
-		} else {
-			// No process found, port is free
-			break
-		}
-	}
-
-	// Verify port is actually free
-	time.Sleep(500 * time.Millisecond)
-	checkCmd := exec.Command("lsof", "-ti", fmt.Sprintf(":%d", port))
-	if pidBytes, err := checkCmd.Output(); err == nil && len(pidBytes) > 0 {
-		t.Logf("Warning: Port %d still in use after cleanup attempts", port)
-	}
-
-	// Build the server binary
-	serverBinary := filepath.Join(tmpDir, "testapp-server")
-	buildServerCmd := exec.Command("go", "build", "-o", serverBinary, "./cmd/testapp")
-	buildServerCmd.Dir = appDir
-	buildServerCmd.Env = append(os.Environ(), "GOWORK=off")
-	buildOutput, buildErr := buildServerCmd.CombinedOutput()
-	if buildErr != nil {
-		t.Fatalf("Failed to build server: %v\nOutput: %s", buildErr, string(buildOutput))
-	}
-
-	serverCmd := exec.Command(serverBinary)
-	serverCmd.Dir = appDir
-	serverCmd.Env = append(os.Environ(), fmt.Sprintf("PORT=%d", port))
-	serverCmd.Stdout = os.Stdout
-	serverCmd.Stderr = os.Stderr
-
-	if err := serverCmd.Start(); err != nil {
-		t.Fatalf("Failed to start server: %v", err)
-	}
-	defer func() {
-		if serverCmd.Process != nil {
-			_ = serverCmd.Process.Kill()
-			_ = serverCmd.Wait()
-		}
-	}()
-
-	// Wait for server to start and verify it's actually running
-	serverReady := false
-	var lastErr error
-	consecutiveSuccesses := 0
-	const requiredSuccesses = 2
-
-	for i := 0; i < 30; i++ {
-		time.Sleep(quickPollDelay)
-
-		resp, err := http.Get(fmt.Sprintf("http://localhost:%d/", port))
-		if err == nil {
-			if resp.StatusCode == 200 {
-				resp.Body.Close()
-				consecutiveSuccesses++
-				if consecutiveSuccesses >= requiredSuccesses {
-					// Extra time for WebSocket handler initialization
-					time.Sleep(100 * time.Millisecond)
-					serverReady = true
-					t.Logf("✅ Server ready on port %d", port)
-					break
-				}
-			} else {
-				resp.Body.Close()
-				lastErr = fmt.Errorf("server returned status %d", resp.StatusCode)
-				consecutiveSuccesses = 0
-			}
-		} else {
-			lastErr = err
-			consecutiveSuccesses = 0
-		}
-	}
-	if !serverReady {
-		t.Fatalf("Server did not start within 6 seconds on port %d. Last error: %v", port, lastErr)
-	}
-
-	// Use isolated Chrome container for parallel execution
-	ctx, cancel := getIsolatedChromeContext(t)
-	defer cancel()
+	// Use Chrome from pool for parallel execution
+	ctx, _, cleanup := GetPooledChrome(t)
+	defer cleanup()
 
 	testURL := fmt.Sprintf("%s/products", e2etest.GetChromeTestURL(port))
 	t.Logf("Testing URL routing at: %s", testURL)
@@ -198,14 +79,15 @@ func TestPageModeURLRouting(t *testing.T) {
 		// Create fresh browser context for this subtest
 		testCtx, cancel := chromedp.NewContext(ctx)
 		defer cancel()
-		testCtx, timeoutCancel := context.WithTimeout(testCtx, 30*time.Second)
+		testCtx, timeoutCancel := context.WithTimeout(testCtx, getBrowserTimeout())
 		defer timeoutCancel()
 
 		// Navigate to products page and wait for it to load
+		// Increased timeout for Docker container environments
 		err := chromedp.Run(testCtx,
 			chromedp.Navigate(testURL),
-			e2etest.WaitForWebSocketReady(5*time.Second),
-			waitFor(`document.readyState === 'complete'`, 3*time.Second),
+			e2etest.WaitForWebSocketReady(30*time.Second), // Increased for CDN loading + WebSocket init
+			waitFor(`document.readyState === 'complete'`, 10*time.Second),
 		)
 		if err != nil {
 			t.Fatalf("Failed to load page: %v", err)
@@ -246,7 +128,7 @@ func TestPageModeURLRouting(t *testing.T) {
 		// Create fresh browser context for this subtest
 		testCtx, cancel := chromedp.NewContext(ctx)
 		defer cancel()
-		testCtx, timeoutCancel := context.WithTimeout(testCtx, 30*time.Second)
+		testCtx, timeoutCancel := context.WithTimeout(testCtx, getBrowserTimeout())
 		defer timeoutCancel()
 
 		var currentURL string
@@ -254,8 +136,8 @@ func TestPageModeURLRouting(t *testing.T) {
 
 		err := chromedp.Run(testCtx,
 			chromedp.Navigate(testURL),
-			e2etest.WaitForWebSocketReady(5*time.Second),
-			waitFor(`document.readyState === 'complete'`, 3*time.Second),
+			e2etest.WaitForWebSocketReady(30*time.Second), // Increased for CDN loading + WebSocket init
+			waitFor(`document.readyState === 'complete'`, 10*time.Second),
 			// Check if anchor link exists
 			chromedp.Evaluate(`document.querySelector('table tbody tr a') !== null`, &linkExists),
 		)
@@ -280,7 +162,7 @@ func TestPageModeURLRouting(t *testing.T) {
 		// Don't wait for WebSocket after click since it's a new page load
 		err = chromedp.Run(testCtx,
 			chromedp.Click(`table tbody tr a`, chromedp.ByQuery),
-			waitFor(`document.readyState === 'complete'`, 3*time.Second),
+			waitFor(`document.readyState === 'complete'`, 10*time.Second),
 			chromedp.Location(&currentURL),
 		)
 		if err != nil {
@@ -300,7 +182,7 @@ func TestPageModeURLRouting(t *testing.T) {
 		// Create fresh browser context for this subtest
 		testCtx, cancel := chromedp.NewContext(ctx)
 		defer cancel()
-		testCtx, timeoutCancel := context.WithTimeout(testCtx, 30*time.Second)
+		testCtx, timeoutCancel := context.WithTimeout(testCtx, getBrowserTimeout())
 		defer timeoutCancel()
 
 		var detailVisible bool
@@ -308,8 +190,8 @@ func TestPageModeURLRouting(t *testing.T) {
 		var firstResourceHref string
 		err := chromedp.Run(testCtx,
 			chromedp.Navigate(testURL),
-			e2etest.WaitForWebSocketReady(5*time.Second),
-			waitFor(`document.readyState === 'complete'`, 3*time.Second),
+			e2etest.WaitForWebSocketReady(30*time.Second), // Increased for CDN loading + WebSocket init
+			waitFor(`document.readyState === 'complete'`, 10*time.Second),
 			chromedp.Evaluate(`document.querySelector('table tbody tr a')?.getAttribute('href') || null`, &firstResourceHref),
 		)
 		if err != nil || firstResourceHref == "" {
@@ -325,16 +207,29 @@ func TestPageModeURLRouting(t *testing.T) {
 
 		// Now navigate directly to that resource
 		directURL := fmt.Sprintf("%s/%s", testURL, firstResourceID)
+		var bodyText string
+		var hasTable bool
 		err = chromedp.Run(testCtx,
 			chromedp.Navigate(directURL),
+			e2etest.WaitForWebSocketReady(30*time.Second), // Wait for WebSocket after direct navigation
 			waitFor(`document.readyState === 'complete'`, 5*time.Second),
+			chromedp.Evaluate(`document.body.innerText`, &bodyText),
+			chromedp.Evaluate(`document.querySelector('table') !== null`, &hasTable),
 			chromedp.Evaluate(`document.body.innerText.includes('Details') || document.body.innerText.includes('Back')`, &detailVisible),
 		)
 		if err != nil {
 			t.Fatalf("Failed to navigate directly: %v", err)
 		}
 
-		if !detailVisible {
+		// Detail view should show "Details" or "Back" and should NOT show the list table
+		if !detailVisible || hasTable {
+			t.Logf("Body text (first 500 chars): %s", func() string {
+				if len(bodyText) > 500 {
+					return bodyText[:500]
+				}
+				return bodyText
+			}())
+			t.Logf("Has table (should be false): %v, Has Details/Back text: %v", hasTable, detailVisible)
 			t.Error("Detail view not shown when navigating directly to resource URL")
 		} else {
 			t.Log("✅ Direct navigation works")
@@ -346,7 +241,7 @@ func TestPageModeURLRouting(t *testing.T) {
 		// Create fresh browser context for this subtest
 		testCtx, cancel := chromedp.NewContext(ctx)
 		defer cancel()
-		testCtx, timeoutCancel := context.WithTimeout(testCtx, 30*time.Second)
+		testCtx, timeoutCancel := context.WithTimeout(testCtx, getBrowserTimeout())
 		defer timeoutCancel()
 
 		var linkExists bool
@@ -355,8 +250,8 @@ func TestPageModeURLRouting(t *testing.T) {
 		// First check if anchor links exist
 		err := chromedp.Run(testCtx,
 			chromedp.Navigate(testURL),
-			e2etest.WaitForWebSocketReady(5*time.Second),
-			waitFor(`document.readyState === 'complete'`, 3*time.Second),
+			e2etest.WaitForWebSocketReady(30*time.Second), // Increased for CDN loading + WebSocket init
+			waitFor(`document.readyState === 'complete'`, 10*time.Second),
 			chromedp.Evaluate(`document.querySelector('table tbody tr a') !== null`, &linkExists),
 		)
 		if err != nil {
@@ -369,9 +264,9 @@ func TestPageModeURLRouting(t *testing.T) {
 
 		err = chromedp.Run(testCtx,
 			chromedp.Click(`table tbody tr a`, chromedp.ByQuery),
-			waitFor(`document.readyState === 'complete'`, 3*time.Second),
+			waitFor(`document.readyState === 'complete'`, 10*time.Second),
 			chromedp.Evaluate(`history.back()`, nil),
-			waitFor(`document.readyState === 'complete'`, 3*time.Second),
+			waitFor(`document.readyState === 'complete'`, 10*time.Second),
 			chromedp.Evaluate(`document.querySelector('table') !== null`, &backToList),
 		)
 		if err != nil {
@@ -390,7 +285,7 @@ func TestPageModeURLRouting(t *testing.T) {
 		// Create fresh browser context for this subtest
 		testCtx, cancel := chromedp.NewContext(ctx)
 		defer cancel()
-		testCtx, timeoutCancel := context.WithTimeout(testCtx, 30*time.Second)
+		testCtx, timeoutCancel := context.WithTimeout(testCtx, getBrowserTimeout())
 		defer timeoutCancel()
 
 		var linkExists bool
@@ -399,8 +294,8 @@ func TestPageModeURLRouting(t *testing.T) {
 		// First check if anchor links exist
 		err := chromedp.Run(testCtx,
 			chromedp.Navigate(testURL),
-			e2etest.WaitForWebSocketReady(5*time.Second),
-			waitFor(`document.readyState === 'complete'`, 3*time.Second),
+			e2etest.WaitForWebSocketReady(30*time.Second), // Increased for CDN loading + WebSocket init
+			waitFor(`document.readyState === 'complete'`, 10*time.Second),
 			chromedp.Evaluate(`document.querySelector('table tbody tr a') !== null`, &linkExists),
 		)
 		if err != nil {
@@ -413,9 +308,9 @@ func TestPageModeURLRouting(t *testing.T) {
 
 		err = chromedp.Run(testCtx,
 			chromedp.Click(`table tbody tr a`, chromedp.ByQuery),
-			waitFor(`document.readyState === 'complete'`, 3*time.Second),
+			waitFor(`document.readyState === 'complete'`, 10*time.Second),
 			chromedp.Evaluate(`history.back()`, nil),
-			waitFor(`document.readyState === 'complete'`, 3*time.Second),
+			waitFor(`document.readyState === 'complete'`, 10*time.Second),
 			chromedp.Location(&finalURL),
 		)
 		if err != nil {
