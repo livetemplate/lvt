@@ -17,8 +17,8 @@ type E2ETest struct {
 	Cancel     context.CancelFunc
 	ServerPort int
 	ChromePort int
+	ChromeMode ChromeMode
 	ServerCmd  *exec.Cmd
-	ChromeCmd  *exec.Cmd
 	AppDir     string
 	AppPath    string
 	serverURL  string
@@ -103,7 +103,6 @@ func Setup(t *testing.T, opts *SetupOptions) *E2ETest {
 
 	// Start Chrome based on mode
 	var (
-		chromeCmd       *exec.Cmd
 		ctx             context.Context
 		cancel          context.CancelFunc
 		allocatorCancel context.CancelFunc
@@ -111,7 +110,9 @@ func Setup(t *testing.T, opts *SetupOptions) *E2ETest {
 
 	switch opts.ChromeMode {
 	case ChromeDocker:
-		chromeCmd = StartDockerChrome(t, chromePort)
+		if err := StartDockerChrome(t, chromePort); err != nil {
+			t.Fatalf("Failed to start Docker Chrome: %v", err)
+		}
 		chromeURL := fmt.Sprintf("http://localhost:%d", chromePort)
 		var allocCtx context.Context
 		allocCtx, allocatorCancel = chromedp.NewRemoteAllocator(context.Background(), chromeURL)
@@ -164,8 +165,8 @@ func Setup(t *testing.T, opts *SetupOptions) *E2ETest {
 		Cancel:     cancel,
 		ServerPort: serverPort,
 		ChromePort: chromePort,
+		ChromeMode: opts.ChromeMode,
 		ServerCmd:  serverCmd,
-		ChromeCmd:  chromeCmd,
 		AppPath:    opts.AppPath,
 		serverURL:  fmt.Sprintf("http://localhost:%d", serverPort),
 		Console:    consoleLogger,
@@ -192,8 +193,8 @@ func (e *E2ETest) Cleanup() {
 	}
 
 	// Stop Chrome
-	if e.ChromeCmd != nil {
-		StopDockerChrome(e.T, e.ChromeCmd, e.ChromePort)
+	if e.ChromeMode == ChromeDocker {
+		StopDockerChrome(e.T, e.ChromePort)
 	}
 
 	// Stop server
@@ -220,7 +221,7 @@ func (e *E2ETest) Navigate(path string) error {
 // For local Chrome, this uses localhost.
 func (e *E2ETest) URL(path string) string {
 	// For Docker Chrome, use GetChromeTestURL which handles host.docker.internal
-	if e.ChromeCmd != nil {
+	if e.ChromeMode == ChromeDocker {
 		baseURL := GetChromeTestURL(e.ServerPort)
 		if path == "" || path == "/" {
 			return baseURL

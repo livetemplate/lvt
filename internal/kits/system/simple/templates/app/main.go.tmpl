@@ -47,7 +47,10 @@ func main() {
 	}
 
 	// Create template - auto-discovers [[.AppName]].tmpl
-	tmpl := livetemplate.New("[[.AppName]]", livetemplate.WithDevMode([[.DevMode]]))
+	tmpl, err := livetemplate.New("[[.AppName]]", livetemplate.WithDevMode([[.DevMode]]))
+	if err != nil {
+		log.Fatalf("Failed to create template: %v", err)
+	}
 
 	// Mount handler
 	http.Handle("/", tmpl.Handle(state))
@@ -55,13 +58,19 @@ func main() {
 	// Serve client library
 	http.HandleFunc("/livetemplate-client.js", serveClientLibrary)
 
+	// Health check endpoint
+	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 	log.Printf("Server starting on http://localhost:%s", port)
 
-	err := http.ListenAndServe(":"+port, nil)
+	err = http.ListenAndServe(":"+port, nil)
 	if err != nil {
 		log.Fatalf("Server failed to start: %v", err)
 	}

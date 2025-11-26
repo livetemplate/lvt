@@ -42,9 +42,29 @@ jobs:
       #     version: latest
       #     args: --disable-all --enable=errcheck,unused,staticcheck,gosimple,ineffassign
 
-      - name: Run tests
+      - name: Free Disk Space
         run: |
-          # Run all internal tests except kits (known CI issue with embed.FS)
-          go test -v ./internal/config ./internal/generator ./internal/parser \
-            ./internal/serve ./internal/stack/... ./internal/ui \
-            ./internal/validator -timeout=120s
+          echo "Disk space before cleanup:"
+          df -h
+
+          # Remove unnecessary pre-installed software to free up ~14GB
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf /usr/local/share/powershell
+
+          echo "Disk space after cleanup:"
+          df -h
+
+      - name: Install Docker (for e2e tests)
+        run: |
+          # Docker is pre-installed on ubuntu-latest runners
+          docker --version
+          docker ps
+
+      - name: Run Tests
+        env:
+          DOCKER_BUILDKIT: 1
+        run: make test-commit

@@ -37,7 +37,11 @@ func TestWebSocketBasic(t *testing.T) {
 		t.Fatalf("Failed to start server: %v", err)
 	}
 	defer func() {
-		cmd.Process.Kill()
+		if cmd.Process != nil {
+			cmd.Process.Kill()
+			// Wait for process to exit to avoid zombie processes and I/O wait issues
+			cmd.Wait()
+		}
 		t.Logf("=== SERVER LOGS ===\n%s", serverLogs.String())
 	}()
 

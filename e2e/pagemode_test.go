@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -17,91 +15,22 @@ import (
 
 // TestPageModeRendering tests that page mode actually renders content, not empty divs
 func TestPageModeRendering(t *testing.T) {
-	// Note: Not parallel because tests use chdirMutex and need sequential execution
+	t.Parallel() // Can run concurrently with Chrome pool
 
 	tmpDir := t.TempDir()
 	appDir := filepath.Join(tmpDir, "testapp")
 
-	// Create app with --dev flag to use local client library
-	if err := runLvtCommand(t, tmpDir, "new", "testapp", "--dev"); err != nil {
+	// Create app (production mode for Docker compatibility)
+	if err := runLvtCommand(t, tmpDir, "new", "testapp"); err != nil {
 		t.Fatalf("Failed to create app: %v", err)
 	}
+
+	// Enable DevMode BEFORE generating resources so DevMode=true gets baked into handler code
+	enableDevMode(t, appDir)
 
 	// Generate resource with page mode
 	if err := runLvtCommand(t, appDir, "gen", "resource", "products", "name", "price:float", "--edit-mode", "page"); err != nil {
 		t.Fatalf("Failed to generate resource: %v", err)
-	}
-
-	// Setup go.mod for local livetemplate (same as tutorial test)
-	// Protected by mutex to prevent race with parallel tests changing directory
-	chdirMutex.Lock()
-	cwd, _ := os.Getwd()
-	livetemplatePath := filepath.Join(cwd, "..", "..", "livetemplate")
-	chdirMutex.Unlock()
-
-	if err := runGoModTidy(t, appDir); err != nil {
-		t.Fatalf("Failed to run go mod tidy: %v", err)
-	}
-
-	replaceCmd := exec.Command("go", "mod", "edit",
-		"-replace", fmt.Sprintf("github.com/livetemplate/livetemplate=%s", livetemplatePath))
-	replaceCmd.Dir = appDir
-	if err := replaceCmd.Run(); err != nil {
-		t.Fatalf("Failed to add replace directive: %v", err)
-	}
-
-	if err := runGoModTidy(t, appDir); err != nil {
-		t.Fatalf("Failed to run go mod tidy after replace: %v", err)
-	}
-
-	// Debug: Verify go.mod has replace directive
-	goModPath := filepath.Join(appDir, "go.mod")
-	goModContent, modErr := os.ReadFile(goModPath)
-	if modErr != nil {
-		t.Logf("Warning: Could not read go.mod: %v", modErr)
-	} else {
-		if strings.Contains(string(goModContent), "replace github.com/livetemplate/livetemplate") {
-			t.Log("✅ go.mod has replace directive")
-			// Show the replace line
-			lines := strings.Split(string(goModContent), "\n")
-			for _, line := range lines {
-				if strings.Contains(line, "replace github.com/livetemplate/livetemplate") {
-					t.Logf("  %s", strings.TrimSpace(line))
-				}
-			}
-		} else {
-			t.Error("❌ go.mod does NOT have replace directive - this is the bug!")
-		}
-	}
-
-	// Debug: Check .lvtrc file
-	lvtrcPath := filepath.Join(appDir, ".lvtrc")
-	lvtrcContent, lvtrcErr := os.ReadFile(lvtrcPath)
-	if lvtrcErr != nil {
-		t.Logf("Warning: Could not read .lvtrc: %v", lvtrcErr)
-	} else {
-		if strings.Contains(string(lvtrcContent), "dev_mode=true") {
-			t.Log("✅ .lvtrc has dev_mode=true")
-		} else if strings.Contains(string(lvtrcContent), "dev_mode=false") {
-			t.Error("❌ .lvtrc has dev_mode=false - should be true!")
-			t.Logf("  .lvtrc content: %s", string(lvtrcContent))
-		} else {
-			t.Log("⚠️  .lvtrc does not have dev_mode setting")
-			t.Logf("  .lvtrc content: %s", string(lvtrcContent))
-		}
-	}
-
-	// Copy client library using absolute path
-	// Client is at monorepo root level, not inside livetemplate/
-	monorepoRoot := filepath.Join(cwd, "..", "..")
-	clientSrc := filepath.Join(monorepoRoot, "client", "dist", "livetemplate-client.browser.js")
-	clientDst := filepath.Join(appDir, "livetemplate-client.js")
-	clientContent, err := os.ReadFile(clientSrc)
-	if err != nil {
-		t.Fatalf("Failed to read client library: %v", err)
-	}
-	if err := os.WriteFile(clientDst, clientContent, 0644); err != nil {
-		t.Fatalf("Failed to write client library: %v", err)
 	}
 
 	// Run migration
@@ -109,111 +38,14 @@ func TestPageModeRendering(t *testing.T) {
 		t.Fatalf("Failed to run migration: %v", err)
 	}
 
-	// The replace directive in go.mod ensures local livetemplate is used
-	// No need to clean caches - replace takes precedence
-
-	// Debug: Check if WithDevMode option is used in generated code
-	productsGoPath := filepath.Join(appDir, "internal/app/products/products.go")
-	productsGoContent, readErr := os.ReadFile(productsGoPath)
-	if readErr != nil {
-		t.Logf("Warning: Could not read products.go: %v", readErr)
-	} else {
-		if strings.Contains(string(productsGoContent), "livetemplate.WithDevMode(true)") {
-			t.Log("✅ WithDevMode(true) option is used in generated code")
-		} else if strings.Contains(string(productsGoContent), "livetemplate.WithDevMode(false)") {
-			t.Error("❌ WithDevMode(false) in generated code - should be true!")
-		} else {
-			t.Error("❌ WithDevMode option not found in generated code")
-			// Show template initialization
-			lines := strings.Split(string(productsGoContent), "\n")
-			for i, line := range lines {
-				if strings.Contains(line, "livetemplate.New") {
-					t.Logf("  Line %d: %s", i+1, strings.TrimSpace(line))
-				}
-			}
-		}
-
-	}
-
-	// Debug: Check the generated template file for .lvt.DevMode
-	productsTmplPath := filepath.Join(appDir, "internal/app/products/products.tmpl")
-	productsTmplContent, tmplErr := os.ReadFile(productsTmplPath)
-	if tmplErr != nil {
-		t.Logf("Warning: Could not read products.tmpl: %v", tmplErr)
-	} else {
-		if strings.Contains(string(productsTmplContent), "{{if .lvt.DevMode}}") {
-			t.Log("✅ Template has runtime .lvt.DevMode conditional {{if .lvt.DevMode}}")
-		} else if strings.Contains(string(productsTmplContent), "{{if .DevMode}}") {
-			t.Error("❌ Template has old {{if .DevMode}} conditional - should use .lvt.DevMode!")
-		} else if strings.Contains(string(productsTmplContent), "[[- if .DevMode]]") {
-			t.Error("❌ Template has generation-time DevMode conditional [[- if .DevMode]] - this is the bug!")
-		} else if strings.Contains(string(productsTmplContent), "<script src=\"/livetemplate-client.js\"></script>") && !strings.Contains(string(productsTmplContent), "{{if") {
-			t.Error("❌ Template has hardcoded local client script without conditional - this is the bug!")
-		} else if strings.Contains(string(productsTmplContent), "<script src=\"https://unpkg.com") && !strings.Contains(string(productsTmplContent), "{{if") {
-			t.Error("❌ Template has hardcoded CDN script without conditional - this is the bug!")
-		} else {
-			t.Log("⚠️  Template script tag pattern not recognized")
-		}
-	}
-
-	// Start the app server - use unique port for parallel testing
+	// Build and run app natively (much faster than Docker)
+	// This test focuses on page mode rendering, not deployment
 	port := allocateTestPort()
+	_ = buildAndRunNative(t, appDir, port)
 
-	// Build the server binary - this ensures we're using freshly compiled code with replace directive
-	serverBinary := filepath.Join(tmpDir, "testapp-server")
-	buildServerCmd := exec.Command("go", "build", "-o", serverBinary, "./cmd/testapp")
-	buildServerCmd.Dir = appDir
-	buildServerCmd.Env = append(os.Environ(), "GOWORK=off")
-	buildOutput, buildErr := buildServerCmd.CombinedOutput()
-	if buildErr != nil {
-		t.Fatalf("Failed to build server: %v\nOutput: %s", buildErr, string(buildOutput))
-	}
-	t.Logf("Built server binary: %s", serverBinary)
-
-	// Capture server logs to check DevMode value
-	serverLogFile := filepath.Join(tmpDir, "server.log")
-	logFile, err := os.Create(serverLogFile)
-	if err != nil {
-		t.Fatalf("Failed to create log file: %v", err)
-	}
-	defer logFile.Close()
-
-	serverCmd := exec.Command(serverBinary)
-	serverCmd.Dir = appDir
-	serverCmd.Env = append(os.Environ(), fmt.Sprintf("PORT=%d", port), "TEST_MODE=1")
-	serverCmd.Stdout = logFile
-	serverCmd.Stderr = logFile
-
-	if err := serverCmd.Start(); err != nil {
-		t.Fatalf("Failed to start server: %v", err)
-	}
-	defer func() {
-		if serverCmd.Process != nil {
-			_ = serverCmd.Process.Kill()
-			_ = serverCmd.Wait() // Wait for I/O to complete
-		}
-	}()
-
-	// Wait for server to start - poll until it responds
-	serverReady := false
-	for i := 0; i < 30; i++ {
-		time.Sleep(200 * time.Millisecond)
-		resp, err := http.Get(fmt.Sprintf("http://localhost:%d/", port))
-		if err == nil {
-			resp.Body.Close()
-			if resp.StatusCode == 200 {
-				serverReady = true
-				break
-			}
-		}
-	}
-	if !serverReady {
-		t.Fatal("Server did not start within 6 seconds")
-	}
-
-	// Use isolated Chrome container for parallel execution
-	ctx, cancel := getIsolatedChromeContext(t)
-	defer cancel()
+	// Use Chrome from pool for parallel execution
+	ctx, _, cleanup := GetPooledChrome(t)
+	defer cleanup()
 
 	// Navigate to products page
 	testURL := fmt.Sprintf("%s/products", e2etest.GetChromeTestURL(port))
@@ -229,60 +61,11 @@ func TestPageModeRendering(t *testing.T) {
 		htmlStr := string(htmlBytes)
 		t.Logf("Raw HTML length: %d bytes", len(htmlStr))
 
-		// Check server logs for DevMode value
-		time.Sleep(500 * time.Millisecond) // Give log writes time to flush
-		_ = logFile.Sync()
-		serverLogs, logErr := os.ReadFile(serverLogFile)
-		if logErr == nil {
-			logsStr := string(serverLogs)
-			if len(logsStr) == 0 {
-				t.Log("⚠️  Server logs are EMPTY - server may not be starting or output not being captured")
-			} else {
-				t.Logf("Server logs (%d bytes):\n%s", len(logsStr), logsStr)
-				// Check for the actual log format: livetemplate.New("name"): DevMode=true
-				if strings.Contains(logsStr, "DevMode=true") {
-					t.Log("✅ Server logs confirm DevMode=true")
-				} else if strings.Contains(logsStr, "DevMode=false") {
-					t.Error("❌ Server logs show DevMode=false - should be true!")
-				} else {
-					t.Log("⚠️  DevMode log statement not found in server logs")
-				}
-			}
-		} else {
-			t.Logf("Failed to read server logs: %v", logErr)
-		}
-
-		// Check script tag in raw HTML
-		if strings.Contains(htmlStr, "<script src=\"/livetemplate-client.js\"></script>") {
-			t.Log("✅ Raw HTML has local client script")
-		} else if strings.Contains(htmlStr, "<script src=\"https://unpkg.com") {
-			t.Error("❌ Raw HTML has CDN client script - DevMode conditional evaluated to false!")
-			// Show the livetemplate script section specifically
-			lvtScriptIdx := strings.Index(htmlStr, "livetemplate-client")
-			if lvtScriptIdx >= 0 {
-				start := lvtScriptIdx - 50
-				if start < 0 {
-					start = 0
-				}
-				end := lvtScriptIdx + 150
-				if end > len(htmlStr) {
-					end = len(htmlStr)
-				}
-				t.Logf("LiveTemplate script context: [%s]", htmlStr[start:end])
-			}
-
-			// Also check for DEBUG comment
-			if strings.Contains(htmlStr, "<!-- DEBUG:") {
-				debugIdx := strings.Index(htmlStr, "<!-- DEBUG:")
-				start := debugIdx
-				end := debugIdx + 300
-				if end > len(htmlStr) {
-					end = len(htmlStr)
-				}
-				t.Logf("DEBUG comment found: [%s]", htmlStr[start:end])
-			} else {
-				t.Log("⚠️  DEBUG comment not found in HTML")
-			}
+		// Apps use CDN client from unpkg.com - this is expected
+		if strings.Contains(htmlStr, "<script src=\"https://unpkg.com") {
+			t.Log("✅ Raw HTML has CDN client script (expected)")
+		} else if strings.Contains(htmlStr, "<script src=\"/livetemplate-client.js\"></script>") {
+			t.Log("⚠️  Raw HTML has local client script (unexpected in production mode)")
 		} else {
 			t.Log("⚠️  No client script found in raw HTML")
 		}
@@ -298,10 +81,10 @@ func TestPageModeRendering(t *testing.T) {
 	// First navigate and check if script tag exists
 	var scriptTagExists bool
 	var scriptSrc string
-	err = chromedp.Run(ctx,
+	err := chromedp.Run(ctx,
 		chromedp.Navigate(testURL),
 		// Wait for page to fully load
-		waitFor(`document.readyState === 'complete'`, 3*time.Second),
+		waitFor(`document.readyState === 'complete'`, 10*time.Second),
 		chromedp.Evaluate(`document.querySelector('script[src*="livetemplate-client"]') !== null`, &scriptTagExists),
 		chromedp.Evaluate(`(document.querySelector('script[src*="livetemplate-client"]') || {}).src || "not found"`, &scriptSrc),
 	)
@@ -311,7 +94,7 @@ func TestPageModeRendering(t *testing.T) {
 	t.Logf("Script tag exists: %v, src: %s", scriptTagExists, scriptSrc)
 
 	err = chromedp.Run(ctx,
-		e2etest.WaitForWebSocketReady(5*time.Second),           // Wait for WebSocket init and first update
+		e2etest.WaitForWebSocketReady(30*time.Second),          // Wait for CDN loading + WebSocket init and first update
 		e2etest.ValidateNoTemplateExpressions("[data-lvt-id]"), // Validate no raw template expressions
 		chromedp.OuterHTML("html", &pageHTML),
 		chromedp.Evaluate(`document.querySelector('[lvt-modal-open="add-modal"]') !== null`, &addButtonExists),

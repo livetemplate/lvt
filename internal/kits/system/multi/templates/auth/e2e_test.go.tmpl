@@ -58,7 +58,7 @@ func TestAuthE2E(t *testing.T) {
 
 		err := chromedp.Run(ctx,
 			chromedp.Navigate(e2etest.GetChromeTestURL(serverPort)+"/auth"),
-			e2etest.WaitForWebSocketReady(5*time.Second),
+			e2etest.WaitForWebSocketReady(30*time.Second) // Increased for CDN loading + WebSocket init,
 			chromedp.WaitVisible(`h2`, chromedp.ByQuery),
 			e2etest.ValidateNoTemplateExpressions("[data-lvt-id]"),
 			chromedp.OuterHTML(`body`, &pageHTML, chromedp.ByQuery),
@@ -124,7 +124,7 @@ func TestAuthE2E(t *testing.T) {
 		// Navigate to auth page
 		err := chromedp.Run(ctx,
 			chromedp.Navigate(e2etest.GetChromeTestURL(serverPort)+"/auth"),
-			e2etest.WaitForWebSocketReady(5*time.Second),
+			e2etest.WaitForWebSocketReady(30*time.Second) // Increased for CDN loading + WebSocket init,
 			chromedp.WaitVisible(`input[name="Email"]`, chromedp.ByQuery),
 		)
 
@@ -169,7 +169,7 @@ func TestAuthE2E(t *testing.T) {
 		// Navigate to auth page
 		err := chromedp.Run(ctx,
 			chromedp.Navigate(e2etest.GetChromeTestURL(serverPort)+"/auth"),
-			e2etest.WaitForWebSocketReady(5*time.Second),
+			e2etest.WaitForWebSocketReady(30*time.Second) // Increased for CDN loading + WebSocket init,
 			chromedp.WaitVisible(`button:contains("Forgot password")`, chromedp.ByQuery),
 		)
 
@@ -222,7 +222,7 @@ func TestAuthE2E(t *testing.T) {
 		// Navigate to auth page
 		err := chromedp.Run(ctx,
 			chromedp.Navigate(e2etest.GetChromeTestURL(serverPort)+"/auth"),
-			e2etest.WaitForWebSocketReady(5*time.Second),
+			e2etest.WaitForWebSocketReady(30*time.Second) // Increased for CDN loading + WebSocket init,
 			chromedp.WaitVisible(`button[lvt-click="HandleMagicLink"]`, chromedp.ByQuery),
 		)
 
@@ -255,7 +255,7 @@ func TestAuthE2E(t *testing.T) {
 		// First login (reuse login flow)
 		err := chromedp.Run(ctx,
 			chromedp.Navigate(e2etest.GetChromeTestURL(serverPort)+"/auth"),
-			e2etest.WaitForWebSocketReady(5*time.Second),
+			e2etest.WaitForWebSocketReady(30*time.Second) // Increased for CDN loading + WebSocket init,
 			chromedp.WaitVisible(`input[name="Email"]`, chromedp.ByQuery),
 			chromedp.SendKeys(`input[name="Email"]`, "test@example.com", chromedp.ByQuery),
 			chromedp.SendKeys(`input[name="Password"]`, "testpassword", chromedp.ByQuery),

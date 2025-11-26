@@ -38,7 +38,7 @@ func NewLoader(embedFS *embed.FS) *KitLoader {
 // 3. Config paths (from ~/.config/lvt/config.yaml) - optional additional paths
 // 4. Embedded system kits (fallback)
 func (l *KitLoader) buildSearchPaths() {
-	var paths []string
+	paths := []string{}
 
 	// 1. Project path
 	if projectPath := findProjectKitDir(); projectPath != "" {

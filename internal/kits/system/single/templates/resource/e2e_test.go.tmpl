@@ -71,7 +71,7 @@ func Test[[.ResourceName]]E2E(t *testing.T) {
 
 		err := chromedp.Run(ctx,
 			chromedp.Navigate(e2etest.GetChromeTestURL(serverPort)+"/[[.ResourceNameLower]]"),
-			e2etest.WaitForWebSocketReady(5*time.Second), // Wait for WebSocket init and first update
+			e2etest.WaitForWebSocketReady(30*time.Second) // Increased for CDN loading + WebSocket init, // Wait for WebSocket init and first update
 			chromedp.WaitVisible(`h1`, chromedp.ByQuery),
 			e2etest.ValidateNoTemplateExpressions("[data-lvt-id]"), // Validate no raw template expressions
 			chromedp.OuterHTML(`body`, &initialHTML, chromedp.ByQuery),
