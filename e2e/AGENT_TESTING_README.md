@@ -106,6 +106,129 @@ Never update tests to pass without also updating documentation.
 
 For full E2E browser testing, see the regular e2e test suite.
 
+## MCP Server Testing
+
+### Overview
+
+The MCP (Model Context Protocol) server provides tool-based access to lvt functionality for AI agents like Claude Desktop. These tests ensure all MCP tools work correctly.
+
+### MCP Server Tests (`commands/mcp_server_test.go`)
+
+Tests the MCP server lifecycle and tool registration:
+
+1. **Server Initialization** - Verifies MCP server can be created
+2. **Tool Registration** - Tests all 11 registration functions work without panicking
+3. **All Tools Registration** - Verifies all 16 tools can be registered together
+4. **Context Cancellation** - Tests server context handling
+5. **Input/Output Structures** - Validates all tool input and output structs are defined
+
+### MCP Tool Tests (`commands/mcp_tools_test.go`)
+
+Comprehensive tests for all 16 MCP tools:
+
+#### Core Generation Tools (5 tools)
+- `lvt_new` - Create new apps with different configurations
+- `lvt_gen_resource` - Generate CRUD resources with fields
+- `lvt_gen_view` - Generate view-only handlers
+- `lvt_gen_auth` - Generate authentication systems
+- `lvt_gen_schema` - Generate database schema only
+
+#### Migration Tools (4 tools)
+- `lvt_migration_up` - Run pending migrations
+- `lvt_migration_down` - Rollback last migration
+- `lvt_migration_status` - Show migration status
+- `lvt_migration_create` - Create new migration files
+
+#### Resource Inspection Tools (2 tools)
+- `lvt_resource_list` - List all available resources
+- `lvt_resource_describe` - Show detailed schema for a resource
+
+#### Data Management Tools (1 tool)
+- `lvt_seed` - Generate test data for resources
+
+#### Template Tools (1 tool)
+- `lvt_validate_template` - Validate and analyze template files
+
+#### Environment Tools (1 tool)
+- `lvt_env_generate` - Generate .env.example with detected config
+
+#### Kits Tools (2 tools)
+- `lvt_kits_list` - List available CSS framework kits
+- `lvt_kits_info` - Show detailed kit information
+
+### Running MCP Tests
+
+```bash
+# Run all MCP server tests
+go test -v -run TestMCPServer ./commands
+
+# Run all MCP tool tests
+go test -v -run TestMCPTool ./commands
+
+# Run specific tool test
+go test -v -run TestMCPTool_LvtNew ./commands
+
+# Run with short mode (skips long-running tests)
+SKIP_GO_MOD_TIDY=1 go test -short -run TestMCPTool ./commands
+```
+
+### What MCP Tests Validate
+
+Each tool test verifies:
+- ✅ Valid inputs produce successful results
+- ✅ Files and directories are created correctly
+- ✅ Commands execute without errors
+- ✅ Output structures are properly defined
+- ✅ Integration with underlying commands works
+
+### MCP Test Environment
+
+MCP tests use isolated environments:
+- Each test gets a fresh temp directory
+- Apps are created with `SKIP_GO_MOD_TIDY=1` for speed
+- Tests clean up automatically
+- No shared state between tests
+
+## Agent Test Harness Extensions
+
+### Supported Commands
+
+The agent test harness (`internal/agenttest/harness.go`) now supports all major lvt commands:
+
+- `gen` - Generate resources, views, auth, schemas
+- `migration` - Database migration operations
+- `seed` - Generate test data
+- `resource` / `res` - Inspect resources and schemas
+- `parse` - Validate template files
+- `env` - Environment variable management
+- `kits` / `kit` - CSS framework kit management
+
+### Example Usage
+
+```go
+func TestMyWorkflow(t *testing.T) {
+    env := agenttest.Setup(t, &agenttest.SetupOptions{
+        AppName: "testapp",
+        Kit:     "multi",
+    })
+
+    // Generate a resource
+    err := env.RunLvtCommand("gen", "resource", "items", "name:string")
+    require.NoError(t, err)
+
+    // Seed data
+    err = env.RunLvtCommand("seed", "items", "--count", "10")
+    require.NoError(t, err)
+
+    // List resources
+    err = env.RunLvtCommand("resource", "list")
+    require.NoError(t, err)
+
+    // Verify files exist
+    env.AssertFileExists("internal/app/items/items.go")
+}
+```
+
 ## Future Enhancements
 
 Potential additions:
@@ -114,5 +237,7 @@ Potential additions:
 - WebSocket connection testing
 - Performance benchmarks
 - Screenshot comparisons
+- MCP protocol compliance tests
+- Concurrent tool invocation tests
 
 Currently kept simple to maximize maintainability and speed.

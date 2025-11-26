@@ -159,6 +159,16 @@ func (e *AgentTestEnv) RunLvtCommand(args ...string) error {
 			return fmt.Errorf("migration subcommand required")
 		}
 		return commands.Migration(args[1:])
+	case "seed":
+		return commands.Seed(args[1:])
+	case "resource", "res":
+		return commands.Resource(args[1:])
+	case "parse":
+		return commands.Parse(args[1:])
+	case "env":
+		return commands.Env(args[1:])
+	case "kits", "kit":
+		return commands.Kits(args[1:])
 	default:
 		return fmt.Errorf("unknown command: %s", args[0])
 	}
