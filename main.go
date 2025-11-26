@@ -60,6 +60,8 @@ func main() {
 		err = commands.Env(args)
 	case "install-agent", "agent":
 		err = commands.InstallAgent(args)
+	case "mcp-server", "mcp":
+		err = commands.MCPServer(args)
 	case "version", "--version", "-v":
 		printVersion()
 		return
@@ -149,6 +151,7 @@ func printUsage() {
 	fmt.Println("  lvt parse <template-file>                     Validate and analyze template file")
 	fmt.Println("  lvt env <command>                             Manage environment variables")
 	fmt.Println("  lvt install-agent [--force]                   Install Claude Code agent and skills")
+	fmt.Println("  lvt mcp-server                                Start Model Context Protocol server")
 	fmt.Println("  lvt version                                   Show version information")
 	fmt.Println()
 	fmt.Println("Generate Subcommands:")

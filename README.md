@@ -80,6 +80,67 @@ See [docs/AGENT_USAGE_GUIDE.md](docs/AGENT_USAGE_GUIDE.md) for detailed usage ex
 
 **Note**: The agent and skills are designed for the lvt development workflow. For general project questions, use standard Claude Code capabilities.
 
+## Global AI Access via MCP Server
+
+`lvt` also provides a Model Context Protocol (MCP) server that works with Claude Desktop, Claude Code, and other MCP-compatible AI applications. This gives you global access to `lvt` commands from anywhere.
+
+### Setup for Claude Desktop
+
+1. **Install lvt globally**:
+   ```bash
+   go install github.com/livetemplate/lvt@latest
+   ```
+
+2. **Configure Claude Desktop** by editing `claude_desktop_config.json`:
+
+   **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+
+   **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+
+   **Linux**: `~/.config/Claude/claude_desktop_config.json`
+
+   Add:
+   ```json
+   {
+     "mcpServers": {
+       "lvt": {
+         "command": "lvt",
+         "args": ["mcp-server"]
+       }
+     }
+   }
+   ```
+
+3. **Restart Claude Desktop**
+
+### Available MCP Tools
+
+Once configured, Claude has access to these tools:
+
+- **lvt_new** - Create new apps with kit/CSS/module options
+- **lvt_gen_resource** - Generate CRUD resources with fields
+- **lvt_gen_view** - Generate view-only handlers
+- **lvt_gen_auth** - Generate authentication systems
+- **lvt_migration_up** - Run pending migrations
+- **lvt_migration_down** - Rollback last migration
+- **lvt_migration_status** - Check migration status
+- **lvt_migration_create** - Create new migration files
+
+### Usage Example
+
+In Claude Desktop, simply ask:
+
+> "Create a new LiveTemplate app called 'blog' with the multi kit"
+
+Claude will use the MCP tools to create your app, even before you have a project directory!
+
+### MCP vs Embedded Agent
+
+- **MCP Server**: Global access, works with Claude Desktop, great for project creation
+- **Embedded Agent**: Project-specific, richer workflows, 20+ skills with detailed guidance
+
+Use both for the best experience!
+
 ## Quick Start
 
 You can use `lvt` in two modes: **Interactive** (TUI wizards) or **Direct** (CLI arguments).
