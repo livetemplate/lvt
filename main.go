@@ -58,6 +58,8 @@ func main() {
 		err = commands.Serve(args)
 	case "env":
 		err = commands.Env(args)
+	case "install-agent", "agent":
+		err = commands.InstallAgent(args)
 	case "version", "--version", "-v":
 		printVersion()
 		return
@@ -146,6 +148,7 @@ func printUsage() {
 	fmt.Println("  lvt serve [options]                           Start development server with hot reload")
 	fmt.Println("  lvt parse <template-file>                     Validate and analyze template file")
 	fmt.Println("  lvt env <command>                             Manage environment variables")
+	fmt.Println("  lvt install-agent [--force]                   Install Claude Code agent and skills")
 	fmt.Println("  lvt version                                   Show version information")
 	fmt.Println()
 	fmt.Println("Generate Subcommands:")

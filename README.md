@@ -41,6 +41,45 @@ All pull requests require passing CI checks including tests, linting, and code f
 - **Issues**: [GitHub Issues](https://github.com/livetemplate/lvt/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/livetemplate/lvt/discussions)
 
+## AI-Assisted Development with Claude Code
+
+`lvt` includes a comprehensive AI agent and skills library for Claude Code that can help you build applications faster with guided workflows and best practices.
+
+### Installation
+
+In any LiveTemplate project, run:
+
+```bash
+lvt install-agent
+```
+
+This installs:
+- **20+ skills** for lvt commands and workflows
+- **Project management agent** for task tracking
+- **Permission settings** for safe Claude Code operation
+
+### What You Can Do
+
+Once installed, open Claude Code in your project directory (`claude`) and try:
+
+- **"Add a posts resource with title and content"** - Generates resources with proper fields
+- **"Generate authentication system"** - Sets up complete auth with sessions
+- **"Create a quickstart blog app"** - Full workflow from creation to running server
+- **"Add categories and link them to posts"** - Manages relationships between resources
+
+The agent guides you through:
+- Choosing the right kit (multi/single/simple)
+- Selecting CSS frameworks (Tailwind/Bulma/Pico)
+- Creating and running migrations
+- Testing and verification
+- Production deployment
+
+### Learn More
+
+See [docs/AGENT_USAGE_GUIDE.md](docs/AGENT_USAGE_GUIDE.md) for detailed usage examples and workflow patterns.
+
+**Note**: The agent and skills are designed for the lvt development workflow. For general project questions, use standard Claude Code capabilities.
+
 ## Quick Start
 
 You can use `lvt` in two modes: **Interactive** (TUI wizards) or **Direct** (CLI arguments).
