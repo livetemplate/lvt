@@ -36,10 +36,10 @@ func MCPServer(args []string) error {
 
 // NewAppInput defines the input schema for lvt new
 type NewAppInput struct {
-	Name   string `json:"name" jsonschema:"required,description=Application name"`
-	Kit    string `json:"kit,omitempty" jsonschema:"enum=multi|single|simple,description=Template kit: multi (Tailwind multi-page), single (Tailwind SPA), simple (Pico CSS)"`
-	CSS    string `json:"css,omitempty" jsonschema:"enum=tailwind|bulma|pico|none,description=CSS framework to use"`
-	Module string `json:"module,omitempty" jsonschema:"description=Go module name (defaults to app name)"`
+	Name   string `json:"name" jsonschema:"Application name"`
+	Kit    string `json:"kit,omitempty" jsonschema:"Template kit (multi, single, or simple)"`
+	CSS    string `json:"css,omitempty" jsonschema:"CSS framework (tailwind, bulma, pico, or none)"`
+	Module string `json:"module,omitempty" jsonschema:"Go module name (defaults to app name)"`
 }
 
 // NewAppOutput defines the output schema for lvt new
@@ -104,15 +104,15 @@ func registerNewTool(server *mcp.Server) {
 
 // GenResourceInput defines the input schema for lvt gen resource
 type GenResourceInput struct {
-	Name   string            `json:"name" jsonschema:"required,description=Resource name (singular, e.g., 'post', 'user')"`
-	Fields map[string]string `json:"fields" jsonschema:"required,description=Field definitions as name:type pairs (e.g., {'title': 'string', 'content': 'text', 'published_at': 'time'})"`
+	Name   string            `json:"name" jsonschema:"Resource name (singular, e.g. 'post' or 'user')"`
+	Fields map[string]string `json:"fields" jsonschema:"Field definitions as name:type pairs"`
 }
 
 // GenResourceOutput defines the output schema
 type GenResourceOutput struct {
 	Success bool   `json:"success"`
 	Message string `json:"message"`
-	Files   []string `json:"files,omitempty" jsonschema:"description=List of generated files"`
+	Files   []string `json:"files,omitempty" jsonschema:"List of generated files"`
 }
 
 func registerGenResourceTool(server *mcp.Server) {
@@ -170,7 +170,7 @@ func registerGenResourceTool(server *mcp.Server) {
 
 // GenViewInput defines the input schema for lvt gen view
 type GenViewInput struct {
-	Name string `json:"name" jsonschema:"required,description=View name (e.g., 'dashboard', 'counter')"`
+	Name string `json:"name" jsonschema:"View name (e.g. 'dashboard' or 'counter')"`
 }
 
 // GenViewOutput defines the output schema
@@ -220,8 +220,8 @@ func registerGenViewTool(server *mcp.Server) {
 
 // GenAuthInput defines the input schema for lvt gen auth
 type GenAuthInput struct {
-	StructName string `json:"struct_name,omitempty" jsonschema:"description=Go struct name (default: User)"`
-	TableName  string `json:"table_name,omitempty" jsonschema:"description=Database table name (default: users)"`
+	StructName string `json:"struct_name,omitempty" jsonschema:"Go struct name (default: User)"`
+	TableName  string `json:"table_name,omitempty" jsonschema:"Database table name (default: users)"`
 }
 
 // GenAuthOutput defines the output schema
@@ -264,7 +264,7 @@ func registerGenAuthTool(server *mcp.Server) {
 
 // MigrationInput defines input for migration commands
 type MigrationInput struct {
-	Name string `json:"name,omitempty" jsonschema:"description=Migration name (only for create command)"`
+	Name string `json:"name,omitempty" jsonschema:"Migration name (only for create command)"`
 }
 
 // MigrationOutput defines output for migration commands
