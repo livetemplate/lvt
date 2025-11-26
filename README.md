@@ -129,16 +129,31 @@ See [docs/AGENT_USAGE_GUIDE.md](docs/AGENT_USAGE_GUIDE.md) for detailed usage ex
 
 ### Available MCP Tools
 
-Once configured, Claude has access to these tools:
+Once configured, Claude has access to these 16 tools:
 
+**Project & Resource Generation:**
 - **lvt_new** - Create new apps with kit/CSS/module options
 - **lvt_gen_resource** - Generate CRUD resources with fields
 - **lvt_gen_view** - Generate view-only handlers
 - **lvt_gen_auth** - Generate authentication systems
+- **lvt_gen_schema** - Generate database schema only
+
+**Database Migrations:**
 - **lvt_migration_up** - Run pending migrations
 - **lvt_migration_down** - Rollback last migration
 - **lvt_migration_status** - Check migration status
 - **lvt_migration_create** - Create new migration files
+
+**Data & Inspection:**
+- **lvt_seed** - Generate test data for resources
+- **lvt_resource_list** - List all available resources
+- **lvt_resource_describe** - Show detailed schema for a resource
+
+**Validation & Configuration:**
+- **lvt_validate_template** - Validate and analyze template files
+- **lvt_env_generate** - Generate .env.example with detected config
+- **lvt_kits_list** - List available CSS framework kits
+- **lvt_kits_info** - Show detailed kit information
 
 ### Usage Example
 

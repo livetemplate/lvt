@@ -23,7 +23,13 @@ func MCPServer(args []string) error {
 	registerGenResourceTool(server)
 	registerGenViewTool(server)
 	registerGenAuthTool(server)
+	registerGenSchemaTools(server)
 	registerMigrationTools(server)
+	registerSeedTool(server)
+	registerResourceInspectTools(server)
+	registerValidateTemplatesTool(server)
+	registerEnvTools(server)
+	registerKitsTools(server)
 
 	// Start server with stdio transport
 	ctx := context.Background()
@@ -388,6 +394,364 @@ func registerMigrationTools(server *mcp.Server) {
 		return nil, MigrationOutput{
 			Success: true,
 			Message: fmt.Sprintf("Migration '%s' created successfully", input.Name),
+		}, nil
+	})
+}
+
+// GenSchemaInput defines input for gen schema
+type GenSchemaInput struct {
+	Table  string            `json:"table" jsonschema:"Database table name"`
+	Fields map[string]string `json:"fields" jsonschema:"Field definitions as name:type pairs"`
+}
+
+// GenSchemaOutput defines output for gen schema
+type GenSchemaOutput struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+}
+
+func registerGenSchemaTools(server *mcp.Server) {
+	tool := &mcp.Tool{
+		Name:        "lvt_gen_schema",
+		Description: "Generate database schema only (no handlers or templates)",
+	}
+
+	mcp.AddTool(server, tool, func(ctx context.Context, req *mcp.CallToolRequest, input GenSchemaInput) (*mcp.CallToolResult, GenSchemaOutput, error) {
+		if input.Table == "" {
+			return nil, GenSchemaOutput{
+				Success: false,
+				Message: "Table name is required",
+			}, nil
+		}
+
+		args := []string{"schema", input.Table}
+		for field, typ := range input.Fields {
+			args = append(args, fmt.Sprintf("%s:%s", field, typ))
+		}
+
+		if err := Gen(args); err != nil {
+			return nil, GenSchemaOutput{
+				Success: false,
+				Message: fmt.Sprintf("Failed to generate schema: %v", err),
+			}, nil
+		}
+
+		return nil, GenSchemaOutput{
+			Success: true,
+			Message: fmt.Sprintf("Successfully generated schema for %s", input.Table),
+		}, nil
+	})
+}
+
+// SeedInput defines input for seed command
+type SeedInput struct {
+	Resource string `json:"resource" jsonschema:"Resource name to seed"`
+	Count    int    `json:"count,omitempty" jsonschema:"Number of records to generate (default: 10)"`
+	Cleanup  bool   `json:"cleanup,omitempty" jsonschema:"Clean up existing test data before seeding"`
+}
+
+// SeedOutput defines output for seed command
+type SeedOutput struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+}
+
+func registerSeedTool(server *mcp.Server) {
+	tool := &mcp.Tool{
+		Name:        "lvt_seed",
+		Description: "Generate test data for a resource",
+	}
+
+	mcp.AddTool(server, tool, func(ctx context.Context, req *mcp.CallToolRequest, input SeedInput) (*mcp.CallToolResult, SeedOutput, error) {
+		if input.Resource == "" {
+			return nil, SeedOutput{
+				Success: false,
+				Message: "Resource name is required",
+			}, nil
+		}
+
+		args := []string{input.Resource}
+		if input.Count > 0 {
+			args = append(args, "--count", fmt.Sprintf("%d", input.Count))
+		}
+		if input.Cleanup {
+			args = append(args, "--cleanup")
+		}
+
+		if err := Seed(args); err != nil {
+			return nil, SeedOutput{
+				Success: false,
+				Message: fmt.Sprintf("Failed to seed data: %v", err),
+			}, nil
+		}
+
+		return nil, SeedOutput{
+			Success: true,
+			Message: fmt.Sprintf("Successfully seeded %s", input.Resource),
+		}, nil
+	})
+}
+
+// ResourceInspectInput defines input for resource inspect
+type ResourceInspectInput struct {
+	Command  string `json:"command" jsonschema:"Command: 'list' or 'describe'"`
+	Resource string `json:"resource,omitempty" jsonschema:"Resource name (for describe command)"`
+}
+
+// ResourceInspectOutput defines output
+type ResourceInspectOutput struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+	Details string `json:"details,omitempty"`
+}
+
+func registerResourceInspectTools(server *mcp.Server) {
+	// List resources
+	listTool := &mcp.Tool{
+		Name:        "lvt_resource_list",
+		Description: "List all available resources in the project",
+	}
+	mcp.AddTool(server, listTool, func(ctx context.Context, req *mcp.CallToolRequest, input struct{}) (*mcp.CallToolResult, ResourceInspectOutput, error) {
+		oldStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+
+		err := Resource([]string{"list"})
+
+		w.Close()
+		os.Stdout = oldStdout
+
+		buf := make([]byte, 8192)
+		n, _ := r.Read(buf)
+		output := string(buf[:n])
+
+		if err != nil {
+			return nil, ResourceInspectOutput{
+				Success: false,
+				Message: fmt.Sprintf("Failed to list resources: %v", err),
+			}, nil
+		}
+
+		return nil, ResourceInspectOutput{
+			Success: true,
+			Message: "Resources listed successfully",
+			Details: output,
+		}, nil
+	})
+
+	// Describe resource
+	describeTool := &mcp.Tool{
+		Name:        "lvt_resource_describe",
+		Description: "Show detailed schema for a specific resource",
+	}
+	mcp.AddTool(server, describeTool, func(ctx context.Context, req *mcp.CallToolRequest, input ResourceInspectInput) (*mcp.CallToolResult, ResourceInspectOutput, error) {
+		if input.Resource == "" {
+			return nil, ResourceInspectOutput{
+				Success: false,
+				Message: "Resource name is required",
+			}, nil
+		}
+
+		oldStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+
+		err := Resource([]string{"describe", input.Resource})
+
+		w.Close()
+		os.Stdout = oldStdout
+
+		buf := make([]byte, 8192)
+		n, _ := r.Read(buf)
+		output := string(buf[:n])
+
+		if err != nil {
+			return nil, ResourceInspectOutput{
+				Success: false,
+				Message: fmt.Sprintf("Failed to describe resource: %v", err),
+			}, nil
+		}
+
+		return nil, ResourceInspectOutput{
+			Success: true,
+			Message: fmt.Sprintf("Resource %s described successfully", input.Resource),
+			Details: output,
+		}, nil
+	})
+}
+
+// ValidateTemplatesInput defines input
+type ValidateTemplatesInput struct {
+	TemplateFile string `json:"template_file" jsonschema:"Path to template file to validate"`
+}
+
+// ValidateTemplatesOutput defines output
+type ValidateTemplatesOutput struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+	Details string `json:"details,omitempty"`
+}
+
+func registerValidateTemplatesTool(server *mcp.Server) {
+	tool := &mcp.Tool{
+		Name:        "lvt_validate_template",
+		Description: "Validate and analyze a template file",
+	}
+
+	mcp.AddTool(server, tool, func(ctx context.Context, req *mcp.CallToolRequest, input ValidateTemplatesInput) (*mcp.CallToolResult, ValidateTemplatesOutput, error) {
+		if input.TemplateFile == "" {
+			return nil, ValidateTemplatesOutput{
+				Success: false,
+				Message: "Template file path is required",
+			}, nil
+		}
+
+		oldStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+
+		err := Parse([]string{input.TemplateFile})
+
+		w.Close()
+		os.Stdout = oldStdout
+
+		buf := make([]byte, 8192)
+		n, _ := r.Read(buf)
+		output := string(buf[:n])
+
+		if err != nil {
+			return nil, ValidateTemplatesOutput{
+				Success: false,
+				Message: fmt.Sprintf("Template validation failed: %v", err),
+				Details: output,
+			}, nil
+		}
+
+		return nil, ValidateTemplatesOutput{
+			Success: true,
+			Message: "Template is valid",
+			Details: output,
+		}, nil
+	})
+}
+
+// EnvInput defines input for env commands
+type EnvInput struct {
+	Command string `json:"command" jsonschema:"Command: 'generate' to create .env.example"`
+}
+
+// EnvOutput defines output
+type EnvOutput struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+}
+
+func registerEnvTools(server *mcp.Server) {
+	tool := &mcp.Tool{
+		Name:        "lvt_env_generate",
+		Description: "Generate .env.example with detected configuration",
+	}
+
+	mcp.AddTool(server, tool, func(ctx context.Context, req *mcp.CallToolRequest, input struct{}) (*mcp.CallToolResult, EnvOutput, error) {
+		if err := Env([]string{"generate"}); err != nil {
+			return nil, EnvOutput{
+				Success: false,
+				Message: fmt.Sprintf("Failed to generate env file: %v", err),
+			}, nil
+		}
+
+		return nil, EnvOutput{
+			Success: true,
+			Message: ".env.example generated successfully",
+		}, nil
+	})
+}
+
+// KitsInput defines input for kits commands
+type KitsInput struct {
+	Command string `json:"command" jsonschema:"Command: 'list', 'info', 'validate', or 'create'"`
+	Name    string `json:"name,omitempty" jsonschema:"Kit name (for info, validate, or create)"`
+	Path    string `json:"path,omitempty" jsonschema:"Path to kit (for validate)"`
+}
+
+// KitsOutput defines output
+type KitsOutput struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+	Details string `json:"details,omitempty"`
+}
+
+func registerKitsTools(server *mcp.Server) {
+	// List kits
+	listTool := &mcp.Tool{
+		Name:        "lvt_kits_list",
+		Description: "List all available CSS framework kits",
+	}
+	mcp.AddTool(server, listTool, func(ctx context.Context, req *mcp.CallToolRequest, input struct{}) (*mcp.CallToolResult, KitsOutput, error) {
+		oldStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+
+		err := Kits([]string{"list"})
+
+		w.Close()
+		os.Stdout = oldStdout
+
+		buf := make([]byte, 8192)
+		n, _ := r.Read(buf)
+		output := string(buf[:n])
+
+		if err != nil {
+			return nil, KitsOutput{
+				Success: false,
+				Message: fmt.Sprintf("Failed to list kits: %v", err),
+			}, nil
+		}
+
+		return nil, KitsOutput{
+			Success: true,
+			Message: "Kits listed successfully",
+			Details: output,
+		}, nil
+	})
+
+	// Info about kit
+	infoTool := &mcp.Tool{
+		Name:        "lvt_kits_info",
+		Description: "Show detailed information about a specific kit",
+	}
+	mcp.AddTool(server, infoTool, func(ctx context.Context, req *mcp.CallToolRequest, input KitsInput) (*mcp.CallToolResult, KitsOutput, error) {
+		if input.Name == "" {
+			return nil, KitsOutput{
+				Success: false,
+				Message: "Kit name is required",
+			}, nil
+		}
+
+		oldStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+
+		err := Kits([]string{"info", input.Name})
+
+		w.Close()
+		os.Stdout = oldStdout
+
+		buf := make([]byte, 8192)
+		n, _ := r.Read(buf)
+		output := string(buf[:n])
+
+		if err != nil {
+			return nil, KitsOutput{
+				Success: false,
+				Message: fmt.Sprintf("Failed to get kit info: %v", err),
+			}, nil
+		}
+
+		return nil, KitsOutput{
+			Success: true,
+			Message: fmt.Sprintf("Kit %s info retrieved", input.Name),
+			Details: output,
 		}, nil
 	})
 }
