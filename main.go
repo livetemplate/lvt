@@ -150,7 +150,7 @@ func printUsage() {
 	fmt.Println("  lvt serve [options]                           Start development server with hot reload")
 	fmt.Println("  lvt parse <template-file>                     Validate and analyze template file")
 	fmt.Println("  lvt env <command>                             Manage environment variables")
-	fmt.Println("  lvt install-agent [--force]                   Install Claude Code agent and skills")
+	fmt.Println("  lvt install-agent [--force|--upgrade]         Install Claude Code agent and skills")
 	fmt.Println("  lvt mcp-server                                Start Model Context Protocol server")
 	fmt.Println("  lvt version                                   Show version information")
 	fmt.Println()

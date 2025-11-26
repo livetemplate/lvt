@@ -58,6 +58,20 @@ This installs:
 - **Project management agent** for task tracking
 - **Permission settings** for safe Claude Code operation
 
+### Upgrading
+
+To update to the latest agent and skills:
+
+```bash
+lvt install-agent --upgrade
+```
+
+This will:
+- ✅ Backup your custom settings (`settings.local.json`)
+- ✅ Install the latest agent and skills
+- ✅ Restore your custom settings
+- ✅ Show what changed
+
 ### What You Can Do
 
 Once installed, open Claude Code in your project directory (`claude`) and try:
