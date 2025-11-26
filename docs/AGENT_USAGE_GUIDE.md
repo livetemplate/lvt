@@ -2,9 +2,39 @@
 
 This guide explains how to use the LiveTemplate assistant agent in Claude Code to create and develop applications.
 
-## Getting Started
+## Getting Started (Recommended Workflow)
 
-### 1. Create a New Project
+The recommended approach is to let the agent handle the entire project creation from start to finish. This allows the agent to:
+- Understand the complete context and architecture
+- Plan before coding
+- Verify each step (tests pass, migrations work)
+- Make consistent decisions throughout
+
+```bash
+# Open Claude Code in any directory
+claude
+```
+
+Then describe what you want to build:
+```
+You: Create a new LiveTemplate blog app with posts
+```
+
+The agent will:
+1. Plan the project structure and architecture
+2. Run `lvt new` to create the project
+3. Generate a posts resource with appropriate fields
+4. Create and run migrations
+5. Start the server
+6. Open your browser to the running app
+
+**Why this approach?** The agent sees the entire creation process, understands decisions made at each step, and can verify everything works before moving forward. This matches industry best practices for AI-assisted development.
+
+---
+
+## Alternative: Manual Project Creation
+
+If you prefer more hands-on control, you can create the project manually first:
 
 ```bash
 # Create a new LiveTemplate app
@@ -12,77 +42,83 @@ lvt new myapp
 
 # Navigate to the project
 cd myapp
-```
 
-### 2. Open in Claude Code
-
-```bash
-# Open the project in Claude Code CLI
+# Open in Claude Code CLI
 claude
 ```
 
-The agent will be automatically available in your Claude Code session.
+Then ask the agent to add features:
+```
+You: Add a posts resource with title and content
+```
 
-Note: If you don't have the Claude CLI installed, you can open the directory in your preferred IDE with the Claude Code extension.
-
-### 3. Start a Conversation
-
-Simply ask the agent what you want to build. The agent understands natural language and will guide you through the process.
+The agent will generate the posts resource and run migrations. You can then start the server with `go run cmd/myapp/main.go`.
 
 ## Example Workflows
 
-### Quick Start (Simplest Approach)
+### Complete Project Creation (Recommended)
+
+Start with a clear description of what you want:
 
 ```
-You: I want to build a blog with posts
+You: I want to build a blog with posts that have titles, content,
+     and publication dates. Include categories and tags.
 ```
 
 The agent will:
-- Use the `lvt-quickstart` skill
-- Generate a posts resource with appropriate fields
-- Run migrations
-- Start the server
-- Open your browser to the running app
+1. **Plan**: Analyze requirements and propose architecture
+2. **Create**: Run `lvt new blog` to initialize project
+3. **Generate**: Create posts, categories, and tags resources with proper relationships
+4. **Migrate**: Create and apply database migrations
+5. **Verify**: Run tests and check migrations applied correctly
+6. **Launch**: Start the development server
 
-### Full Stack Example
+You get a fully working blog application, ready to customize.
+
+### Full Stack Application
+
+For more complex requirements:
 
 ```
-You: I want to build a task management system with:
-- Users with authentication
+You: Create a task management system with:
+- User authentication (email/password)
 - Projects that belong to users
-- Tasks that belong to projects
-- Due dates and priorities
+- Tasks within projects with due dates and priorities
+- Real-time updates when tasks change
 ```
 
 The agent will:
-- Use `lvt-gen-auth` to set up authentication
-- Use `lvt-add-resource` for projects with user relationships
-- Use `lvt-add-resource` for tasks with project relationships
-- Configure the appropriate field types and relationships
-- Run all migrations
-- Start the server
+1. **Plan**: Design the data model and relationships
+2. **Setup**: Create project with multi kit (for multiple resources)
+3. **Authenticate**: Generate complete auth system with sessions
+4. **Resources**: Create projects and tasks with foreign keys
+5. **Real-time**: Add WebSocket support for live updates
+6. **Test**: Verify authentication flow and CRUD operations
+7. **Launch**: Start server with all features working
 
-### Step-by-Step Example
+### Incremental Development
+
+You can also build features incrementally:
 
 ```
-You: Let's add a blog to my app
+You: Create a simple blog app
 
-Agent: I'll help you add a blog. Let me create a posts resource.
+[Agent creates basic app with lvt new]
 
-[Agent creates posts with title, content, published_at fields]
+You: Add posts with title and content
 
-You: Can you add categories and tags?
+[Agent generates posts resource]
 
-Agent: I'll add those resources with relationships.
+You: Add categories and make posts belong to categories
 
-[Agent adds categories, tags, and junction tables]
+[Agent adds categories resource and relationship]
 
-You: Add author attribution to posts
+You: Add user authentication so posts have authors
 
-Agent: I'll add an author relationship to the posts resource.
-
-[Agent modifies posts to include author_id field]
+[Agent generates auth system and links posts to users]
 ```
+
+The agent maintains context throughout the conversation, understanding how each piece fits together.
 
 ## Available Skills
 
