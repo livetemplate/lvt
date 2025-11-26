@@ -26,7 +26,9 @@ func TestModalFunctionality(t *testing.T) {
 	}
 
 	// Start a simple HTTP server
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	// Use 0.0.0.0 to bind to all interfaces - required for Docker Chrome containers
+	// to connect via host.docker.internal on Linux CI environments
+	listener, err := net.Listen("tcp", "0.0.0.0:0")
 	if err != nil {
 		t.Fatalf("Failed to create listener: %v", err)
 	}
