@@ -2,33 +2,16 @@
 
 This guide explains how to use the LiveTemplate assistant agent in Claude Code to create and develop applications.
 
-## Getting Started (Recommended Workflow)
+## Getting Started
 
-The recommended approach is to let the agent handle the entire project creation from start to finish. This allows the agent to:
-- Understand the complete context and architecture
-- Plan before coding
-- Verify each step (tests pass, migrations work)
-- Make consistent decisions throughout
+**Note**: The LiveTemplate agent and skills are available in the `lvt` CLI repository for developing `lvt` itself. When you create new apps with `lvt new`, the agent/skills are NOT automatically installed in those apps.
 
-```bash
-# Open Claude Code in any directory
-claude
-```
+This guide documents how the agent works in the `lvt` repository context - useful for:
+- Contributing to `lvt` development
+- Understanding the agent architecture
+- Testing new features
 
-Then describe what you want to build:
-```
-You: Create a new LiveTemplate blog app with posts
-```
-
-The agent will:
-1. Plan the project structure and architecture
-2. Run `lvt new` to create the project
-3. Generate a posts resource with appropriate fields
-4. Create and run migrations
-5. Start the server
-6. Open your browser to the running app
-
-**Why this approach?** The agent sees the entire creation process, understands decisions made at each step, and can verify everything works before moving forward. This matches industry best practices for AI-assisted development.
+For creating new LiveTemplate applications, use the standard CLI commands documented in the main README.
 
 ---
 
