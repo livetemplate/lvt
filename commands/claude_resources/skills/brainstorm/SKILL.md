@@ -1,10 +1,10 @@
 ---
-name: lvt-brainstorm
-description: Interactive planning and app creation - helps design and create LiveTemplate apps through progressive questions. Use for "create/build/make a [lvt/livetemplate] [domain] app" OR "plan/design/brainstorm a [lvt/livetemplate] app"
-keywords: ["lvt", "livetemplate", "lt", "create", "build", "make", "plan", "design", "brainstorm"]
+name: lvt-app-brainstorm
+description: Create LiveTemplate applications - Interactive planning and app creation for LiveTemplate/lvt. ONLY use for "create/build/make a lvt/livetemplate [type] app/application". Guides through progressive questions about resources, auth, styling before generating code.
+keywords: ["lvt", "livetemplate", "lt", "app", "application", "create", "build", "make", "new"]
 requires_keywords: true
 category: workflows
-version: 1.0.0
+version: 1.0.1
 ---
 
 # lvt-brainstorm
