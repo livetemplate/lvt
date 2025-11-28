@@ -3,11 +3,36 @@ name: lvt-validate-templates
 description: Validate LiveTemplate template files - check syntax, parse errors, execution issues, and common problems
 category: core
 version: 1.0.0
+keywords: ["lvt", "livetemplate", "lt"]
 ---
 
 # lvt:validate-templates
 
 Validates LiveTemplate template files (*.tmpl) for syntax errors, parsing issues, execution problems, and common mistakes. Uses both html/template and LiveTemplate parsers to ensure templates work correctly.
+
+## 🎯 ACTIVATION RULES
+
+### Context Detection
+
+This skill typically runs in **existing LiveTemplate projects** (.lvtrc exists).
+
+**✅ Context Established By:**
+1. **Project context** - `.lvtrc` exists (most common scenario)
+2. **Agent context** - User is working with `lvt-assistant` agent
+3. **Keyword context** - User mentions "lvt", "livetemplate", or "lt"
+
+**Keyword matching** (case-insensitive): `lvt`, `livetemplate`, `lt`
+
+### Trigger Patterns
+
+**With Context:**
+✅ Generic prompts related to this skill's purpose
+
+**Without Context (needs keywords):**
+✅ Must mention "lvt", "livetemplate", or "lt"
+❌ Generic requests without keywords
+
+---
 
 ## User Prompts
 

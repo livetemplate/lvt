@@ -3,11 +3,36 @@ name: lvt-troubleshoot
 description: Debug common LiveTemplate issues - build errors, migration problems, template errors, auth issues, deployment failures
 category: maintenance
 version: 1.0.0
+keywords: ["lvt", "livetemplate", "lt"]
 ---
 
 # lvt:troubleshoot
 
 Systematic debugging guide for common LiveTemplate issues. Helps diagnose and fix build errors, migration problems, template errors, authentication issues, and deployment failures.
+
+## 🎯 ACTIVATION RULES
+
+### Context Detection
+
+This skill typically runs in **existing LiveTemplate projects** (.lvtrc exists).
+
+**✅ Context Established By:**
+1. **Project context** - `.lvtrc` exists (most common scenario)
+2. **Agent context** - User is working with `lvt-assistant` agent
+3. **Keyword context** - User mentions "lvt", "livetemplate", or "lt"
+
+**Keyword matching** (case-insensitive): `lvt`, `livetemplate`, `lt`
+
+### Trigger Patterns
+
+**With Context:**
+✅ Generic prompts related to this skill's purpose
+
+**Without Context (needs keywords):**
+✅ Must mention "lvt", "livetemplate", or "lt"
+❌ Generic requests without keywords
+
+---
 
 ## User Prompts
 

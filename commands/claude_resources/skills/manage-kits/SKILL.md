@@ -3,11 +3,36 @@ name: lvt-manage-kits
 description: Manage CSS framework kits - list available kits, view kit info, validate kits, and create custom kits
 category: core
 version: 1.0.0
+keywords: ["lvt", "livetemplate", "lt"]
 ---
 
 # lvt:manage-kits
 
 Manage CSS framework kits in LiveTemplate. List system/local/community kits, view kit details, validate kit structure, customize existing kits, and create new kits.
+
+## 🎯 ACTIVATION RULES
+
+### Context Detection
+
+This skill typically runs in **existing LiveTemplate projects** (.lvtrc exists).
+
+**✅ Context Established By:**
+1. **Project context** - `.lvtrc` exists (most common scenario)
+2. **Agent context** - User is working with `lvt-assistant` agent
+3. **Keyword context** - User mentions "lvt", "livetemplate", or "lt"
+
+**Keyword matching** (case-insensitive): `lvt`, `livetemplate`, `lt`
+
+### Trigger Patterns
+
+**With Context:**
+✅ Generic prompts related to this skill's purpose
+
+**Without Context (needs keywords):**
+✅ Must mention "lvt", "livetemplate", or "lt"
+❌ Generic requests without keywords
+
+---
 
 ## User Prompts
 

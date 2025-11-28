@@ -7,6 +7,30 @@ description: Use when deploying LiveTemplate applications to production - covers
 
 Deploy LiveTemplate applications to production environments.
 
+## 🎯 ACTIVATION RULES
+
+### Context Detection
+
+This skill typically runs in **existing LiveTemplate projects** (.lvtrc exists).
+
+**✅ Context Established By:**
+1. **Project context** - `.lvtrc` exists (most common scenario)
+2. **Agent context** - User is working with `lvt-assistant` agent
+3. **Keyword context** - User mentions "lvt", "livetemplate", or "lt"
+
+**Keyword matching** (case-insensitive): `lvt`, `livetemplate`, `lt`
+
+### Trigger Patterns
+
+**With Context:**
+✅ Generic prompts related to this skill's purpose
+
+**Without Context (needs keywords):**
+✅ Must mention "lvt", "livetemplate", or "lt"
+❌ Generic requests without keywords
+
+---
+
 ## Overview
 
 LiveTemplate apps are standard Go binaries with SQLite databases, making them easy to deploy anywhere Go runs. This skill covers:

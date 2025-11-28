@@ -3,11 +3,36 @@ name: lvt-add-view
 description: Add a view-only handler to an existing LiveTemplate app without database integration - perfect for static pages, dashboards, and UI-only components
 category: core
 version: 1.0.0
+keywords: ["lvt", "livetemplate", "lt"]
 ---
 
 # lvt:add-view
 
 Adds a view-only handler to an existing LiveTemplate application. Unlike resources, views don't interact with the database - they're pure UI components perfect for static pages, dashboards, landing pages, or any content that doesn't need CRUD operations.
+
+## 🎯 ACTIVATION RULES
+
+### Context Detection
+
+This skill typically runs in **existing LiveTemplate projects** (.lvtrc exists).
+
+**✅ Context Established By:**
+1. **Project context** - `.lvtrc` exists (most common scenario)
+2. **Agent context** - User is working with `lvt-assistant` agent
+3. **Keyword context** - User mentions "lvt", "livetemplate", or "lt"
+
+**Keyword matching** (case-insensitive): `lvt`, `livetemplate`, `lt`
+
+### Trigger Patterns
+
+**With Context:**
+✅ Generic prompts related to this skill's purpose
+
+**Without Context (needs keywords):**
+✅ Must mention "lvt", "livetemplate", or "lt"
+❌ Generic requests without keywords
+
+---
 
 ## User Prompts
 

@@ -3,11 +3,36 @@ name: lvt-manage-env
 description: Manage environment variables - set, unset, list, and validate configuration required for generated app features
 category: core
 version: 1.0.0
+keywords: ["lvt", "livetemplate", "lt"]
 ---
 
 # lvt:manage-env
 
 Manage environment variables for your LiveTemplate application. Helps detect required configuration based on features, guide users to set values, validate configuration, and ensure apps are ready to run.
+
+## 🎯 ACTIVATION RULES
+
+### Context Detection
+
+This skill typically runs in **existing LiveTemplate projects** (.lvtrc exists).
+
+**✅ Context Established By:**
+1. **Project context** - `.lvtrc` exists (most common scenario)
+2. **Agent context** - User is working with `lvt-assistant` agent
+3. **Keyword context** - User mentions "lvt", "livetemplate", or "lt"
+
+**Keyword matching** (case-insensitive): `lvt`, `livetemplate`, `lt`
+
+### Trigger Patterns
+
+**With Context:**
+✅ Generic prompts related to this skill's purpose
+
+**Without Context (needs keywords):**
+✅ Must mention "lvt", "livetemplate", or "lt"
+❌ Generic requests without keywords
+
+---
 
 ## User Prompts
 

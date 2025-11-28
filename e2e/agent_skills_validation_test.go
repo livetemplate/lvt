@@ -231,7 +231,7 @@ func TestClaudeAgent_SkillCount(t *testing.T) {
 	}
 
 	// AGENT_USAGE_GUIDE.md documents:
-	// Core (14) + Workflow (3) + Maintenance (3) + Meta (1) = 21 skills
-	require.GreaterOrEqual(t, skillCount, 21,
-		"Should have at least 21 skills (documented in AGENT_USAGE_GUIDE.md), found %d", skillCount)
+	// Core (14) + Workflow (4 - added brainstorm) + Maintenance (3) + Meta (1) = 22 skills
+	require.GreaterOrEqual(t, skillCount, 22,
+		"Should have at least 22 skills (documented in AGENT_USAGE_GUIDE.md), found %d", skillCount)
 }
