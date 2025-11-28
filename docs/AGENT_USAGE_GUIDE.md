@@ -36,10 +36,12 @@ LiveTemplate supports **5 different AI assistants** with two integration approac
 
 ```bash
 # Option 1: Install project-specific agent
-lvt install-agent --llm <type>
+lvt install-agent                    # Interactive menu (recommended)
+lvt install-agent --llm <type>       # Direct installation
 
 # Option 2: Start MCP server (global)
-lvt mcp-server --setup
+lvt mcp-server                       # Interactive setup (recommended)
+lvt mcp-server --help                # Full documentation
 ```
 
 ---
@@ -53,10 +55,8 @@ lvt mcp-server --setup
 **Setup:**
 ```bash
 # Install Claude agent and skills in your project
-lvt install-agent --llm claude
-
-# Or use default (claude is default)
-lvt install-agent
+lvt install-agent              # Interactive menu - select Claude Code
+lvt install-agent --llm claude # Direct installation
 ```
 
 **What You Get:**
@@ -383,14 +383,13 @@ The LiveTemplate MCP server provides **16 tools** globally accessible to any MCP
 ### Starting the MCP Server
 
 ```bash
-# Interactive setup wizard
-lvt mcp-server --setup
+# Interactive setup wizard (recommended)
+lvt mcp-server
 
-# Show all available tools
-lvt mcp-server --list-tools
-
-# Get help
-lvt mcp-server --help
+# Or use explicit flags
+lvt mcp-server --setup       # Setup wizard
+lvt mcp-server --list-tools  # Show all available tools
+lvt mcp-server --help        # Get full help
 ```
 
 ### Available Tools

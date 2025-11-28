@@ -26,7 +26,7 @@ func TestInstallAgent_NewInstallation(t *testing.T) {
 	}
 
 	// Run install
-	err = InstallAgent([]string{})
+	err = InstallAgent([]string{"--llm", "claude"})
 	if err != nil {
 		t.Fatalf("InstallAgent failed: %v", err)
 	}
@@ -100,7 +100,7 @@ func TestInstallAgent_ExistingInstallation(t *testing.T) {
 	}
 
 	// Try to install without force (should fail)
-	err = InstallAgent([]string{})
+	err = InstallAgent([]string{"--llm", "claude"})
 	if err == nil {
 		t.Errorf("InstallAgent should fail when .claude exists without --force")
 	}
@@ -184,7 +184,7 @@ func TestInstallAgent_FileCount(t *testing.T) {
 	}
 
 	// Run install
-	err = InstallAgent([]string{})
+	err = InstallAgent([]string{"--llm", "claude"})
 	if err != nil {
 		t.Fatalf("InstallAgent failed: %v", err)
 	}
@@ -232,7 +232,7 @@ func TestInstallAgent_SettingsJSON(t *testing.T) {
 	}
 
 	// Run install
-	err = InstallAgent([]string{})
+	err = InstallAgent([]string{"--llm", "claude"})
 	if err != nil {
 		t.Fatalf("InstallAgent failed: %v", err)
 	}

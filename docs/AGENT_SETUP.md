@@ -9,10 +9,12 @@ This guide shows how to set up LiveTemplate with different AI assistants using e
 go install github.com/livetemplate/lvt@latest
 
 # Option 1: Install agent for your LLM (project-specific)
-lvt install-agent --llm <type>
+lvt install-agent                    # Interactive menu (recommended)
+lvt install-agent --llm <type>       # Direct installation
 
 # Option 2: Start MCP server (global, works with all LLMs)
-lvt mcp-server
+lvt mcp-server                       # Interactive setup (recommended)
+lvt mcp-server --help                # Show full documentation
 ```
 
 ## Available Agents
@@ -46,10 +48,8 @@ Install Claude Code agent and skills in your project:
 
 ```bash
 # In your LiveTemplate project
-lvt install-agent --llm claude
-
-# Or use default (claude is the default)
-lvt install-agent
+lvt install-agent              # Interactive menu - select Claude Code
+lvt install-agent --llm claude # Direct installation
 ```
 
 **What gets installed:**
@@ -83,12 +83,24 @@ claude
 
 If you prefer using only the MCP server:
 
-1. **Start the MCP server:**
+1. **Run the interactive setup:**
    ```bash
-   lvt mcp-server
+   lvt mcp-server           # Shows setup wizard
    ```
 
-2. **Configure Claude Code:**
+   Or see help for manual setup:
+   ```bash
+   lvt mcp-server --help    # Full documentation
+   lvt mcp-server --setup   # Interactive wizard
+   ```
+
+2. **The wizard will guide you through:**
+   - Selecting your AI client (Claude Desktop, VS Code, etc.)
+   - Finding your config file location
+   - Adding the MCP server configuration
+   - Restarting your client
+
+3. **Manual configuration (if preferred):**
 
    Add to your Claude Code MCP configuration:
    ```json
@@ -102,15 +114,15 @@ If you prefer using only the MCP server:
    }
    ```
 
-3. **Restart Claude Code**
+4. **Restart your AI client**
 
 ### Method 3: Both (Best Experience)
 
 Combine agent installation + MCP server for the complete experience:
 
 ```bash
-# Install agent
-lvt install-agent --llm claude
+# Install agent (interactive menu)
+lvt install-agent
 
 # MCP server auto-configured in agent
 claude

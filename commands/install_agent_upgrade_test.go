@@ -26,7 +26,7 @@ func TestInstallAgent_Upgrade(t *testing.T) {
 	}
 
 	// First, install the agent
-	err = InstallAgent([]string{})
+	err = InstallAgent([]string{"--llm", "claude"})
 	if err != nil {
 		t.Fatalf("Initial InstallAgent failed: %v", err)
 	}
@@ -132,7 +132,7 @@ func TestInstallAgent_UpgradePreservesOnlyLocal(t *testing.T) {
 	}
 
 	// First install
-	if err := InstallAgent([]string{}); err != nil {
+	if err := InstallAgent([]string{"--llm", "claude"}); err != nil {
 		t.Fatalf("Initial install failed: %v", err)
 	}
 

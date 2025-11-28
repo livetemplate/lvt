@@ -101,7 +101,8 @@ var agentConfigs = map[string]AgentConfig{
 func InstallAgent(args []string) error {
 	force := false
 	upgrade := false
-	llm := "claude" // Default to Claude Code
+	llm := ""
+	hasLLMFlag := false
 
 	// Parse flags
 	for i := 0; i < len(args); i++ {
@@ -111,11 +112,21 @@ func InstallAgent(args []string) error {
 			upgrade = true
 		} else if args[i] == "--llm" && i+1 < len(args) {
 			llm = args[i+1]
+			hasLLMFlag = true
 			i++
 		} else if args[i] == "--list" {
 			listAgents()
 			return nil
 		}
+	}
+
+	// If no --llm flag provided, show interactive menu
+	if !hasLLMFlag {
+		selectedLLM, err := selectAgentInteractive()
+		if err != nil {
+			return err
+		}
+		llm = selectedLLM
 	}
 
 	// Validate LLM type
@@ -329,12 +340,51 @@ func upgradeAgent(targetDir string, config AgentConfig) error {
 	return nil
 }
 
+// selectAgentInteractive shows an interactive menu to select an agent
+func selectAgentInteractive() (string, error) {
+	fmt.Println("✨ LiveTemplate Agent Installation")
+	fmt.Println()
+	fmt.Println("Select your AI assistant:")
+	fmt.Println()
+
+	// Order for display
+	order := []string{"claude", "copilot", "cursor", "aider", "generic"}
+
+	for i, name := range order {
+		config := agentConfigs[name]
+		fmt.Printf("  [%d] %s\n", i+1, config.Name)
+		fmt.Printf("      %s\n", config.Description)
+		fmt.Println()
+	}
+
+	fmt.Print("Enter your choice (1-5): ")
+
+	var choice int
+	_, err := fmt.Scanf("%d", &choice)
+	if err != nil || choice < 1 || choice > 5 {
+		fmt.Println()
+		fmt.Println("❌ Invalid choice")
+		fmt.Println()
+		fmt.Println("💡 Tip: You can also use: lvt install-agent --llm <type>")
+		fmt.Println("   Available types: claude, copilot, cursor, aider, generic")
+		fmt.Println()
+		return "", fmt.Errorf("invalid choice")
+	}
+
+	selectedLLM := order[choice-1]
+	fmt.Println()
+	fmt.Printf("Installing %s agent...\n", agentConfigs[selectedLLM].Name)
+	fmt.Println()
+
+	return selectedLLM, nil
+}
+
 // listAgents lists all available agent types
 func listAgents() {
 	fmt.Println("Available AI agents for LiveTemplate:")
 	fmt.Println()
 
-	// Order: Claude (default), then alphabetically
+	// Order: Claude, then alphabetically
 	order := []string{"claude", "aider", "copilot", "cursor", "generic"}
 
 	for _, name := range order {
@@ -347,7 +397,7 @@ func listAgents() {
 	}
 
 	fmt.Println("Usage:")
-	fmt.Println("  lvt install-agent                    # Install Claude Code (default)")
+	fmt.Println("  lvt install-agent                    # Interactive menu")
 	fmt.Println("  lvt install-agent --llm copilot      # Install GitHub Copilot")
 	fmt.Println("  lvt install-agent --llm cursor       # Install Cursor")
 	fmt.Println("  lvt install-agent --llm aider        # Install Aider")

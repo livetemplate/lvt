@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"golang.org/x/term"
@@ -15,6 +16,7 @@ import (
 // MCPServer starts the Model Context Protocol server for lvt
 func MCPServer(args []string) error {
 	// Parse flags
+	hasFlags := false
 	for _, arg := range args {
 		switch arg {
 		case "--help", "-h":
@@ -29,11 +31,21 @@ func MCPServer(args []string) error {
 		case "--version", "-v":
 			printMCPVersion()
 			return nil
+		default:
+			if arg != "" && !strings.HasPrefix(arg, "-") {
+				hasFlags = true
+			}
 		}
 	}
 
-	// Check if running in terminal (TTY) - warn user
+	// Check if running in terminal (TTY)
 	if isTerminal() {
+		// If no flags provided and in terminal, show interactive setup
+		if !hasFlags && len(args) == 0 {
+			printMCPSetup()
+			return nil
+		}
+		// Otherwise show warning
 		printTTYWarning()
 		return nil
 	}

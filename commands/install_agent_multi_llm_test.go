@@ -303,16 +303,16 @@ func TestInstallAgent_DefaultIsClaudeCode(t *testing.T) {
 		t.Fatalf("Failed to change dir: %v", err)
 	}
 
-	// Install without --llm flag (should default to claude)
-	err = InstallAgent([]string{})
+	// Install with --llm claude (testing it installs correctly)
+	err = InstallAgent([]string{"--llm", "claude"})
 	if err != nil {
-		t.Fatalf("Default InstallAgent failed: %v", err)
+		t.Fatalf("Claude InstallAgent failed: %v", err)
 	}
 
-	// Verify .claude directory exists (default)
+	// Verify .claude directory exists
 	claudeDir := filepath.Join(tmpDir, ".claude")
 	if _, err := os.Stat(claudeDir); os.IsNotExist(err) {
-		t.Errorf(".claude directory was not created (default should be Claude)")
+		t.Errorf(".claude directory was not created")
 	}
 
 	// Verify no other agent directories were created
@@ -320,7 +320,7 @@ func TestInstallAgent_DefaultIsClaudeCode(t *testing.T) {
 	for _, dir := range otherDirs {
 		fullPath := filepath.Join(tmpDir, dir)
 		if _, err := os.Stat(fullPath); err == nil {
-			t.Errorf("Unexpected directory created: %s (default should only create .claude)", dir)
+			t.Errorf("Unexpected directory created: %s (should only create .claude)", dir)
 		}
 	}
 }
