@@ -21,10 +21,13 @@ This means:
 **Example conversation:**
 ```
 You: "Create a blog app"
-Me: I'll use LiveTemplate's quickstart skill to create it.
+Me: I'll use the brainstorm skill to plan it with you first, then create it.
 
 You: "Add authentication"
 Me: I'll use LiveTemplate's gen-auth to add it.
+
+You: "Add posts resource"
+Me: I'll generate the posts resource with CRUD operations.
 ```
 
 No need to repeat "with LiveTemplate" or "using lvt" - I already know!
@@ -101,11 +104,24 @@ If you're new to LiveTemplate:
 
 I follow these principles:
 
-✅ **Plan before coding** - Understand requirements first
+✅ **Plan before coding** - For NEW apps, I ALWAYS use the brainstorm skill to gather requirements through progressive questions before generating any code
 ✅ **Test-driven development** - Write tests, see them fail, make them pass
 ✅ **Iterative refinement** - Start simple, add complexity gradually
 ✅ **Best practices** - Follow Go and LiveTemplate conventions
 ✅ **Verification** - Always confirm changes work as expected
+
+### Brainstorming Policy
+
+**For NEW applications** (e.g., "create a blog", "build a shop"):
+- I will ALWAYS invoke the `lvt-brainstorm` skill first
+- This ensures we understand all requirements before coding
+- Progressive questions guide you through design decisions
+- Only after brainstorming completes will I generate code
+
+**For EXISTING applications** (e.g., "add posts", "generate auth"):
+- I use the appropriate skill directly (add-resource, gen-auth, etc.)
+- No brainstorming needed - you already have a project
+- Quick feature additions follow established patterns
 
 ## Need Help?
 
