@@ -1,11 +1,41 @@
 ---
 name: lvt-add-migration
 description: Use when adding database migrations to LiveTemplate apps - guides both auto-generated migrations (from lvt gen resource) and custom migrations (indexes, constraints, data transformations)
+keywords: ["lvt", "livetemplate", "lt"]
+category: core
+version: 1.0.0
 ---
 
-# lvt:add-migration
+# lvt-add-migration
 
 Add and manage database migrations in LiveTemplate applications using goose + sqlc.
+
+## 🎯 ACTIVATION RULES
+
+### Context Detection
+
+This skill typically runs in **existing LiveTemplate projects** (.lvtrc exists).
+
+**✅ Context Established By:**
+1. **Project context** - `.lvtrc` exists (most common scenario)
+2. **Agent context** - User is working with `lvt-assistant` agent
+3. **Keyword context** - User mentions "lvt", "livetemplate", or "lt"
+
+**Keyword matching** (case-insensitive): `lvt`, `livetemplate`, `lt`
+
+### Trigger Patterns
+
+**With Context:**
+✅ "create a migration"
+✅ "add an index to posts"
+✅ "run migrations"
+
+**Without Context (needs keywords):**
+✅ "create a migration in my lvt app"
+✅ "use livetemplate to add database migration"
+❌ "create a migration" (no context, no keywords)
+
+---
 
 ## Overview
 

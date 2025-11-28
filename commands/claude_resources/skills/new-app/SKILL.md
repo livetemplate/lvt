@@ -1,11 +1,75 @@
 ---
 name: lvt-new-app
 description: Create a new LiveTemplate application with proper setup and validation
+keywords: ["lvt", "livetemplate", "lt"]
+category: core
+version: 1.0.0
 ---
 
-# lvt:new-app - Create New Application
+# lvt-new-app - Create New Application
 
 This skill creates a new LiveTemplate application using the lvt CLI, validates the setup, and guides the user through next steps.
+
+## 🎯 ACTIVATION RULES
+
+### Context Detection
+
+This skill activates when **LiveTemplate context is established**:
+
+**✅ Context Established By:**
+
+1. **Project context** - `.lvtrc` file exists in current directory (usually won't apply for "new" app)
+2. **Agent context** - User is working with `lvt-assistant` agent
+3. **Keyword context** - User mentions "lvt", "livetemplate", or "lt"
+
+**Priority**: Project context > Agent context > Keyword context
+
+### Keyword Matching
+
+**Accepted keywords** (case-insensitive, whole words):
+- `lvt`
+- `livetemplate`
+- `lt`
+
+**Accepted patterns:**
+- "create * {app|application|project} {with|using|via} {lvt|livetemplate|lt}"
+- "{lvt|lt} new *"
+- "new {lvt|livetemplate} {app|application|project}"
+- "start * {with|using} {livetemplate|lvt}"
+
+### Trigger Patterns
+
+**With Context (any of: .lvtrc OR agent OR keywords):**
+✅ "create a new app called blog"
+✅ "start a new project for shop"
+✅ "make an app named todos"
+
+**Without Context (must include keywords):**
+✅ "create a new lvt app called blog"
+✅ "start a livetemplate project for shop"
+✅ "make a new app with lt named todos"
+❌ "create a new app" (no context, no keywords)
+
+### Examples by Scenario
+
+**Scenario 1: New conversation, no .lvtrc, no agent**
+- User: "Create a new app called blog"
+  → ❌ No context, no keywords → Don't activate
+
+- User: "Create a new livetemplate app called blog"
+  → ✅ Keywords found → Activate skill
+  → ✅ Context now established
+
+**Scenario 2: Using lvt-assistant agent**
+- User (in agent): "Create an app called shop"
+  → ✅ Agent context → Activate skill
+
+**Scenario 3: Context persistence**
+- User: "Use lvt to make a blog"
+  → ✅ Keywords → Activate, establish context
+
+- User: "Actually, make it called myblog"
+  → ✅ Context persists → Can adjust
 
 ---
 

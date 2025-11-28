@@ -1,13 +1,41 @@
 ---
 name: lvt-add-related-resources
 description: Intelligently suggest and add related resources based on domain and existing schema - uses context to recommend complementary resources
+keywords: ["lvt", "livetemplate", "lt"]
 category: workflows
 version: 1.0.0
 ---
 
-# lvt:add-related-resources
+# lvt-add-related-resources
 
 Analyzes existing app and intelligently suggests related resources to add. Detects domain patterns and recommends complementary resources with proper relationships.
+
+## 🎯 ACTIVATION RULES
+
+### Context Detection
+
+This skill typically runs in **existing LiveTemplate projects** (.lvtrc exists).
+
+**✅ Context Established By:**
+1. **Project context** - `.lvtrc` exists (most common scenario)
+2. **Agent context** - User is working with `lvt-assistant` agent
+3. **Keyword context** - User mentions "lvt", "livetemplate", or "lt"
+
+**Keyword matching** (case-insensitive): `lvt`, `livetemplate`, `lt`
+
+### Trigger Patterns
+
+**With Context:**
+✅ "suggest related resources"
+✅ "what should I add next?"
+✅ "add common blog resources"
+
+**Without Context (needs keywords):**
+✅ "suggest resources for my lvt app"
+✅ "what should I add to my livetemplate blog?"
+❌ "suggest related resources" (no context, no keywords)
+
+---
 
 ## User Prompts
 
@@ -98,28 +126,52 @@ Suggest:
 - `likes` (post_id:references:posts, user_id:references:users)
 - `follows` (follower_id:references:users, following_id:references:users)
 
-### Step 3: Present Suggestions
+### Step 3: Present Suggestions Using AskUserQuestion Tool
 
-**Format suggestions as choices:**
+**IMPORTANT**: Use the `AskUserQuestion` tool to let user select which resources to add.
+
+**Present suggestions as checkboxes** (multiSelect: true):
+
+```markdown
+## Example: Blog Domain
+
+Question: "Which related resources would you like to add to your blog?"
+
+Options:
+1. comments
+   Description: "Allow readers to discuss posts (post_id, content, author)"
+
+2. categories
+   Description: "Organize posts by topic (name, slug, description)"
+
+3. tags
+   Description: "Add flexible labeling with many-to-many (name, slug + junction table)"
+
+4. None
+   Description: "I'll add resources manually later"
 ```
-Based on your existing resources (posts), I suggest these related resources:
 
-Essential:
-1. comments - Allow readers to discuss posts
-   Fields: post_id:references:posts:CASCADE, content, author, created_at
-
-2. categories - Organize posts by topic
-   Fields: name, slug, description
-
-Nice to have:
-3. tags - Add flexible labeling
-   Fields: name, slug
-
-4. post_tags - Many-to-many relationship for tags
-   Fields: post_id:references:posts, tag_id:references:tags
-
-Would you like me to add any of these? (You can choose multiple or all)
+**Use AskUserQuestion tool:**
 ```
+AskUserQuestion({
+  questions: [{
+    question: "Which related resources would you like to add?",
+    header: "Add Resources",
+    multiSelect: true,
+    options: [
+      {label: "comments", description: "Allow readers to discuss posts (post_id, content, author)"},
+      {label: "categories", description: "Organize posts by topic (name, slug, description)"},
+      {label: "tags", description: "Flexible labeling with many-to-many relationship"}
+    ]
+  }]
+})
+```
+
+**Benefits of AskUserQuestion:**
+- ✅ User explicitly chooses which resources they want
+- ✅ Can select multiple resources at once
+- ✅ Can select "Other" to describe custom resource
+- ✅ Clear, interactive UI instead of auto-adding everything
 
 ### Step 4: Add Selected Resources
 

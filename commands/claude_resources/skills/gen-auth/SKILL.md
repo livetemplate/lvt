@@ -1,13 +1,41 @@
 ---
 name: lvt-gen-auth
 description: Add authentication to an existing LiveTemplate app - generates session management, password auth, magic links, email confirmation, CSRF protection, and E2E tests
+keywords: ["lvt", "livetemplate", "lt"]
 category: core
 version: 1.0.0
 ---
 
-# lvt:gen-auth
+# lvt-gen-auth
 
 Adds a complete authentication system to an existing LiveTemplate application. Generates password authentication, magic link authentication, session management, email confirmation, password reset, CSRF protection, route protection middleware, and comprehensive E2E tests.
+
+## 🎯 ACTIVATION RULES
+
+### Context Detection
+
+This skill typically runs in **existing LiveTemplate projects** (.lvtrc exists).
+
+**✅ Context Established By:**
+1. **Project context** - `.lvtrc` exists (most common scenario)
+2. **Agent context** - User is working with `lvt-assistant` agent
+3. **Keyword context** - User mentions "lvt", "livetemplate", or "lt"
+
+**Keyword matching** (case-insensitive): `lvt`, `livetemplate`, `lt`
+
+### Trigger Patterns
+
+**With Context:**
+✅ "add authentication"
+✅ "I need user login"
+✅ "generate auth system"
+
+**Without Context (needs keywords):**
+✅ "add authentication to my lvt app"
+✅ "use livetemplate to add user login"
+❌ "add authentication" (no context, no keywords)
+
+---
 
 ## User Prompts
 

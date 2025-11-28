@@ -1,13 +1,105 @@
 ---
 name: lvt-quickstart
 description: Rapid end-to-end workflow - creates app, adds resources, sets up development environment in one flow
+keywords: ["lvt", "livetemplate", "lt"]
 category: workflows
 version: 1.0.0
 ---
 
-# lvt:quickstart
+# lvt-quickstart
 
 Get from zero to working app in minutes. This workflow chains multiple skills to create a complete working application with resources and development environment ready.
+
+## 🎯 ACTIVATION RULES
+
+### Context Detection
+
+This skill activates when **LiveTemplate context is established**:
+
+**✅ Context Established By:**
+
+1. **Project context** - `.lvtrc` file exists in current directory
+2. **Agent context** - User is working with `lvt-assistant` agent
+3. **Keyword context** - User mentions "lvt", "livetemplate", or "lt"
+
+**Priority**: Project context > Agent context > Keyword context
+
+### Keyword Matching
+
+**Accepted keywords** (case-insensitive, whole words):
+- `lvt`
+- `livetemplate`
+- `lt`
+
+**Accepted patterns:**
+- "create * {with|using|via} {lvt|livetemplate|lt}"
+- "{lvt|lt} {quickstart|new|create|build} *"
+- "use {livetemplate|lvt} to *"
+- "quickstart * {with|using} {livetemplate|lvt}"
+
+### Trigger Patterns
+
+**With Context (any of: .lvtrc OR agent OR keywords):**
+✅ "quickstart a blog"
+✅ "create a quick shop"
+✅ "build me a working todo app"
+
+**Without Context (must include keywords):**
+✅ "quickstart a blog with lvt"
+✅ "use livetemplate to create a shop"
+✅ "lt quickstart for todo app"
+❌ "create a blog app" (no context, no keywords)
+
+### Examples by Scenario
+
+**Scenario 1: New conversation, no .lvtrc, no agent**
+- User: "Create a quick blog app"
+  → ❌ No context, no keywords → Don't activate
+
+- User: "Quickstart a blog with livetemplate"
+  → ✅ Keywords found → Activate skill
+  → ✅ Context now established for conversation
+
+**Scenario 2: Existing project (.lvtrc exists)**
+- User: "Quickstart a blog"
+  → ✅ Project context → Activate skill
+
+**Scenario 3: Using lvt-assistant agent**
+- User (in agent): "Build a quick shop"
+  → ✅ Agent context → Activate skill
+
+**Scenario 4: Context persistence**
+- User: "Use lvt to build a blog"
+  → ✅ Keywords → Activate skill
+  → ✅ Context established
+
+- User: "Add authentication"
+  → ✅ Context persists → Other skills activate
+
+---
+
+## 💡 Want to Plan First?
+
+If you're not sure about your app structure, consider using the brainstorming skill instead:
+
+**Brainstorming (guided planning):**
+- User: "help me plan a livetemplate blog"
+- → Uses `lvt-brainstorm` skill
+- → Asks questions to understand requirements
+- → Shows preview before creating anything
+- → Then executes the plan
+
+**Quickstart (fast path):**
+- User: "quickstart a blog with lvt posts comments"
+- → Uses `lvt-quickstart` skill
+- → Executes directly with minimal prompting
+- → Best when you know what you want
+
+**When to use which:**
+- **Brainstorm**: New to LiveTemplate, want guidance, unsure about structure
+- **Quickstart**: Know what you want, want speed, have done this before
+
+---
 
 ## User Prompts
 

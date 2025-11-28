@@ -1,13 +1,41 @@
 ---
 name: lvt-add-resource
 description: Add a CRUD resource to an existing LiveTemplate app with database schema, queries, handler, and template
+keywords: ["lvt", "livetemplate", "lt"]
 category: core
 version: 1.0.0
 ---
 
-# lvt:add-resource
+# lvt-add-resource
 
 Adds a full CRUD (Create, Read, Update, Delete) resource to an existing LiveTemplate application. This skill intelligently infers field types, generates database migrations, SQL queries, Go handlers, and HTML templates.
+
+## 🎯 ACTIVATION RULES
+
+### Context Detection
+
+This skill typically runs in **existing LiveTemplate projects** (.lvtrc exists).
+
+**✅ Context Established By:**
+1. **Project context** - `.lvtrc` exists (most common scenario)
+2. **Agent context** - User is working with `lvt-assistant` agent
+3. **Keyword context** - User mentions "lvt", "livetemplate", or "lt"
+
+**Keyword matching** (case-insensitive): `lvt`, `livetemplate`, `lt`
+
+### Trigger Patterns
+
+**With Context:**
+✅ "add a posts resource"
+✅ "create a products resource with name and price"
+✅ "generate CRUD for tasks"
+
+**Without Context (needs keywords):**
+✅ "add a posts resource to my lvt app"
+✅ "use livetemplate to create a products resource"
+❌ "add a posts resource" (no context, no keywords)
+
+---
 
 ## User Prompts
 
