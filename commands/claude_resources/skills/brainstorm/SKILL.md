@@ -1,7 +1,7 @@
 ---
 name: lvt-brainstorm
-description: Interactive planning through progressive questions - helps design LiveTemplate apps before generating code
-keywords: ["lvt", "livetemplate", "lt"]
+description: Interactive planning and app creation - helps design and create LiveTemplate apps through progressive questions. Use for "create/build/make a [lvt/livetemplate] [domain] app" OR "plan/design/brainstorm a [lvt/livetemplate] app"
+keywords: ["lvt", "livetemplate", "lt", "create", "build", "make", "plan", "design", "brainstorm"]
 requires_keywords: true
 category: workflows
 version: 1.0.0
@@ -30,13 +30,23 @@ Interactive planning skill that guides users through progressive questions to de
 - `lt`
 
 **Accepted patterns:**
+
+**Planning patterns:**
 ✅ "help me plan a **livetemplate** app"
 ✅ "walk me through **lvt** project design"
 ✅ "**lt** brainstorm for blog"
 ✅ "design a shop **with livetemplate**"
 ✅ "use **lvt** to help me plan"
+
+**Creation patterns (WITHOUT specific resources):**
+✅ "create a **lvt** blog app" (domain mentioned, no resources)
+✅ "build a **livetemplate** shop" (domain mentioned, no resources)
+✅ "make an **lvt** CRM" (domain mentioned, no resources)
+✅ "start a **livetemplate** todo app" (domain mentioned, no resources)
+
 ❌ "help me plan an app" (too generic, even with context)
 ❌ "let's brainstorm" (no LiveTemplate keywords)
+❌ "create an app" (no keywords, too generic)
 
 ### Examples
 
@@ -45,11 +55,15 @@ Interactive planning skill that guides users through progressive questions to de
 - "Walk me through creating an lvt e-commerce app"
 - "I want to brainstorm a todo app using livetemplate"
 - "Can you help me design a CRM with lvt?"
+- **"Create a lvt blog app"** ✅ NEW: Domain without resources
+- **"Build a livetemplate shop"** ✅ NEW: Domain without resources
+- **"Make an lvt todo application"** ✅ NEW: Domain without resources
 
 **Won't Activate:**
 - "Help me plan a blog" (no keywords)
 - "Let's brainstorm an app" (no keywords)
 - "I need help designing my application" (no keywords)
+- "Create blog app with posts(title,content) and multi kit" (detailed requirements, skip to new-app)
 
 ---
 
