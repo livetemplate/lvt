@@ -67,7 +67,7 @@ func TestInstallAgent_Upgrade(t *testing.T) {
 	essentialFiles := []string{
 		".claude/settings.json",
 		".claude/agents/project-manager-backlog.md",
-		".claude/skills/lvt/core/new-app.md",
+		".claude/skills/new-app/SKILL.md",
 	}
 
 	for _, file := range essentialFiles {

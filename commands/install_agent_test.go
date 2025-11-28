@@ -41,9 +41,8 @@ func TestInstallAgent_NewInstallation(t *testing.T) {
 	essentialFiles := []string{
 		".claude/settings.json",
 		".claude/agents/project-manager-backlog.md",
-		".claude/skills/lvt/core/new-app.md",
-		".claude/skills/lvt/core/add-resource.md",
-		".claude/skills/lvt/workflows/quickstart.md",
+		".claude/skills/new-app/SKILL.md",
+		".claude/skills/add-resource/SKILL.md",
 	}
 
 	for _, file := range essentialFiles {
@@ -57,10 +56,8 @@ func TestInstallAgent_NewInstallation(t *testing.T) {
 	expectedDirs := []string{
 		".claude/agents",
 		".claude/skills",
-		".claude/skills/lvt",
-		".claude/skills/lvt/core",
-		".claude/skills/lvt/workflows",
-		".claude/skills/lvt/maintenance",
+		".claude/skills/new-app",
+		".claude/skills/add-resource",
 	}
 
 	for _, dir := range expectedDirs {
@@ -99,17 +96,17 @@ func TestInstallAgent_ExistingInstallation(t *testing.T) {
 		t.Fatalf("Failed to create .claude dir: %v", err)
 	}
 
-	// Try to install without force (should fail)
+	// Try to install without force (should fail with interactive prompt error)
 	err = InstallAgent([]string{"--llm", "claude"})
 	if err == nil {
 		t.Errorf("InstallAgent should fail when .claude exists without --force")
 	}
 
-	// Verify error message is helpful
+	// Verify error occurs (could be "invalid choice" from interactive menu or "installation cancelled")
 	if err != nil {
 		errMsg := err.Error()
-		if errMsg != "installation cancelled" {
-			t.Errorf("Expected 'installation cancelled' error, got: %s", errMsg)
+		if errMsg != "installation cancelled" && errMsg != "invalid choice" {
+			t.Errorf("Expected 'installation cancelled' or 'invalid choice' error, got: %s", errMsg)
 		}
 	}
 }
@@ -145,7 +142,7 @@ func TestInstallAgent_ForceOverwrite(t *testing.T) {
 	}
 
 	// Install with force
-	err = InstallAgent([]string{"--force"})
+	err = InstallAgent([]string{"--force", "--llm", "claude"})
 	if err != nil {
 		t.Fatalf("InstallAgent with --force failed: %v", err)
 	}

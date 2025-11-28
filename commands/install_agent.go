@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 //go:embed claude_resources
@@ -40,7 +41,7 @@ var agentConfigs = map[string]AgentConfig{
 		TargetDir:   ".claude",
 		ResourceFS:  claudeResources,
 		ResourceDir: "claude_resources",
-		Description: "Claude Code agent with skills and project management",
+		Description: "Claude Code agent for LiveTemplate development (22 skills)",
 		NextSteps: []string{
 			"Open Claude Code in this directory: claude",
 			"Try: \"Add a posts resource with title and content\"",
@@ -120,13 +121,24 @@ func InstallAgent(args []string) error {
 		}
 	}
 
-	// If no --llm flag provided, show interactive menu
+	// If no --llm flag provided
 	if !hasLLMFlag {
-		selectedLLM, err := selectAgentInteractive()
-		if err != nil {
-			return err
+		// If upgrade mode, try to auto-detect installed agent
+		if upgrade {
+			detected := detectInstalledAgent()
+			if detected != "" {
+				llm = detected
+			} else {
+				return fmt.Errorf("no existing installation to upgrade")
+			}
+		} else {
+			// Show interactive menu for new installations
+			selectedLLM, err := selectAgentInteractive()
+			if err != nil {
+				return err
+			}
+			llm = selectedLLM
 		}
-		llm = selectedLLM
 	}
 
 	// Validate LLM type
@@ -146,14 +158,19 @@ func InstallAgent(args []string) error {
 
 	// Check if target directory already exists
 	if _, err := os.Stat(targetDir); err == nil && !force && !upgrade {
-		fmt.Printf("⚠️  %s directory already exists\n", targetDir)
-		fmt.Println()
-		fmt.Println("Options:")
-		fmt.Println("  - Use --upgrade to update agent and preserve custom settings")
-		fmt.Println("  - Use --force to overwrite existing installation")
-		fmt.Printf("  - Remove %s manually and run again\n", targetDir)
-		fmt.Println("  - Keep your existing installation")
-		return fmt.Errorf("installation cancelled")
+		action, err := handleExistingInstallation(targetDir, config.Name)
+		if err != nil {
+			return err
+		}
+
+		switch action {
+		case "upgrade":
+			upgrade = true
+		case "force":
+			force = true
+		case "cancel":
+			return fmt.Errorf("installation cancelled")
+		}
 	}
 
 	// Handle upgrade mode
@@ -213,9 +230,18 @@ func InstallAgent(args []string) error {
 		return fmt.Errorf("failed to install agent: %w", err)
 	}
 
+	// Write version marker file
+	versionFile := filepath.Join(targetDir, ".version")
+	currentVersion := getCurrentVersion()
+	if err := os.WriteFile(versionFile, []byte(currentVersion+"\n"), 0644); err != nil {
+		// Non-fatal error, just log it
+		fmt.Printf("⚠️  Warning: Could not write version file: %v\n", err)
+	}
+
 	fmt.Printf("✅ Successfully installed %d files!\n", installed)
 	fmt.Println()
 	fmt.Printf("📁 Installed to: %s/\n", targetDir)
+	fmt.Printf("📦 Version: %s\n", currentVersion)
 	fmt.Println()
 	fmt.Println("🚀 Next steps:")
 	for i, step := range config.NextSteps {
@@ -240,6 +266,15 @@ func upgradeAgent(targetDir string, config AgentConfig) error {
 		return fmt.Errorf("no existing installation to upgrade")
 	}
 
+	// Get version information
+	oldVersion := getInstalledVersion(targetDir)
+	newVersion := getCurrentVersion()
+
+	fmt.Println("📊 Version Information:")
+	fmt.Printf("   Current: %s\n", oldVersion)
+	fmt.Printf("   New:     %s\n", newVersion)
+	fmt.Println()
+
 	// Backup user settings for Claude (settings.local.json) or other config files
 	var settingsFiles = []string{"settings.local.json", ".aider.local.yml", "local.md"}
 	backups := make(map[string][]byte)
@@ -254,9 +289,13 @@ func upgradeAgent(targetDir string, config AgentConfig) error {
 
 	// Count existing files before upgrade
 	oldFileCount := 0
+	var oldTimestamp time.Time
 	filepath.Walk(targetDir, func(path string, info os.FileInfo, err error) error {
 		if err == nil && !info.IsDir() {
 			oldFileCount++
+			if oldTimestamp.IsZero() || info.ModTime().After(oldTimestamp) {
+				oldTimestamp = info.ModTime()
+			}
 		}
 		return nil
 	})
@@ -313,6 +352,12 @@ func upgradeAgent(targetDir string, config AgentConfig) error {
 		return fmt.Errorf("failed to install agent: %w", err)
 	}
 
+	// Write version marker file
+	versionFile := filepath.Join(targetDir, ".version")
+	if err := os.WriteFile(versionFile, []byte(newVersion+"\n"), 0644); err != nil {
+		fmt.Printf("⚠️  Warning: Could not write version file: %v\n", err)
+	}
+
 	// Restore user settings if they existed
 	if len(backups) > 0 {
 		fmt.Println("♻️  Restoring your custom settings...")
@@ -326,7 +371,8 @@ func upgradeAgent(targetDir string, config AgentConfig) error {
 
 	// Show upgrade summary
 	fmt.Println()
-	fmt.Printf("✅ Successfully upgraded %s! (%d → %d files)\n", config.Name, oldFileCount, installed)
+	fmt.Printf("✅ Successfully upgraded %s! (%s → %s)\n", config.Name, oldVersion, newVersion)
+	fmt.Printf("   Files: %d → %d\n", oldFileCount, installed)
 	fmt.Println()
 	fmt.Println("📚 What's new:")
 	fmt.Println("  • Latest documentation and improvements")
@@ -338,6 +384,86 @@ func upgradeAgent(targetDir string, config AgentConfig) error {
 	fmt.Println()
 
 	return nil
+}
+
+// getCurrentVersion returns the current lvt version
+func getCurrentVersion() string {
+	// Try to read VERSION file
+	data, err := os.ReadFile("VERSION")
+	if err == nil {
+		return strings.TrimSpace(string(data))
+	}
+	return "unknown"
+}
+
+// detectInstalledAgent tries to auto-detect which agent is installed
+func detectInstalledAgent() string {
+	for name, config := range agentConfigs {
+		if _, err := os.Stat(config.TargetDir); err == nil {
+			return name
+		}
+	}
+	return ""
+}
+
+// getInstalledVersion tries to determine the version of an installed agent
+func getInstalledVersion(targetDir string) string {
+	// Try to find a version marker file
+	versionFile := filepath.Join(targetDir, ".version")
+	if data, err := os.ReadFile(versionFile); err == nil {
+		return strings.TrimSpace(string(data))
+	}
+
+	// Fallback: use modification time of directory
+	if info, err := os.Stat(targetDir); err == nil {
+		modTime := info.ModTime()
+		return fmt.Sprintf("installed %s", modTime.Format("2006-01-02"))
+	}
+
+	return "unknown"
+}
+
+// handleExistingInstallation shows an interactive menu for handling existing installations
+func handleExistingInstallation(targetDir, agentName string) (string, error) {
+	fmt.Printf("⚠️  %s agent already installed\n", agentName)
+	fmt.Println()
+	fmt.Println("What would you like to do?")
+	fmt.Println()
+	fmt.Println("  [1] Upgrade (update agent, preserve custom settings)")
+	fmt.Println("  [2] Overwrite (fresh install, removes custom settings)")
+	fmt.Println("  [3] Cancel (keep existing installation)")
+	fmt.Println()
+	fmt.Print("Enter your choice (1-3): ")
+
+	var choice int
+	_, err := fmt.Scanf("%d", &choice)
+	if err != nil || choice < 1 || choice > 3 {
+		fmt.Println()
+		fmt.Println("❌ Invalid choice")
+		return "cancel", fmt.Errorf("invalid choice")
+	}
+
+	fmt.Println()
+
+	switch choice {
+	case 1:
+		return "upgrade", nil
+	case 2:
+		fmt.Println("⚠️  Warning: This will remove all existing files including custom settings!")
+		fmt.Print("Type 'yes' to confirm: ")
+		var confirm string
+		fmt.Scanf("%s", &confirm)
+		fmt.Println()
+		if confirm == "yes" {
+			return "force", nil
+		}
+		return "cancel", fmt.Errorf("overwrite cancelled")
+	case 3:
+		fmt.Println("Installation cancelled - keeping existing files")
+		return "cancel", fmt.Errorf("installation cancelled")
+	default:
+		return "cancel", fmt.Errorf("invalid choice")
+	}
 }
 
 // selectAgentInteractive shows an interactive menu to select an agent
