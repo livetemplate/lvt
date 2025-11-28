@@ -41,58 +41,110 @@ All pull requests require passing CI checks including tests, linting, and code f
 - **Issues**: [GitHub Issues](https://github.com/livetemplate/lvt/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/livetemplate/lvt/discussions)
 
-## AI-Assisted Development with Claude Code
+## AI-Assisted Development
 
-`lvt` includes a comprehensive AI agent and skills library for Claude Code that can help you build applications faster with guided workflows and best practices.
+`lvt` provides AI assistance through multiple approaches, supporting all major AI assistants:
 
-### Installation
-
-In any LiveTemplate project, run:
+### Quick Start
 
 ```bash
-lvt install-agent
+# List available AI agents
+lvt install-agent --list
+
+# Install agent for your AI assistant
+lvt install-agent --llm <type>    # claude, copilot, cursor, aider, generic
+
+# Or start the MCP server (works with all MCP-compatible AIs)
+lvt mcp-server
 ```
 
-This installs:
-- **20+ skills** for lvt commands and workflows
-- **Project management agent** for task tracking
-- **Permission settings** for safe Claude Code operation
+### Supported AI Assistants
 
-### Upgrading
+| AI Assistant | Installation | Best For |
+|--------------|-------------|----------|
+| **Claude Code** | `lvt install-agent --llm claude` | Full workflows with 20+ skills |
+| **GitHub Copilot** | `lvt install-agent --llm copilot` | In-editor suggestions |
+| **Cursor** | `lvt install-agent --llm cursor` | Rule-based development |
+| **Aider** | `lvt install-agent --llm aider` | CLI-driven development |
+| **Generic/Other** | `lvt install-agent --llm generic` | Custom LLMs via MCP |
 
-To update to the latest agent and skills:
+### Claude Code (Recommended)
+
+Full-featured agent with skills and workflows:
 
 ```bash
+# Install
+lvt install-agent --llm claude
+
+# Upgrade
 lvt install-agent --upgrade
+
+# Start Claude Code
+claude
 ```
 
-This will:
-- ✅ Backup your custom settings (`settings.local.json`)
-- ✅ Install the latest agent and skills
-- ✅ Restore your custom settings
-- ✅ Show what changed
+**Features:**
+- 20+ skills for lvt commands
+- Project management agent
+- Guided workflows
+- Best practices enforcement
 
-### What You Can Do
+**Try asking:**
+- "Add a posts resource with title and content"
+- "Generate authentication system"
+- "Create a quickstart blog app"
 
-Once installed, open Claude Code in your project directory (`claude`) and try:
+### GitHub Copilot
 
-- **"Add a posts resource with title and content"** - Generates resources with proper fields
-- **"Generate authentication system"** - Sets up complete auth with sessions
-- **"Create a quickstart blog app"** - Full workflow from creation to running server
-- **"Add categories and link them to posts"** - Manages relationships between resources
+Instructions-based integration:
 
-The agent guides you through:
-- Choosing the right kit (multi/single/simple)
-- Selecting CSS frameworks (Tailwind/Bulma/Pico)
-- Creating and running migrations
-- Testing and verification
-- Production deployment
+```bash
+# Install
+lvt install-agent --llm copilot
 
-### Learn More
+# Open in VS Code - Copilot automatically understands LiveTemplate
+```
 
-See [docs/AGENT_USAGE_GUIDE.md](docs/AGENT_USAGE_GUIDE.md) for detailed usage examples and workflow patterns.
+### Cursor
 
-**Note**: The agent and skills are designed for the lvt development workflow. For general project questions, use standard Claude Code capabilities.
+Rule-based development patterns:
+
+```bash
+# Install
+lvt install-agent --llm cursor
+
+# Open project in Cursor - rules apply to *.go files automatically
+```
+
+### Aider
+
+CLI configuration:
+
+```bash
+# Install
+lvt install-agent --llm aider
+
+# Start Aider - configuration loads automatically
+aider
+```
+
+### Upgrading Agents
+
+```bash
+# Upgrade any agent type
+lvt install-agent --llm <type> --upgrade
+```
+
+This preserves your custom settings while updating the agent files.
+
+### Complete Setup Guide
+
+For detailed setup instructions for each AI assistant, see:
+
+- **[docs/AGENT_SETUP.md](docs/AGENT_SETUP.md)** - Complete setup guide for all AI assistants
+- **[docs/MCP_TOOLS.md](docs/MCP_TOOLS.md)** - MCP server tools reference
+- **[docs/WORKFLOWS.md](docs/WORKFLOWS.md)** - Common development workflows
+- **[docs/AGENT_USAGE_GUIDE.md](docs/AGENT_USAGE_GUIDE.md)** - Claude Code usage examples
 
 ## Global AI Access via MCP Server
 

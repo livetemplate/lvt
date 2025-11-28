@@ -1,296 +1,743 @@
-# LiveTemplate Agent Usage Guide
+# LiveTemplate AI Agent Usage Guide
 
-This guide explains how to use the LiveTemplate assistant agent in Claude Code to create and develop applications.
+This guide explains how to use LiveTemplate with AI assistants to create and develop Go web applications.
 
-## Getting Started
+## Overview
 
-**Note**: The LiveTemplate agent and skills are available in the `lvt` CLI repository for developing `lvt` itself. When you create new apps with `lvt new`, the agent/skills are NOT automatically installed in those apps.
+LiveTemplate supports **5 different AI assistants** with two integration approaches:
 
-This guide documents how the agent works in the `lvt` repository context - useful for:
-- Contributing to `lvt` development
-- Understanding the agent architecture
-- Testing new features
+1. **MCP Server** - Global tool access via Model Context Protocol (16 tools)
+2. **Agent Installation** - Project-specific instructions and workflows
 
-For creating new LiveTemplate applications, use the standard CLI commands documented in the main README.
+**Supported AI Assistants:**
+- Claude Desktop / Claude Code
+- GitHub Copilot (VS Code)
+- Cursor AI
+- Aider CLI
+- Any MCP-compatible LLM (Generic)
 
 ---
 
-## Alternative: Manual Project Creation
+## Quick Start
 
-If you prefer more hands-on control, you can create the project manually first:
+### Choose Your Approach
+
+**Use MCP Server if:**
+- You want global access across all projects
+- Your AI assistant supports MCP protocol
+- You prefer minimal project setup
+
+**Use Agent Installation if:**
+- You want project-specific guidance
+- You want workflow orchestration and best practices
+- You're using Claude Code, Copilot, Cursor, or Aider
+
+### Installation
 
 ```bash
-# Create a new LiveTemplate app
-lvt new myapp
+# Option 1: Install project-specific agent
+lvt install-agent --llm <type>
 
-# Navigate to the project
-cd myapp
-
-# Open in Claude Code CLI
-claude
+# Option 2: Start MCP server (global)
+lvt mcp-server --setup
 ```
 
-Then ask the agent to add features:
+---
+
+## LLM-Specific Guides
+
+### Claude Desktop / Claude Code
+
+**Best For:** Full-featured development with autonomous skills that activate based on your requests
+
+**Setup:**
+```bash
+# Install Claude agent and skills in your project
+lvt install-agent --llm claude
+
+# Or use default (claude is default)
+lvt install-agent
 ```
+
+**What You Get:**
+- `.claude/skills/` - 21 autonomous skills (each in its own directory)
+- `.claude/agents/lvt-assistant.md` - LiveTemplate specialist agent
+- `.claude/settings.json` - Configuration and permissions
+
+**Understanding Skills vs Agents:**
+
+**Skills** are autonomous capabilities that Claude uses automatically:
+- **NOT invoked with slash commands** - they activate based on your request
+- Claude reads skill descriptions and decides when to use them
+- Work seamlessly in the background
+- Listed when you ask: "What skills are available?"
+
+**Agents** are specialists you can explicitly invoke:
+- Use via `/agents` picker or by mentioning them
+- Example: Select "lvt-assistant" from the agents menu
+- Have their own context window for complex tasks
+
+**Skills Available (21 total):**
+
+**Core Skills (14):**
+- `lvt-new-app` - Create new application
+- `lvt-add-resource` - Add CRUD resource with database
+- `lvt-add-view` - Add standalone view (no database)
+- `lvt-add-migration` - Create database migration
+- `lvt-gen-schema` - Generate database schema
+- `lvt-gen-auth` - Generate authentication system
+- `lvt-resource-inspect` - List and inspect resources
+- `lvt-manage-kits` - Manage CSS framework kits
+- `lvt-manage-env` - Manage environment variables
+- `lvt-validate-templates` - Validate template syntax
+- `lvt-run-and-test` - Start server and run tests
+- `lvt-customize` - Customize generated code
+- `lvt-seed-data` - Generate test data
+- `lvt-deploy` - Deploy to production
+
+**Workflow Skills (3):**
+- `lvt-quickstart` - Fast-track common patterns
+- `lvt-production-ready` - Production deployment checklist
+- `lvt-add-related-resources` - Add multiple related resources
+
+**Maintenance Skills (3):**
+- `lvt-analyze` - Analyze project structure
+- `lvt-suggest` - Suggest improvements
+- `lvt-troubleshoot` - Debug issues
+
+**Meta Skill (1):**
+- `lvt-add-skill` - Create custom skills
+
+**How to Use:**
+
+**Option 1: Natural Language (Skills activate automatically)**
+```
+You: Create a blog app with posts and comments
+Claude: [Automatically uses lvt-quickstart and lvt-add-resource skills]
+
+You: Add user authentication
+Claude: [Automatically uses lvt-gen-auth skill]
+
+You: Generate 50 test posts
+Claude: [Automatically uses lvt-seed-data skill]
+```
+
+**Option 2: Use the lvt-assistant Agent**
+
+The `lvt-assistant` agent is available in your `.claude/agents/` directory. Like skills, Claude will use it automatically when appropriate for complex LiveTemplate workflows. You don't need to explicitly invoke it - it's available as a resource for handling LiveTemplate-specific tasks.
+
+**Important:** Skills are NOT slash commands. Don't try to type `/lvt-new-app`. Just describe what you want to do in natural language, and Claude will automatically use the appropriate skills.
+
+**Verifying Installation:**
+
+After installation and restarting Claude Code:
+
+**Step 1: Verify skills are loaded**
+```
+You: What skills are available?
+Claude: [Lists all 21 lvt skills plus any others]
+```
+
+**Step 2: Test skill activation (manual verification)**
+
+Try making a natural language request that should trigger a skill. If Claude uses the Skill tool and references a specific lvt skill, it's working:
+
+```
+You: Create a blog app with posts and comments
+Expected: Claude should use the Skill tool and invoke lvt-quickstart or lvt-new-app
+
+You: Add a users table with email and password
+Expected: Claude should use the Skill tool and invoke lvt-add-resource or lvt-gen-auth
+```
+
+**Note:** There's currently no automated way to test skill invocation since it depends on Claude's autonomous decision-making. Skill usage is validated through:
+1. Checking that skill files exist and are properly formatted (automated tests)
+2. Manual verification by making requests and observing which skills Claude uses
+
+---
+
+### GitHub Copilot (VS Code)
+
+**Best For:** Code-focused development with inline suggestions
+
+**Setup:**
+```bash
+# Install Copilot agent in your project
+lvt install-agent --llm copilot
+```
+
+**What You Get:**
+- `.github/copilot-instructions.md` - Complete tool reference
+- Automatic tool discovery in VS Code
+- 16 MCP tools available via Copilot Chat
+
+**Usage:**
+```
+You: @workspace How do I add a posts resource?
+Copilot: Use lvt gen resource posts title:string content:text
+
+You: Add authentication
+Copilot: [Suggests using lvt gen auth with options]
+```
+
+**MCP Integration:**
+Copilot can use MCP tools directly if your environment supports it. See MCP Server section below.
+
+---
+
+### Cursor AI
+
+**Best For:** Full-stack Go development with Composer mode
+
+**Setup:**
+```bash
+# Install Cursor agent in your project
+lvt install-agent --llm cursor
+```
+
+**What You Get:**
+- `.cursor/rules/lvt.md` - Cursor-specific rules
+- File-specific guidance (applies to `**/*.go`)
+- Automatic pattern recognition
+
+**Usage:**
+
+**Composer Mode (Recommended):**
+```
+You: Add a blog with authentication
+Cursor: [Chains multiple tools]
+  1. lvt new blog
+  2. lvt gen resource posts title content
+  3. lvt gen auth
+  4. lvt migration up
+```
+
+**Agent Mode:**
+```
+You: Create a task management system
+Cursor: [Autonomous workflow execution]
+```
+
+**Features:**
+- Multi-step workflows in Composer
+- Context-aware suggestions
+- Production best practices enforcement
+
+---
+
+### Aider CLI
+
+**Best For:** Terminal-based pair programming
+
+**Setup:**
+```bash
+# Install Aider agent in your project
+lvt install-agent --llm aider
+```
+
+**What You Get:**
+- `.aider/.aider.conf.yml` - Aider configuration
+- `.aider/lvt-instructions.md` - Command reference
+- Auto-commit enabled with conventional commits
+
+**Usage:**
+```bash
+$ aider
+
 You: Add a posts resource with title and content
+Aider: I'll generate the posts resource.
+       Running: lvt gen resource posts title:string content:text
+       [Shows output]
+       Running: lvt migration up
+       [Commits changes]
 ```
 
-The agent will generate the posts resource and run migrations. You can then start the server with `go run cmd/myapp/main.go`.
-
-## Example Workflows
-
-### Complete Project Creation (Recommended)
-
-Start with a clear description of what you want:
-
-```
-You: I want to build a blog with posts that have titles, content,
-     and publication dates. Include categories and tags.
+**MCP Support (Optional):**
+If your Aider version supports MCP, uncomment the server config in `.aider/.aider.conf.yml`:
+```yaml
+mcp_servers:
+  - name: lvt
+    command: lvt
+    args: [mcp-server]
 ```
 
-The agent will:
-1. **Plan**: Analyze requirements and propose architecture
-2. **Create**: Run `lvt new blog` to initialize project
-3. **Generate**: Create posts, categories, and tags resources with proper relationships
-4. **Migrate**: Create and apply database migrations
-5. **Verify**: Run tests and check migrations applied correctly
-6. **Launch**: Start the development server
+---
 
-You get a fully working blog application, ready to customize.
+### Generic / Other LLMs
 
-### Full Stack Application
+**Best For:** Custom LLMs, ChatGPT, Claude API, local models
 
-For more complex requirements:
-
-```
-You: Create a task management system with:
-- User authentication (email/password)
-- Projects that belong to users
-- Tasks within projects with due dates and priorities
-- Real-time updates when tasks change
+**Setup:**
+```bash
+# Install generic documentation
+lvt install-agent --llm generic
 ```
 
-The agent will:
-1. **Plan**: Design the data model and relationships
-2. **Setup**: Create project with multi kit (for multiple resources)
-3. **Authenticate**: Generate complete auth system with sessions
-4. **Resources**: Create projects and tasks with foreign keys
-5. **Real-time**: Add WebSocket support for live updates
-6. **Test**: Verify authentication flow and CRUD operations
-7. **Launch**: Start server with all features working
+**What You Get:**
+- `lvt-agent/README.md` - Complete integration guide (520+ lines)
+- `lvt-agent/QUICK_REFERENCE.md` - Quick command reference
+- Tool format conversion examples
 
-### Incremental Development
+**Integration Approaches:**
 
-You can also build features incrementally:
+**1. MCP Server (If Supported):**
+```bash
+lvt mcp-server
+```
+Configure in your LLM client's MCP settings.
+
+**2. CLI Execution:**
+Your LLM executes `lvt` commands via shell.
+
+**3. Tool Calling:**
+Convert MCP tool schemas to your LLM's format.
+
+**Example: OpenAI Function Calling**
+```json
+{
+  "name": "lvt_gen_resource",
+  "description": "Generate a CRUD resource with database integration",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "name": {"type": "string", "description": "Resource name (singular)"},
+      "fields": {
+        "type": "object",
+        "description": "Field definitions",
+        "additionalProperties": {"type": "string"}
+      }
+    },
+    "required": ["name"]
+  }
+}
+```
+
+See `lvt-agent/README.md` for complete conversion examples.
+
+---
+
+## MCP Server Reference
+
+The LiveTemplate MCP server provides **16 tools** globally accessible to any MCP-compatible AI assistant.
+
+### Starting the MCP Server
+
+```bash
+# Interactive setup wizard
+lvt mcp-server --setup
+
+# Show all available tools
+lvt mcp-server --list-tools
+
+# Get help
+lvt mcp-server --help
+```
+
+### Available Tools
+
+#### Generation Tools (5)
+
+**`lvt_new`** - Create new application
+```json
+{
+  "name": "myblog",
+  "kit": "multi",      // multi, single, or simple
+  "css": "tailwind",   // tailwind, bulma, pico, none
+  "module": "github.com/user/myblog"
+}
+```
+
+**`lvt_gen_resource`** - Generate CRUD resource
+```json
+{
+  "name": "posts",
+  "fields": {
+    "title": "string",
+    "content": "text",
+    "published": "bool",
+    "author_id": "references:users"
+  }
+}
+```
+
+**`lvt_gen_view`** - Generate view-only page
+```json
+{
+  "name": "dashboard"
+}
+```
+
+**`lvt_gen_auth`** - Generate authentication system
+```json
+{
+  "struct_name": "User",      // optional, default: User
+  "table_name": "users"       // optional, default: users
+}
+```
+
+**`lvt_gen_schema`** - Generate database schema only
+```json
+{
+  "table": "products",
+  "fields": {
+    "name": "string",
+    "price": "float",
+    "stock": "int"
+  }
+}
+```
+
+#### Database Tools (4)
+
+**`lvt_migration_up`** - Apply pending migrations
+```json
+{}  // no input required
+```
+
+**`lvt_migration_down`** - Rollback last migration
+```json
+{}  // no input required
+```
+
+**`lvt_migration_status`** - Check migration status
+```json
+{}  // no input required
+```
+
+**`lvt_migration_create`** - Create new migration
+```json
+{
+  "name": "add_user_bio"
+}
+```
+
+#### Resource Inspection Tools (2)
+
+**`lvt_resource_list`** - List all resources
+```json
+{}  // no input required
+```
+
+**`lvt_resource_describe`** - Show resource schema
+```json
+{
+  "resource": "posts"
+}
+```
+
+#### Data Tools (1)
+
+**`lvt_seed`** - Generate test data
+```json
+{
+  "resource": "posts",
+  "count": 50,
+  "cleanup": false  // true to delete existing data first
+}
+```
+
+#### Template Tools (1)
+
+**`lvt_validate_template`** - Validate template syntax
+```json
+{
+  "template_file": "internal/app/posts/posts.tmpl"
+}
+```
+
+#### Environment Tools (1)
+
+**`lvt_env_generate`** - Generate .env.example
+```json
+{}  // no input required
+```
+
+#### Kit Tools (2)
+
+**`lvt_kits_list`** - List available kits
+```json
+{}  // no input required
+```
+
+**`lvt_kits_info`** - Get kit details
+```json
+{
+  "name": "multi"
+}
+```
+
+### Field Types Reference
 
 ```
-You: Create a simple blog app
+string     → Go: string,     SQL: TEXT
+int        → Go: int64,      SQL: INTEGER
+bool       → Go: bool,       SQL: BOOLEAN
+float      → Go: float64,    SQL: REAL
+time       → Go: time.Time,  SQL: DATETIME
+text       → Go: string,     SQL: TEXT (for longer content)
+references → Go: int64,      SQL: INTEGER (foreign key)
+```
 
-[Agent creates basic app with lvt new]
+**Foreign Key Example:**
+```json
+{
+  "author_id": "references:users"
+}
+```
+Creates a foreign key to the `users` table.
 
+---
+
+## Common Workflows
+
+### 1. Quick Start: Blog in 5 Minutes
+
+```bash
+# Using MCP tools
+lvt_new({"name": "blog", "kit": "multi"})
+lvt_gen_resource({"name": "posts", "fields": {"title": "string", "content": "text"}})
+lvt_migration_up({})
+lvt_seed({"resource": "posts", "count": 10})
+```
+
+```bash
+# Using CLI
+lvt new blog --kit multi
+cd blog
+lvt gen resource posts title:string content:text
+lvt migration up
+lvt seed posts --count 10
+go run cmd/blog/main.go
+```
+
+**Result:** Working blog with 10 sample posts at http://localhost:8080
+
+### 2. Full Stack: Task Manager with Auth
+
+```bash
+# 1. Create app
+lvt new tasks --kit multi
+
+# 2. Add authentication
+lvt gen auth
+
+# 3. Add resources
+lvt gen resource projects name:string description:text user_id:references:users
+lvt gen resource tasks title:string done:bool project_id:references:projects
+
+# 4. Apply migrations
+lvt migration up
+
+# 5. Seed data
+lvt seed users --count 5
+lvt seed projects --count 10
+lvt seed tasks --count 50
+
+# 6. Run
+go run cmd/tasks/main.go
+```
+
+**Result:** Multi-user task manager with projects and tasks
+
+### 3. Incremental Development
+
+**Step 1:** Create basic app
+```
+You: Create a simple blog
+AI: [Creates blog app with lvt new]
+```
+
+**Step 2:** Add core resource
+```
 You: Add posts with title and content
-
-[Agent generates posts resource]
-
-You: Add categories and make posts belong to categories
-
-[Agent adds categories resource and relationship]
-
-You: Add user authentication so posts have authors
-
-[Agent generates auth system and links posts to users]
+AI: [Generates posts resource]
 ```
 
-The agent maintains context throughout the conversation, understanding how each piece fits together.
-
-## Available Skills
-
-The agent has access to the following skills:
-
-### Core Skills (14)
-1. **lvt-new-app** - Create new LiveTemplate application
-2. **lvt-add-resource** - Add database-backed CRUD resource
-3. **lvt-gen-auth** - Generate complete authentication system
-4. **lvt-add-view** - Add standalone view (no database)
-5. **lvt-customize-resource** - Modify existing resource
-6. **lvt-add-relationship** - Add relationships between resources
-7. **lvt-add-validation** - Add form/data validation
-8. **lvt-add-middleware** - Add custom middleware
-9. **lvt-customize-templates** - Modify HTML templates
-10. **lvt-add-api** - Add JSON API endpoints
-11. **lvt-add-websocket** - Add WebSocket support
-12. **lvt-quickstart** - Fast-track common patterns
-13. **lvt-troubleshoot** - Debug issues
-14. **lvt-optimize** - Performance improvements
-
-### Migration Skills (4)
-1. **lvt-migration-create** - Create new migration
-2. **lvt-migration-up** - Apply migrations
-3. **lvt-migration-down** - Rollback migrations
-4. **lvt-migration-status** - Check migration status
-
-### Development Skills (3)
-1. **lvt-run-dev** - Start development server
-2. **lvt-run-tests** - Run test suite
-3. **lvt-build-prod** - Build for production
-
-## Tips for Best Results
-
-### Be Descriptive
-
-Instead of:
+**Step 3:** Add relationships
 ```
-You: Add users
+You: Add categories and link posts to categories
+AI: [Creates categories resource with foreign key]
 ```
 
-Try:
+**Step 4:** Add authentication
 ```
-You: Add users with email, password, and profile information
-```
-
-### Ask for Relationships
-
-```
-You: Add posts that belong to users
+You: Add user accounts so posts have authors
+AI: [Generates auth system, links posts to users]
 ```
 
-The agent will understand and create the proper foreign key relationships.
+### 4. Production Deployment
 
-### Request Features Incrementally
+```bash
+# 1. Generate deployment files
+lvt gen stack docker --db postgres
 
-Start simple, then add complexity:
+# 2. Build production
+go build -o myapp cmd/myapp/main.go
 
-```
-You: Create a blog
-Agent: [Creates basic blog]
-
-You: Add categories and tags
-Agent: [Adds categorization]
-
-You: Add comments
-Agent: [Adds commenting system]
+# 3. Deploy
+docker-compose up -d
 ```
 
-### Let the Agent Choose the Approach
+---
 
-The agent knows which skills to use for each task. You don't need to specify skill names.
+## Best Practices
 
-Instead of:
+### When to Use Which LLM
+
+**Claude Code:**
+- Complex projects requiring orchestration
+- Need workflow guidance and best practices
+- Want natural language interaction
+
+**GitHub Copilot:**
+- Working primarily in VS Code
+- Want inline code suggestions
+- Code-focused development
+
+**Cursor:**
+- Full-stack Go development
+- Need Composer mode for multi-step workflows
+- Want autonomous agent capabilities
+
+**Aider:**
+- Terminal-based workflow
+- Pair programming style
+- Want auto-commits with proper messages
+
+**Generic:**
+- Using ChatGPT, Claude API, or local models
+- Need custom integration
+- Want maximum flexibility
+
+### MCP vs Agent Installation
+
+**Use MCP Server:**
+- Global access across all projects
+- Minimal setup per project
+- Direct tool calling
+
+**Use Agent Installation:**
+- Project-specific context
+- Workflow orchestration
+- Best practice guidance
+- Richer documentation
+
+**Use Both:**
+- Claude Code: Agent + skills (best experience)
+- Can combine for any LLM if desired
+
+### Common Patterns
+
+**1. CRUD Resource:**
 ```
-You: Use lvt-add-resource to add posts
-```
-
-Just say:
-```
-You: Add posts to my blog
-```
-
-### Ask for Help
-
-```
-You: What's the best way to add user authentication?
-You: How do I add real-time updates to my app?
-You: I'm getting an error when I run the server
-```
-
-## Common Patterns
-
-### Authentication Setup
-
-```
-You: I need user authentication with email and password
-```
-
-### CRUD Resource
-
-```
-You: Add products with name, price, description, and stock quantity
-```
-
-Agent will run: `lvt gen resource products name:string price:float description:text stock:int`
-
-### Relationships
-
-```
-You: Add orders that belong to users and have many products
-```
-
-### Custom Views
-
-```
-You: Add a dashboard view that shows statistics
-```
-
-### Real-time Features
-
-```
-You: Add live updates when new messages arrive
-```
-
-## What the Agent Can Do
-
-- **Generate Resources**: Create database-backed CRUD interfaces
-- **Setup Authentication**: Complete auth system with sessions
-- **Add Relationships**: One-to-many, many-to-many relationships
-- **Create Migrations**: Database schema changes
-- **Run Commands**: Execute lvt commands for you
-- **Start Server**: Launch development server
-- **Open Browser**: Navigate to your running app
-- **Troubleshoot**: Help debug issues
-- **Optimize**: Improve performance
-
-## Example Session
-
-```
-You: I want to build a recipe sharing site
-
-Agent: I'll help you build a recipe sharing site. Let me start by creating the core resources.
-
-[Agent uses lvt-quickstart skill]
-[Creates recipes resource with title, ingredients, instructions, prep_time, cook_time]
-[Runs migrations]
-[Starts server on port 8080]
-[Opens browser to http://localhost:8080]
-
-Agent: Your recipe site is now running! You can create, edit, and view recipes.
-       Would you like me to add any additional features like:
-       - User accounts and authentication
-       - Recipe categories
-       - Ratings and reviews
-       - Photo uploads
-
-You: Yes, add user accounts and categories
-
-Agent: I'll add authentication and categories.
-
-[Agent uses lvt-gen-auth skill]
-[Creates users, sessions, authentication system]
-[Agent uses lvt-add-resource skill]
-[Creates categories resource]
-[Adds relationship between recipes and categories]
-[Adds relationship between recipes and users]
-[Runs migrations]
-[Restarts server]
-
-Agent: ✅ Added user authentication and categories!
-       - Users can now sign up and log in
-       - Recipes are linked to their creators
-       - Recipes can be organized into categories
-
-       The server has been restarted. Refresh your browser to see the changes.
+Add products with name, price, and stock quantity
 ```
 
-## Notes
+**2. Authentication:**
+```
+I need user authentication with email and password
+```
 
-- The agent handles migrations automatically
-- Server starts on port 8080 by default
-- The agent commits changes using conventional commits
-- Progress is tracked in `.claude/progress/`
-- All skills are documented in `.claude/skills/`
+**3. Relationships:**
+```
+Add orders that belong to users and have many products
+```
+
+**4. Custom Views:**
+```
+Add a dashboard view showing statistics
+```
+
+**5. Real-time:**
+```
+Add live updates when new messages arrive
+```
+
+---
+
+## Troubleshooting
+
+### Agent Not Working
+
+```bash
+# Reinstall agent
+lvt install-agent --llm <type> --force
+
+# Check installation
+ls -la .claude/  # or .cursor/, .aider/, etc.
+```
+
+### MCP Server Not Connecting
+
+```bash
+# Get setup help
+lvt mcp-server --setup
+
+# Verify tools available
+lvt mcp-server --list-tools
+
+# Test with inspector
+npx @modelcontextprotocol/inspector lvt mcp-server
+```
+
+### Skills Not Showing (Claude)
+
+Ensure you're in a project with `.claude/` directory:
+```bash
+ls .claude/skills/lvt/
+```
+
+If missing, reinstall:
+```bash
+lvt install-agent --llm claude --force
+```
+
+### Commands Failing
+
+Check you're in the correct directory:
+```bash
+# Should be in project root with go.mod
+ls go.mod internal/ cmd/
+```
+
+---
+
+## Upgrading Agents
+
+```bash
+# Upgrade specific agent type
+lvt install-agent --llm <type> --upgrade
+
+# Upgrade Claude agent (default)
+lvt install-agent --upgrade
+```
+
+**What Gets Preserved:**
+- Custom settings (`settings.local.json`)
+- Local configuration files
+- User-created content
+
+**What Gets Updated:**
+- Agent files and skills
+- Documentation
+- Workflow definitions
+
+---
+
+## Reference Documentation
+
+For more detailed information, see:
+
+- **Setup Guide:** `docs/AGENT_SETUP.md` - Complete setup instructions for all LLMs
+- **Tool Reference:** `docs/MCP_TOOLS.md` - Comprehensive MCP tool documentation
+- **Workflows:** `docs/WORKFLOWS.md` - Advanced development patterns
+- **User Guide:** `docs/guides/user-guide.md` - General usage and concepts
+
+---
 
 ## Getting Help
 
-If you need help with the agent:
+### From Your AI Assistant
 
 ```
 You: How do I add a new feature?
@@ -298,4 +745,38 @@ You: What's the best way to structure my app?
 You: I'm getting an error, can you help?
 ```
 
-The agent will guide you through the process and explain what it's doing.
+### From Documentation
+
+```bash
+# General help
+lvt --help
+
+# Command-specific help
+lvt gen --help
+lvt migration --help
+
+# List available agents
+lvt install-agent --list
+
+# MCP server help
+lvt mcp-server --help
+```
+
+### From Community
+
+- **Issues:** https://github.com/livetemplate/lvt/issues
+- **Discussions:** https://github.com/livetemplate/lvt/discussions
+- **Documentation:** https://livetemplate.io/docs
+
+---
+
+## What's Next?
+
+After setting up your AI assistant:
+
+1. **Try the Quick Start** - Create a blog in 5 minutes
+2. **Explore Workflows** - See `docs/WORKFLOWS.md` for patterns
+3. **Read Tool Docs** - Understand all 16 MCP tools
+4. **Build Something** - Use your AI assistant to create a real project
+
+The AI assistant will guide you through the entire development process, from project creation to production deployment.
