@@ -326,7 +326,7 @@ This is tested in `TestInstallAgent_AiderAgent` which verifies the rename happen
 The comprehensive AI agent usage guide covers all integration approaches:
 
 #### Multi-LLM Support (5 LLM types)
-- **Claude Desktop / Claude Code** - 19 skills with workflow orchestration
+- **Claude Desktop / Claude Code** - 22 skills with workflow orchestration (includes brainstorming)
 - **GitHub Copilot** - VS Code integration with MCP tools
 - **Cursor AI** - Composer/Agent mode with file-specific rules
 - **Aider CLI** - Terminal-based pair programming
@@ -338,7 +338,9 @@ The comprehensive AI agent usage guide covers all integration approaches:
 
 #### Documentation Coverage
 - ✅ Complete MCP tool reference with JSON schemas
-- ✅ All 19 Claude skills documented by category
+- ✅ All 22 Claude skills documented by category (Core: 14, Workflow: 4, Maintenance: 3, Meta: 1)
+- ✅ Keyword-gating explanation for skill activation
+- ✅ Brainstorming skill for interactive planning
 - ✅ Field type reference (string, int, bool, float, time, text, references)
 - ✅ Common workflows (Quick Start, Full Stack, Incremental, Production)
 - ✅ Best practices for each LLM type
@@ -406,9 +408,9 @@ func TestClaudeAgent_Installation(t *testing.T) {
     // ✅ Verifies settings.json exists
 }
 
-// Test that all 21 documented skills exist
+// Test that all 22 documented skills exist
 func TestClaudeAgent_AllSkillsExist(t *testing.T) {
-    // ✅ Verifies all 21 documented skills are present
+    // ✅ Verifies all 22 documented skills are present
     // ✅ Parses each skill file and verifies frontmatter
     // ✅ Skills organized in 4 categories: core/, workflows/, maintenance/, meta/
 }
@@ -428,7 +430,7 @@ func TestClaudeAgent_SkillInvocationSyntax(t *testing.T) {
 
 // Test skill count matches documentation
 func TestClaudeAgent_SkillCount(t *testing.T) {
-    // ✅ Verifies we have at least 21 skills as documented
+    // ✅ Verifies we have at least 22 skills as documented (Core: 14, Workflow: 4, Maintenance: 3, Meta: 1)
     // ✅ Counts across all 4 category directories
 }
 ```

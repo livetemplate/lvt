@@ -60,7 +60,7 @@ lvt install-agent
 ```
 
 **What You Get:**
-- `.claude/skills/` - 21 autonomous skills (each in its own directory)
+- `.claude/skills/` - 22 autonomous skills (each in its own directory)
 - `.claude/agents/lvt-assistant.md` - LiveTemplate specialist agent
 - `.claude/settings.json` - Configuration and permissions
 
@@ -77,7 +77,7 @@ lvt install-agent
 - Example: Select "lvt-assistant" from the agents menu
 - Have their own context window for complex tasks
 
-**Skills Available (21 total):**
+**Skills Available (22 total):**
 
 **Core Skills (14):**
 - `lvt-new-app` - Create new application
@@ -95,10 +95,11 @@ lvt install-agent
 - `lvt-seed-data` - Generate test data
 - `lvt-deploy` - Deploy to production
 
-**Workflow Skills (3):**
+**Workflow Skills (4):**
 - `lvt-quickstart` - Fast-track common patterns
 - `lvt-production-ready` - Production deployment checklist
 - `lvt-add-related-resources` - Add multiple related resources
+- `lvt-brainstorm` - Interactive planning through progressive questions
 
 **Maintenance Skills (3):**
 - `lvt-analyze` - Analyze project structure
@@ -128,6 +129,65 @@ The `lvt-assistant` agent is available in your `.claude/agents/` directory. Like
 
 **Important:** Skills are NOT slash commands. Don't try to type `/lvt-new-app`. Just describe what you want to do in natural language, and Claude will automatically use the appropriate skills.
 
+**Understanding Skill Activation:**
+
+Skills use **keyword-gating** to prevent false positives. A skill activates when **LiveTemplate context is established** through:
+
+1. **Project context** - `.lvtrc` file exists in your project (most common)
+2. **Agent context** - You're working with the `lvt-assistant` agent
+3. **Keyword context** - You mention "lvt", "livetemplate", or "lt" in your request
+
+**Examples:**
+
+✅ **With Context** (generic prompts work once context is established):
+```
+You: Create a blog with posts and comments
+Claude: [Uses lvt-quickstart skill automatically]
+
+You: Add authentication
+Claude: [Uses lvt-gen-auth skill automatically]
+```
+
+✅ **Without Context** (keywords required):
+```
+You: Create a LiveTemplate blog app with posts
+Claude: [Uses lvt-new-app skill]
+
+You: Help me build an lvt task manager
+Claude: [Uses lvt-quickstart skill]
+```
+
+❌ **Without Context or Keywords** (skills won't activate):
+```
+You: Create a blog app
+Claude: [Won't use LiveTemplate skills - could be any framework]
+```
+
+**Why Keyword-Gating?**
+
+This prevents skills from activating on generic requests when you might mean a different framework (Next.js, Rails, Django, etc.). Once you mention LiveTemplate or start working in a LiveTemplate project, skills activate seamlessly.
+
+**Using the Brainstorming Skill:**
+
+The `lvt-brainstorm` skill helps you plan LiveTemplate apps through progressive questions:
+
+```
+You: I want to build a blog with lvt
+Claude: [Uses lvt-brainstorm skill]
+        I'll help you plan your LiveTemplate blog. Let me ask a few questions...
+
+        1. What's your primary use case?
+        2. Do you need user authentication?
+        3. What CSS framework do you prefer?
+        ...
+```
+
+The brainstorming skill:
+- Always requires keywords ("lvt", "livetemplate", or "lt")
+- Uses progressive disclosure (starts with 3-5 questions)
+- Offers to ask more detailed questions if needed
+- Helps you make informed decisions about your app structure
+
 **Verifying Installation:**
 
 After installation and restarting Claude Code:
@@ -135,7 +195,7 @@ After installation and restarting Claude Code:
 **Step 1: Verify skills are loaded**
 ```
 You: What skills are available?
-Claude: [Lists all 21 lvt skills plus any others]
+Claude: [Lists all 22 lvt skills plus any others]
 ```
 
 **Step 2: Test skill activation (manual verification)**

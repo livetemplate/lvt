@@ -53,17 +53,18 @@ lvt install-agent
 ```
 
 **What gets installed:**
-- `.claude/skills/` - 21 autonomous skills (each in its own directory)
+- `.claude/skills/` - 22 autonomous skills (each in its own directory)
 - `.claude/agents/lvt-assistant.md` - LiveTemplate specialist agent
 - `.claude/settings.json` - Configuration and permissions
 
 **Understanding what you get:**
 
-**Skills (21 total):** Autonomous capabilities that Claude uses automatically
+**Skills (22 total):** Autonomous capabilities that Claude uses automatically
 - NOT slash commands - they activate based on your requests
 - Claude reads their descriptions and decides when to use them
-- Examples: `lvt-new-app`, `lvt-add-resource`, `lvt-gen-auth`
+- Examples: `lvt-new-app`, `lvt-add-resource`, `lvt-gen-auth`, `lvt-brainstorm`
 - Verify they're loaded by asking: "What skills are available?"
+- Skills use **keyword-gating** to prevent false positives (require "lvt", "livetemplate", or "lt" unless working in a LiveTemplate project)
 
 **Agent:** Specialist available for complex workflows
 - The `lvt-assistant` agent in `.claude/agents/` provides LiveTemplate expertise
