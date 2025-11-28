@@ -81,9 +81,24 @@ Guide users through progressive questions to understand requirements, then execu
 
 ### Phase 1: Core Questions (Always Ask)
 
-Ask these 3-5 questions to establish basics:
+Ask these 4-6 questions to establish basics:
 
-#### Question 1: App Domain
+#### Question 1: App Name
+"What would you like to name your app?
+
+This will be:
+- The directory name (e.g., `myblog`)
+- The Go module name (e.g., `github.com/yourname/myblog`)
+- Used in your code and configuration
+
+**Requirements:**
+- Lowercase letters, numbers, hyphens
+- No spaces or special characters
+- Example: `myblog`, `todo-app`, `my-shop`
+
+Your answer:"
+
+#### Question 2: App Domain
 "What type of application are you building?
 
 Common types:
@@ -97,7 +112,7 @@ Common types:
 
 Your answer:"
 
-#### Question 2: Primary Resource
+#### Question 3: Primary Resource
 "What's the main thing you're tracking in your app?
 
 For a blog → `posts`
@@ -147,6 +162,7 @@ After collecting core answers, show summary and offer to dive deeper:
 
 "📋 **Summary So Far**
 
+- **App name**: {app_name}
 - **App type**: {domain}
 - **Primary resource**: {primary_resource}
 - **Authentication**: {yes/no + method}
@@ -270,8 +286,11 @@ Show the complete plan before executing anything:
 
 ## Commands I Will Execute
 
+**IMPORTANT**: Create the app in the current working directory (CWD), NOT in /tmp or a git worktree.
+New applications should be created directly in the user's current location.
+
 \`\`\`bash
-# 1. Create app
+# 1. Create app in current directory
 lvt new {app_name} --kit {kit}
 cd {app_name}
 
