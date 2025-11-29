@@ -14,19 +14,19 @@ This skill creates a new LiveTemplate application using the lvt CLI, validates t
 
 **Before using this skill**, check if the user needs brainstorming:
 
-### When to Use `lvt-brainstorm` Instead
+### When to Use `lvt-plan` Instead
 
 If the user's request is:
 - **Vague about requirements** (e.g., "create a blog app" without specifying resources)
 - **A new project from scratch** (not adding to existing app)
 - **Mentions a domain** (blog, shop, CRM, todo) **without specific resources**
 
-Then **STOP** and use the `lvt-brainstorm` skill instead:
+Then **STOP** and use the `lvt-plan` skill instead:
 ```
-Skill("lvt-brainstorm")
+Skill("lvt-plan")
 ```
 
-The brainstorm skill will:
+The lvt-plan skill will:
 1. Ask progressive questions to understand requirements
 2. Gather resource definitions, auth needs, pagination style, etc.
 3. **Then call this skill** (`lvt-new-app`) with complete requirements
@@ -39,9 +39,9 @@ Use `lvt-new-app` directly only when:
 - ✅ User explicitly says **"just create the app"** or **"skip the questions"**
 
 **Example:**
-- ❌ "create a blog app" → Use `lvt-brainstorm` (vague, needs planning)
+- ❌ "create a blog app" → Use `lvt-plan` (vague, needs planning)
 - ✅ "create blog app with posts(title, content), comments(text), use multi kit" → Use `lvt-new-app` (detailed)
-- ✅ "now create it" (after brainstorming completed) → Use `lvt-new-app`
+- ✅ "now create it" (after planning completed) → Use `lvt-new-app`
 
 ## 🎯 ACTIVATION RULES
 

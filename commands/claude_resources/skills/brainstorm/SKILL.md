@@ -1,13 +1,13 @@
 ---
-name: lvt-app-brainstorm
-description: Create LiveTemplate applications - Interactive planning and app creation for LiveTemplate/lvt. ONLY use for "create/build/make a lvt/livetemplate [type] app/application". Guides through progressive questions about resources, auth, styling before generating code.
-keywords: ["lvt", "livetemplate", "lt", "app", "application", "create", "build", "make", "new"]
+name: lvt-plan
+description: Plan and create LiveTemplate applications - Interactive workflow for creating new LiveTemplate/lvt apps. Use for "create/build/make a lvt/livetemplate [type] app/application". Asks progressive questions about app name, resources, auth, and styling before generating code.
+keywords: ["lvt", "livetemplate", "lt", "app", "application", "create", "build", "make", "new", "plan"]
 requires_keywords: true
 category: workflows
-version: 1.0.1
+version: 1.1.0
 ---
 
-# lvt-brainstorm
+# lvt-plan
 
 Interactive planning skill that guides users through progressive questions to design their LiveTemplate application before generating any code.
 
@@ -573,7 +573,7 @@ Testing checklist for developers:
 See `e2e/agent_skills_validation_test.go`:
 - Skill exists in `skills/brainstorm/SKILL.md`
 - Skill has valid frontmatter (name, description, keywords)
-- Skill name follows format: `lvt-brainstorm`
+- Skill name follows format: `lvt-plan`
 
 ---
 
