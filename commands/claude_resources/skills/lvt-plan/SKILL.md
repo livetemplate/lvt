@@ -79,11 +79,94 @@ Guide users through progressive questions to understand requirements, then execu
 
 ## Progressive Question Flow
 
+### Pre-Question Analysis
+
+**IMPORTANT:** Before asking any questions, analyze the user's initial prompt to extract information they've already provided.
+
+#### Step 1: Show Opening Summary
+
+After analyzing the prompt, show what you understood:
+
+"👋 I'll help you create a LiveTemplate {domain} application!
+
+**What I understood from your request:**
+{extracted_info_summary}
+
+Let me ask a few questions to complete the setup..."
+
+**Example summaries:**
+
+User: "create a lvt blog app"
+```
+👋 I'll help you create a LiveTemplate blog application!
+
+**What I understood:**
+✅ App name: blog
+✅ Domain: Blog (posts, comments, etc.)
+
+Let me ask a few questions to complete the setup...
+```
+
+User: "build a todo-app using lvt"
+```
+👋 I'll help you create a LiveTemplate task management application!
+
+**What I understood:**
+✅ App name: todo-app
+✅ Domain: Todo/Tasks
+
+Let me ask a few questions to complete the setup...
+```
+
+User: "create a lvt app"
+```
+👋 I'll help you create a LiveTemplate application!
+
+I'll need to ask you a few questions to understand what you want to build...
+```
+
+#### Step 2: Extract App Name from Initial Prompt
+
+Look for app name patterns in the user's message:
+
+**Common patterns:**
+- "create a **{name}** app/application"
+- "build a **{name}** [using] lvt"
+- "make a **{name}** project/site"
+- "I want to create **{name}**"
+- "{name} app with livetemplate"
+
+**Examples:**
+- "create a lvt **blog** app" → extracted name: `blog`
+- "build a **todo-app** using lvt" → extracted name: `todo-app`
+- "make a **shop** application" → extracted name: `shop`
+- "create **my-awesome-blog**" → extracted name: `my-awesome-blog`
+
+#### Validate Extracted Name
+
+If a name is found, validate it:
+- ✅ **Valid:** Lowercase, alphanumeric, hyphens only (regex: `^[a-z][a-z0-9-]*$`)
+- ❌ **Invalid:** Contains uppercase, spaces, special characters
+
+**If valid:**
+- Skip Question 1
+- Confirm with user: "✅ I'll create an app called **'{name}'**. Let's configure it..."
+- Proceed directly to Question 2
+
+**If invalid:**
+- Suggest corrected version (lowercase, replace spaces with hyphens)
+- Ask Question 1: "I noticed you mentioned '{name}', but app names must be lowercase with hyphens. How about '{suggested_name}' instead?"
+
+**If no name found or ambiguous:**
+- Ask Question 1 normally
+
+---
+
 ### Phase 1: Core Questions (Always Ask)
 
-Ask these 4-6 questions to establish basics:
+Ask these questions to establish basics (skip any already answered in pre-analysis):
 
-#### Question 1: App Name
+#### Question 1: App Name (Skip if extracted from prompt)
 "What would you like to name your app?
 
 This will be:
@@ -98,7 +181,22 @@ This will be:
 
 Your answer:"
 
-#### Question 2: App Domain
+#### Question 2: App Domain (Skip if obvious from prompt)
+
+**First, check if domain is mentioned in the initial prompt:**
+- "create a lvt **blog** app" → domain: Blog
+- "build a **shop** application" → domain: E-commerce
+- "make a **todo** app" → domain: Todo/Tasks
+- "create a **forum**" → domain: Forum
+- "build a **crm**" → domain: CRM
+
+**If domain is clear:**
+- Skip Question 2
+- Confirm: "✅ Building a **{domain}** application..."
+- Proceed to Question 3
+
+**If unclear, ask:**
+
 "What type of application are you building?
 
 Common types:
@@ -112,13 +210,34 @@ Common types:
 
 Your answer:"
 
-#### Question 3: Primary Resource
+#### Question 3: Primary Resource (Can infer from domain)
+
+**If domain is known, suggest the obvious primary resource:**
+
+- Blog → suggest `posts`
+- E-commerce/Shop → suggest `products`
+- Todo/Tasks → suggest `tasks`
+- CRM → suggest `contacts`
+- Forum → suggest `topics`
+- SaaS → suggest `users` or `organizations`
+
+**Smart prompt:**
+
+"For a **{domain}** app, the primary resource is typically **{suggested_resource}**.
+
+Would you like to use **{suggested_resource}**, or something different?
+
+Your answer (press Enter for '{suggested_resource}', or type custom name):"
+
+**If domain is "Other" or no clear suggestion:**
+
 "What's the main thing you're tracking in your app?
 
-For a blog → `posts`
-For a shop → `products`
-For todos → `tasks`
-For CRM → `contacts`
+Examples:
+- Blog → `posts`
+- Shop → `products`
+- Todos → `tasks`
+- CRM → `contacts`
 
 Your answer:"
 
@@ -228,16 +347,15 @@ Options:
 
 Your answer (1-2 or name):"
 
-#### Question 9: CSS Framework
-"Which CSS framework would you like?
+#### Question 9: App Architecture
+"What type of application architecture do you need?
 
 Options:
-1. **Tailwind CSS** - Utility-first, highly customizable (default)
-2. **Bulma** - Component-based, clean classes
-3. **Pico CSS** - Classless, minimal, semantic HTML
-4. **None** - I'll bring my own styles
+1. **Multi-page app** - Full-featured CRUD with layouts (uses Tailwind CSS)
+2. **Single-page app** - Component-based SPA (uses Tailwind CSS)
+3. **Quick prototype** - Minimal example to start (uses Pico CSS)
 
-Your answer (1-4 or name):"
+Your answer (1-3 or name):"
 
 #### Question 10: Related Resources Details
 
@@ -266,7 +384,8 @@ Show the complete plan before executing anything:
 
 - **Name**: {app_name}
 - **Domain**: {domain}
-- **CSS Framework**: {css_framework}
+- **Architecture**: {architecture} (Kit: {kit_name})
+- **CSS Framework**: {css_framework} (locked to kit)
 - **Authentication**: {auth_method or "None"}
 
 ## Resources
@@ -289,12 +408,20 @@ Show the complete plan before executing anything:
 **IMPORTANT**: Create the app in the current working directory (CWD), NOT in /tmp or a git worktree.
 New applications should be created directly in the user's current location.
 
+**Kit Selection Based on Architecture**:
+- Multi-page app → use `--kit multi` (includes Tailwind CSS)
+- Single-page app → use `--kit single` (includes Tailwind CSS)
+- Quick prototype → use `--kit simple` (includes Pico CSS)
+
+**Note**: CSS framework is locked per kit. There is no --css flag for lvt new.
+
 \`\`\`bash
-# 1. Create app in current directory
+# 1. Create app in current directory with chosen kit
 lvt new {app_name} --kit {kit}
 cd {app_name}
 
 # 2. Generate primary resource
+# CSS framework comes from kit - no --css flag needed
 lvt gen resource {primary_resource} {fields} \\
   --pagination {pagination_style} \\
   --edit-mode {edit_mode}

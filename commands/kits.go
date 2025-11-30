@@ -12,11 +12,21 @@ import (
 )
 
 func Kits(args []string) error {
+	// Handle --help flag
+	if ShowHelpIfRequested(args, printKitsHelp) {
+		return nil
+	}
+
 	if len(args) < 1 {
 		return fmt.Errorf("command required: list, create, info, validate, customize")
 	}
 
 	command := args[0]
+
+	// Validate that command doesn't look like a flag
+	if err := ValidatePositionalArg(command, "command"); err != nil {
+		return err
+	}
 
 	switch command {
 	case "list":
@@ -195,6 +205,11 @@ func createKit(args []string) error {
 	}
 
 	kitName := args[0]
+
+	// Validate that kit name doesn't look like a flag
+	if err := ValidatePositionalArg(kitName, "kit name"); err != nil {
+		return err
+	}
 
 	// No additional arguments needed for kit creation
 
@@ -397,6 +412,11 @@ func infoKit(args []string) error {
 
 	kitName := args[0]
 
+	// Validate that kit name doesn't look like a flag
+	if err := ValidatePositionalArg(kitName, "kit name"); err != nil {
+		return err
+	}
+
 	// Load kit
 	loader := kits.DefaultLoader()
 	kit, err := loader.Load(kitName)
@@ -444,6 +464,11 @@ func validateKit(args []string) error {
 
 	kitPath := args[0]
 
+	// Validate that kit path doesn't look like a flag
+	if err := ValidatePositionalArg(kitPath, "kit path"); err != nil {
+		return err
+	}
+
 	// Run validation
 	result := validator.ValidateKit(kitPath)
 
@@ -464,6 +489,11 @@ func customizeKit(args []string) error {
 	}
 
 	kitName := args[0]
+
+	// Validate that kit name doesn't look like a flag
+	if err := ValidatePositionalArg(kitName, "kit name"); err != nil {
+		return err
+	}
 
 	// Parse flags
 	scope := "project"      // default to project-level

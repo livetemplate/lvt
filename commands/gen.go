@@ -13,6 +13,11 @@ import (
 )
 
 func Gen(args []string) error {
+	// Handle --help flag
+	if ShowHelpIfRequested(args, printGenHelp) {
+		return nil
+	}
+
 	if len(args) < 1 {
 		// Show interactive prompt
 		return interactiveGen()
@@ -20,6 +25,12 @@ func Gen(args []string) error {
 
 	// Route to subcommands
 	subcommand := args[0]
+
+	// Validate that subcommand doesn't look like a flag
+	if err := ValidatePositionalArg(subcommand, "subcommand"); err != nil {
+		return err
+	}
+
 	switch subcommand {
 	case "resource":
 		return GenResource(args[1:])
@@ -81,6 +92,11 @@ func interactiveGen() error {
 }
 
 func GenResource(args []string) error {
+	// Handle --help flag
+	if ShowHelpIfRequested(args, printGenResourceHelp) {
+		return nil
+	}
+
 	if len(args) < 1 {
 		return fmt.Errorf("resource name required")
 	}
@@ -134,6 +150,12 @@ func GenResource(args []string) error {
 	}
 
 	resourceName := filteredArgs[0]
+
+	// Validate that resource name doesn't look like a flag
+	if err := ValidatePositionalArg(resourceName, "resource name"); err != nil {
+		return err
+	}
+
 	fieldArgs := filteredArgs[1:]
 
 	if len(fieldArgs) == 0 {
@@ -208,6 +230,11 @@ func GenResource(args []string) error {
 }
 
 func GenView(args []string) error {
+	// Handle --help flag
+	if ShowHelpIfRequested(args, printGenViewHelp) {
+		return nil
+	}
+
 	if len(args) < 1 {
 		return fmt.Errorf("view name required")
 	}
@@ -235,6 +262,11 @@ func GenView(args []string) error {
 	cssFramework := kitInfo.Manifest.CSSFramework
 
 	viewName := args[0]
+
+	// Validate that view name doesn't look like a flag
+	if err := ValidatePositionalArg(viewName, "view name"); err != nil {
+		return err
+	}
 
 	// Get module name from go.mod
 	moduleName, err := getModuleName()
@@ -273,6 +305,11 @@ func GenView(args []string) error {
 }
 
 func GenSchema(args []string) error {
+	// Handle --help flag
+	if ShowHelpIfRequested(args, printGenSchemaHelp) {
+		return nil
+	}
+
 	if len(args) < 1 {
 		return fmt.Errorf("table name required")
 	}
@@ -300,6 +337,12 @@ func GenSchema(args []string) error {
 	cssFramework := kitInfo.Manifest.CSSFramework
 
 	tableName := args[0]
+
+	// Validate that table name doesn't look like a flag
+	if err := ValidatePositionalArg(tableName, "table name"); err != nil {
+		return err
+	}
+
 	fieldArgs := args[1:]
 
 	if len(fieldArgs) == 0 {

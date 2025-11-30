@@ -9,11 +9,21 @@ import (
 )
 
 func New(args []string) error {
+	// Handle --help flag
+	if ShowHelpIfRequested(args, printNewHelp) {
+		return nil
+	}
+
 	if len(args) < 1 {
 		return fmt.Errorf("app name required")
 	}
 
 	appName := args[0]
+
+	// Validate that app name doesn't look like a flag
+	if err := ValidatePositionalArg(appName, "app name"); err != nil {
+		return err
+	}
 	moduleName := appName // Default to app name
 	devMode := false      // Default to production (use CDN)
 	kit := "multi"        // Default kit
