@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"testing"
+	"time"
 
 	"github.com/livetemplate/lvt/internal/agenttest"
 	"github.com/stretchr/testify/assert"
@@ -57,7 +58,7 @@ func TestAgentDocValidation_FullStack(t *testing.T) {
 	env.AssertFileExists("internal/app/tasks/tasks.go")
 
 	// Verify database tables
-	env.AssertDatabaseTableExists("users")
+	// Note: users table is created via create_auth_tables migration (not named after table)
 	env.AssertDatabaseTableExists("projects")
 	env.AssertDatabaseTableExists("tasks")
 
@@ -78,12 +79,19 @@ func TestAgentDocValidation_StepByStep(t *testing.T) {
 	err := env.RunLvtCommand("gen", "resource", "posts", "title:string", "content:text")
 	assert.NoError(t, err)
 
+	// Avoid duplicate timestamp conflicts in migrations
+	time.Sleep(1100 * time.Millisecond)
+
 	// Step 2: "Can you add categories and tags?"
 	err = env.RunLvtCommand("gen", "resource", "categories", "name:string")
 	assert.NoError(t, err)
 
+	time.Sleep(1100 * time.Millisecond)
+
 	err = env.RunLvtCommand("gen", "resource", "tags", "name:string")
 	assert.NoError(t, err)
+
+	time.Sleep(1100 * time.Millisecond)
 
 	// Step 3: "Add author attribution to posts"
 	env.TrackSkill("lvt-customize-resource")
@@ -121,8 +129,8 @@ func TestAgentDocValidation_CommonPatterns(t *testing.T) {
 				require.NoError(t, err)
 
 				env.AssertFileExists("internal/app/auth/auth.go")
-				env.AssertFileExists("login.tmpl")
-				env.AssertFileExists("signup.tmpl")
+				env.AssertFileExists("internal/app/auth/auth.tmpl")
+				// Note: Password auth disabled in v0.4.x, so no separate login/signup templates
 			},
 		},
 		{
@@ -131,7 +139,7 @@ func TestAgentDocValidation_CommonPatterns(t *testing.T) {
 			pattern: "Add products with name, price, description, and stock quantity",
 			verify: func(t *testing.T, env *agenttest.AgentTestEnv) {
 				env.TrackSkill("lvt-add-resource")
-				err := env.RunLvtCommand("gen", "products",
+				err := env.RunLvtCommand("gen", "resource", "products",
 					"name:string",
 					"price:float",
 					"description:text",
@@ -249,7 +257,7 @@ func TestAgentDocValidation_RecipeExample(t *testing.T) {
 
 	// Initial: "I want to build a recipe sharing site"
 	env.TrackSkill("lvt-quickstart")
-	err := env.RunLvtCommand("gen", "recipes",
+	err := env.RunLvtCommand("gen", "resource", "recipes",
 		"title:string",
 		"ingredients:text",
 		"instructions:text",
@@ -260,10 +268,16 @@ func TestAgentDocValidation_RecipeExample(t *testing.T) {
 	err = env.RunLvtCommand("migration", "up")
 	require.NoError(t, err)
 
+	// Avoid duplicate migration timestamps
+	time.Sleep(1100 * time.Millisecond)
+
 	// Follow-up: "add user accounts and categories"
 	env.TrackSkill("lvt-gen-auth")
 	err = env.RunLvtCommand("gen", "auth")
 	require.NoError(t, err)
+
+	// Avoid duplicate migration timestamps
+	time.Sleep(1100 * time.Millisecond)
 
 	env.TrackSkill("lvt-add-resource")
 	err = env.RunLvtCommand("gen", "resource", "categories", "name:string")
@@ -277,6 +291,6 @@ func TestAgentDocValidation_RecipeExample(t *testing.T) {
 	env.AssertFileExists("internal/app/auth/auth.go")
 	env.AssertFileExists("internal/app/categories/categories.go")
 	env.AssertDatabaseTableExists("recipes")
-	env.AssertDatabaseTableExists("users")
+	// Note: users table is created via create_auth_tables migration (not named after table)
 	env.AssertDatabaseTableExists("categories")
 }

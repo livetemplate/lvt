@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/livetemplate/lvt/commands"
 	e2etest "github.com/livetemplate/lvt/testing"
@@ -254,9 +255,15 @@ func (e *AgentTestEnv) SimulateFullStack() {
 	err := e.RunLvtCommand("gen", "auth")
 	require.NoError(e.T, err, "gen auth should succeed")
 
+	// Avoid duplicate migration timestamps
+	time.Sleep(1100 * time.Millisecond)
+
 	// Add projects resource
 	err = e.RunLvtCommand("gen", "resource", "projects", "name:string", "description:text", "user_id:int")
 	require.NoError(e.T, err, "gen projects should succeed")
+
+	// Avoid duplicate migration timestamps
+	time.Sleep(1100 * time.Millisecond)
 
 	// Add tasks resource
 	err = e.RunLvtCommand("gen", "resource", "tasks", "title:string", "description:text", "project_id:int", "due_date:time", "priority:int")
