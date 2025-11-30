@@ -76,10 +76,6 @@ type {{.StructName}}State struct {
 	Token          string `json:"token"`
 	ShowMagicLink  bool   `json:"show_magic_link"`
 	ShowPassword   bool   `json:"show_password"`
-
-	// HTTP-only fields (not serialized to JSON, not sent to client)
-	httpWriter  http.ResponseWriter `json:"-"`
-	httpRequest *http.Request       `json:"-"`
 }
 
 func New{{.StructName}}State(db *sql.DB, emailSender email.EmailSender, baseURL string) *{{.StructName}}State {
@@ -96,15 +92,6 @@ func New{{.StructName}}State(db *sql.DB, emailSender email.EmailSender, baseURL 
 
 // Change implements the Store interface
 func (s *{{.StructName}}State) Change(ctx *livetemplate.ActionContext) error {
-	// Store HTTP writer/request for cookie/redirect operations
-	// These are available in ActionContext.Ctx
-	if w, ok := ctx.Ctx.Value(livetemplate.ResponseWriterKey).(http.ResponseWriter); ok {
-		s.httpWriter = w
-	}
-	if r, ok := ctx.Ctx.Value(livetemplate.RequestKey).(*http.Request); ok {
-		s.httpRequest = r
-	}
-
 	switch ctx.Action {
 	{{- if .EnablePassword }}
 	case "register":
@@ -255,22 +242,26 @@ func (s *{{.StructName}}State) handleLogin(ctx *livetemplate.ActionContext) erro
 		return nil
 	}
 
-	// Set session cookie
-	if s.httpWriter != nil {
-		http.SetCookie(s.httpWriter, &http.Cookie{
-			Name:     "{{.TableName}}_token",
-			Value:    token,
-			Path:     "/",
-			MaxAge:   30 * 24 * 60 * 60, // 30 days
-			HttpOnly: true,
-			Secure:   true,
-			SameSite: http.SameSiteStrictMode,
-		})
+	// Set session cookie using v0.5.1 ActionContext API
+	if err := ctx.SetCookie(&http.Cookie{
+		Name:     "{{.TableName}}_token",
+		Value:    token,
+		Path:     "/",
+		MaxAge:   30 * 24 * 60 * 60, // 30 days
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+	}); err != nil {
+		s.Error = "Login failed"
+		log.Printf("Set cookie error: %v", err)
+		return nil
+	}
 
-		// Redirect to home
-		if s.httpRequest != nil {
-			http.Redirect(s.httpWriter, s.httpRequest, "/", http.StatusSeeOther)
-		}
+	// Redirect to home using v0.5.1 ActionContext API
+	if err := ctx.Redirect("/", http.StatusSeeOther); err != nil {
+		s.Error = "Login failed"
+		log.Printf("Redirect error: %v", err)
+		return nil
 	}
 
 	return nil

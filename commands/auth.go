@@ -62,18 +62,6 @@ func Auth(args []string) error {
 		tableName = pluralizeNoun(structName)
 	}
 
-	// TEMPORARY: Disable password auth by default until LiveTemplate v0.5+ supports cookie/redirect in Change()
-	// Password auth requires setting HTTP cookies and redirecting, which isn't supported in the current
-	// LiveTemplate Store/ActionContext API. Magic-link auth works because it uses separate HTTP handlers.
-	if !flags.NoPassword {
-		fmt.Println("⚠️  WARNING: Password authentication is temporarily disabled due to API compatibility.")
-		fmt.Println("    The current LiveTemplate API (v0.4.x) doesn't support setting cookies or redirects from Change().")
-		fmt.Println("    Use magic-link authentication instead, which works with separate HTTP handlers.")
-		fmt.Println("    Password auth will be re-enabled in LiveTemplate v0.5+ with proper support.")
-		fmt.Println()
-		flags.NoPassword = true
-	}
-
 	// Validate flags
 	if flags.NoPassword && flags.NoMagicLink {
 		return errors.New("at least one authentication method (password or magic-link) must be enabled")

@@ -388,6 +388,104 @@ type Sender interface {
 }
 ```
 
+## LiveTemplate v0.5.1+ HTTP APIs
+
+The generated authentication code uses LiveTemplate v0.5.1+ ActionContext HTTP methods for cookie and redirect operations. These APIs make it easy to handle authentication flows directly from your `Change()` handler.
+
+### Available HTTP Methods
+
+**Setting Cookies:**
+```go
+func (s *AuthState) handleLogin(ctx *livetemplate.ActionContext) error {
+    // ... authenticate user ...
+
+    // Set session cookie
+    err := ctx.SetCookie(&http.Cookie{
+        Name:     "session_token",
+        Value:    token,
+        Path:     "/",
+        MaxAge:   30 * 24 * 60 * 60, // 30 days
+        HttpOnly: true,
+        Secure:   true, // Use true in production
+        SameSite: http.SameSiteStrictMode,
+    })
+    if err != nil {
+        return fmt.Errorf("failed to set cookie: %w", err)
+    }
+
+    return nil
+}
+```
+
+**Reading Cookies:**
+```go
+func (s *AuthState) checkSession(ctx *livetemplate.ActionContext) error {
+    cookie, err := ctx.GetCookie("session_token")
+    if err != nil {
+        // Cookie not found or error
+        return err
+    }
+
+    // Verify token
+    // ...
+}
+```
+
+**Deleting Cookies:**
+```go
+func (s *AuthState) handleLogout(ctx *livetemplate.ActionContext) error {
+    // Delete session cookie
+    ctx.DeleteCookie("session_token")
+
+    return ctx.Redirect("/", http.StatusSeeOther)
+}
+```
+
+**Redirecting:**
+```go
+func (s *AuthState) handleLogin(ctx *livetemplate.ActionContext) error {
+    // ... authenticate and set cookie ...
+
+    // Redirect to dashboard
+    return ctx.Redirect("/dashboard", http.StatusSeeOther)
+}
+```
+
+**Headers:**
+```go
+// Set response header
+ctx.SetHeader("X-Custom-Header", "value")
+
+// Read request header
+userAgent := ctx.GetHeader("User-Agent")
+```
+
+**Checking HTTP Context:**
+```go
+// Check if we're in an HTTP request context (vs WebSocket)
+if ctx.IsHTTP() {
+    // Can safely use SetCookie, Redirect, etc.
+}
+```
+
+### Security Best Practices
+
+**Cookie Security:**
+- Always set `HttpOnly: true` to prevent JavaScript access
+- Set `Secure: true` in production (requires HTTPS)
+- Use `SameSite: http.SameSiteStrictMode` to prevent CSRF
+- Set appropriate `MaxAge` for session duration
+
+**Redirect Validation:**
+- ActionContext validates redirects automatically
+- Only relative paths starting with `/` are allowed
+- Prevents open redirect vulnerabilities
+
+**Error Handling:**
+- `ctx.SetCookie()` returns `ErrNoHTTPContext` if called from WebSocket
+- `ctx.Redirect()` returns `ErrInvalidRedirectCode` for invalid status codes
+- `ctx.Redirect()` returns `ErrInvalidRedirectURL` for non-relative URLs
+
 ## Common Issues and Fixes
 
 ### Issue 1: "failed to load project config"
