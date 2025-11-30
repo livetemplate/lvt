@@ -17,12 +17,12 @@ import (
 // AgentTestEnv wraps E2ETest with agent-specific testing capabilities
 type AgentTestEnv struct {
 	*e2etest.E2ETest
-	T             *testing.T
-	TmpDir        string
-	AppName       string
-	AppDir        string
-	CommandsRun   []string
-	SkillsUsed    []string
+	T              *testing.T
+	TmpDir         string
+	AppName        string
+	AppDir         string
+	CommandsRun    []string
+	SkillsUsed     []string
 	CurrentWorkDir string
 }
 

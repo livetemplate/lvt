@@ -154,8 +154,8 @@ type GenResourceInput struct {
 
 // GenResourceOutput defines the output schema
 type GenResourceOutput struct {
-	Success bool   `json:"success"`
-	Message string `json:"message"`
+	Success bool     `json:"success"`
+	Message string   `json:"message"`
 	Files   []string `json:"files,omitempty" jsonschema:"List of generated files"`
 }
 
@@ -219,8 +219,8 @@ type GenViewInput struct {
 
 // GenViewOutput defines the output schema
 type GenViewOutput struct {
-	Success bool   `json:"success"`
-	Message string `json:"message"`
+	Success bool     `json:"success"`
+	Message string   `json:"message"`
 	Files   []string `json:"files,omitempty"`
 }
 
