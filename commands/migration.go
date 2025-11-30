@@ -7,11 +7,21 @@ import (
 )
 
 func Migration(args []string) error {
+	// Handle --help flag
+	if ShowHelpIfRequested(args, printMigrationHelp) {
+		return nil
+	}
+
 	if len(args) < 1 {
 		return fmt.Errorf("command required: up, down, status, or create <name>")
 	}
 
 	command := args[0]
+
+	// Validate that command doesn't look like a flag
+	if err := ValidatePositionalArg(command, "command"); err != nil {
+		return err
+	}
 
 	// Create runner
 	runner, err := migration.New()
@@ -50,6 +60,10 @@ func Migration(args []string) error {
 			return fmt.Errorf("migration name required: lvt migration create <name>")
 		}
 		name := args[1]
+		// Validate that migration name doesn't look like a flag
+		if err := ValidatePositionalArg(name, "migration name"); err != nil {
+			return err
+		}
 		if err := runner.Create(name); err != nil {
 			return err
 		}

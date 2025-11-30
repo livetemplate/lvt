@@ -7,11 +7,21 @@ import (
 )
 
 func Seed(args []string) error {
+	// Handle --help flag
+	if ShowHelpIfRequested(args, printSeedHelp) {
+		return nil
+	}
+
 	if len(args) < 1 {
 		return fmt.Errorf("resource name required: lvt seed <resource-name> --count N [--cleanup]")
 	}
 
 	resourceName := args[0]
+
+	// Validate that resource name doesn't look like a flag
+	if err := ValidatePositionalArg(resourceName, "resource name"); err != nil {
+		return err
+	}
 
 	// Parse flags
 	var count int

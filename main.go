@@ -58,6 +58,10 @@ func main() {
 		err = commands.Serve(args)
 	case "env":
 		err = commands.Env(args)
+	case "install-agent", "agent":
+		err = commands.InstallAgent(args)
+	case "mcp-server", "mcp":
+		err = commands.MCPServer(args)
 	case "version", "--version", "-v":
 		printVersion()
 		return
@@ -146,6 +150,8 @@ func printUsage() {
 	fmt.Println("  lvt serve [options]                           Start development server with hot reload")
 	fmt.Println("  lvt parse <template-file>                     Validate and analyze template file")
 	fmt.Println("  lvt env <command>                             Manage environment variables")
+	fmt.Println("  lvt install-agent [--llm <type>]              Install AI agent for your LLM")
+	fmt.Println("  lvt mcp-server [--help|--setup|--list-tools]  Start MCP server or show setup guide")
 	fmt.Println("  lvt version                                   Show version information")
 	fmt.Println()
 	fmt.Println("Generate Subcommands:")
@@ -211,6 +217,22 @@ func printUsage() {
 	fmt.Println()
 	fmt.Println("Environment Commands:")
 	fmt.Println("  lvt env generate                          Generate .env.example with detected config")
+	fmt.Println()
+	fmt.Println("AI Agent Commands:")
+	fmt.Println("  lvt install-agent --list                  List all available AI agents")
+	fmt.Println("  lvt install-agent --llm claude            Install Claude Code agent (default)")
+	fmt.Println("  lvt install-agent --llm copilot           Install GitHub Copilot agent")
+	fmt.Println("  lvt install-agent --llm cursor            Install Cursor AI agent")
+	fmt.Println("  lvt install-agent --llm aider             Install Aider CLI agent")
+	fmt.Println("  lvt install-agent --llm generic           Install generic LLM documentation")
+	fmt.Println("  lvt install-agent --upgrade               Upgrade existing agent")
+	fmt.Println()
+	fmt.Println("MCP Server Commands:")
+	fmt.Println("  lvt mcp-server                            Start MCP server (for AI client use)")
+	fmt.Println("  lvt mcp-server --help                     Show setup instructions")
+	fmt.Println("  lvt mcp-server --setup                    Interactive setup wizard")
+	fmt.Println("  lvt mcp-server --list-tools               List all 16 available tools")
+	fmt.Println("  lvt mcp-server --version                  Show MCP protocol version")
 	fmt.Println()
 	fmt.Println("Type Mappings:")
 	fmt.Println("  string  -> Go: string,     SQL: TEXT")

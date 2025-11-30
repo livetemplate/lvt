@@ -12,11 +12,21 @@ import (
 
 // Parse validates a template file and shows detailed information
 func Parse(args []string) error {
+	// Handle --help flag
+	if ShowHelpIfRequested(args, printParseHelp) {
+		return nil
+	}
+
 	if len(args) < 1 {
 		return fmt.Errorf("template file required\nUsage: lvt parse <template-file>")
 	}
 
 	templateFile := args[0]
+
+	// Validate that template file doesn't look like a flag
+	if err := ValidatePositionalArg(templateFile, "template file"); err != nil {
+		return err
+	}
 
 	// Check if file exists
 	if _, err := os.Stat(templateFile); os.IsNotExist(err) {

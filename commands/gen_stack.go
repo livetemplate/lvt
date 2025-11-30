@@ -17,11 +17,21 @@ import (
 )
 
 func GenStack(args []string) error {
+	// Handle --help flag
+	if ShowHelpIfRequested(args, printGenStackHelp) {
+		return nil
+	}
+
 	if len(args) < 1 {
 		return fmt.Errorf("provider required\n\nUsage: lvt gen stack <provider> [flags]\n\nProviders:\n  docker  - Docker Compose deployment\n  fly     - Fly.io deployment\n  do      - DigitalOcean App Platform\n  k8s     - Kubernetes deployment\n\nFlags:\n  --db <sqlite|postgres|none>               Database type (default: sqlite)\n  --backup <litestream|none>                Backup strategy (default: none)\n  --redis <upstash|fly|none>                Redis provider (default: none)\n  --storage <s3|do-spaces|b2|none>          Storage provider (default: none)\n  --ci <github|gitlab|none>                 CI/CD provider (default: none)\n  --multi-region                            Enable multi-region (fly, k8s only)\n  --namespace <name>                        Kubernetes namespace (k8s only)\n  --ingress <nginx|traefik|none>            Ingress controller (k8s only, default: nginx)\n  --registry <ghcr|docker|gcr|ecr>          Container registry (k8s only, default: ghcr)\n  --force                                   Overwrite existing files")
 	}
 
 	provider := args[0]
+
+	// Validate that provider doesn't look like a flag
+	if err := ValidatePositionalArg(provider, "provider"); err != nil {
+		return err
+	}
 
 	// Parse flags
 	config := stack.StackConfig{

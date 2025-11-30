@@ -1,4 +1,4 @@
-.PHONY: test-fast test-commit test-all test-e2e test-unit test-clean
+.PHONY: test-fast test-commit test-all test-e2e test-unit test-clean install
 
 # Fast feedback - unit tests only (~30 seconds)
 test-fast:
@@ -32,3 +32,8 @@ test-clean:
 	docker rm -f $$(docker ps -aq --filter "name=chrome-pool-") 2>/dev/null || true
 	docker rmi $$(docker images -q "lvt-test-*") 2>/dev/null || true
 	docker rmi lvt-base:latest 2>/dev/null || true
+
+# Install lvt CLI to GOPATH/bin
+install:
+	@echo "Installing lvt..."
+	GOWORK=off go install .

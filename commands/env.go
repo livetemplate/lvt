@@ -12,11 +12,22 @@ import (
 
 // Env handles environment variable management commands
 func Env(args []string) error {
+	// Handle --help flag
+	if ShowHelpIfRequested(args, printEnvHelp) {
+		return nil
+	}
+
 	if len(args) < 1 {
 		return fmt.Errorf("subcommand required\nUsage: lvt env <command> [args]\n\nCommands:\n  generate    Generate .env.example file\n  set         Set environment variable\n  unset       Unset environment variable\n  list        List environment variables\n  validate    Validate environment configuration")
 	}
 
 	subcommand := args[0]
+
+	// Validate that subcommand doesn't look like a flag
+	if err := ValidatePositionalArg(subcommand, "subcommand"); err != nil {
+		return err
+	}
+
 	subArgs := args[1:]
 
 	switch subcommand {
@@ -293,6 +304,12 @@ func EnvSet(args []string) error {
 	}
 
 	key := args[0]
+
+	// Validate that key doesn't look like a flag
+	if err := ValidatePositionalArg(key, "key"); err != nil {
+		return err
+	}
+
 	value := strings.Join(args[1:], " ") // Join remaining args as value (supports spaces)
 
 	// Validate key format
@@ -340,6 +357,11 @@ func EnvUnset(args []string) error {
 	}
 
 	key := args[0]
+
+	// Validate that key doesn't look like a flag
+	if err := ValidatePositionalArg(key, "key"); err != nil {
+		return err
+	}
 
 	// Load existing .env file
 	envFile := ".env"

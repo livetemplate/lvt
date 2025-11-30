@@ -1,0 +1,22 @@
+# Aider configuration for LiveTemplate projects
+
+# MCP Server Integration
+# Uncomment and configure if your Aider version supports MCP
+# mcp_servers:
+#   - name: lvt
+#     command: lvt
+#     args: [mcp-server]
+
+# Model settings
+# model: gpt-4
+# edit-format: diff
+
+# Chat settings
+auto-commits: true
+commit-prompt: "🤖 Generated with Aider"
+
+# File handling
+auto-lint: true
+
+# Custom instructions
+read: .aider/lvt-instructions.md

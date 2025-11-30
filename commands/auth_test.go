@@ -73,8 +73,8 @@ func TestAuthCommand_Integration(t *testing.T) {
 	}
 
 	// Verify files were created
+	// Note: password.go is NOT generated because password auth is disabled by default in v0.4.x
 	expectedFiles := []string{
-		"internal/shared/password/password.go",
 		"internal/shared/email/email.go",
 		"internal/database/queries.sql",
 	}

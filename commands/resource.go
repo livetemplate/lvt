@@ -8,11 +8,21 @@ import (
 )
 
 func Resource(args []string) error {
+	// Handle --help flag
+	if ShowHelpIfRequested(args, printResourceHelp) {
+		return nil
+	}
+
 	if len(args) < 1 {
 		return fmt.Errorf("command required: list or describe <resource-name>")
 	}
 
 	command := args[0]
+
+	// Validate that command doesn't look like a flag
+	if err := ValidatePositionalArg(command, "command"); err != nil {
+		return err
+	}
 
 	switch command {
 	case "list", "ls":
@@ -23,6 +33,10 @@ func Resource(args []string) error {
 			return fmt.Errorf("resource name required: lvt resource describe <resource-name>")
 		}
 		resourceName := args[1]
+		// Validate that resource name doesn't look like a flag
+		if err := ValidatePositionalArg(resourceName, "resource name"); err != nil {
+			return err
+		}
 		return describeResource(resourceName)
 
 	default:
