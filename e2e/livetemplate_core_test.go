@@ -1129,15 +1129,12 @@ func TestTemplate_E2E_CompleteRenderingSequence(t *testing.T) {
 	})
 }
 
-// LoadingTestState implements the Store interface for loading indicator E2E coverage.
+// LoadingTestState implements state for loading indicator E2E coverage.
 type LoadingTestState struct {
 	Message string
 }
 
-// Change satisfies the Store interface; loading tests do not mutate state.
-func (s *LoadingTestState) Change(ctx *livetemplate.ActionContext) error {
-	return nil
-}
+// No action methods needed - loading tests do not mutate state.
 
 // TestLoadingIndicator verifies the loading indicator appears serverside and disappears once the client boots.
 func TestLoadingIndicator(t *testing.T) {
@@ -1377,12 +1374,9 @@ type FocusTestState struct {
 	Counter int
 }
 
-// Change applies focus test actions.
-func (s *FocusTestState) Change(ctx *livetemplate.ActionContext) error {
-	switch ctx.Action {
-	case "increment":
-		s.Counter++
-	}
+// Increment handles the "increment" action.
+func (s *FocusTestState) Increment(_ *livetemplate.ActionContext) error {
+	s.Counter++
 	return nil
 }
 

@@ -90,35 +90,15 @@ func New{{.StructName}}State(db *sql.DB, emailSender email.EmailSender, baseURL 
 	}
 }
 
-// Change implements the Store interface
-func (s *{{.StructName}}State) Change(ctx *livetemplate.ActionContext) error {
-	switch ctx.Action {
-	{{- if .EnablePassword }}
-	case "register":
-		return s.handleRegister(ctx)
-	case "login":
-		return s.handleLogin(ctx)
-	{{- end }}
-	{{- if .EnableMagicLink }}
-	case "magic-link":
-		return s.handleMagicLink(ctx)
-	{{- end }}
-	{{- if .EnablePasswordReset }}
-	case "forgot-password":
-		return s.handleForgotPassword(ctx)
-	{{- end }}
-	case "switch-view":
-		// Switch between login/register/forgot views
-		view := ctx.GetString("view")
-		if view != "" {
-			s.View = view
-			s.Error = ""
-			s.Success = ""
-		}
-		return nil
-	default:
-		return fmt.Errorf("unknown action: %s", ctx.Action)
+// SwitchView handles the "switch_view" action to switch between login/register/forgot views
+func (s *{{.StructName}}State) SwitchView(ctx *livetemplate.ActionContext) error {
+	view := ctx.GetString("view")
+	if view != "" {
+		s.View = view
+		s.Error = ""
+		s.Success = ""
 	}
+	return nil
 }
 
 {{- if .EnablePassword }}
@@ -128,8 +108,8 @@ type RegisterInput struct {
 	Password string `json:"password" validate:"required,min=8"`
 }
 
-// handleRegister handles user registration
-func (s *{{.StructName}}State) handleRegister(ctx *livetemplate.ActionContext) error {
+// Register handles the "register" action for user registration
+func (s *{{.StructName}}State) Register(ctx *livetemplate.ActionContext) error {
 	var input RegisterInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
 		s.Error = "Email and password are required"
@@ -205,8 +185,8 @@ type LoginInput struct {
 	Password string `json:"password" validate:"required"`
 }
 
-// handleLogin handles password-based login
-func (s *{{.StructName}}State) handleLogin(ctx *livetemplate.ActionContext) error {
+// Login handles the "login" action for password-based login
+func (s *{{.StructName}}State) Login(ctx *livetemplate.ActionContext) error {
 	var input LoginInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
 		s.Error = "Email and password are required"
@@ -275,8 +255,8 @@ type MagicLinkInput struct {
 	Email string `json:"email" validate:"required,email"`
 }
 
-// handleMagicLink sends a magic link email
-func (s *{{.StructName}}State) handleMagicLink(ctx *livetemplate.ActionContext) error {
+// MagicLink handles the "magic_link" action to send a magic link email
+func (s *{{.StructName}}State) MagicLink(ctx *livetemplate.ActionContext) error {
 	var input MagicLinkInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
 		s.Error = "Email is required"
@@ -383,8 +363,8 @@ type ForgotPasswordInput struct {
 	Email string `json:"email" validate:"required,email"`
 }
 
-// handleForgotPassword sends a password reset email
-func (s *{{.StructName}}State) handleForgotPassword(ctx *livetemplate.ActionContext) error {
+// ForgotPassword handles the "forgot_password" action to send a password reset email
+func (s *{{.StructName}}State) ForgotPassword(ctx *livetemplate.ActionContext) error {
 	var input ForgotPasswordInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
 		s.Error = "Email is required"

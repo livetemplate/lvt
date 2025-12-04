@@ -812,22 +812,30 @@ type State struct {
     // ...
 }
 
-func (s *State) Change(ctx *livetemplate.ActionContext) error {
-    switch ctx.Action {
-    case "add":
-        // Create user
-    case "update":
-        // Update user
-    case "delete":
-        // Delete user
-    case "search":
-        // Search users
-    // ...
-    }
+// Action methods - automatically dispatched based on action name
+func (s *State) Add(ctx *livetemplate.ActionContext) error {
+    // Create user
+    return nil
+}
+
+func (s *State) Update(ctx *livetemplate.ActionContext) error {
+    // Update user
+    return nil
+}
+
+func (s *State) Delete(ctx *livetemplate.ActionContext) error {
+    // Delete user
+    return nil
+}
+
+func (s *State) Search(ctx *livetemplate.ActionContext) error {
+    // Search users
+    return nil
 }
 
 func (s *State) Init() error {
     // Load initial data
+    return nil
 }
 
 func Handler(queries *models.Queries) http.Handler {
