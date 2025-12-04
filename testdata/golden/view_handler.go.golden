@@ -14,17 +14,12 @@ type CounterState struct {
 	// Add your state fields here
 }
 
-func (s *CounterState) Change(ctx *livetemplate.ActionContext) error {
-	switch ctx.Action {
-	// Add your actions here
-	default:
-		log.Printf("Unknown action: %s", ctx.Action)
-		return nil
-	}
-
-	s.LastUpdated = formatTime()
-	return nil
-}
+// Add your action methods here. Example:
+// func (s *CounterState) MyAction(ctx *livetemplate.ActionContext) error {
+//     // Handle action
+//     s.LastUpdated = formatTime()
+//     return nil
+// }
 
 func formatTime() string {
 	return time.Now().Format("2006-01-02 15:04:05")
