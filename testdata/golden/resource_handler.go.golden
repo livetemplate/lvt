@@ -505,7 +505,7 @@ func Handler(queries *models.Queries) http.Handler {
 		CSSFramework:   "tailwind",
 	}
 
-	baseTmpl := livetemplate.New("user", livetemplate.WithDevMode(false))
+	baseTmpl := livetemplate.Must(livetemplate.New("user", livetemplate.WithDevMode(false)))
 	if _, err := baseTmpl.ParseFiles("internal/app/user/user.tmpl"); err != nil {
 		log.Fatalf("Failed to parse template: %v", err)
 	}

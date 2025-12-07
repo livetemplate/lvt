@@ -45,7 +45,7 @@ func Handler() http.Handler {
 		CSSFramework: "[[.CSSFramework]]",
 	}
 
-	tmpl := livetemplate.New("home", livetemplate.WithDevMode([[.DevMode]]))
+	tmpl := livetemplate.Must(livetemplate.New("home", livetemplate.WithDevMode([[.DevMode]])))
 	return tmpl.Handle(controller, livetemplate.AsState(initialState))
 }
 

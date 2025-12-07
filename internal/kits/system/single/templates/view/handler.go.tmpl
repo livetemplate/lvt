@@ -42,7 +42,7 @@ func Handler() http.Handler {
 		LastUpdated: formatTime(),
 	}
 
-	baseTmpl := livetemplate.New("[[.ViewNameLower]]", livetemplate.WithDevMode([[.DevMode]]))
+	baseTmpl := livetemplate.Must(livetemplate.New("[[.ViewNameLower]]", livetemplate.WithDevMode([[.DevMode]])))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		tmpl, err := baseTmpl.Clone()
 		if err != nil {

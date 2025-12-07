@@ -529,7 +529,7 @@ func Handler(queries *models.Queries) http.Handler {
 		CSSFramework:   "[[.CSSFramework]]",
 	}
 
-	baseTmpl := livetemplate.New("[[.ResourceNameLower]]", livetemplate.WithDevMode([[.DevMode]]))
+	baseTmpl := livetemplate.Must(livetemplate.New("[[.ResourceNameLower]]", livetemplate.WithDevMode([[.DevMode]])))
 	if _, err := baseTmpl.ParseFiles("internal/app/[[.ResourceNameLower]]/[[.ResourceNameLower]].tmpl"); err != nil {
 		log.Fatalf("Failed to parse template: %v", err)
 	}
