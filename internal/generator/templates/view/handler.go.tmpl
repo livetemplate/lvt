@@ -8,6 +8,12 @@ import (
 	"github.com/livetemplate/livetemplate"
 )
 
+// [[.ViewName]]Controller is a singleton that holds dependencies
+type [[.ViewName]]Controller struct {
+	// Add your dependencies here (DB, Logger, etc.)
+}
+
+// [[.ViewName]]State is pure data, cloned per session
 type [[.ViewName]]State struct {
 	Title       string `json:"title"`
 	LastUpdated string `json:"last_updated"`
@@ -15,10 +21,10 @@ type [[.ViewName]]State struct {
 }
 
 // Add your action methods here. Example:
-// func (s *[[.ViewName]]State) MyAction(ctx *livetemplate.ActionContext) error {
+// func (c *[[.ViewName]]Controller) MyAction(state [[.ViewName]]State, ctx *livetemplate.Context) ([[.ViewName]]State, error) {
 //     // Handle action
-//     s.LastUpdated = formatTime()
-//     return nil
+//     state.LastUpdated = formatTime()
+//     return state, nil
 // }
 
 func formatTime() string {
@@ -27,7 +33,11 @@ func formatTime() string {
 
 // Handler creates an http.Handler for this view
 func Handler() http.Handler {
-	state := &[[.ViewName]]State{
+	// Controller is a singleton that holds dependencies
+	controller := &[[.ViewName]]Controller{}
+
+	// Initial state is pure data, cloned per session
+	initialState := &[[.ViewName]]State{
 		Title:       "[[.ViewName]]",
 		LastUpdated: formatTime(),
 	}
@@ -40,6 +50,6 @@ func Handler() http.Handler {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
-		tmpl.Handle(state).ServeHTTP(w, r)
+		tmpl.Handle(controller, livetemplate.AsState(initialState)).ServeHTTP(w, r)
 	})
 }

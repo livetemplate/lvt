@@ -9,12 +9,16 @@ import (
 	"github.com/livetemplate/livetemplate"
 )
 
+// HomeController is a singleton that holds dependencies
+type HomeController struct{}
+
+// HomeState is pure data, cloned per session
 type HomeState struct {
-	Title       string     `json:"title"`
-	AppName     string     `json:"app_name"`
-	Resources   []Resource `json:"resources"`
-	LastUpdated string     `json:"last_updated"`
-	CSSFramework string    `json:"-"`
+	Title        string     `json:"title"`
+	AppName      string     `json:"app_name"`
+	Resources    []Resource `json:"resources"`
+	LastUpdated  string     `json:"last_updated"`
+	CSSFramework string     `json:"-"`
 }
 
 type Resource struct {
@@ -29,7 +33,11 @@ type Resource struct {
 func Handler() http.Handler {
 	resources := loadResources()
 
-	state := &HomeState{
+	// Controller is a singleton (no dependencies for home)
+	controller := &HomeController{}
+
+	// Initial state is pure data
+	initialState := &HomeState{
 		Title:        "[[.AppName]]",
 		AppName:      "[[.AppName]]",
 		Resources:    resources,
@@ -38,7 +46,7 @@ func Handler() http.Handler {
 	}
 
 	tmpl := livetemplate.New("home", livetemplate.WithDevMode([[.DevMode]]))
-	return tmpl.Handle(state)
+	return tmpl.Handle(controller, livetemplate.AsState(initialState))
 }
 
 func formatTime() string {

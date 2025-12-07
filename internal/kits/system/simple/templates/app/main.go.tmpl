@@ -9,6 +9,10 @@ import (
 	"github.com/livetemplate/livetemplate"
 )
 
+// AppController is a singleton that holds dependencies
+type AppController struct{}
+
+// AppState is pure data, cloned per session
 type AppState struct {
 	Title       string `json:"title"`
 	Counter     int    `json:"counter"`
@@ -16,24 +20,24 @@ type AppState struct {
 }
 
 // Increment handles the "increment" action
-func (s *AppState) Increment(_ *livetemplate.ActionContext) error {
-	s.Counter++
-	s.LastUpdated = formatTime()
-	return nil
+func (c *AppController) Increment(state AppState, _ *livetemplate.Context) (AppState, error) {
+	state.Counter++
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 // Decrement handles the "decrement" action
-func (s *AppState) Decrement(_ *livetemplate.ActionContext) error {
-	s.Counter--
-	s.LastUpdated = formatTime()
-	return nil
+func (c *AppController) Decrement(state AppState, _ *livetemplate.Context) (AppState, error) {
+	state.Counter--
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 // Reset handles the "reset" action
-func (s *AppState) Reset(_ *livetemplate.ActionContext) error {
-	s.Counter = 0
-	s.LastUpdated = formatTime()
-	return nil
+func (c *AppController) Reset(state AppState, _ *livetemplate.Context) (AppState, error) {
+	state.Counter = 0
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 func formatTime() string {
@@ -43,8 +47,11 @@ func formatTime() string {
 func main() {
 	log.Println("[[.AppName]] starting...")
 
-	// Create initial state
-	state := &AppState{
+	// Controller is a singleton that holds dependencies
+	controller := &AppController{}
+
+	// Initial state is pure data, cloned per session
+	initialState := &AppState{
 		Title:       "[[.AppName]]",
 		Counter:     0,
 		LastUpdated: formatTime(),
@@ -56,8 +63,8 @@ func main() {
 		log.Fatalf("Failed to create template: %v", err)
 	}
 
-	// Mount handler
-	http.Handle("/", tmpl.Handle(state))
+	// Mount handler with Controller+State pattern
+	http.Handle("/", tmpl.Handle(controller, livetemplate.AsState(initialState)))
 
 	// Serve client library
 	http.HandleFunc("/livetemplate-client.js", serveClientLibrary)

@@ -46,9 +46,14 @@ type PaginationInput struct {
 	Page int `json:"page" validate:"required,min=1"`
 }
 
+// UserController is a singleton that holds dependencies (DB, logger, etc.)
+type UserController struct {
+	Queries *models.Queries
+}
+
+// UserState is pure data, cloned per session
 type UserState struct {
 	Title        string                `json:"title"`
-	Queries      *models.Queries       `json:"-"`
 	SearchQuery  string                `json:"search_query"`
 	SortBy       string                `json:"sort_by"`
 	FilteredUsers  []UserItem `json:"filtered_users"`
@@ -69,12 +74,12 @@ type UserState struct {
 }
 
 // Add handles the "add" action to create a new resource
-func (s *UserState) Add(ctx *livetemplate.ActionContext) error {
+func (c *UserController) Add(state UserState, ctx *livetemplate.Context) (UserState, error) {
 	dbCtx := context.Background()
 
 	var input AddInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
-		return err
+		return state, err
 	}
 
 	log.Printf("[lvt debug] add input: %+v", input)
@@ -82,382 +87,395 @@ func (s *UserState) Add(ctx *livetemplate.ActionContext) error {
 	now := time.Now()
 	id := fmt.Sprintf("user-%d", now.UnixNano())
 
-	_, err := s.Queries.CreateUser(dbCtx, models.CreateUserParams{
+	_, err := c.Queries.CreateUser(dbCtx, models.CreateUserParams{
 		ID:        id,
 		Name: input.Name,
 		Age: input.Age,
 		CreatedAt: now,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to create user: %w", err)
+		return state, fmt.Errorf("failed to create user: %w", err)
 	}
 
-	if err := s.loadUsers(dbCtx); err != nil {
-		return err
+	state, err = c.loadUsers(state, dbCtx)
+	if err != nil {
+		return state, err
 	}
 
-	s.LastUpdated = formatTime()
-	return nil
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 // Edit handles the "edit" action to start editing a resource
-func (s *UserState) Edit(ctx *livetemplate.ActionContext) error {
+func (c *UserController) Edit(state UserState, ctx *livetemplate.Context) (UserState, error) {
 	dbCtx := context.Background()
 
 	var input DeleteInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
-		return err
+		return state, err
 	}
 
 	// Find the item to edit
-	users, err := s.Queries.GetAllUsers(dbCtx)
+	users, err := c.Queries.GetAllUsers(dbCtx)
 	if err != nil {
-		return fmt.Errorf("failed to load users: %w", err)
+		return state, fmt.Errorf("failed to load users: %w", err)
 	}
 
 	for _, item := range users {
 		if item.ID == input.ID {
-			s.EditingID = input.ID
+			state.EditingID = input.ID
 			itemCopy := item
-			s.EditingUser = &itemCopy
+			state.EditingUser = &itemCopy
 			break
 		}
 	}
 
-	s.LastUpdated = formatTime()
-	return nil
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 // Update handles the "update" action to save changes to a resource
-func (s *UserState) Update(ctx *livetemplate.ActionContext) error {
+func (c *UserController) Update(state UserState, ctx *livetemplate.Context) (UserState, error) {
 	dbCtx := context.Background()
 
 	var input UpdateInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
-		return err
+		return state, err
 	}
 
-	err := s.Queries.UpdateUser(dbCtx, models.UpdateUserParams{
+	err := c.Queries.UpdateUser(dbCtx, models.UpdateUserParams{
 		ID: input.ID,
 		Name: input.Name,
 		Age: input.Age,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to update user: %w", err)
+		return state, fmt.Errorf("failed to update user: %w", err)
 	}
 
 	// For page mode: Exit edit mode and stay on detail view
-	s.IsEditingMode = false
+	state.IsEditingMode = false
 
 	// Reload the updated resource
-	if err := s.loadUsers(dbCtx); err != nil {
-		return err
+	state, err = c.loadUsers(state, dbCtx)
+	if err != nil {
+		return state, err
 	}
 
 	// Re-fetch the updated resource for display
-	users, err := s.Queries.GetAllUsers(dbCtx)
+	users, err := c.Queries.GetAllUsers(dbCtx)
 	if err == nil {
 		for _, item := range users {
 			if item.ID == input.ID {
 				itemCopy := item
-				s.EditingUser = &itemCopy
+				state.EditingUser = &itemCopy
 				break
 			}
 		}
 	}
 
-	s.LastUpdated = formatTime()
-	return nil
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 // CancelEdit handles the "cancel_edit" action to cancel editing
-func (s *UserState) CancelEdit(_ *livetemplate.ActionContext) error {
-	s.EditingID = ""
-	s.EditingUser = nil
-	s.LastUpdated = formatTime()
-	return nil
+func (c *UserController) CancelEdit(state UserState, _ *livetemplate.Context) (UserState, error) {
+	state.EditingID = ""
+	state.EditingUser = nil
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 // View handles the "view" action to view a resource
-func (s *UserState) View(ctx *livetemplate.ActionContext) error {
+func (c *UserController) View(state UserState, ctx *livetemplate.Context) (UserState, error) {
 	dbCtx := context.Background()
 
 	var input DeleteInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
-		return err
+		return state, err
 	}
 
 	// Find the item to view/edit
-	users, err := s.Queries.GetAllUsers(dbCtx)
+	users, err := c.Queries.GetAllUsers(dbCtx)
 	if err != nil {
-		return fmt.Errorf("failed to load users: %w", err)
+		return state, fmt.Errorf("failed to load users: %w", err)
 	}
 
 	for _, item := range users {
 		if item.ID == input.ID {
-			s.EditingID = input.ID
+			state.EditingID = input.ID
 			itemCopy := item
-			s.EditingUser = &itemCopy
+			state.EditingUser = &itemCopy
 			break
 		}
 	}
 
-	s.LastUpdated = formatTime()
-	return nil
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 // Back handles the "back" action to return to list view
-func (s *UserState) Back(_ *livetemplate.ActionContext) error {
-	s.EditingID = ""
-	s.EditingUser = nil
-	s.LastUpdated = formatTime()
-	return nil
+func (c *UserController) Back(state UserState, _ *livetemplate.Context) (UserState, error) {
+	state.EditingID = ""
+	state.EditingUser = nil
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 // Delete handles the "delete" action to remove a resource
-func (s *UserState) Delete(ctx *livetemplate.ActionContext) error {
+func (c *UserController) Delete(state UserState, ctx *livetemplate.Context) (UserState, error) {
 	dbCtx := context.Background()
 
 	var input DeleteInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
-		return err
+		return state, err
 	}
 
-	err := s.Queries.DeleteUser(dbCtx, input.ID)
+	err := c.Queries.DeleteUser(dbCtx, input.ID)
 	if err != nil {
-		return fmt.Errorf("failed to delete user: %w", err)
+		return state, fmt.Errorf("failed to delete user: %w", err)
 	}
 
 	// Clear editing state (for page mode)
-	s.EditingID = ""
-	s.EditingUser = nil
+	state.EditingID = ""
+	state.EditingUser = nil
 
-	if err := s.loadUsers(dbCtx); err != nil {
-		return err
+	state, err = c.loadUsers(state, dbCtx)
+	if err != nil {
+		return state, err
 	}
 
-	s.LastUpdated = formatTime()
-	return nil
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 // Search handles the "search" action to filter resources
-func (s *UserState) Search(ctx *livetemplate.ActionContext) error {
+func (c *UserController) Search(state UserState, ctx *livetemplate.Context) (UserState, error) {
 	dbCtx := context.Background()
 
 	var input SearchInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
-		return err
+		return state, err
 	}
-	s.SearchQuery = input.Query
+	state.SearchQuery = input.Query
 	// Reset infinite scroll when searching
-	if s.PaginationMode == "infinite" || s.PaginationMode == "load-more" {
-		s.LoadedCount = s.PageSize
+	if state.PaginationMode == "infinite" || state.PaginationMode == "load-more" {
+		state.LoadedCount = state.PageSize
 	}
 
-	if err := s.loadUsers(dbCtx); err != nil {
-		return err
+	state, err := c.loadUsers(state, dbCtx)
+	if err != nil {
+		return state, err
 	}
 
-	s.LastUpdated = formatTime()
-	return nil
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 // Sort handles the "sort" action to sort resources
-func (s *UserState) Sort(ctx *livetemplate.ActionContext) error {
+func (c *UserController) Sort(state UserState, ctx *livetemplate.Context) (UserState, error) {
 	dbCtx := context.Background()
 
 	var input SortInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
-		return err
+		return state, err
 	}
-	s.SortBy = input.SortBy
+	state.SortBy = input.SortBy
 	// Reset infinite scroll when sorting
-	if s.PaginationMode == "infinite" || s.PaginationMode == "load-more" {
-		s.LoadedCount = s.PageSize
+	if state.PaginationMode == "infinite" || state.PaginationMode == "load-more" {
+		state.LoadedCount = state.PageSize
 	}
 
-	if err := s.loadUsers(dbCtx); err != nil {
-		return err
+	state, err := c.loadUsers(state, dbCtx)
+	if err != nil {
+		return state, err
 	}
 
-	s.LastUpdated = formatTime()
-	return nil
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 // NextPage handles the "next_page" action for pagination
-func (s *UserState) NextPage(_ *livetemplate.ActionContext) error {
+func (c *UserController) NextPage(state UserState, _ *livetemplate.Context) (UserState, error) {
 	dbCtx := context.Background()
 
-	if s.CurrentPage < s.TotalPages {
-		s.CurrentPage++
+	if state.CurrentPage < state.TotalPages {
+		state.CurrentPage++
 	}
-	if err := s.loadUsers(dbCtx); err != nil {
-		return err
+	state, err := c.loadUsers(state, dbCtx)
+	if err != nil {
+		return state, err
 	}
 
-	s.LastUpdated = formatTime()
-	return nil
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 // PrevPage handles the "prev_page" action for pagination
-func (s *UserState) PrevPage(_ *livetemplate.ActionContext) error {
+func (c *UserController) PrevPage(state UserState, _ *livetemplate.Context) (UserState, error) {
 	dbCtx := context.Background()
 
-	if s.CurrentPage > 1 {
-		s.CurrentPage--
+	if state.CurrentPage > 1 {
+		state.CurrentPage--
 	}
-	if err := s.loadUsers(dbCtx); err != nil {
-		return err
+	state, err := c.loadUsers(state, dbCtx)
+	if err != nil {
+		return state, err
 	}
 
-	s.LastUpdated = formatTime()
-	return nil
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 // GotoPage handles the "goto_page" action to jump to a specific page
-func (s *UserState) GotoPage(ctx *livetemplate.ActionContext) error {
+func (c *UserController) GotoPage(state UserState, ctx *livetemplate.Context) (UserState, error) {
 	dbCtx := context.Background()
 
 	var input PaginationInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
-		return err
+		return state, err
 	}
-	if input.Page >= 1 && input.Page <= s.TotalPages {
-		s.CurrentPage = input.Page
+	if input.Page >= 1 && input.Page <= state.TotalPages {
+		state.CurrentPage = input.Page
 	}
-	if err := s.loadUsers(dbCtx); err != nil {
-		return err
+	state, err := c.loadUsers(state, dbCtx)
+	if err != nil {
+		return state, err
 	}
 
-	s.LastUpdated = formatTime()
-	return nil
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 // LoadMore handles the "load_more" action for infinite scroll
-func (s *UserState) LoadMore(_ *livetemplate.ActionContext) error {
+func (c *UserController) LoadMore(state UserState, _ *livetemplate.Context) (UserState, error) {
 	dbCtx := context.Background()
 
-	if s.PaginationMode == "infinite" || s.PaginationMode == "load-more" {
-		if s.HasMore && !s.IsLoading {
-			s.IsLoading = true
-			s.LoadedCount += s.PageSize
-			if err := s.loadUsers(dbCtx); err != nil {
-				return err
+	if state.PaginationMode == "infinite" || state.PaginationMode == "load-more" {
+		if state.HasMore && !state.IsLoading {
+			state.IsLoading = true
+			state.LoadedCount += state.PageSize
+			var err error
+			state, err = c.loadUsers(state, dbCtx)
+			if err != nil {
+				return state, err
 			}
-			s.IsLoading = false
+			state.IsLoading = false
 		}
 	}
 
-	s.LastUpdated = formatTime()
-	return nil
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
-func (s *UserState) Init() error {
-	return s.loadUsers(context.Background())
+// Mount is called once when a new session is created
+func (c *UserController) Mount(state UserState, _ *livetemplate.Context) (UserState, error) {
+	return c.loadUsers(state, context.Background())
 }
 
-func (s *UserState) loadUsers(ctx context.Context) error {
-	users, err := s.Queries.GetAllUsers(ctx)
+func (c *UserController) loadUsers(state UserState, ctx context.Context) (UserState, error) {
+	users, err := c.Queries.GetAllUsers(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to load users: %w", err)
+		return state, fmt.Errorf("failed to load users: %w", err)
 	}
 
-	if s.SearchQuery == "" {
-		s.FilteredUsers = users
+	if state.SearchQuery == "" {
+		state.FilteredUsers = users
 	} else {
-		s.FilteredUsers = []UserItem{}
-		query := strings.ToLower(s.SearchQuery)
+		state.FilteredUsers = []UserItem{}
+		query := strings.ToLower(state.SearchQuery)
 		for _, item := range users {
 			// Search across all text fields
 			if strings.Contains(strings.ToLower(item.Name), query) {
-				s.FilteredUsers = append(s.FilteredUsers, item)
+				state.FilteredUsers = append(state.FilteredUsers, item)
 				continue
 			}
 		}
 	}
 
-	s.TotalCount = len(users)
-	s.applySorting()
-	s.applyPagination()
+	state.TotalCount = len(users)
+	state = applySorting(state)
+	state = applyPagination(state)
 
-	return nil
+	return state, nil
 }
 
-func (s *UserState) applySorting() {
-	switch s.SortBy {
+func applySorting(state UserState) UserState {
+	switch state.SortBy {
 	case "name_asc":
-		sort.Slice(s.FilteredUsers, func(i, j int) bool {
-			return strings.ToLower(s.FilteredUsers[i].Name) < strings.ToLower(s.FilteredUsers[j].Name)
+		sort.Slice(state.FilteredUsers, func(i, j int) bool {
+			return strings.ToLower(state.FilteredUsers[i].Name) < strings.ToLower(state.FilteredUsers[j].Name)
 		})
 	case "name_desc":
-		sort.Slice(s.FilteredUsers, func(i, j int) bool {
-			return strings.ToLower(s.FilteredUsers[i].Name) > strings.ToLower(s.FilteredUsers[j].Name)
+		sort.Slice(state.FilteredUsers, func(i, j int) bool {
+			return strings.ToLower(state.FilteredUsers[i].Name) > strings.ToLower(state.FilteredUsers[j].Name)
 		})
 	case "oldest_first":
-		sort.Slice(s.FilteredUsers, func(i, j int) bool {
-			return s.FilteredUsers[i].CreatedAt.Before(s.FilteredUsers[j].CreatedAt)
+		sort.Slice(state.FilteredUsers, func(i, j int) bool {
+			return state.FilteredUsers[i].CreatedAt.Before(state.FilteredUsers[j].CreatedAt)
 		})
 	default:
-		sort.Slice(s.FilteredUsers, func(i, j int) bool {
-			return s.FilteredUsers[i].CreatedAt.After(s.FilteredUsers[j].CreatedAt)
+		sort.Slice(state.FilteredUsers, func(i, j int) bool {
+			return state.FilteredUsers[i].CreatedAt.After(state.FilteredUsers[j].CreatedAt)
 		})
 	}
+	return state
 }
 
-func (s *UserState) applyPagination() {
-	if s.PaginationMode == "infinite" || s.PaginationMode == "load-more" {
-		s.applyInfiniteScroll()
-	} else {
-		s.applyPagedNavigation()
+func applyPagination(state UserState) UserState {
+	if state.PaginationMode == "infinite" || state.PaginationMode == "load-more" {
+		return applyInfiniteScroll(state)
 	}
+	return applyPagedNavigation(state)
 }
 
-func (s *UserState) applyInfiniteScroll() {
+func applyInfiniteScroll(state UserState) UserState {
 	// Initialize LoadedCount if not set
-	if s.LoadedCount == 0 {
-		s.LoadedCount = s.PageSize
+	if state.LoadedCount == 0 {
+		state.LoadedCount = state.PageSize
 	}
 
-	if len(s.FilteredUsers) == 0 {
-		s.PaginatedUsers = []UserItem{}
-		s.HasMore = false
-		return
+	if len(state.FilteredUsers) == 0 {
+		state.PaginatedUsers = []UserItem{}
+		state.HasMore = false
+		return state
 	}
 
 	// Load items from 0 to LoadedCount
-	end := s.LoadedCount
-	if end > len(s.FilteredUsers) {
-		end = len(s.FilteredUsers)
+	end := state.LoadedCount
+	if end > len(state.FilteredUsers) {
+		end = len(state.FilteredUsers)
 	}
 
-	s.PaginatedUsers = s.FilteredUsers[0:end]
-	s.HasMore = end < len(s.FilteredUsers)
+	state.PaginatedUsers = state.FilteredUsers[0:end]
+	state.HasMore = end < len(state.FilteredUsers)
+	return state
 }
 
-func (s *UserState) applyPagedNavigation() {
-	if len(s.FilteredUsers) == 0 {
-		s.TotalPages = 1
-		s.CurrentPage = 1
-		s.PaginatedUsers = []UserItem{}
-		return
+func applyPagedNavigation(state UserState) UserState {
+	if len(state.FilteredUsers) == 0 {
+		state.TotalPages = 1
+		state.CurrentPage = 1
+		state.PaginatedUsers = []UserItem{}
+		return state
 	}
 
-	s.TotalPages = int(math.Ceil(float64(len(s.FilteredUsers)) / float64(s.PageSize)))
+	state.TotalPages = int(math.Ceil(float64(len(state.FilteredUsers)) / float64(state.PageSize)))
 
-	if s.CurrentPage < 1 {
-		s.CurrentPage = 1
+	if state.CurrentPage < 1 {
+		state.CurrentPage = 1
 	}
-	if s.CurrentPage > s.TotalPages {
-		s.CurrentPage = s.TotalPages
-	}
-
-	start := (s.CurrentPage - 1) * s.PageSize
-	end := start + s.PageSize
-	if end > len(s.FilteredUsers) {
-		end = len(s.FilteredUsers)
+	if state.CurrentPage > state.TotalPages {
+		state.CurrentPage = state.TotalPages
 	}
 
-	s.PaginatedUsers = s.FilteredUsers[start:end]
+	start := (state.CurrentPage - 1) * state.PageSize
+	end := start + state.PageSize
+	if end > len(state.FilteredUsers) {
+		end = len(state.FilteredUsers)
+	}
+
+	state.PaginatedUsers = state.FilteredUsers[start:end]
+	return state
 }
 
 func formatTime() string {
@@ -466,19 +484,20 @@ func formatTime() string {
 
 // Handler creates an http.Handler for this resource
 func Handler(queries *models.Queries) http.Handler {
-	state := &UserState{
+	// Controller is a singleton that holds dependencies
+	controller := &UserController{
+		Queries: queries,
+	}
+
+	// Initial state is pure data, cloned per session
+	initialState := &UserState{
 		Title:          "User Management",
-		Queries:        queries,
 		CurrentPage:    1,
 		PageSize:       20,
 		PaginationMode: "infinite",
 		LoadedCount:    20,
 		LastUpdated:    formatTime(),
 		CSSFramework:   "tailwind",
-	}
-
-	if err := state.Init(); err != nil {
-		log.Printf("Failed to initialize user state: %v", err)
 	}
 
 	baseTmpl := livetemplate.New("user", livetemplate.WithDevMode(false))
@@ -493,6 +512,6 @@ func Handler(queries *models.Queries) http.Handler {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
-		tmpl.Handle(state).ServeHTTP(w, r)
+		tmpl.Handle(controller, livetemplate.AsState(initialState)).ServeHTTP(w, r)
 	})
 }

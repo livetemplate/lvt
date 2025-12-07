@@ -60,9 +60,14 @@ type PaginationInput struct {
 	Page int `json:"page" validate:"required,min=1"`
 }
 
+// [[.ResourceName]]Controller is a singleton that holds dependencies (DB, logger, etc.)
+type [[.ResourceName]]Controller struct {
+	Queries *models.Queries
+}
+
+// [[.ResourceName]]State is pure data, cloned per session
 type [[.ResourceName]]State struct {
 	Title        string                `json:"title"`
-	Queries      *models.Queries       `json:"-"`
 	SearchQuery  string                `json:"search_query"`
 	SortBy       string                `json:"sort_by"`
 	Filtered[[.ResourceNamePlural]]  [][[.ResourceName]]Item `json:"filtered_[[.ResourceNameLower]]s"`
@@ -83,12 +88,12 @@ type [[.ResourceName]]State struct {
 }
 
 // Add handles the "add" action to create a new resource
-func (s *[[.ResourceName]]State) Add(ctx *livetemplate.ActionContext) error {
+func (c *[[.ResourceName]]Controller) Add(state [[.ResourceName]]State, ctx *livetemplate.Context) ([[.ResourceName]]State, error) {
 	dbCtx := context.Background()
 
 	var input AddInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
-		return err
+		return state, err
 	}
 
 	log.Printf("[lvt debug] add input: %+v", input)
@@ -96,7 +101,7 @@ func (s *[[.ResourceName]]State) Add(ctx *livetemplate.ActionContext) error {
 	now := time.Now()
 	id := fmt.Sprintf("[[.ResourceNameLower]]-%d", now.UnixNano())
 
-	_, err := s.Queries.Create[[.ResourceNameSingular]](dbCtx, models.Create[[.ResourceNameSingular]]Params{
+	_, err := c.Queries.Create[[.ResourceNameSingular]](dbCtx, models.Create[[.ResourceNameSingular]]Params{
 		ID:        id,
 [[- range .Fields]]
 		[[.Name | camelCase]]: input.[[.Name | camelCase]],
@@ -104,291 +109,302 @@ func (s *[[.ResourceName]]State) Add(ctx *livetemplate.ActionContext) error {
 		CreatedAt: now,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to create [[.ResourceNameLower]]: %w", err)
+		return state, fmt.Errorf("failed to create [[.ResourceNameLower]]: %w", err)
 	}
 
-	if err := s.load[[.ResourceName]]s(dbCtx); err != nil {
-		return err
+	state, err = c.load[[.ResourceName]]s(state, dbCtx)
+	if err != nil {
+		return state, err
 	}
 
-	s.LastUpdated = formatTime()
-	return nil
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 // Edit handles the "edit" action to start editing a resource
-func (s *[[.ResourceName]]State) Edit(ctx *livetemplate.ActionContext) error {
+func (c *[[.ResourceName]]Controller) Edit(state [[.ResourceName]]State, ctx *livetemplate.Context) ([[.ResourceName]]State, error) {
 	dbCtx := context.Background()
 
 	var input DeleteInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
-		return err
+		return state, err
 	}
 
 	// Find the item to edit
-	[[.ResourceNameLower]]s, err := s.Queries.GetAll[[.ResourceNamePlural]](dbCtx)
+	[[.ResourceNameLower]]s, err := c.Queries.GetAll[[.ResourceNamePlural]](dbCtx)
 	if err != nil {
-		return fmt.Errorf("failed to load [[.ResourceNameLower]]s: %w", err)
+		return state, fmt.Errorf("failed to load [[.ResourceNameLower]]s: %w", err)
 	}
 
 	for _, item := range [[.ResourceNameLower]]s {
 		if item.ID == input.ID {
-			s.EditingID = input.ID
+			state.EditingID = input.ID
 			itemCopy := item
-			s.Editing[[.ResourceName]] = &itemCopy
+			state.Editing[[.ResourceName]] = &itemCopy
 			break
 		}
 	}
 
-	s.LastUpdated = formatTime()
-	return nil
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 // Update handles the "update" action to save changes to a resource
-func (s *[[.ResourceName]]State) Update(ctx *livetemplate.ActionContext) error {
+func (c *[[.ResourceName]]Controller) Update(state [[.ResourceName]]State, ctx *livetemplate.Context) ([[.ResourceName]]State, error) {
 	dbCtx := context.Background()
 
 	var input UpdateInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
-		return err
+		return state, err
 	}
 
-	err := s.Queries.Update[[.ResourceNameSingular]](dbCtx, models.Update[[.ResourceNameSingular]]Params{
+	err := c.Queries.Update[[.ResourceNameSingular]](dbCtx, models.Update[[.ResourceNameSingular]]Params{
 		ID: input.ID,
 [[- range .Fields]]
 		[[.Name | camelCase]]: input.[[.Name | camelCase]],
 [[- end]]
 	})
 	if err != nil {
-		return fmt.Errorf("failed to update [[.ResourceNameLower]]: %w", err)
+		return state, fmt.Errorf("failed to update [[.ResourceNameLower]]: %w", err)
 	}
 
 	// For page mode: Exit edit mode and stay on detail view
-	s.IsEditingMode = false
+	state.IsEditingMode = false
 
 	// Reload the updated resource
-	if err := s.load[[.ResourceName]]s(dbCtx); err != nil {
-		return err
+	state, err = c.load[[.ResourceName]]s(state, dbCtx)
+	if err != nil {
+		return state, err
 	}
 
 	// Re-fetch the updated resource for display
-	[[.ResourceNameLower]]s, err := s.Queries.GetAll[[.ResourceNamePlural]](dbCtx)
+	[[.ResourceNameLower]]s, err := c.Queries.GetAll[[.ResourceNamePlural]](dbCtx)
 	if err == nil {
 		for _, item := range [[.ResourceNameLower]]s {
 			if item.ID == input.ID {
 				itemCopy := item
-				s.Editing[[.ResourceName]] = &itemCopy
+				state.Editing[[.ResourceName]] = &itemCopy
 				break
 			}
 		}
 	}
 
-	s.LastUpdated = formatTime()
-	return nil
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 // CancelEdit handles the "cancel_edit" action to cancel editing
-func (s *[[.ResourceName]]State) CancelEdit(_ *livetemplate.ActionContext) error {
-	s.EditingID = ""
-	s.Editing[[.ResourceName]] = nil
-	s.LastUpdated = formatTime()
-	return nil
+func (c *[[.ResourceName]]Controller) CancelEdit(state [[.ResourceName]]State, _ *livetemplate.Context) ([[.ResourceName]]State, error) {
+	state.EditingID = ""
+	state.Editing[[.ResourceName]] = nil
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 // View handles the "view" action to view a resource
-func (s *[[.ResourceName]]State) View(ctx *livetemplate.ActionContext) error {
+func (c *[[.ResourceName]]Controller) View(state [[.ResourceName]]State, ctx *livetemplate.Context) ([[.ResourceName]]State, error) {
 	dbCtx := context.Background()
 
 	var input DeleteInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
-		return err
+		return state, err
 	}
 
 	// Find the item to view/edit
-	[[.ResourceNameLower]]s, err := s.Queries.GetAll[[.ResourceNamePlural]](dbCtx)
+	[[.ResourceNameLower]]s, err := c.Queries.GetAll[[.ResourceNamePlural]](dbCtx)
 	if err != nil {
-		return fmt.Errorf("failed to load [[.ResourceNameLower]]s: %w", err)
+		return state, fmt.Errorf("failed to load [[.ResourceNameLower]]s: %w", err)
 	}
 
 	for _, item := range [[.ResourceNameLower]]s {
 		if item.ID == input.ID {
-			s.EditingID = input.ID
+			state.EditingID = input.ID
 			itemCopy := item
-			s.Editing[[.ResourceName]] = &itemCopy
+			state.Editing[[.ResourceName]] = &itemCopy
 			break
 		}
 	}
 
-	s.LastUpdated = formatTime()
-	return nil
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 // Back handles the "back" action to return to list view
-func (s *[[.ResourceName]]State) Back(_ *livetemplate.ActionContext) error {
-	s.EditingID = ""
-	s.Editing[[.ResourceName]] = nil
-	s.LastUpdated = formatTime()
-	return nil
+func (c *[[.ResourceName]]Controller) Back(state [[.ResourceName]]State, _ *livetemplate.Context) ([[.ResourceName]]State, error) {
+	state.EditingID = ""
+	state.Editing[[.ResourceName]] = nil
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 // Delete handles the "delete" action to remove a resource
-func (s *[[.ResourceName]]State) Delete(ctx *livetemplate.ActionContext) error {
+func (c *[[.ResourceName]]Controller) Delete(state [[.ResourceName]]State, ctx *livetemplate.Context) ([[.ResourceName]]State, error) {
 	dbCtx := context.Background()
 
 	var input DeleteInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
-		return err
+		return state, err
 	}
 
-	err := s.Queries.Delete[[.ResourceNameSingular]](dbCtx, input.ID)
+	err := c.Queries.Delete[[.ResourceNameSingular]](dbCtx, input.ID)
 	if err != nil {
-		return fmt.Errorf("failed to delete [[.ResourceNameLower]]: %w", err)
+		return state, fmt.Errorf("failed to delete [[.ResourceNameLower]]: %w", err)
 	}
 
 	// Clear editing state (for page mode)
-	s.EditingID = ""
-	s.Editing[[.ResourceName]] = nil
+	state.EditingID = ""
+	state.Editing[[.ResourceName]] = nil
 
-	if err := s.load[[.ResourceName]]s(dbCtx); err != nil {
-		return err
+	state, err = c.load[[.ResourceName]]s(state, dbCtx)
+	if err != nil {
+		return state, err
 	}
 
-	s.LastUpdated = formatTime()
-	return nil
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 // Search handles the "search" action to filter resources
-func (s *[[.ResourceName]]State) Search(ctx *livetemplate.ActionContext) error {
+func (c *[[.ResourceName]]Controller) Search(state [[.ResourceName]]State, ctx *livetemplate.Context) ([[.ResourceName]]State, error) {
 	dbCtx := context.Background()
 
 	var input SearchInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
-		return err
+		return state, err
 	}
-	s.SearchQuery = input.Query
+	state.SearchQuery = input.Query
 	// Reset infinite scroll when searching
-	if s.PaginationMode == "infinite" || s.PaginationMode == "load-more" {
-		s.LoadedCount = s.PageSize
+	if state.PaginationMode == "infinite" || state.PaginationMode == "load-more" {
+		state.LoadedCount = state.PageSize
 	}
 
-	if err := s.load[[.ResourceName]]s(dbCtx); err != nil {
-		return err
+	state, err := c.load[[.ResourceName]]s(state, dbCtx)
+	if err != nil {
+		return state, err
 	}
 
-	s.LastUpdated = formatTime()
-	return nil
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 // Sort handles the "sort" action to sort resources
-func (s *[[.ResourceName]]State) Sort(ctx *livetemplate.ActionContext) error {
+func (c *[[.ResourceName]]Controller) Sort(state [[.ResourceName]]State, ctx *livetemplate.Context) ([[.ResourceName]]State, error) {
 	dbCtx := context.Background()
 
 	var input SortInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
-		return err
+		return state, err
 	}
-	s.SortBy = input.SortBy
+	state.SortBy = input.SortBy
 	// Reset infinite scroll when sorting
-	if s.PaginationMode == "infinite" || s.PaginationMode == "load-more" {
-		s.LoadedCount = s.PageSize
+	if state.PaginationMode == "infinite" || state.PaginationMode == "load-more" {
+		state.LoadedCount = state.PageSize
 	}
 
-	if err := s.load[[.ResourceName]]s(dbCtx); err != nil {
-		return err
+	state, err := c.load[[.ResourceName]]s(state, dbCtx)
+	if err != nil {
+		return state, err
 	}
 
-	s.LastUpdated = formatTime()
-	return nil
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 // NextPage handles the "next_page" action for pagination
-func (s *[[.ResourceName]]State) NextPage(_ *livetemplate.ActionContext) error {
+func (c *[[.ResourceName]]Controller) NextPage(state [[.ResourceName]]State, _ *livetemplate.Context) ([[.ResourceName]]State, error) {
 	dbCtx := context.Background()
 
-	if s.CurrentPage < s.TotalPages {
-		s.CurrentPage++
+	if state.CurrentPage < state.TotalPages {
+		state.CurrentPage++
 	}
-	if err := s.load[[.ResourceName]]s(dbCtx); err != nil {
-		return err
+	state, err := c.load[[.ResourceName]]s(state, dbCtx)
+	if err != nil {
+		return state, err
 	}
 
-	s.LastUpdated = formatTime()
-	return nil
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 // PrevPage handles the "prev_page" action for pagination
-func (s *[[.ResourceName]]State) PrevPage(_ *livetemplate.ActionContext) error {
+func (c *[[.ResourceName]]Controller) PrevPage(state [[.ResourceName]]State, _ *livetemplate.Context) ([[.ResourceName]]State, error) {
 	dbCtx := context.Background()
 
-	if s.CurrentPage > 1 {
-		s.CurrentPage--
+	if state.CurrentPage > 1 {
+		state.CurrentPage--
 	}
-	if err := s.load[[.ResourceName]]s(dbCtx); err != nil {
-		return err
+	state, err := c.load[[.ResourceName]]s(state, dbCtx)
+	if err != nil {
+		return state, err
 	}
 
-	s.LastUpdated = formatTime()
-	return nil
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 // GotoPage handles the "goto_page" action to jump to a specific page
-func (s *[[.ResourceName]]State) GotoPage(ctx *livetemplate.ActionContext) error {
+func (c *[[.ResourceName]]Controller) GotoPage(state [[.ResourceName]]State, ctx *livetemplate.Context) ([[.ResourceName]]State, error) {
 	dbCtx := context.Background()
 
 	var input PaginationInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
-		return err
+		return state, err
 	}
-	if input.Page >= 1 && input.Page <= s.TotalPages {
-		s.CurrentPage = input.Page
+	if input.Page >= 1 && input.Page <= state.TotalPages {
+		state.CurrentPage = input.Page
 	}
-	if err := s.load[[.ResourceName]]s(dbCtx); err != nil {
-		return err
+	state, err := c.load[[.ResourceName]]s(state, dbCtx)
+	if err != nil {
+		return state, err
 	}
 
-	s.LastUpdated = formatTime()
-	return nil
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
 // LoadMore handles the "load_more" action for infinite scroll
-func (s *[[.ResourceName]]State) LoadMore(_ *livetemplate.ActionContext) error {
+func (c *[[.ResourceName]]Controller) LoadMore(state [[.ResourceName]]State, _ *livetemplate.Context) ([[.ResourceName]]State, error) {
 	dbCtx := context.Background()
 
-	if s.PaginationMode == "infinite" || s.PaginationMode == "load-more" {
-		if s.HasMore && !s.IsLoading {
-			s.IsLoading = true
-			s.LoadedCount += s.PageSize
-			if err := s.load[[.ResourceName]]s(dbCtx); err != nil {
-				return err
+	if state.PaginationMode == "infinite" || state.PaginationMode == "load-more" {
+		if state.HasMore && !state.IsLoading {
+			state.IsLoading = true
+			state.LoadedCount += state.PageSize
+			var err error
+			state, err = c.load[[.ResourceName]]s(state, dbCtx)
+			if err != nil {
+				return state, err
 			}
-			s.IsLoading = false
+			state.IsLoading = false
 		}
 	}
 
-	s.LastUpdated = formatTime()
-	return nil
+	state.LastUpdated = formatTime()
+	return state, nil
 }
 
-func (s *[[.ResourceName]]State) Init() error {
-	return s.load[[.ResourceName]]s(context.Background())
+// Mount is called once when a new session is created
+func (c *[[.ResourceName]]Controller) Mount(state [[.ResourceName]]State, _ *livetemplate.Context) ([[.ResourceName]]State, error) {
+	return c.load[[.ResourceName]]s(state, context.Background())
 }
 
-func (s *[[.ResourceName]]State) load[[.ResourceName]]s(ctx context.Context) error {
-	[[.ResourceNameLower]]s, err := s.Queries.GetAll[[.ResourceNamePlural]](ctx)
+func (c *[[.ResourceName]]Controller) load[[.ResourceName]]s(state [[.ResourceName]]State, ctx context.Context) ([[.ResourceName]]State, error) {
+	[[.ResourceNameLower]]s, err := c.Queries.GetAll[[.ResourceNamePlural]](ctx)
 	if err != nil {
-		return fmt.Errorf("failed to load [[.ResourceNameLower]]s: %w", err)
+		return state, fmt.Errorf("failed to load [[.ResourceNameLower]]s: %w", err)
 	}
 
-	if s.SearchQuery == "" {
-		s.Filtered[[.ResourceNamePlural]] = [[.ResourceNameLower]]s
+	if state.SearchQuery == "" {
+		state.Filtered[[.ResourceNamePlural]] = [[.ResourceNameLower]]s
 	} else {
-		s.Filtered[[.ResourceNamePlural]] = [][[.ResourceName]]Item{}
-		query := strings.ToLower(s.SearchQuery)
+		state.Filtered[[.ResourceNamePlural]] = [][[.ResourceName]]Item{}
+		query := strings.ToLower(state.SearchQuery)
 		for _, item := range [[.ResourceNameLower]]s {
 			// Search across all text fields
 [[- range .Fields]]
 [[- if eq .GoType "string"]]
 			if strings.Contains(strings.ToLower(item.[[.Name | camelCase]]), query) {
-				s.Filtered[[$.ResourceNamePlural]] = append(s.Filtered[[$.ResourceNamePlural]], item)
+				state.Filtered[[$.ResourceNamePlural]] = append(state.Filtered[[$.ResourceNamePlural]], item)
 				continue
 			}
 [[- end]]
@@ -396,92 +412,94 @@ func (s *[[.ResourceName]]State) load[[.ResourceName]]s(ctx context.Context) err
 		}
 	}
 
-	s.TotalCount = len([[.ResourceNameLower]]s)
-	s.applySorting()
-	s.applyPagination()
+	state.TotalCount = len([[.ResourceNameLower]]s)
+	state = applySorting(state)
+	state = applyPagination(state)
 
-	return nil
+	return state, nil
 }
 
-func (s *[[.ResourceName]]State) applySorting() {
-	switch s.SortBy {
+func applySorting(state [[.ResourceName]]State) [[.ResourceName]]State {
+	switch state.SortBy {
 [[- range .Fields]]
 [[- if eq .GoType "string"]]
 	case "[[.Name]]_asc":
-		sort.Slice(s.Filtered[[$.ResourceNamePlural]], func(i, j int) bool {
-			return strings.ToLower(s.Filtered[[$.ResourceNamePlural]][i].[[.Name | camelCase]]) < strings.ToLower(s.Filtered[[$.ResourceNamePlural]][j].[[.Name | camelCase]])
+		sort.Slice(state.Filtered[[$.ResourceNamePlural]], func(i, j int) bool {
+			return strings.ToLower(state.Filtered[[$.ResourceNamePlural]][i].[[.Name | camelCase]]) < strings.ToLower(state.Filtered[[$.ResourceNamePlural]][j].[[.Name | camelCase]])
 		})
 	case "[[.Name]]_desc":
-		sort.Slice(s.Filtered[[$.ResourceNamePlural]], func(i, j int) bool {
-			return strings.ToLower(s.Filtered[[$.ResourceNamePlural]][i].[[.Name | camelCase]]) > strings.ToLower(s.Filtered[[$.ResourceNamePlural]][j].[[.Name | camelCase]])
+		sort.Slice(state.Filtered[[$.ResourceNamePlural]], func(i, j int) bool {
+			return strings.ToLower(state.Filtered[[$.ResourceNamePlural]][i].[[.Name | camelCase]]) > strings.ToLower(state.Filtered[[$.ResourceNamePlural]][j].[[.Name | camelCase]])
 		})
 [[- end]]
 [[- end]]
 	case "oldest_first":
-		sort.Slice(s.Filtered[[.ResourceNamePlural]], func(i, j int) bool {
-			return s.Filtered[[.ResourceNamePlural]][i].CreatedAt.Before(s.Filtered[[.ResourceNamePlural]][j].CreatedAt)
+		sort.Slice(state.Filtered[[.ResourceNamePlural]], func(i, j int) bool {
+			return state.Filtered[[.ResourceNamePlural]][i].CreatedAt.Before(state.Filtered[[.ResourceNamePlural]][j].CreatedAt)
 		})
 	default:
-		sort.Slice(s.Filtered[[.ResourceNamePlural]], func(i, j int) bool {
-			return s.Filtered[[.ResourceNamePlural]][i].CreatedAt.After(s.Filtered[[.ResourceNamePlural]][j].CreatedAt)
+		sort.Slice(state.Filtered[[.ResourceNamePlural]], func(i, j int) bool {
+			return state.Filtered[[.ResourceNamePlural]][i].CreatedAt.After(state.Filtered[[.ResourceNamePlural]][j].CreatedAt)
 		})
 	}
+	return state
 }
 
-func (s *[[.ResourceName]]State) applyPagination() {
-	if s.PaginationMode == "infinite" || s.PaginationMode == "load-more" {
-		s.applyInfiniteScroll()
-	} else {
-		s.applyPagedNavigation()
+func applyPagination(state [[.ResourceName]]State) [[.ResourceName]]State {
+	if state.PaginationMode == "infinite" || state.PaginationMode == "load-more" {
+		return applyInfiniteScroll(state)
 	}
+	return applyPagedNavigation(state)
 }
 
-func (s *[[.ResourceName]]State) applyInfiniteScroll() {
+func applyInfiniteScroll(state [[.ResourceName]]State) [[.ResourceName]]State {
 	// Initialize LoadedCount if not set
-	if s.LoadedCount == 0 {
-		s.LoadedCount = s.PageSize
+	if state.LoadedCount == 0 {
+		state.LoadedCount = state.PageSize
 	}
 
-	if len(s.Filtered[[.ResourceNamePlural]]) == 0 {
-		s.Paginated[[.ResourceNamePlural]] = [][[.ResourceName]]Item{}
-		s.HasMore = false
-		return
+	if len(state.Filtered[[.ResourceNamePlural]]) == 0 {
+		state.Paginated[[.ResourceNamePlural]] = [][[.ResourceName]]Item{}
+		state.HasMore = false
+		return state
 	}
 
 	// Load items from 0 to LoadedCount
-	end := s.LoadedCount
-	if end > len(s.Filtered[[.ResourceNamePlural]]) {
-		end = len(s.Filtered[[.ResourceNamePlural]])
+	end := state.LoadedCount
+	if end > len(state.Filtered[[.ResourceNamePlural]]) {
+		end = len(state.Filtered[[.ResourceNamePlural]])
 	}
 
-	s.Paginated[[.ResourceNamePlural]] = s.Filtered[[.ResourceNamePlural]][0:end]
-	s.HasMore = end < len(s.Filtered[[.ResourceNamePlural]])
+	state.Paginated[[.ResourceNamePlural]] = state.Filtered[[.ResourceNamePlural]][0:end]
+	state.HasMore = end < len(state.Filtered[[.ResourceNamePlural]])
+	return state
 }
 
-func (s *[[.ResourceName]]State) applyPagedNavigation() {
-	if len(s.Filtered[[.ResourceNamePlural]]) == 0 {
-		s.TotalPages = 1
-		s.CurrentPage = 1
-		s.Paginated[[.ResourceNamePlural]] = [][[.ResourceName]]Item{}
-		return
+func applyPagedNavigation(state [[.ResourceName]]State) [[.ResourceName]]State {
+	if len(state.Filtered[[.ResourceNamePlural]]) == 0 {
+		state.TotalPages = 1
+		state.CurrentPage = 1
+		state.Paginated[[.ResourceNamePlural]] = [][[.ResourceName]]Item{}
+		return state
 	}
 
-	s.TotalPages = int(math.Ceil(float64(len(s.Filtered[[.ResourceNamePlural]])) / float64(s.PageSize)))
+	state.TotalPages = int(math.Ceil(float64(len(state.Filtered[[.ResourceNamePlural]])) / float64(state.PageSize)))
 
-	if s.CurrentPage < 1 {
-		s.CurrentPage = 1
+	if state.CurrentPage < 1 {
+		state.CurrentPage = 1
 	}
-	if s.CurrentPage > s.TotalPages {
-		s.CurrentPage = s.TotalPages
-	}
-
-	start := (s.CurrentPage - 1) * s.PageSize
-	end := start + s.PageSize
-	if end > len(s.Filtered[[.ResourceNamePlural]]) {
-		end = len(s.Filtered[[.ResourceNamePlural]])
+	if state.CurrentPage > state.TotalPages {
+		state.CurrentPage = state.TotalPages
 	}
 
-	s.Paginated[[.ResourceNamePlural]] = s.Filtered[[.ResourceNamePlural]][start:end]
+	start := (state.CurrentPage - 1) * state.PageSize
+	end := start + state.PageSize
+	if end > len(state.Filtered[[.ResourceNamePlural]]) {
+		end = len(state.Filtered[[.ResourceNamePlural]])
+	}
+
+	state.Paginated[[.ResourceNamePlural]] = state.Filtered[[.ResourceNamePlural]][start:end]
+	return state
 }
 
 func formatTime() string {
@@ -490,19 +508,20 @@ func formatTime() string {
 
 // Handler creates an http.Handler for this resource
 func Handler(queries *models.Queries) http.Handler {
-	state := &[[.ResourceName]]State{
+	// Controller is a singleton that holds dependencies
+	controller := &[[.ResourceName]]Controller{
+		Queries: queries,
+	}
+
+	// Initial state is pure data, cloned per session
+	initialState := &[[.ResourceName]]State{
 		Title:          "[[.ResourceName]] Management",
-		Queries:        queries,
 		CurrentPage:    1,
 		PageSize:       [[.PageSize]],
 		PaginationMode: "[[.PaginationMode]]",
 		LoadedCount:    [[if or (eq .PaginationMode "infinite") (eq .PaginationMode "load-more")]][[.PageSize]][[else]]0[[end]],
 		LastUpdated:    formatTime(),
 		CSSFramework:   "[[.CSSFramework]]",
-	}
-
-	if err := state.Init(); err != nil {
-		log.Printf("Failed to initialize [[.ResourceNameLower]] state: %v", err)
 	}
 
 	baseTmpl := livetemplate.New("[[.ResourceNameLower]]", livetemplate.WithDevMode([[.DevMode]]))
@@ -534,14 +553,13 @@ func Handler(queries *models.Queries) http.Handler {
 					http.Error(w, "Internal server error", http.StatusInternalServerError)
 					return
 				}
-				tmpl.Handle(state).ServeHTTP(w, r)
+				tmpl.Handle(controller, livetemplate.AsState(initialState)).ServeHTTP(w, r)
 				return
 			}
 
-			// Create state with EditingID and IsEditingMode set
+			// Create state with EditingID and IsEditingMode set for this specific URL
 			resourceState := &[[.ResourceName]]State{
 				Title:          "[[.ResourceName]] Management",
-				Queries:        queries,
 				CurrentPage:    1,
 				PageSize:       [[.PageSize]],
 				PaginationMode: "[[.PaginationMode]]",
@@ -551,29 +569,27 @@ func Handler(queries *models.Queries) http.Handler {
 				IsEditingMode:  isEditMode,
 			}
 
-			if err := resourceState.Init(); err == nil {
-				// Find and set the editing resource
-				[[.ResourceNameLower]]s, err := queries.GetAll[[.ResourceNamePlural]](context.Background())
-				if err == nil {
-					for _, item := range [[.ResourceNameLower]]s {
-						if item.ID == resourceID {
-							resourceState.EditingID = resourceID
-							itemCopy := item
-							resourceState.Editing[[.ResourceName]] = &itemCopy
-							break
-						}
+			// Find and set the editing resource
+			[[.ResourceNameLower]]s, err := queries.GetAll[[.ResourceNamePlural]](context.Background())
+			if err == nil {
+				for _, item := range [[.ResourceNameLower]]s {
+					if item.ID == resourceID {
+						resourceState.EditingID = resourceID
+						itemCopy := item
+						resourceState.Editing[[.ResourceName]] = &itemCopy
+						break
 					}
 				}
 			}
 
-			// Mount with custom state
+			// Mount with custom state for this URL
 			tmpl, err := baseTmpl.Clone()
 			if err != nil {
 				log.Printf("Failed to clone template: %v", err)
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
-			tmpl.Handle(resourceState).ServeHTTP(w, r)
+			tmpl.Handle(controller, livetemplate.AsState(resourceState)).ServeHTTP(w, r)
 			return
 		}
 
@@ -584,7 +600,7 @@ func Handler(queries *models.Queries) http.Handler {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
-		tmpl.Handle(state).ServeHTTP(w, r)
+		tmpl.Handle(controller, livetemplate.AsState(initialState)).ServeHTTP(w, r)
 	})
 [[- else]]
 	// Modal mode: clone template per request
@@ -595,7 +611,7 @@ func Handler(queries *models.Queries) http.Handler {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
-		tmpl.Handle(state).ServeHTTP(w, r)
+		tmpl.Handle(controller, livetemplate.AsState(initialState)).ServeHTTP(w, r)
 	})
 [[- end]]
 }

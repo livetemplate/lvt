@@ -8,6 +8,12 @@ import (
 	"github.com/livetemplate/livetemplate"
 )
 
+// CounterController is a singleton that holds dependencies
+type CounterController struct {
+	// Add your dependencies here (DB, Logger, etc.)
+}
+
+// CounterState is pure data, cloned per session
 type CounterState struct {
 	Title       string `json:"title"`
 	LastUpdated string `json:"last_updated"`
@@ -15,10 +21,10 @@ type CounterState struct {
 }
 
 // Add your action methods here. Example:
-// func (s *CounterState) MyAction(ctx *livetemplate.ActionContext) error {
+// func (c *CounterController) MyAction(state CounterState, ctx *livetemplate.Context) (CounterState, error) {
 //     // Handle action
-//     s.LastUpdated = formatTime()
-//     return nil
+//     state.LastUpdated = formatTime()
+//     return state, nil
 // }
 
 func formatTime() string {
@@ -27,7 +33,11 @@ func formatTime() string {
 
 // Handler creates an http.Handler for this view
 func Handler() http.Handler {
-	state := &CounterState{
+	// Controller is a singleton that holds dependencies
+	controller := &CounterController{}
+
+	// Initial state is pure data, cloned per session
+	initialState := &CounterState{
 		Title:       "Counter",
 		LastUpdated: formatTime(),
 	}
@@ -40,6 +50,6 @@ func Handler() http.Handler {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
-		tmpl.Handle(state).ServeHTTP(w, r)
+		tmpl.Handle(controller, livetemplate.AsState(initialState)).ServeHTTP(w, r)
 	})
 }

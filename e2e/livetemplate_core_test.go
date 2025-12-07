@@ -1129,6 +1129,9 @@ func TestTemplate_E2E_CompleteRenderingSequence(t *testing.T) {
 	})
 }
 
+// LoadingTestController is a singleton that holds dependencies.
+type LoadingTestController struct{}
+
 // LoadingTestState implements state for loading indicator E2E coverage.
 type LoadingTestState struct {
 	Message string
@@ -1138,6 +1141,7 @@ type LoadingTestState struct {
 
 // TestLoadingIndicator verifies the loading indicator appears serverside and disappears once the client boots.
 func TestLoadingIndicator(t *testing.T) {
+	controller := &LoadingTestController{}
 	state := &LoadingTestState{Message: "Hello, Loading Test!"}
 
 	tmpl := livetemplate.Must(livetemplate.New("loading-test"))
@@ -1161,7 +1165,7 @@ func TestLoadingIndicator(t *testing.T) {
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/", tmpl.Handle(state))
+	mux.Handle("/", tmpl.Handle(controller, livetemplate.AsState(state)))
 	mux.HandleFunc("/client.js", e2etest.ServeClientLibrary)
 
 	port := 9001
@@ -1269,6 +1273,7 @@ func TestLoadingIndicator(t *testing.T) {
 
 // TestLoadingIndicatorDisabled verifies the loading indicator can be disabled entirely.
 func TestLoadingIndicatorDisabled(t *testing.T) {
+	controller := &LoadingTestController{}
 	state := &LoadingTestState{Message: "No Loading Test"}
 
 	tmpl := livetemplate.Must(livetemplate.New("no-loading-test", livetemplate.WithLoadingDisabled()))
@@ -1292,7 +1297,7 @@ func TestLoadingIndicatorDisabled(t *testing.T) {
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/", tmpl.Handle(state))
+	mux.Handle("/", tmpl.Handle(controller, livetemplate.AsState(state)))
 	mux.HandleFunc("/client.js", e2etest.ServeClientLibrary)
 
 	port := 9002
@@ -1368,20 +1373,24 @@ func TestLoadingIndicatorDisabled(t *testing.T) {
 	}
 }
 
-// FocusTestState implements state for focus preservation E2E coverage.
+// FocusTestController is a singleton that holds dependencies.
+type FocusTestController struct{}
+
+// FocusTestState is pure data, cloned per session.
 type FocusTestState struct {
 	Message string
 	Counter int
 }
 
 // Increment handles the "increment" action.
-func (s *FocusTestState) Increment(_ *livetemplate.ActionContext) error {
-	s.Counter++
-	return nil
+func (c *FocusTestController) Increment(state FocusTestState, _ *livetemplate.Context) (FocusTestState, error) {
+	state.Counter++
+	return state, nil
 }
 
 // TestFocusPreservation verifies that input focus and cursor position are preserved during updates.
 func TestFocusPreservation(t *testing.T) {
+	controller := &FocusTestController{}
 	state := &FocusTestState{
 		Message: "Focus Preservation Test",
 		Counter: 0,
@@ -1413,7 +1422,7 @@ func TestFocusPreservation(t *testing.T) {
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/", tmpl.Handle(state))
+	mux.Handle("/", tmpl.Handle(controller, livetemplate.AsState(state)))
 	mux.HandleFunc("/client.js", e2etest.ServeClientLibrary)
 
 	port := 9003
@@ -1516,6 +1525,7 @@ func TestFocusPreservation(t *testing.T) {
 
 // TestFocusPreservationMultipleInputs tests focus preservation across different input types.
 func TestFocusPreservationMultipleInputs(t *testing.T) {
+	controller := &FocusTestController{}
 	state := &FocusTestState{
 		Message: "Multiple Inputs Focus Test",
 		Counter: 0,
@@ -1545,7 +1555,7 @@ func TestFocusPreservationMultipleInputs(t *testing.T) {
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/", tmpl.Handle(state))
+	mux.Handle("/", tmpl.Handle(controller, livetemplate.AsState(state)))
 	mux.HandleFunc("/client.js", e2etest.ServeClientLibrary)
 
 	port := 9004
