@@ -419,6 +419,11 @@ func (c *[[.ResourceName]]Controller) load[[.ResourceName]]s(state [[.ResourceNa
 	return state, nil
 }
 
+// applySorting sorts the filtered items in-place based on the SortBy field.
+// Note: sort.Slice mutates the slice in place. This is safe because:
+// 1. State is cloned per session via AsState (JSON serialization creates fresh slices)
+// 2. The slice is populated fresh from the database in each load operation
+// 3. State is passed by value and returned, not shared across sessions
 func applySorting(state [[.ResourceName]]State) [[.ResourceName]]State {
 	switch state.SortBy {
 [[- range .Fields]]

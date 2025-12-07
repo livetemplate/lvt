@@ -399,6 +399,11 @@ func (c *UserController) loadUsers(state UserState, ctx context.Context) (UserSt
 	return state, nil
 }
 
+// applySorting sorts the filtered items in-place based on the SortBy field.
+// Note: sort.Slice mutates the slice in place. This is safe because:
+// 1. State is cloned per session via AsState (JSON serialization creates fresh slices)
+// 2. The slice is populated fresh from the database in each load operation
+// 3. State is passed by value and returned, not shared across sessions
 func applySorting(state UserState) UserState {
 	switch state.SortBy {
 	case "name_asc":
