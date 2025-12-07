@@ -30,17 +30,18 @@ func TestEditModePage(t *testing.T) {
 		t.Fatalf("Failed to read handler: %v", err)
 	}
 
-	// Check for "view" and "back" actions (specific to page mode)
-	if !strings.Contains(string(handlerContent), `case "view":`) {
-		t.Error("❌ Handler missing 'view' action (required for page mode)")
+	// Check for "view" and "back" action methods (specific to page mode)
+	// New Controller+State API uses separate methods instead of switch-case
+	if !strings.Contains(string(handlerContent), `func (c *`) || !strings.Contains(string(handlerContent), `) View(state`) {
+		t.Error("❌ Handler missing 'View' action method (required for page mode)")
 	} else {
-		t.Log("✅ Handler has 'view' action for page mode")
+		t.Log("✅ Handler has 'View' action method for page mode")
 	}
 
-	if !strings.Contains(string(handlerContent), `case "back":`) {
-		t.Error("❌ Handler missing 'back' action (required for page mode)")
+	if !strings.Contains(string(handlerContent), `func (c *`) || !strings.Contains(string(handlerContent), `) Back(state`) {
+		t.Error("❌ Handler missing 'Back' action method (required for page mode)")
 	} else {
-		t.Log("✅ Handler has 'back' action for page mode")
+		t.Log("✅ Handler has 'Back' action method for page mode")
 	}
 
 	// Verify template has correct structure for page mode
@@ -132,10 +133,10 @@ func TestEditModeCombinations(t *testing.T) {
 
 			// Check edit mode specific actions
 			if combo.editMode == "page" {
-				if !strings.Contains(handlerStr, `case "view":`) {
-					t.Error("❌ Handler missing view action for page mode")
+				if !strings.Contains(handlerStr, `) View(state`) {
+					t.Error("❌ Handler missing View action method for page mode")
 				} else {
-					t.Log("✅ Handler has view action for page mode")
+					t.Log("✅ Handler has View action method for page mode")
 				}
 			}
 
