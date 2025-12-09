@@ -358,11 +358,11 @@ func TestNewComponent_Help(t *testing.T) {
 
 func TestComponentData(t *testing.T) {
 	tests := []struct {
-		name         string
-		input        string
-		wantPackage  string
-		wantPascal   string
-		wantCamel    string
+		name        string
+		input       string
+		wantPackage string
+		wantPascal  string
+		wantCamel   string
 	}{
 		{"simple", "button", "button", "Button", "button"},
 		{"hyphenated", "date-picker", "datepicker", "DatePicker", "datePicker"},
