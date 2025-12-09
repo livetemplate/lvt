@@ -9,13 +9,18 @@ import (
 )
 
 func New(args []string) error {
+	if len(args) < 1 {
+		return fmt.Errorf("app name required")
+	}
+
+	// Check for subcommands first (before help check)
+	if args[0] == "component" {
+		return NewComponent(args[1:])
+	}
+
 	// Handle --help flag
 	if ShowHelpIfRequested(args, printNewHelp) {
 		return nil
-	}
-
-	if len(args) < 1 {
-		return fmt.Errorf("app name required")
 	}
 
 	appName := args[0]

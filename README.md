@@ -272,7 +272,7 @@ lvt gen products name price quantity enabled created_at
 
 This generates:
 - `internal/app/users/users.go` - Full CRUD handler
-- `internal/app/users/users.tmpl` - Bulma CSS UI
+- `internal/app/users/users.tmpl` - Tailwind CSS UI
 - `internal/app/users/users_ws_test.go` - WebSocket tests
 - `internal/app/users/users_test.go` - Chromedp E2E tests
 - Database schema and queries (appended)
@@ -434,14 +434,14 @@ go test ./internal/app/posts -v
 ```bash
 # Resources use the CSS framework from your chosen kit
 # Multi and single kits use Tailwind CSS
-# Simple kit uses Pico CSS
+# Simple kit uses no CSS framework (semantic HTML)
 
 lvt gen tags name
 
 # To use a different CSS framework, create your app with a different kit
-lvt new myapp --kit simple  # Uses Pico CSS
+lvt new myapp --kit simple  # Uses no CSS (semantic HTML)
 cd myapp
-lvt gen authors name bio    # Will use Pico CSS
+lvt gen authors name bio    # Will use semantic HTML
 ```
 
 **2. Use Type Inference:**

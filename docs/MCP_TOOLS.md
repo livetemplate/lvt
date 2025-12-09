@@ -69,7 +69,7 @@ Create a new LiveTemplate application.
 {
   "name": "string (required)",
   "kit": "string (optional: multi|single|simple, default: multi)",
-  "css": "string (optional: tailwind|bulma|pico|none)",
+  "css": "string (optional: tailwind|none)",
   "module": "string (optional, default: app name)"
 }
 ```

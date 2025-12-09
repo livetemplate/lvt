@@ -62,6 +62,8 @@ func main() {
 		err = commands.InstallAgent(args)
 	case "mcp-server", "mcp":
 		err = commands.MCPServer(args)
+	case "component", "comp":
+		err = commands.Component(args)
 	case "version", "--version", "-v":
 		printVersion()
 		return
@@ -142,6 +144,7 @@ func printUsage() {
 	fmt.Println()
 	fmt.Println("Commands:")
 	fmt.Println("  lvt new [<app-name>] [--module <name>]       Create a new LiveTemplate app")
+	fmt.Println("  lvt new component <name>                      Scaffold a new UI component")
 	fmt.Println("  lvt gen <subcommand> [args...]                Generate code (resource, view, schema, or auth)")
 	fmt.Println("  lvt migration <command>                       Manage database migrations")
 	fmt.Println("  lvt resource <command>                        Inspect resources and schemas")
@@ -152,6 +155,7 @@ func printUsage() {
 	fmt.Println("  lvt env <command>                             Manage environment variables")
 	fmt.Println("  lvt install-agent [--llm <type>]              Install AI agent for your LLM")
 	fmt.Println("  lvt mcp-server [--help|--setup|--list-tools]  Start MCP server or show setup guide")
+	fmt.Println("  lvt component <command>                       Manage UI components (list, eject)")
 	fmt.Println("  lvt version                                   Show version information")
 	fmt.Println()
 	fmt.Println("Generate Subcommands:")
@@ -233,6 +237,12 @@ func printUsage() {
 	fmt.Println("  lvt mcp-server --setup                    Interactive setup wizard")
 	fmt.Println("  lvt mcp-server --list-tools               List all 16 available tools")
 	fmt.Println("  lvt mcp-server --version                  Show MCP protocol version")
+	fmt.Println()
+	fmt.Println("Component Commands:")
+	fmt.Println("  lvt component list                        List available UI components")
+	fmt.Println("  lvt component eject <name>                Eject component source to your project")
+	fmt.Println("  lvt component eject-template <name> <t>   Eject just the template file")
+	fmt.Println("  lvt new component <name>                  Scaffold a new component")
 	fmt.Println()
 	fmt.Println("Type Mappings:")
 	fmt.Println("  string  -> Go: string,     SQL: TEXT")

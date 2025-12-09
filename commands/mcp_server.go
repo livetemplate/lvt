@@ -82,7 +82,7 @@ func MCPServer(args []string) error {
 type NewAppInput struct {
 	Name   string `json:"name" jsonschema:"Application name"`
 	Kit    string `json:"kit,omitempty" jsonschema:"Template kit (multi, single, or simple)"`
-	CSS    string `json:"css,omitempty" jsonschema:"CSS framework (tailwind, bulma, pico, or none)"`
+	CSS    string `json:"css,omitempty" jsonschema:"CSS framework (tailwind or none)"`
 	Module string `json:"module,omitempty" jsonschema:"Go module name (defaults to app name)"`
 }
 

@@ -401,7 +401,7 @@ lvt mcp-server --help        # Get full help
 {
   "name": "myblog",
   "kit": "multi",      // multi, single, or simple
-  "css": "tailwind",   // tailwind, bulma, pico, none
+  "css": "tailwind",   // tailwind or none
   "module": "github.com/user/myblog"
 }
 ```

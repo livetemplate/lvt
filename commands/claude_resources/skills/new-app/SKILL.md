@@ -153,7 +153,7 @@ Before executing, check the following:
 ### 4. Determine Kit
 - [ ] Did user specify kit in prompt?
 - [ ] **If not:** Ask user or use default (multi)
-- [ ] Valid options: multi (Tailwind), single (Tailwind SPA), simple (Pico CSS)
+- [ ] Valid options: multi (Tailwind), single (Tailwind SPA), simple (no CSS)
 
 ---
 

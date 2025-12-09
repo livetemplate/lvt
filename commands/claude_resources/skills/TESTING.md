@@ -48,7 +48,7 @@ Create a new app but I'm not sure which CSS framework to use
 ```
 
 **Expected:**
-- Explains multi (Tailwind, full layout) vs single (Tailwind SPA) vs simple (Pico)
+- Explains multi (Tailwind, full layout) vs single (Tailwind SPA) vs simple (no CSS)
 - Helps choose based on app type
 - Creates with chosen kit
 
