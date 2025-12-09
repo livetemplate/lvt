@@ -304,16 +304,48 @@ func copyFile(src, dst string) error {
 }
 
 // updateImports updates import paths in a Go file.
+// Only replaces within import statements to avoid false positives in comments/strings.
 func updateImports(file, oldPkg, newPkg string) error {
 	content, err := os.ReadFile(file)
 	if err != nil {
 		return err
 	}
 
-	// Simple string replacement for imports
-	updated := strings.ReplaceAll(string(content), oldPkg, newPkg)
+	lines := strings.Split(string(content), "\n")
+	inImportBlock := false
+	modified := false
 
-	return os.WriteFile(file, []byte(updated), 0644)
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+
+		// Track import block boundaries
+		if strings.HasPrefix(trimmed, "import (") {
+			inImportBlock = true
+			continue
+		}
+		if inImportBlock && trimmed == ")" {
+			inImportBlock = false
+			continue
+		}
+
+		// Check for single-line import
+		isSingleImport := strings.HasPrefix(trimmed, "import \"") || strings.HasPrefix(trimmed, "import\t\"")
+
+		// Only replace within import statements
+		if (inImportBlock || isSingleImport) && strings.Contains(line, oldPkg) {
+			// Verify the package path is within quotes (proper import)
+			if strings.Contains(line, "\""+oldPkg+"\"") {
+				lines[i] = strings.Replace(line, "\""+oldPkg+"\"", "\""+newPkg+"\"", 1)
+				modified = true
+			}
+		}
+	}
+
+	if !modified {
+		return nil
+	}
+
+	return os.WriteFile(file, []byte(strings.Join(lines, "\n")), 0644)
 }
 
 // GetModuleName attempts to get the current Go module name from go.mod.
