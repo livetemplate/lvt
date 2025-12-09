@@ -248,13 +248,12 @@ Generate with different kit:
 
 ```bash
 # Create app with specific kit
-lvt new myapp --kit tailwind  # default
-lvt new myapp --kit pico      # minimal CSS
-lvt new myapp --kit bulma     # Bulma CSS
+lvt new myapp --kit multi     # default, Tailwind CSS
+lvt new myapp --kit single    # Tailwind CSS SPA
+lvt new myapp --kit simple    # no CSS (semantic HTML)
 
 # Generate resource with specific CSS
 lvt gen resource products name --css tailwind
-lvt gen resource products name --css pico
 lvt gen resource products name --css none
 ```
 

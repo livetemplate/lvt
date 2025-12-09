@@ -434,14 +434,11 @@ func loadHelpers(framework string, kitPath string) (CSSHelpers, error) {
 
 // LoadHelpersForFramework loads CSS helpers for a specific framework
 // This is a public function used by both kit loading and dynamic helper injection
+// Only Tailwind and None are supported - Bulma and Pico have been removed for simplification
 func LoadHelpersForFramework(framework string) (CSSHelpers, error) {
 	switch framework {
 	case "tailwind":
 		return NewTailwindHelpers(), nil
-	case "bulma":
-		return NewBulmaHelpers(), nil
-	case "pico":
-		return NewPicoHelpers(), nil
 	case "none":
 		return NewNoneHelpers(), nil
 	default:
