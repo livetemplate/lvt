@@ -305,6 +305,7 @@ func copyFile(src, dst string) error {
 
 // updateImports updates import paths in a Go file.
 // Only replaces within import statements to avoid false positives in comments/strings.
+// Handles both exact package matches and subpackage imports (e.g., oldPkg/internal).
 func updateImports(file, oldPkg, newPkg string) error {
 	content, err := os.ReadFile(file)
 	if err != nil {
@@ -333,9 +334,13 @@ func updateImports(file, oldPkg, newPkg string) error {
 
 		// Only replace within import statements
 		if (inImportBlock || isSingleImport) && strings.Contains(line, oldPkg) {
-			// Verify the package path is within quotes (proper import)
+			// Check for exact match: "oldPkg"
 			if strings.Contains(line, "\""+oldPkg+"\"") {
 				lines[i] = strings.Replace(line, "\""+oldPkg+"\"", "\""+newPkg+"\"", 1)
+				modified = true
+			} else if strings.Contains(line, "\""+oldPkg+"/") {
+				// Check for subpackage match: "oldPkg/subpkg"
+				lines[i] = strings.Replace(line, "\""+oldPkg+"/", "\""+newPkg+"/", 1)
 				modified = true
 			}
 		}
