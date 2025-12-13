@@ -2,7 +2,7 @@ module github.com/livetemplate/lvt
 
 go 1.25
 
-require github.com/livetemplate/livetemplate v0.7.0
+require github.com/livetemplate/livetemplate v0.7.1
 
 require (
 	github.com/brianvoe/gofakeit/v7 v7.8.2
@@ -94,7 +94,3 @@ require (
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
 )
-
-// Use livetemplate branch with range statics fix (PR #72)
-// This will be removed once livetemplate v0.7.1+ is released
-replace github.com/livetemplate/livetemplate => github.com/livetemplate/livetemplate v0.7.1-0.20251212201619-6826d0962769
