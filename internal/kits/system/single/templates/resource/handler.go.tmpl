@@ -78,7 +78,7 @@ type [[.ResourceName]]State struct {
 	TotalCount   int                   `json:"total_count"`
 	LastUpdated  string                `json:"last_updated"`
 	EditingID    string                `json:"editing_id"`
-	Editing[[.ResourceName]] *[[.ResourceName]]Item   `json:"editing_[[.ResourceNameLower]]"`
+	Editing[[.ResourceName]] *[[.ResourceName]]Item   `json:"-"` // Excluded from client state
 	IsEditingMode bool                 `json:"is_editing_mode"` // For page mode: true when at /resource/:id/edit
 	PaginationMode string              `json:"pagination_mode"` // "infinite", "load-more", "prev-next", "numbers"
 	LoadedCount    int                 `json:"loaded_count"`    // For infinite/load-more modes
