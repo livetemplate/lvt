@@ -19,7 +19,7 @@ import (
 	"net/http"
 	"os"
 
-	"testapp/internal/database"
+	"testapp/database"
 	e2etest "github.com/livetemplate/lvt/testing"
 )
 
@@ -70,7 +70,7 @@ func getDBPath() string {
 		Path:        "/users",
 		PackageName: "users",
 		HandlerCall: "users.Handler(queries)",
-		ImportPath:  "testapp/internal/app/users",
+		ImportPath:  "testapp/app/users",
 	}
 
 	if err := InjectRoute(mainGoPath, route); err != nil {
@@ -89,7 +89,7 @@ func getDBPath() string {
 	t.Logf("Result file contents:\n%s", resultStr)
 
 	// Verify import was added
-	if !strings.Contains(resultStr, `"testapp/internal/app/users"`) {
+	if !strings.Contains(resultStr, `"testapp/app/users"`) {
 		t.Error("Import was not added")
 	}
 
@@ -134,8 +134,8 @@ import (
 	"net/http"
 	"os"
 
-	"testapp/internal/database"
-	"testapp/internal/app/users"
+	"testapp/database"
+	"testapp/app/users"
 	e2etest "github.com/livetemplate/lvt/testing"
 )
 
@@ -185,7 +185,7 @@ func getDBPath() string {
 		Path:        "/users",
 		PackageName: "users",
 		HandlerCall: "users.Handler(queries)",
-		ImportPath:  "testapp/internal/app/users",
+		ImportPath:  "testapp/app/users",
 	}
 
 	if err := InjectRoute(mainGoPath, route); err != nil {
@@ -229,7 +229,7 @@ import (
 	"net/http"
 	"os"
 
-	"testapp/internal/database"
+	"testapp/database"
 	e2etest "github.com/livetemplate/lvt/testing"
 )
 
@@ -277,7 +277,7 @@ func getDBPath() string {
 		Path:        "/counter",
 		PackageName: "counter",
 		HandlerCall: "counter.Handler()",
-		ImportPath:  "testapp/internal/app/counter",
+		ImportPath:  "testapp/app/counter",
 	}
 
 	if err := InjectRoute(mainGoPath, route); err != nil {
@@ -292,7 +292,7 @@ func getDBPath() string {
 	resultStr := string(result)
 
 	// Verify import was added
-	if !strings.Contains(resultStr, `"testapp/internal/app/counter"`) {
+	if !strings.Contains(resultStr, `"testapp/app/counter"`) {
 		t.Error("Import was not added")
 	}
 

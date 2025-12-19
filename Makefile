@@ -1,4 +1,4 @@
-.PHONY: test-fast test-commit test-all test-e2e test-unit test-clean install
+.PHONY: test-fast test-commit test-all test-e2e test-unit test-clean install upgrade-skills
 
 # Fast feedback - unit tests only (~30 seconds)
 test-fast:
@@ -37,3 +37,8 @@ test-clean:
 install:
 	@echo "Installing lvt..."
 	GOWORK=off go install .
+
+# Install lvt and upgrade Claude Code skills (for local testing)
+upgrade-skills: install
+	@echo "Upgrading Claude Code skills..."
+	lvt install-agent --llm claude --upgrade

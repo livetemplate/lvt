@@ -45,7 +45,7 @@ func TestAuthCommand_Integration(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Create minimal project structure
-	if err := os.MkdirAll(filepath.Join(tmpDir, "internal", "database"), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Join(tmpDir, "database"), 0755); err != nil {
 		t.Fatalf("failed to create directories: %v", err)
 	}
 	if err := os.WriteFile(filepath.Join(tmpDir, ".lvtrc"), []byte(`module = "testapp"`), 0644); err != nil {
@@ -75,9 +75,9 @@ func TestAuthCommand_Integration(t *testing.T) {
 	// Verify files were created
 	// Password auth is enabled by default in v0.5.1+
 	expectedFiles := []string{
-		"internal/shared/password/password.go",
-		"internal/shared/email/email.go",
-		"internal/database/queries.sql",
+		"shared/password/password.go",
+		"shared/email/email.go",
+		"database/queries.sql",
 	}
 
 	for _, path := range expectedFiles {
@@ -88,7 +88,7 @@ func TestAuthCommand_Integration(t *testing.T) {
 	}
 
 	// Verify migration file exists
-	migrationsDir := filepath.Join(tmpDir, "internal", "database", "migrations")
+	migrationsDir := filepath.Join(tmpDir, "database", "migrations")
 	files, err := os.ReadDir(migrationsDir)
 	if err != nil {
 		t.Fatalf("failed to read migrations directory: %v", err)
@@ -182,7 +182,7 @@ func TestAuthCommand_CustomNames(t *testing.T) {
 			tmpDir := t.TempDir()
 
 			// Create minimal project structure
-			if err := os.MkdirAll(filepath.Join(tmpDir, "internal", "database"), 0755); err != nil {
+			if err := os.MkdirAll(filepath.Join(tmpDir, "database"), 0755); err != nil {
 				t.Fatalf("failed to create directories: %v", err)
 			}
 			if err := os.WriteFile(filepath.Join(tmpDir, ".lvtrc"), []byte(`module="testapp"`), 0644); err != nil {
@@ -210,7 +210,7 @@ func TestAuthCommand_CustomNames(t *testing.T) {
 			}
 
 			// Read migration file
-			migrationsDir := filepath.Join(tmpDir, "internal", "database", "migrations")
+			migrationsDir := filepath.Join(tmpDir, "database", "migrations")
 			files, err := os.ReadDir(migrationsDir)
 			if err != nil {
 				t.Fatalf("failed to read migrations directory: %v", err)
@@ -238,7 +238,7 @@ func TestAuthCommand_CustomNames(t *testing.T) {
 			}
 
 			// Read queries.sql
-			queriesPath := filepath.Join(tmpDir, "internal", "database", "queries.sql")
+			queriesPath := filepath.Join(tmpDir, "database", "queries.sql")
 			queriesContent, err := os.ReadFile(queriesPath)
 			if err != nil {
 				t.Fatalf("failed to read queries.sql: %v", err)

@@ -181,7 +181,7 @@ func setupSharedResources() error {
 			"-w", "/app",
 			"-e", "GOWORK=off",
 			"golang:1.25",
-			"go", "run", "github.com/sqlc-dev/sqlc/cmd/sqlc@latest", "generate", "-f", "internal/database/sqlc.yaml")
+			"go", "run", "github.com/sqlc-dev/sqlc/cmd/sqlc@latest", "generate", "-f", "database/sqlc.yaml")
 
 		sqlcOutput, err := sqlcDockerCmd.CombinedOutput()
 		if err != nil {

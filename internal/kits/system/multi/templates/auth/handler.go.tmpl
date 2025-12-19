@@ -5,8 +5,8 @@ package auth
 // Example setup in main.go:
 //
 //	import (
-//		"{{.ModuleName}}/internal/app/auth"
-//		"{{.ModuleName}}/internal/shared/email"
+//		"{{.ModuleName}}/app/auth"
+//		"{{.ModuleName}}/shared/email"
 //	)
 //
 //	// Create auth state
@@ -14,7 +14,7 @@ package auth
 //	authState := auth.New{{.StructName}}State(db, emailSender, "http://localhost:8080")
 //
 //	// Register LiveTemplate routes
-//	http.Handle("/auth", livetemplate.NewHandler(authState, "internal/app/auth/auth.tmpl"))
+//	http.Handle("/auth", livetemplate.NewHandler(authState, "app/auth/auth.tmpl"))
 //
 //	// Register HTTP-only routes (no LiveTemplate)
 //	http.HandleFunc("/auth/logout", authState.HandleLogout)
@@ -49,10 +49,10 @@ import (
 	"net/http"
 	"time"
 
-	"{{.ModuleName}}/internal/database/models"
-	"{{.ModuleName}}/internal/shared/email"
+	"{{.ModuleName}}/database/models"
+	"{{.ModuleName}}/shared/email"
 	{{- if .EnablePassword }}
-	"{{.ModuleName}}/internal/shared/password"
+	"{{.ModuleName}}/shared/password"
 	{{- end }}
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"

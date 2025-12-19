@@ -12,7 +12,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/livetemplate/livetemplate"
-	"[[.ModuleName]]/internal/database/models"
+	"[[.ModuleName]]/database/models"
 )
 
 var validate = validator.New()
@@ -530,7 +530,7 @@ func Handler(queries *models.Queries) http.Handler {
 	}
 
 	baseTmpl := livetemplate.Must(livetemplate.New("[[.ResourceNameLower]]", livetemplate.WithDevMode([[.DevMode]])))
-	if _, err := baseTmpl.ParseFiles("internal/app/[[.ResourceNameLower]]/[[.ResourceNameLower]].tmpl"); err != nil {
+	if _, err := baseTmpl.ParseFiles("app/[[.ResourceNameLower]]/[[.ResourceNameLower]].tmpl"); err != nil {
 		log.Fatalf("Failed to parse template: %v", err)
 	}
 

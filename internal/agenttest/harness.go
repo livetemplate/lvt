@@ -208,7 +208,7 @@ func (e *AgentTestEnv) AssertFileContains(relativePath, text string) {
 func (e *AgentTestEnv) AssertDatabaseTableExists(tableName string) {
 	e.T.Helper()
 	// This is validated by checking if the migration file exists and was applied
-	migrationsDir := filepath.Join(e.AppDir, "internal", "database", "migrations")
+	migrationsDir := filepath.Join(e.AppDir, "database", "migrations")
 	files, err := os.ReadDir(migrationsDir)
 	require.NoError(e.T, err, "Failed to read migrations directory")
 
@@ -238,9 +238,9 @@ func (e *AgentTestEnv) SimulateQuickStart(resourceName string) {
 	require.NoError(e.T, err, "migration up should succeed")
 
 	// Verify files exist
-	e.AssertFileExists("internal/database/migrations")
-	e.AssertFileExists("internal/app/" + resourceName + "/" + resourceName + ".go")
-	e.AssertFileExists("internal/database/queries.sql")
+	e.AssertFileExists("database/migrations")
+	e.AssertFileExists("app/" + resourceName + "/" + resourceName + ".go")
+	e.AssertFileExists("database/queries.sql")
 }
 
 // SimulateFullStack simulates the full stack workflow from the usage guide
@@ -274,9 +274,9 @@ func (e *AgentTestEnv) SimulateFullStack() {
 	require.NoError(e.T, err, "migration up should succeed")
 
 	// Verify key files exist
-	e.AssertFileExists("internal/app/auth/auth.go")
-	e.AssertFileExists("internal/app/projects/projects.go")
-	e.AssertFileExists("internal/app/tasks/tasks.go")
+	e.AssertFileExists("app/auth/auth.go")
+	e.AssertFileExists("app/projects/projects.go")
+	e.AssertFileExists("app/tasks/tasks.go")
 }
 
 // SimulateConversation simulates a multi-turn conversation

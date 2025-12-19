@@ -78,7 +78,7 @@ Before any migration:
 
 ## File-Specific Rules
 
-### When editing *.go files in internal/app/
+### When editing *.go files in app/
 **DO:**
 - Suggest using lvt_gen_resource for new resources
 - Recommend lvt_gen_view for non-CRUD pages

@@ -273,7 +273,7 @@ lvt gen resource posts user_id:references:users  # Then reference users
 ### 5. Validate Templates Before Deployment
 
 ```bash
-lvt parse internal/app/posts/posts.tmpl
+lvt parse app/posts/posts.tmpl
 ```
 
 ## Project Structure
@@ -318,11 +318,11 @@ lvt migration up
 
 ```bash
 # Validate template
-lvt parse internal/app/<resource>/<resource>.tmpl
+lvt parse app/<resource>/<resource>.tmpl
 
 # Fix template based on error output
 # Re-validate
-lvt parse internal/app/<resource>/<resource>.tmpl
+lvt parse app/<resource>/<resource>.tmpl
 ```
 
 ## Adapting to Your LLM

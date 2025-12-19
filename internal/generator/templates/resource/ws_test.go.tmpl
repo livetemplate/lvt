@@ -6,7 +6,7 @@ nil { t.Fatalf("Failed to get free port: %v", err) } portStr :=
 fmt.Sprintf("%d", port) serverURL := fmt.Sprintf("http://localhost:%s", portStr)
 wsURL := fmt.Sprintf("ws://localhost:%s/[[.ResourceNameLower]]", portStr) //
 Start server on dynamic port cmd := exec.Command("go", "run",
-"../../cmd/[[.ModuleName]]/main.go", "../../internal/database/db.go") cmd.Env =
+"../../cmd/[[.ModuleName]]/main.go", "../../database/db.go") cmd.Env =
 append([]string{"PORT=" + portStr, "TEST_MODE=1"}, cmd.Environ()...) serverLogs
 := e2etest.NewSafeBuffer() cmd.Stdout = serverLogs cmd.Stderr = serverLogs if
 err := cmd.Start(); err != nil { t.Fatalf("Failed to start server: %v", err) }

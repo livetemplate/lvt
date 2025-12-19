@@ -170,7 +170,7 @@ func TestMCPTool_LvtGenResource(t *testing.T) {
 
 			if !tt.expectError {
 				// Verify resource files were created
-				handlerFile := filepath.Join(appDir, "internal", "app", tt.input.Name, tt.input.Name+".go")
+				handlerFile := filepath.Join(appDir, "app", tt.input.Name, tt.input.Name+".go")
 				if _, err := os.Stat(handlerFile); os.IsNotExist(err) {
 					t.Errorf("Handler file %s was not created", handlerFile)
 				}
@@ -230,7 +230,7 @@ func TestMCPTool_LvtGenView(t *testing.T) {
 
 			if !tt.expectError {
 				// Verify view files were created
-				viewFile := filepath.Join(appDir, "internal", "app", tt.input.Name, tt.input.Name+".go")
+				viewFile := filepath.Join(appDir, "app", tt.input.Name, tt.input.Name+".go")
 				if _, err := os.Stat(viewFile); os.IsNotExist(err) {
 					t.Errorf("View file %s was not created", viewFile)
 				}
@@ -300,7 +300,7 @@ func TestMCPTool_LvtGenAuth(t *testing.T) {
 
 			if !tt.expectError {
 				// Verify auth files were created
-				authDir := filepath.Join(appDir, "internal", "app", "auth")
+				authDir := filepath.Join(appDir, "app", "auth")
 				if _, err := os.Stat(authDir); os.IsNotExist(err) {
 					t.Errorf("Auth directory %s was not created", authDir)
 				}
@@ -360,7 +360,7 @@ func TestMCPTool_LvtGenSchema(t *testing.T) {
 
 			if !tt.expectError {
 				// Verify migration was created
-				migrationsDir := filepath.Join(appDir, "internal", "database", "migrations")
+				migrationsDir := filepath.Join(appDir, "database", "migrations")
 				entries, err := os.ReadDir(migrationsDir)
 				if err != nil {
 					t.Errorf("Failed to read migrations dir: %v", err)

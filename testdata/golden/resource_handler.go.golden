@@ -12,7 +12,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/livetemplate/livetemplate"
-	"testmodule/internal/database/models"
+	"testmodule/database/models"
 )
 
 var validate = validator.New()
@@ -506,7 +506,7 @@ func Handler(queries *models.Queries) http.Handler {
 	}
 
 	baseTmpl := livetemplate.Must(livetemplate.New("user", livetemplate.WithDevMode(false)))
-	if _, err := baseTmpl.ParseFiles("internal/app/user/user.tmpl"); err != nil {
+	if _, err := baseTmpl.ParseFiles("app/user/user.tmpl"); err != nil {
 		log.Fatalf("Failed to parse template: %v", err)
 	}
 	// Modal mode: clone template per request

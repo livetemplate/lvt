@@ -302,8 +302,8 @@ func (m genResourceModel) renderContent() string {
 		content += "  • id: INTEGER PRIMARY KEY\n"
 		content += "  • created_at: DATETIME\n\n"
 		content += "Will create:\n"
-		content += fmt.Sprintf("  • internal/app/%s/%s.go\n", resourceNameLower, resourceNameLower)
-		content += fmt.Sprintf("  • internal/app/%s/%s.tmpl\n", resourceNameLower, resourceNameLower)
+		content += fmt.Sprintf("  • app/%s/%s.go\n", resourceNameLower, resourceNameLower)
+		content += fmt.Sprintf("  • app/%s/%s.tmpl\n", resourceNameLower, resourceNameLower)
 		content += "  • Database schema and queries\n"
 		content += "  • Auto-inject route"
 

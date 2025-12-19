@@ -12,7 +12,7 @@ type RouteInfo struct {
 	Path        string // e.g., "/users"
 	PackageName string // e.g., "users"
 	HandlerCall string // e.g., "users.Handler(queries)"
-	ImportPath  string // e.g., "myapp/internal/app/users"
+	ImportPath  string // e.g., "myapp/app/users"
 }
 
 // InjectRoute adds an http.Handle route and import to main.go
@@ -69,8 +69,8 @@ func InjectRoute(mainGoPath string, route RouteInfo) error {
 			importExists = true
 		}
 
-		// Find where to insert import (after internal/database import, within import block)
-		if inImportBlock && strings.Contains(line, "/internal/database\"") {
+		// Find where to insert import (after database import, within import block)
+		if inImportBlock && strings.Contains(line, "/database\"") {
 			importInsertIndex = i + 1
 		}
 	}
@@ -79,7 +79,7 @@ func InjectRoute(mainGoPath string, route RouteInfo) error {
 		// Insert import
 		lines = insertLine(lines, importInsertIndex, importLine)
 	} else if !importExists {
-		// Fallback: if no /internal/database import found, add at end of import block
+		// Fallback: if no /database import found, add at end of import block
 		for i, line := range lines {
 			if strings.TrimSpace(line) == ")" && i > 0 {
 				// Check if previous lines are imports

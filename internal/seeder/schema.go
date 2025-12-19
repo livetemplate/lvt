@@ -39,7 +39,7 @@ func ParseSchema(schemaPath string) ([]TableSchema, error) {
 
 // FindSchemaFile locates the schema.sql file
 func FindSchemaFile() (string, error) {
-	schemaPath := "internal/database/schema.sql"
+	schemaPath := "database/schema.sql"
 
 	// Try current directory first
 	if _, err := os.Stat(schemaPath); err == nil {

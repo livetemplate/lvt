@@ -85,7 +85,7 @@ func GenerateSchema(basePath, moduleName, tableName string, fields []parser.Fiel
 	}
 
 	// Create database directory structure
-	dbDir := filepath.Join(basePath, "internal", "database")
+	dbDir := filepath.Join(basePath, "database")
 	migrationsDir := filepath.Join(dbDir, "migrations")
 	if err := os.MkdirAll(migrationsDir, 0755); err != nil {
 		return fmt.Errorf("failed to create migrations directory: %w", err)

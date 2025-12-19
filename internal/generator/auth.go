@@ -36,7 +36,7 @@ func GenerateAuth(projectRoot string, config *AuthConfig) error {
 	kitLoader := kits.DefaultLoader()
 
 	// Create directories
-	passwordDir := filepath.Join(projectRoot, "internal", "shared", "password")
+	passwordDir := filepath.Join(projectRoot, "shared", "password")
 	if err := os.MkdirAll(passwordDir, 0755); err != nil {
 		return fmt.Errorf("failed to create password directory: %w", err)
 	}
@@ -68,7 +68,7 @@ func GenerateAuth(projectRoot string, config *AuthConfig) error {
 
 	// Generate email.go if email features enabled
 	if config.EnableEmailConfirm || config.EnablePasswordReset {
-		emailDir := filepath.Join(projectRoot, "internal", "shared", "email")
+		emailDir := filepath.Join(projectRoot, "shared", "email")
 		if err := os.MkdirAll(emailDir, 0755); err != nil {
 			return fmt.Errorf("failed to create email directory: %w", err)
 		}
@@ -97,7 +97,7 @@ func GenerateAuth(projectRoot string, config *AuthConfig) error {
 	}
 
 	// Generate migration
-	migrationsDir := filepath.Join(projectRoot, "internal", "database", "migrations")
+	migrationsDir := filepath.Join(projectRoot, "database", "migrations")
 	if err := os.MkdirAll(migrationsDir, 0755); err != nil {
 		return fmt.Errorf("failed to create migrations directory: %w", err)
 	}
@@ -131,7 +131,7 @@ func GenerateAuth(projectRoot string, config *AuthConfig) error {
 	}
 
 	// Append to queries.sql (or create if doesn't exist)
-	queriesPath := filepath.Join(projectRoot, "internal", "database", "queries.sql")
+	queriesPath := filepath.Join(projectRoot, "database", "queries.sql")
 
 	templateContent, err = kitLoader.LoadKitTemplate("multi", "auth/queries.sql.tmpl")
 	if err != nil {
@@ -172,7 +172,7 @@ func GenerateAuth(projectRoot string, config *AuthConfig) error {
 	}
 
 	// Generate auth handler
-	authHandlerDir := filepath.Join(projectRoot, "internal", "app", "auth")
+	authHandlerDir := filepath.Join(projectRoot, "app", "auth")
 	if err := os.MkdirAll(authHandlerDir, 0755); err != nil {
 		return fmt.Errorf("failed to create auth handler directory: %w", err)
 	}

@@ -95,7 +95,7 @@
       "Bash(git stash:*)",
       "Bash(npm test:*)",
       "Bash(xargs cat:*)",
-      "Read(//Users/adnaan/code/myblog/internal/app/posts/**)",
+      "Read(//Users/adnaan/code/myblog/app/posts/**)",
       "Bash(find-skills:*)",
       "Bash(git worktree:*)",
       "Bash(/Users/adnaan/.config/superpowers/skills/skills/using-skills/find-skills debugging testing)",

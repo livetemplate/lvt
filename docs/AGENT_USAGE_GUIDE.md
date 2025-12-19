@@ -500,7 +500,7 @@ lvt mcp-server --help        # Get full help
 **`lvt_validate_template`** - Validate template syntax
 ```json
 {
-  "template_file": "internal/app/posts/posts.tmpl"
+  "template_file": "app/posts/posts.tmpl"
 }
 ```
 

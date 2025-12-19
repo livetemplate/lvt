@@ -29,9 +29,9 @@ func TestAgentDocValidation_QuickStart(t *testing.T) {
 	require.NoError(t, err, "migration up should succeed")
 
 	// Verify expected outcomes from documentation
-	env.AssertFileExists("internal/app/posts/posts.go")
-	env.AssertFileExists("internal/database/queries.sql")
-	env.AssertFileExists("internal/app/posts/posts.tmpl")
+	env.AssertFileExists("app/posts/posts.go")
+	env.AssertFileExists("database/queries.sql")
+	env.AssertFileExists("app/posts/posts.tmpl")
 	env.AssertDatabaseTableExists("posts")
 
 	// Verify commands tracked
@@ -53,9 +53,9 @@ func TestAgentDocValidation_FullStack(t *testing.T) {
 	env.SimulateFullStack()
 
 	// Verify all expected files exist
-	env.AssertFileExists("internal/app/auth/auth.go")
-	env.AssertFileExists("internal/app/projects/projects.go")
-	env.AssertFileExists("internal/app/tasks/tasks.go")
+	env.AssertFileExists("app/auth/auth.go")
+	env.AssertFileExists("app/projects/projects.go")
+	env.AssertFileExists("app/tasks/tasks.go")
 
 	// Verify database tables
 	// Note: users table is created via create_auth_tables migration (not named after table)
@@ -63,8 +63,8 @@ func TestAgentDocValidation_FullStack(t *testing.T) {
 	env.AssertDatabaseTableExists("tasks")
 
 	// Verify relationships
-	env.AssertFileContains("internal/database/queries.sql", "user_id")
-	env.AssertFileContains("internal/database/queries.sql", "project_id")
+	env.AssertFileContains("database/queries.sql", "user_id")
+	env.AssertFileContains("database/queries.sql", "project_id")
 }
 
 // TestAgentDocValidation_StepByStep validates the step-by-step conversation
@@ -103,9 +103,9 @@ func TestAgentDocValidation_StepByStep(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Verify all resources exist
-	env.AssertFileExists("internal/app/posts/posts.go")
-	env.AssertFileExists("internal/app/categories/categories.go")
-	env.AssertFileExists("internal/app/tags/tags.go")
+	env.AssertFileExists("app/posts/posts.go")
+	env.AssertFileExists("app/categories/categories.go")
+	env.AssertFileExists("app/tags/tags.go")
 }
 
 // TestAgentDocValidation_CommonPatterns tests the common patterns from the guide
@@ -128,8 +128,8 @@ func TestAgentDocValidation_CommonPatterns(t *testing.T) {
 				err = env.RunLvtCommand("migration", "up")
 				require.NoError(t, err)
 
-				env.AssertFileExists("internal/app/auth/auth.go")
-				env.AssertFileExists("internal/app/auth/auth.tmpl")
+				env.AssertFileExists("app/auth/auth.go")
+				env.AssertFileExists("app/auth/auth.tmpl")
 				// Note: Password auth disabled in v0.4.x, so no separate login/signup templates
 			},
 		},
@@ -149,9 +149,9 @@ func TestAgentDocValidation_CommonPatterns(t *testing.T) {
 				err = env.RunLvtCommand("migration", "up")
 				require.NoError(t, err)
 
-				env.AssertFileExists("internal/app/products/products.go")
-				env.AssertFileContains("internal/database/queries.sql", "name")
-				env.AssertFileContains("internal/database/queries.sql", "price")
+				env.AssertFileExists("app/products/products.go")
+				env.AssertFileContains("database/queries.sql", "name")
+				env.AssertFileContains("database/queries.sql", "price")
 			},
 		},
 		{
@@ -169,7 +169,7 @@ func TestAgentDocValidation_CommonPatterns(t *testing.T) {
 				err = env.RunLvtCommand("migration", "up")
 				require.NoError(t, err)
 
-				env.AssertFileContains("internal/database/queries.sql", "user_id")
+				env.AssertFileContains("database/queries.sql", "user_id")
 			},
 		},
 	}
@@ -242,10 +242,10 @@ func TestAgentDocValidation_IncrementalFeatures(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify all features exist
-	env.AssertFileExists("internal/app/posts/posts.go")
-	env.AssertFileExists("internal/app/categories/categories.go")
-	env.AssertFileExists("internal/app/tags/tags.go")
-	env.AssertFileExists("internal/app/comments/comments.go")
+	env.AssertFileExists("app/posts/posts.go")
+	env.AssertFileExists("app/categories/categories.go")
+	env.AssertFileExists("app/tags/tags.go")
+	env.AssertFileExists("app/comments/comments.go")
 }
 
 // TestAgentDocValidation_RecipeExample validates the complete example session
@@ -287,9 +287,9 @@ func TestAgentDocValidation_RecipeExample(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify all features
-	env.AssertFileExists("internal/app/recipes/recipes.go")
-	env.AssertFileExists("internal/app/auth/auth.go")
-	env.AssertFileExists("internal/app/categories/categories.go")
+	env.AssertFileExists("app/recipes/recipes.go")
+	env.AssertFileExists("app/auth/auth.go")
+	env.AssertFileExists("app/categories/categories.go")
 	env.AssertDatabaseTableExists("recipes")
 	// Note: users table is created via create_auth_tables migration (not named after table)
 	env.AssertDatabaseTableExists("categories")

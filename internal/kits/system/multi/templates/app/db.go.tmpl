@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	"[[.ModuleName]]/internal/database/models"
+	"[[.ModuleName]]/database/models"
 	_ "modernc.org/sqlite"
 )
 
@@ -38,7 +38,7 @@ func InitDB(dbPath string) (*models.Queries, error) {
 }
 
 func runMigrations(db *sql.DB) error {
-	schema, err := os.ReadFile("internal/database/schema.sql")
+	schema, err := os.ReadFile("database/schema.sql")
 	if err != nil {
 		return fmt.Errorf("failed to read schema.sql: %w", err)
 	}

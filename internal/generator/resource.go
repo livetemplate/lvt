@@ -96,7 +96,7 @@ func GenerateResource(basePath, moduleName, resourceName string, fields []parser
 	}
 
 	// Create resource directory
-	resourceDir := filepath.Join(basePath, "internal", "app", resourceNameLower)
+	resourceDir := filepath.Join(basePath, "app", resourceNameLower)
 	if err := os.MkdirAll(resourceDir, 0755); err != nil {
 		return fmt.Errorf("failed to create resource directory: %w", err)
 	}
@@ -181,7 +181,7 @@ func GenerateResource(basePath, moduleName, resourceName string, fields []parser
 	}
 
 	// Generate migration file instead of appending to schema.sql
-	dbDir := filepath.Join(basePath, "internal", "database")
+	dbDir := filepath.Join(basePath, "database")
 	migrationsDir := filepath.Join(dbDir, "migrations")
 	if err := os.MkdirAll(migrationsDir, 0755); err != nil {
 		return fmt.Errorf("failed to create migrations directory: %w", err)
@@ -233,7 +233,7 @@ func GenerateResource(basePath, moduleName, resourceName string, fields []parser
 				Path:        "/" + resourceNameLower,
 				PackageName: resourceNameLower,
 				HandlerCall: resourceNameLower + ".Handler(queries)",
-				ImportPath:  moduleName + "/internal/app/" + resourceNameLower,
+				ImportPath:  moduleName + "/app/" + resourceNameLower,
 			},
 		}
 
@@ -243,7 +243,7 @@ func GenerateResource(basePath, moduleName, resourceName string, fields []parser
 				Path:        "/" + resourceNameLower + "/",
 				PackageName: resourceNameLower,
 				HandlerCall: resourceNameLower + ".Handler(queries)",
-				ImportPath:  moduleName + "/internal/app/" + resourceNameLower,
+				ImportPath:  moduleName + "/app/" + resourceNameLower,
 			})
 		}
 

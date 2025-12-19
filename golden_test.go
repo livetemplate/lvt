@@ -15,7 +15,7 @@ func TestResourceHandlerGolden(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Create database directory structure (required by GenerateResource)
-	dbDir := filepath.Join(tmpDir, "internal", "database")
+	dbDir := filepath.Join(tmpDir, "database")
 	if err := os.MkdirAll(dbDir, 0755); err != nil {
 		t.Fatalf("Failed to create database directory: %v", err)
 	}
@@ -30,7 +30,7 @@ func TestResourceHandlerGolden(t *testing.T) {
 	}
 
 	// Read generated handler
-	handlerPath := filepath.Join(tmpDir, "internal", "app", "user", "user.go")
+	handlerPath := filepath.Join(tmpDir, "app", "user", "user.go")
 	generated, err := os.ReadFile(handlerPath)
 	if err != nil {
 		t.Fatalf("Failed to read generated handler: %v", err)
@@ -90,7 +90,7 @@ func TestViewHandlerGolden(t *testing.T) {
 	}
 
 	// Read generated handler
-	handlerPath := filepath.Join(tmpDir, "internal", "app", "counter", "counter.go")
+	handlerPath := filepath.Join(tmpDir, "app", "counter", "counter.go")
 	generated, err := os.ReadFile(handlerPath)
 	if err != nil {
 		t.Fatalf("Failed to read generated handler: %v", err)
@@ -132,7 +132,7 @@ func TestResourceTemplateGolden(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Create database directory structure (required by GenerateResource)
-	dbDir := filepath.Join(tmpDir, "internal", "database")
+	dbDir := filepath.Join(tmpDir, "database")
 	if err := os.MkdirAll(dbDir, 0755); err != nil {
 		t.Fatalf("Failed to create database directory: %v", err)
 	}
@@ -147,7 +147,7 @@ func TestResourceTemplateGolden(t *testing.T) {
 	}
 
 	// Read generated template
-	tmplPath := filepath.Join(tmpDir, "internal", "app", "post", "post.tmpl")
+	tmplPath := filepath.Join(tmpDir, "app", "post", "post.tmpl")
 	generated, err := os.ReadFile(tmplPath)
 	if err != nil {
 		t.Fatalf("Failed to read generated template: %v", err)

@@ -21,7 +21,7 @@ func TestGenerateAuth_PasswordUtilities(t *testing.T) {
 	}
 
 	// Check password.go exists
-	passwordPath := filepath.Join(tmpDir, "internal", "shared", "password", "password.go")
+	passwordPath := filepath.Join(tmpDir, "shared", "password", "password.go")
 	if _, err := os.Stat(passwordPath); os.IsNotExist(err) {
 		t.Errorf("password.go not generated at %s", passwordPath)
 	}
@@ -58,7 +58,7 @@ func TestGenerateAuth_EmailSender(t *testing.T) {
 		t.Fatalf("GenerateAuth failed: %v", err)
 	}
 
-	emailPath := filepath.Join(tmpDir, "internal", "shared", "email", "email.go")
+	emailPath := filepath.Join(tmpDir, "shared", "email", "email.go")
 	if _, err := os.Stat(emailPath); os.IsNotExist(err) {
 		t.Errorf("email.go not generated at %s", emailPath)
 	}
@@ -90,7 +90,7 @@ func TestGenerateAuth_Migration(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Create migrations directory
-	migrationsDir := filepath.Join(tmpDir, "internal", "database", "migrations")
+	migrationsDir := filepath.Join(tmpDir, "database", "migrations")
 	if err := os.MkdirAll(migrationsDir, 0755); err != nil {
 		t.Fatalf("failed to create migrations directory: %v", err)
 	}
@@ -156,7 +156,7 @@ func TestGenerateAuth_Queries(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Create database directory
-	dbDir := filepath.Join(tmpDir, "internal", "database")
+	dbDir := filepath.Join(tmpDir, "database")
 	if err := os.MkdirAll(dbDir, 0755); err != nil {
 		t.Fatalf("failed to create directory: %v", err)
 	}
@@ -202,7 +202,7 @@ func TestGenerateAuth_Queries_Append(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Create database directory with existing queries.sql
-	dbDir := filepath.Join(tmpDir, "internal", "database")
+	dbDir := filepath.Join(tmpDir, "database")
 	if err := os.MkdirAll(dbDir, 0755); err != nil {
 		t.Fatalf("failed to create directory: %v", err)
 	}

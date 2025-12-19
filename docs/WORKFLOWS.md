@@ -385,7 +385,7 @@ This guide provides step-by-step workflows for common development tasks using Li
    ```
 
 4. **Verify files created:**
-   *Check internal/app/about/, internal/app/contact/, internal/app/dashboard/*
+   *Check app/about/, app/contact/, app/dashboard/*
 
 ---
 
@@ -553,10 +553,10 @@ This guide provides step-by-step workflows for common development tasks using Li
 2. **Validate each template:**
    ```
    Tool: lvt_validate_template
-   Input: {template_file: "internal/app/posts/posts.tmpl"}
+   Input: {template_file: "app/posts/posts.tmpl"}
 
    Tool: lvt_validate_template
-   Input: {template_file: "internal/app/comments/comments.tmpl"}
+   Input: {template_file: "app/comments/comments.tmpl"}
 
    ... (for each resource)
    ```
@@ -613,7 +613,7 @@ This guide provides step-by-step workflows for common development tasks using Li
 3. **Validate all templates:**
    ```
    Tool: lvt_validate_template
-   Input: {template_file: "internal/app/posts/posts.tmpl"}
+   Input: {template_file: "app/posts/posts.tmpl"}
 
    ... (for each template)
    ```

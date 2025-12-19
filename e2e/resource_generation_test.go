@@ -25,8 +25,8 @@ func TestResourceGen_ExplicitTypes(t *testing.T) {
 
 	// Verify files created
 	expectedFiles := []string{
-		"internal/app/products/products.go",
-		"internal/app/products/products.tmpl",
+		"app/products/products.go",
+		"app/products/products.tmpl",
 	}
 
 	for _, file := range expectedFiles {
@@ -37,7 +37,7 @@ func TestResourceGen_ExplicitTypes(t *testing.T) {
 	}
 
 	// Verify migration contains all fields with correct types
-	schemaPath := filepath.Join(appDir, "internal/database/schema.sql")
+	schemaPath := filepath.Join(appDir, "database/schema.sql")
 	schema, err := os.ReadFile(schemaPath)
 	if err != nil {
 		t.Fatalf("Failed to read schema.sql: %v", err)
@@ -78,7 +78,7 @@ func TestResourceGen_TypeInference(t *testing.T) {
 	}
 
 	// Verify schema contains inferred types
-	schemaPath := filepath.Join(appDir, "internal/database/schema.sql")
+	schemaPath := filepath.Join(appDir, "database/schema.sql")
 	schema, err := os.ReadFile(schemaPath)
 	if err != nil {
 		t.Fatalf("Failed to read schema.sql: %v", err)
@@ -125,7 +125,7 @@ func TestResourceGen_ForeignKey(t *testing.T) {
 	}
 
 	// Verify schema contains foreign key constraint
-	schemaPath := filepath.Join(appDir, "internal/database/schema.sql")
+	schemaPath := filepath.Join(appDir, "database/schema.sql")
 	schema, err := os.ReadFile(schemaPath)
 	if err != nil {
 		t.Fatalf("Failed to read schema.sql: %v", err)
@@ -155,7 +155,7 @@ func TestResourceGen_PaginationInfinite(t *testing.T) {
 	}
 
 	// Verify handler has infinite pagination mode
-	handlerPath := filepath.Join(appDir, "internal/app/items/items.go")
+	handlerPath := filepath.Join(appDir, "app/items/items.go")
 	handler, err := os.ReadFile(handlerPath)
 	if err != nil {
 		t.Fatalf("Failed to read handler: %v", err)
@@ -166,7 +166,7 @@ func TestResourceGen_PaginationInfinite(t *testing.T) {
 	}
 
 	// Verify template has scroll sentinel
-	tmplPath := filepath.Join(appDir, "internal/app/items/items.tmpl")
+	tmplPath := filepath.Join(appDir, "app/items/items.tmpl")
 	tmpl, err := os.ReadFile(tmplPath)
 	if err != nil {
 		t.Fatalf("Failed to read template: %v", err)
@@ -196,7 +196,7 @@ func TestResourceGen_PaginationLoadMore(t *testing.T) {
 	}
 
 	// Verify handler has load-more pagination mode
-	handlerPath := filepath.Join(appDir, "internal/app/posts/posts.go")
+	handlerPath := filepath.Join(appDir, "app/posts/posts.go")
 	handler, err := os.ReadFile(handlerPath)
 	if err != nil {
 		t.Fatalf("Failed to read handler: %v", err)
@@ -226,7 +226,7 @@ func TestResourceGen_PaginationPrevNext(t *testing.T) {
 	}
 
 	// Verify handler has prev-next pagination mode
-	handlerPath := filepath.Join(appDir, "internal/app/articles/articles.go")
+	handlerPath := filepath.Join(appDir, "app/articles/articles.go")
 	handler, err := os.ReadFile(handlerPath)
 	if err != nil {
 		t.Fatalf("Failed to read handler: %v", err)
@@ -262,7 +262,7 @@ func TestResourceGen_PaginationNumbers(t *testing.T) {
 	}
 
 	// Verify handler has numbers pagination mode
-	handlerPath := filepath.Join(appDir, "internal/app/entries/entries.go")
+	handlerPath := filepath.Join(appDir, "app/entries/entries.go")
 	handler, err := os.ReadFile(handlerPath)
 	if err != nil {
 		t.Fatalf("Failed to read handler: %v", err)
@@ -291,7 +291,7 @@ func TestResourceGen_EditModeModal(t *testing.T) {
 	}
 
 	// Verify template has modal elements
-	tmplPath := filepath.Join(appDir, "internal/app/todos/todos.tmpl")
+	tmplPath := filepath.Join(appDir, "app/todos/todos.tmpl")
 	tmpl, err := os.ReadFile(tmplPath)
 	if err != nil {
 		t.Fatalf("Failed to read template: %v", err)
@@ -326,7 +326,7 @@ func TestResourceGen_EditModePage(t *testing.T) {
 	}
 
 	// Verify handler has page edit mode (check for URL routing logic)
-	handlerPath := filepath.Join(appDir, "internal/app/notes/notes.go")
+	handlerPath := filepath.Join(appDir, "app/notes/notes.go")
 	handler, err := os.ReadFile(handlerPath)
 	if err != nil {
 		t.Fatalf("Failed to read handler: %v", err)
@@ -364,7 +364,7 @@ func TestResourceGen_TextareaFields(t *testing.T) {
 	}
 
 	// Verify template has textarea elements
-	tmplPath := filepath.Join(appDir, "internal/app/docs/docs.tmpl")
+	tmplPath := filepath.Join(appDir, "app/docs/docs.tmpl")
 	tmpl, err := os.ReadFile(tmplPath)
 	if err != nil {
 		t.Fatalf("Failed to read template: %v", err)
@@ -401,7 +401,7 @@ func TestResourceGen_AllFieldTypes(t *testing.T) {
 	}
 
 	// Verify schema contains all types correctly mapped
-	schemaPath := filepath.Join(appDir, "internal/database/schema.sql")
+	schemaPath := filepath.Join(appDir, "database/schema.sql")
 	schema, err := os.ReadFile(schemaPath)
 	if err != nil {
 		t.Fatalf("Failed to read schema.sql: %v", err)
@@ -424,13 +424,13 @@ func TestResourceGen_AllFieldTypes(t *testing.T) {
 	}
 
 	// Verify handler was created
-	handlerPath := filepath.Join(appDir, "internal/app/records/records.go")
+	handlerPath := filepath.Join(appDir, "app/records/records.go")
 	if _, err := os.Stat(handlerPath); os.IsNotExist(err) {
 		t.Error("Handler file not created")
 	}
 
 	// Verify template was created
-	tmplPath := filepath.Join(appDir, "internal/app/records/records.tmpl")
+	tmplPath := filepath.Join(appDir, "app/records/records.tmpl")
 	if _, err := os.Stat(tmplPath); os.IsNotExist(err) {
 		t.Error("Template file not created")
 	}

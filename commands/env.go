@@ -88,21 +88,21 @@ func detectFeatures() map[string]bool {
 	}
 
 	// Check for database (schema.sql or migrations)
-	if _, err := os.Stat("internal/database/schema.sql"); err == nil {
+	if _, err := os.Stat("database/schema.sql"); err == nil {
 		features["database"] = true
 	}
-	if _, err := os.Stat("internal/database/migrations"); err == nil {
+	if _, err := os.Stat("database/migrations"); err == nil {
 		features["database"] = true
 	}
 
 	// Check for auth
-	if _, err := os.Stat("internal/app/auth"); err == nil {
+	if _, err := os.Stat("app/auth"); err == nil {
 		features["auth"] = true
 		features["sessions"] = true
 		features["csrf"] = true
 
 		// Check if email features are used
-		authFiles, _ := filepath.Glob("internal/app/auth/*.go")
+		authFiles, _ := filepath.Glob("app/auth/*.go")
 		for _, file := range authFiles {
 			content, _ := os.ReadFile(file)
 			contentStr := string(content)
