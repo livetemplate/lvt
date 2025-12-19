@@ -222,10 +222,11 @@ func securityHeadersMiddleware(next http.Handler) http.Handler {
 		// This is a basic CSP - customize based on your needs
 		w.Header().Set("Content-Security-Policy",
 			"default-src 'self'; "+
-				"script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; "+
+				"script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com; "+
 				"style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "+
 				"img-src 'self' data: https:; "+
-				"font-src 'self' data: https://cdn.jsdelivr.net;")
+				"font-src 'self' data: https://cdn.jsdelivr.net; "+
+				"connect-src 'self' ws: wss: https://cdn.jsdelivr.net https://unpkg.com;")
 
 		next.ServeHTTP(w, r)
 	})
