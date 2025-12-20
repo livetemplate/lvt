@@ -719,7 +719,7 @@ func buildAndRunNative(t *testing.T, appDir string, port int) *exec.Cmd {
 
 	// Build the app
 	// Check if simple kit (main.go in root) or multi kit (main.go in cmd/)
-	binaryPath := filepath.Join(appDir, "app")
+	binaryPath := filepath.Join(appDir, "server")
 	t.Log("Building binary...")
 
 	var buildCmd *exec.Cmd
