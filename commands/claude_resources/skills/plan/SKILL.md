@@ -201,14 +201,18 @@ lvt seed {resource} --count {seed_count}
 
 | Option | Current | Alternatives |
 |--------|---------|--------------|
-| Kit | multi | single, simple |
-| CSS Framework | tailwind | pico, bulma, bootstrap |
+| Kit | multi (Tailwind CSS) | single (Tailwind CSS), simple (Pico CSS) |
 | Pagination | infinite scroll | page numbers |
 | Edit Mode | modal | inline, page |
 | Database | sqlite | postgres (requires setup) |
 
 What would you like to change?
 ```
+
+**Note on Kits:**
+- `multi` - Multi-page app with Tailwind CSS (recommended)
+- `single` - Single-page app with Tailwind CSS
+- `simple` - Simple prototype with Pico CSS (minimal)
 
 **Example - Blog with auth:**
 
@@ -256,8 +260,7 @@ Show the advanced options table:
 
 | Option | Description | Values |
 |--------|-------------|--------|
-| Kit | Project structure | multi (recommended), single, simple |
-| CSS Framework | Styling | tailwind (default), pico, bulma, bootstrap |
+| Kit | Project structure + CSS | multi (Tailwind, recommended), single (Tailwind), simple (Pico) |
 | Pagination | List navigation | infinite (default), page |
 | Edit Mode | How items are edited | modal (default), inline, page |
 | Database | Data storage | sqlite (default), postgres |

@@ -171,6 +171,46 @@ func GenerateAuth(projectRoot string, config *AuthConfig) error {
 		return fmt.Errorf("failed to close queries.sql: %w", err)
 	}
 
+	// Append to schema.sql for sqlc (separate from migration)
+	schemaPath := filepath.Join(projectRoot, "database", "schema.sql")
+	schemaTemplateContent, err := kitLoader.LoadKitTemplate("multi", "auth/schema.sql.tmpl")
+	if err != nil {
+		return fmt.Errorf("failed to load schema template: %w", err)
+	}
+
+	schemaTmpl, err := template.New("schema").Delims("[[", "]]").Funcs(funcMap).Parse(string(schemaTemplateContent))
+	if err != nil {
+		return fmt.Errorf("failed to parse schema template: %w", err)
+	}
+
+	// Open in append mode (create if doesn't exist)
+	schemaFile, err := os.OpenFile(schemaPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to open schema.sql: %w", err)
+	}
+
+	// Add separator if file already has content
+	schemaStat, err := schemaFile.Stat()
+	if err != nil {
+		schemaFile.Close()
+		return fmt.Errorf("failed to stat schema.sql: %w", err)
+	}
+	if schemaStat.Size() > 0 {
+		if _, err := schemaFile.WriteString("\n"); err != nil {
+			schemaFile.Close()
+			return fmt.Errorf("failed to write separator: %w", err)
+		}
+	}
+
+	if err := schemaTmpl.Execute(schemaFile, config); err != nil {
+		schemaFile.Close()
+		return fmt.Errorf("failed to execute schema template: %w", err)
+	}
+
+	if err := schemaFile.Close(); err != nil {
+		return fmt.Errorf("failed to close schema.sql: %w", err)
+	}
+
 	// Generate auth handler
 	authHandlerDir := filepath.Join(projectRoot, "app", "auth")
 	if err := os.MkdirAll(authHandlerDir, 0755); err != nil {
