@@ -75,10 +75,11 @@ func TestClaudeAgent_AllSkillsExist(t *testing.T) {
 		"quickstart",
 		"production-ready",
 		"add-related-resources",
-		// Maintenance Skills (3)
+		// Maintenance Skills (4)
 		"analyze",
 		"suggest",
 		"troubleshoot",
+		"debug-rendering",
 		// Meta Skill (1)
 		"add-skill",
 	}
@@ -231,7 +232,7 @@ func TestClaudeAgent_SkillCount(t *testing.T) {
 	}
 
 	// AGENT_USAGE_GUIDE.md documents:
-	// Core (14) + Workflow (4 - added brainstorm) + Maintenance (3) + Meta (1) = 22 skills
-	require.GreaterOrEqual(t, skillCount, 22,
-		"Should have at least 22 skills (documented in AGENT_USAGE_GUIDE.md), found %d", skillCount)
+	// Core (14) + Workflow (4 - added brainstorm) + Maintenance (4) + Meta (1) = 23 skills
+	require.GreaterOrEqual(t, skillCount, 23,
+		"Should have at least 23 skills (documented in AGENT_USAGE_GUIDE.md), found %d", skillCount)
 }
