@@ -23,7 +23,7 @@ func TestTypeInference(t *testing.T) {
 	}
 
 	// Verify schema has correct inferred types
-	schemaFile := filepath.Join(appDir, "internal", "database", "schema.sql")
+	schemaFile := filepath.Join(appDir, "database", "schema.sql")
 	content, err := os.ReadFile(schemaFile)
 	if err != nil {
 		t.Fatalf("Failed to read schema: %v", err)
