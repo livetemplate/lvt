@@ -3,6 +3,8 @@ package auth
 import (
 	"context"
 	"net/http"
+
+	"{{.ModuleName}}/database/models"
 )
 
 // Context keys for storing user data
@@ -17,9 +19,9 @@ const (
 //
 //	protectedHandler := authHandler.RequireAuth(http.HandlerFunc(myHandler))
 //	http.Handle("/protected", protectedHandler)
-func (h *{{.StructName}}Handler) RequireAuth(next http.Handler) http.Handler {
+func (c *{{.StructName}}Controller) RequireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user, err := h.GetCurrentUser(r)
+		user, err := c.GetCurrentUser(r)
 		if err != nil {
 			http.Redirect(w, r, "/auth", http.StatusSeeOther)
 			return
@@ -38,9 +40,9 @@ func (h *{{.StructName}}Handler) RequireAuth(next http.Handler) http.Handler {
 //
 //	protectedHandler := authHandler.RequireConfirmed(http.HandlerFunc(myHandler))
 //	http.Handle("/protected", protectedHandler)
-func (h *{{.StructName}}Handler) RequireConfirmed(next http.Handler) http.Handler {
+func (c *{{.StructName}}Controller) RequireConfirmed(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user, err := h.GetCurrentUser(r)
+		user, err := c.GetCurrentUser(r)
 		if err != nil {
 			http.Redirect(w, r, "/auth", http.StatusSeeOther)
 			return
@@ -65,9 +67,9 @@ func (h *{{.StructName}}Handler) RequireConfirmed(next http.Handler) http.Handle
 //
 //	handler := authHandler.OptionalAuth(http.HandlerFunc(myHandler))
 //	http.Handle("/", handler)
-func (h *{{.StructName}}Handler) OptionalAuth(next http.Handler) http.Handler {
+func (c *{{.StructName}}Controller) OptionalAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user, err := h.GetCurrentUser(r)
+		user, err := c.GetCurrentUser(r)
 		if err == nil {
 			// Store user in context for downstream handlers
 			ctx := context.WithValue(r.Context(), userContextKey, user)

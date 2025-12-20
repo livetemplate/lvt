@@ -8,6 +8,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/livetemplate/lvt/internal/config"
 	"github.com/livetemplate/lvt/internal/kits"
 )
 
@@ -23,14 +24,21 @@ type AuthConfig struct {
 	EnableCSRF          bool
 }
 
-func GenerateAuth(projectRoot string, config *AuthConfig) error {
+func GenerateAuth(projectRoot string, authConfig *AuthConfig) error {
 	// Apply defaults if not set
-	if config.TableName == "" {
-		config.TableName = "users"
+	if authConfig.TableName == "" {
+		authConfig.TableName = "users"
 	}
-	if config.StructName == "" {
-		config.StructName = "User"
+	if authConfig.StructName == "" {
+		authConfig.StructName = "User"
 	}
+
+	// Load project config to get the kit
+	projectConfig, err := config.LoadProjectConfig(projectRoot)
+	if err != nil {
+		return fmt.Errorf("failed to load project config: %w", err)
+	}
+	kitName := projectConfig.GetKit()
 
 	// Load kit loader
 	kitLoader := kits.DefaultLoader()
@@ -42,8 +50,8 @@ func GenerateAuth(projectRoot string, config *AuthConfig) error {
 	}
 
 	// Generate password.go if password auth enabled
-	if config.EnablePassword {
-		templateContent, err := kitLoader.LoadKitTemplate("multi", "auth/password.go.tmpl")
+	if authConfig.EnablePassword {
+		templateContent, err := kitLoader.LoadKitTemplate(kitName, "auth/password.go.tmpl")
 		if err != nil {
 			return fmt.Errorf("failed to load password template: %w", err)
 		}
@@ -61,19 +69,19 @@ func GenerateAuth(projectRoot string, config *AuthConfig) error {
 		}
 		defer file.Close()
 
-		if err := tmpl.Execute(file, config); err != nil {
+		if err := tmpl.Execute(file, authConfig); err != nil {
 			return fmt.Errorf("failed to execute password template: %w", err)
 		}
 	}
 
 	// Generate email.go if email features enabled
-	if config.EnableEmailConfirm || config.EnablePasswordReset {
+	if authConfig.EnableEmailConfirm || authConfig.EnablePasswordReset {
 		emailDir := filepath.Join(projectRoot, "shared", "email")
 		if err := os.MkdirAll(emailDir, 0755); err != nil {
 			return fmt.Errorf("failed to create email directory: %w", err)
 		}
 
-		templateContent, err := kitLoader.LoadKitTemplate("multi", "auth/email.go.tmpl")
+		templateContent, err := kitLoader.LoadKitTemplate(kitName, "auth/email.go.tmpl")
 		if err != nil {
 			return fmt.Errorf("failed to load email template: %w", err)
 		}
@@ -91,7 +99,7 @@ func GenerateAuth(projectRoot string, config *AuthConfig) error {
 		}
 		defer file.Close()
 
-		if err := tmpl.Execute(file, config); err != nil {
+		if err := tmpl.Execute(file, authConfig); err != nil {
 			return fmt.Errorf("failed to execute email template: %w", err)
 		}
 	}
@@ -106,7 +114,7 @@ func GenerateAuth(projectRoot string, config *AuthConfig) error {
 	migrationFile := fmt.Sprintf("%s_create_auth_tables.sql", timestamp)
 	migrationPath := filepath.Join(migrationsDir, migrationFile)
 
-	templateContent, err := kitLoader.LoadKitTemplate("multi", "auth/migration.sql.tmpl")
+	templateContent, err := kitLoader.LoadKitTemplate(kitName, "auth/migration.sql.tmpl")
 	if err != nil {
 		return fmt.Errorf("failed to load migration template: %w", err)
 	}
@@ -126,14 +134,14 @@ func GenerateAuth(projectRoot string, config *AuthConfig) error {
 	}
 	defer file.Close()
 
-	if err := tmpl.Execute(file, config); err != nil {
+	if err := tmpl.Execute(file, authConfig); err != nil {
 		return fmt.Errorf("failed to execute migration template: %w", err)
 	}
 
 	// Append to queries.sql (or create if doesn't exist)
 	queriesPath := filepath.Join(projectRoot, "database", "queries.sql")
 
-	templateContent, err = kitLoader.LoadKitTemplate("multi", "auth/queries.sql.tmpl")
+	templateContent, err = kitLoader.LoadKitTemplate(kitName, "auth/queries.sql.tmpl")
 	if err != nil {
 		return fmt.Errorf("failed to load queries template: %w", err)
 	}
@@ -162,13 +170,53 @@ func GenerateAuth(projectRoot string, config *AuthConfig) error {
 		}
 	}
 
-	if err := tmpl.Execute(file, config); err != nil {
+	if err := tmpl.Execute(file, authConfig); err != nil {
 		file.Close()
 		return fmt.Errorf("failed to execute queries template: %w", err)
 	}
 
 	if err := file.Close(); err != nil {
 		return fmt.Errorf("failed to close queries.sql: %w", err)
+	}
+
+	// Append to schema.sql for sqlc (separate from migration)
+	schemaPath := filepath.Join(projectRoot, "database", "schema.sql")
+	schemaTemplateContent, err := kitLoader.LoadKitTemplate(kitName, "auth/schema.sql.tmpl")
+	if err != nil {
+		return fmt.Errorf("failed to load schema template: %w", err)
+	}
+
+	schemaTmpl, err := template.New("schema").Delims("[[", "]]").Funcs(funcMap).Parse(string(schemaTemplateContent))
+	if err != nil {
+		return fmt.Errorf("failed to parse schema template: %w", err)
+	}
+
+	// Open in append mode (create if doesn't exist)
+	schemaFile, err := os.OpenFile(schemaPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to open schema.sql: %w", err)
+	}
+
+	// Add separator if file already has content
+	schemaStat, err := schemaFile.Stat()
+	if err != nil {
+		schemaFile.Close()
+		return fmt.Errorf("failed to stat schema.sql: %w", err)
+	}
+	if schemaStat.Size() > 0 {
+		if _, err := schemaFile.WriteString("\n"); err != nil {
+			schemaFile.Close()
+			return fmt.Errorf("failed to write separator: %w", err)
+		}
+	}
+
+	if err := schemaTmpl.Execute(schemaFile, authConfig); err != nil {
+		schemaFile.Close()
+		return fmt.Errorf("failed to execute schema template: %w", err)
+	}
+
+	if err := schemaFile.Close(); err != nil {
+		return fmt.Errorf("failed to close schema.sql: %w", err)
 	}
 
 	// Generate auth handler
@@ -178,7 +226,7 @@ func GenerateAuth(projectRoot string, config *AuthConfig) error {
 	}
 
 	// Generate handler.go
-	templateContent, err = kitLoader.LoadKitTemplate("multi", "auth/handler.go.tmpl")
+	templateContent, err = kitLoader.LoadKitTemplate(kitName, "auth/handler.go.tmpl")
 	if err != nil {
 		return fmt.Errorf("failed to load handler template: %w", err)
 	}
@@ -194,7 +242,7 @@ func GenerateAuth(projectRoot string, config *AuthConfig) error {
 		return fmt.Errorf("failed to create auth.go: %w", err)
 	}
 
-	if err := tmpl.Execute(file, config); err != nil {
+	if err := tmpl.Execute(file, authConfig); err != nil {
 		file.Close()
 		return fmt.Errorf("failed to execute handler template: %w", err)
 	}
@@ -204,7 +252,7 @@ func GenerateAuth(projectRoot string, config *AuthConfig) error {
 	}
 
 	// Generate template file
-	templateContent, err = kitLoader.LoadKitTemplate("multi", "auth/template.tmpl.tmpl")
+	templateContent, err = kitLoader.LoadKitTemplate(kitName, "auth/template.tmpl.tmpl")
 	if err != nil {
 		return fmt.Errorf("failed to load template template: %w", err)
 	}
@@ -220,7 +268,7 @@ func GenerateAuth(projectRoot string, config *AuthConfig) error {
 		return fmt.Errorf("failed to create auth.tmpl: %w", err)
 	}
 
-	if err := tmpl.Execute(file, config); err != nil {
+	if err := tmpl.Execute(file, authConfig); err != nil {
 		file.Close()
 		return fmt.Errorf("failed to execute template template: %w", err)
 	}
@@ -230,7 +278,7 @@ func GenerateAuth(projectRoot string, config *AuthConfig) error {
 	}
 
 	// Generate middleware file
-	templateContent, err = kitLoader.LoadKitTemplate("multi", "auth/middleware.go.tmpl")
+	templateContent, err = kitLoader.LoadKitTemplate(kitName, "auth/middleware.go.tmpl")
 	if err != nil {
 		return fmt.Errorf("failed to load middleware template: %w", err)
 	}
@@ -246,7 +294,7 @@ func GenerateAuth(projectRoot string, config *AuthConfig) error {
 		return fmt.Errorf("failed to create middleware.go: %w", err)
 	}
 
-	if err := tmpl.Execute(file, config); err != nil {
+	if err := tmpl.Execute(file, authConfig); err != nil {
 		file.Close()
 		return fmt.Errorf("failed to execute middleware template: %w", err)
 	}
@@ -256,7 +304,7 @@ func GenerateAuth(projectRoot string, config *AuthConfig) error {
 	}
 
 	// Generate E2E test file
-	templateContent, err = kitLoader.LoadKitTemplate("multi", "auth/e2e_test.go.tmpl")
+	templateContent, err = kitLoader.LoadKitTemplate(kitName, "auth/e2e_test.go.tmpl")
 	if err != nil {
 		return fmt.Errorf("failed to load e2e test template: %w", err)
 	}
@@ -272,7 +320,7 @@ func GenerateAuth(projectRoot string, config *AuthConfig) error {
 		return fmt.Errorf("failed to create auth_e2e_test.go: %w", err)
 	}
 
-	if err := tmpl.Execute(file, config); err != nil {
+	if err := tmpl.Execute(file, authConfig); err != nil {
 		file.Close()
 		return fmt.Errorf("failed to execute e2e test template: %w", err)
 	}
@@ -288,10 +336,10 @@ func GenerateAuth(projectRoot string, config *AuthConfig) error {
 			"github.com/google/uuid@latest",
 			"github.com/chromedp/chromedp@latest", // For E2E tests
 		}
-		if config.EnablePassword {
+		if authConfig.EnablePassword {
 			dependencies = append(dependencies, "golang.org/x/crypto@latest")
 		}
-		if config.EnableCSRF {
+		if authConfig.EnableCSRF {
 			dependencies = append(dependencies, "github.com/gorilla/csrf@latest")
 		}
 

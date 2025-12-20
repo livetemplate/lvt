@@ -219,6 +219,7 @@ go test ./...
 
 	// Create project config file
 	projectConfig := &config.ProjectConfig{
+		Module:  moduleName,
 		Kit:     kit,
 		DevMode: devMode,
 	}
@@ -311,6 +312,7 @@ lvt new myapp --kit multi
 
 	// Create project config file
 	projectConfig := &config.ProjectConfig{
+		Module:  moduleName,
 		Kit:     "simple",
 		DevMode: data.DevMode,
 	}
