@@ -17,13 +17,14 @@ import (
 )
 
 type AppMode struct {
-	server     *Server
-	appProcess *exec.Cmd
-	appPort    int
-	proxy      *httputil.ReverseProxy
-	mu         sync.Mutex
-	stopChan   chan struct{}
-	mainGoPath string
+	server      *Server
+	appProcess  *exec.Cmd
+	appPort     int
+	proxy       *httputil.ReverseProxy
+	mu          sync.Mutex
+	stopChan    chan struct{}
+	mainGoPath  string
+	processDone chan struct{} // Signals when current process has exited
 }
 
 func NewAppMode(s *Server) (*AppMode, error) {
@@ -194,10 +195,17 @@ func (am *AppMode) startApp() error {
 
 	time.Sleep(500 * time.Millisecond)
 
+	// Create a channel to signal when this process exits.
+	// This is the ONLY goroutine that should call Wait() on this process.
+	// stopAppLocked() will wait on this channel instead of calling Wait() again.
+	am.processDone = make(chan struct{})
+	proc := am.appProcess
+	processDone := am.processDone
 	go func() {
-		if err := am.appProcess.Wait(); err != nil {
+		if err := proc.Wait(); err != nil {
 			log.Printf("App process exited: %v", err)
 		}
+		close(processDone)
 	}()
 
 	return nil
@@ -210,22 +218,23 @@ func (am *AppMode) stopAppLocked() {
 
 	log.Printf("Stopping app (PID: %d)...", am.appProcess.Process.Pid)
 
+	// Kill the process
 	_ = am.appProcess.Process.Kill()
 
-	done := make(chan error, 1)
-	go func() {
-		done <- am.appProcess.Wait()
-	}()
-
-	select {
-	case <-done:
-		log.Println("App stopped")
-	case <-time.After(5 * time.Second):
-		log.Println("App failed to stop gracefully, force killing")
-		_ = am.appProcess.Process.Kill()
+	// Wait for the process to exit via the channel from startApp's goroutine.
+	// Do NOT call Wait() here as it would race with the goroutine in startApp.
+	processDone := am.processDone
+	if processDone != nil {
+		select {
+		case <-processDone:
+			log.Println("App stopped")
+		case <-time.After(5 * time.Second):
+			log.Println("App failed to stop gracefully within timeout")
+		}
 	}
 
 	am.appProcess = nil
+	am.processDone = nil
 }
 
 func (am *AppMode) Stop() {
