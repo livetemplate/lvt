@@ -408,23 +408,23 @@ RUN if [ -f database/sqlc.yaml ]; then \
 # Build the app
 # Auto-detect if main.go is in root (simple kit) or cmd/ (multi kit)
 RUN if [ -f main.go ]; then \
-      CGO_ENABLED=1 go build -o app .; \
+      CGO_ENABLED=1 go build -o server .; \
     else \
-      CGO_ENABLED=1 go build -o app ./cmd/*; \
+      CGO_ENABLED=1 go build -o server ./cmd/*; \
     fi
 
 # Runtime stage
 FROM alpine:latest
 RUN apk add --no-cache ca-certificates sqlite-libs
 WORKDIR /app
-COPY --from=0 /app/app /app/app
+COPY --from=0 /app/server /app/server
 # Copy directories that might exist (use shell to handle missing dirs)
 COPY --from=0 /app /app/
 # Clean up build artifacts we don't need at runtime
 RUN rm -rf /app/cmd /app/go.mod /app/go.sum /app/README.md /app/.git* 2>/dev/null || true
 RUN mkdir -p /app/data
 EXPOSE 8080
-CMD ["./app"]
+CMD ["./server"]
 `
 
 	dockerfilePath := filepath.Join(appDir, "Dockerfile")
@@ -719,7 +719,7 @@ func buildAndRunNative(t *testing.T, appDir string, port int) *exec.Cmd {
 
 	// Build the app
 	// Check if simple kit (main.go in root) or multi kit (main.go in cmd/)
-	binaryPath := filepath.Join(appDir, "app")
+	binaryPath := filepath.Join(appDir, "server")
 	t.Log("Building binary...")
 
 	var buildCmd *exec.Cmd

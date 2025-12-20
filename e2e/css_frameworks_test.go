@@ -45,7 +45,7 @@ func TestKitCSSFrameworks(t *testing.T) {
 			}
 
 			// Verify template file exists
-			tmplFile := filepath.Join(appDir, "internal", "app", "items", "items.tmpl")
+			tmplFile := filepath.Join(appDir, "app", "items", "items.tmpl")
 			content, err := readFile(t, tmplFile)
 			if err != nil {
 				t.Fatalf("Failed to read template: %v", err)

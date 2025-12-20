@@ -59,7 +59,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 
 	// Step 6: Verify foreign key in migration
 	t.Log("Step 6: Verifying foreign key syntax...")
-	migrationsDir := filepath.Join(appDir, "internal", "database", "migrations")
+	migrationsDir := filepath.Join(appDir, "database", "migrations")
 	entries, err := os.ReadDir(migrationsDir)
 	if err != nil {
 		t.Fatalf("Failed to read migrations dir: %v", err)
@@ -936,7 +936,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 	// Test 11.6: Infinite Scroll Configuration
 	t.Run("Infinite Scroll", func(t *testing.T) {
 		// Verify handler has infinite pagination
-		handlerFile := filepath.Join(appDir, "internal", "app", "posts", "posts.go")
+		handlerFile := filepath.Join(appDir, "app", "posts", "posts.go")
 		handlerContent, err := os.ReadFile(handlerFile)
 		if err != nil {
 			t.Fatalf("Failed to read handler: %v", err)
@@ -949,7 +949,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 		}
 
 		// Verify template has scroll sentinel
-		tmplFile := filepath.Join(appDir, "internal", "app", "posts", "posts.tmpl")
+		tmplFile := filepath.Join(appDir, "app", "posts", "posts.tmpl")
 		tmplContent, err := os.ReadFile(tmplFile)
 		if err != nil {
 			t.Fatalf("Failed to read template: %v", err)

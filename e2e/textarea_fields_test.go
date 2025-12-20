@@ -24,7 +24,7 @@ func TestTextareaFields(t *testing.T) {
 		}
 
 		// Verify template contains textarea for content field
-		tmplFile := filepath.Join(appDir, "internal", "app", "articles", "articles.tmpl")
+		tmplFile := filepath.Join(appDir, "app", "articles", "articles.tmpl")
 		content, err := os.ReadFile(tmplFile)
 		if err != nil {
 			t.Fatalf("Failed to read template: %v", err)
@@ -77,7 +77,7 @@ func TestTextareaFields(t *testing.T) {
 		}
 
 		// Verify template contains textareas for content, description, body
-		tmplFile := filepath.Join(appDir, "internal", "app", "posts", "posts.tmpl")
+		tmplFile := filepath.Join(appDir, "app", "posts", "posts.tmpl")
 		content, err := os.ReadFile(tmplFile)
 		if err != nil {
 			t.Fatalf("Failed to read template: %v", err)
@@ -124,7 +124,7 @@ func TestTextareaFields(t *testing.T) {
 		}
 
 		// Verify template contains textareas
-		tmplFile := filepath.Join(appDir, "internal", "app", "documents", "documents.tmpl")
+		tmplFile := filepath.Join(appDir, "app", "documents", "documents.tmpl")
 		content, err := os.ReadFile(tmplFile)
 		if err != nil {
 			t.Fatalf("Failed to read template: %v", err)

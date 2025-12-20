@@ -62,7 +62,7 @@ func TestTutorialE2E(t *testing.T) {
 
 	// Verify foreign key in migration file
 	t.Log("Verifying foreign key syntax...")
-	migrationsDir := filepath.Join(blogDir, "internal", "database", "migrations")
+	migrationsDir := filepath.Join(blogDir, "database", "migrations")
 	entries, err := os.ReadDir(migrationsDir)
 	if err != nil {
 		t.Fatalf("Failed to read migrations dir: %v", err)
@@ -1010,7 +1010,7 @@ func TestTutorialE2E(t *testing.T) {
 		// 2. Verifying template contains infiniteScroll define
 
 		// Read handler file to verify pagination mode
-		handlerFile := filepath.Join(blogDir, "internal", "app", "posts", "posts.go")
+		handlerFile := filepath.Join(blogDir, "app", "posts", "posts.go")
 		handlerContent, err := os.ReadFile(handlerFile)
 		if err != nil {
 			t.Fatalf("Failed to read posts handler: %v", err)
@@ -1023,7 +1023,7 @@ func TestTutorialE2E(t *testing.T) {
 		}
 
 		// Read template file to verify infiniteScroll block exists
-		tmplFile := filepath.Join(blogDir, "internal", "app", "posts", "posts.tmpl")
+		tmplFile := filepath.Join(blogDir, "app", "posts", "posts.tmpl")
 		tmplContent, err := os.ReadFile(tmplFile)
 		if err != nil {
 			t.Fatalf("Failed to read posts template: %v", err)

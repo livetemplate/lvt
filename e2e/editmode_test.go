@@ -24,7 +24,7 @@ func TestEditModePage(t *testing.T) {
 	}
 
 	// Verify handler has correct EditMode
-	handlerFile := filepath.Join(appDir, "internal", "app", "articles", "articles.go")
+	handlerFile := filepath.Join(appDir, "app", "articles", "articles.go")
 	handlerContent, err := os.ReadFile(handlerFile)
 	if err != nil {
 		t.Fatalf("Failed to read handler: %v", err)
@@ -45,7 +45,7 @@ func TestEditModePage(t *testing.T) {
 	}
 
 	// Verify template has correct structure for page mode
-	tmplFile := filepath.Join(appDir, "internal", "app", "articles", "articles.tmpl")
+	tmplFile := filepath.Join(appDir, "app", "articles", "articles.tmpl")
 	tmplContent, err := os.ReadFile(tmplFile)
 	if err != nil {
 		t.Fatalf("Failed to read template: %v", err)
@@ -116,7 +116,7 @@ func TestEditModeCombinations(t *testing.T) {
 			}
 
 			// Verify handler has correct settings
-			handlerFile := filepath.Join(appDir, "internal", "app", "items", "items.go")
+			handlerFile := filepath.Join(appDir, "app", "items", "items.go")
 			handlerContent, err := os.ReadFile(handlerFile)
 			if err != nil {
 				t.Fatalf("Failed to read handler: %v", err)
@@ -141,7 +141,7 @@ func TestEditModeCombinations(t *testing.T) {
 			}
 
 			// Verify template exists and is valid
-			tmplFile := filepath.Join(appDir, "internal", "app", "items", "items.tmpl")
+			tmplFile := filepath.Join(appDir, "app", "items", "items.tmpl")
 			tmplContent, err := os.ReadFile(tmplFile)
 			if err != nil {
 				t.Fatalf("Failed to read template: %v", err)

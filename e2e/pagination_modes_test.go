@@ -28,7 +28,7 @@ func TestPaginationModes(t *testing.T) {
 			}
 
 			// Verify handler file has correct pagination mode
-			handlerFile := filepath.Join(appDir, "internal", "app", "items", "items.go")
+			handlerFile := filepath.Join(appDir, "app", "items", "items.go")
 			content, err := os.ReadFile(handlerFile)
 			if err != nil {
 				t.Fatalf("Failed to read handler: %v", err)
