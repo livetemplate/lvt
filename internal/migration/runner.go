@@ -14,7 +14,7 @@ import (
 
 const (
 	defaultDBPath        = "app.db"
-	defaultMigrationsDir = "internal/database/migrations"
+	defaultMigrationsDir = "database/migrations"
 	migrationsTableName  = "goose_db_version"
 )
 
@@ -73,7 +73,7 @@ func (r *Runner) Up() error {
 	// Run sqlc generate after successful migration
 	if err := r.runSqlcGenerate(); err != nil {
 		fmt.Printf("⚠️  Warning: sqlc generate failed: %v\n", err)
-		fmt.Println("   You can run it manually: cd internal/database && sqlc generate")
+		fmt.Println("   You can run it manually: cd database && sqlc generate")
 	}
 
 	return nil
@@ -88,7 +88,7 @@ func (r *Runner) Down() error {
 	// Run sqlc generate after successful rollback
 	if err := r.runSqlcGenerate(); err != nil {
 		fmt.Printf("⚠️  Warning: sqlc generate failed: %v\n", err)
-		fmt.Println("   You can run it manually: cd internal/database && sqlc generate")
+		fmt.Println("   You can run it manually: cd database && sqlc generate")
 	}
 
 	return nil
@@ -223,7 +223,7 @@ func createEmptyDB(path string) error {
 
 // runSqlcGenerate runs sqlc generate in the database directory
 func (r *Runner) runSqlcGenerate() error {
-	// Find the internal/database directory
+	// Find the database directory
 	dbDir := filepath.Dir(r.migrationsDir) // migrations is inside database
 
 	fmt.Println("Generating database code with sqlc...")

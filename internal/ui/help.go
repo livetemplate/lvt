@@ -149,8 +149,8 @@ func GetGenViewHelp() []HelpSection {
 		{
 			Title: "What Gets Created",
 			Items: []HelpItem{
-				{"Handler:", "internal/app/{view}/{view}.go"},
-				{"Template:", "internal/app/{view}/{view}.tmpl"},
+				{"Handler:", "app/{view}/{view}.go"},
+				{"Template:", "app/{view}/{view}.tmpl"},
 				{"Tests:", "WebSocket and E2E test files"},
 				{"Route:", "Auto-injected into main.go"},
 			},

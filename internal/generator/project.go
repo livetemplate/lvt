@@ -50,11 +50,11 @@ func GenerateApp(appName, moduleName, kit string, devMode bool) error {
 	dirs := []string{
 		appName,
 		filepath.Join(appName, "cmd", appName),
-		filepath.Join(appName, "internal", "app"),
-		filepath.Join(appName, "internal", "app", "home"), // Home page directory
-		filepath.Join(appName, "internal", "database", "models"),
-		filepath.Join(appName, "internal", "database", "migrations"),
-		filepath.Join(appName, "internal", "shared"),
+		filepath.Join(appName, "app"),
+		filepath.Join(appName, "app", "home"), // Home page directory
+		filepath.Join(appName, "database", "models"),
+		filepath.Join(appName, "database", "migrations"),
+		filepath.Join(appName, "shared"),
 		filepath.Join(appName, "web", "assets"),
 	}
 
@@ -111,36 +111,36 @@ func GenerateApp(appName, moduleName, kit string, devMode bool) error {
 	}
 
 	// Generate database/db.go
-	if err := generateFile(string(dbGoTmpl), data, filepath.Join(appName, "internal", "database", "db.go"), kitInfo); err != nil {
+	if err := generateFile(string(dbGoTmpl), data, filepath.Join(appName, "database", "db.go"), kitInfo); err != nil {
 		return fmt.Errorf("failed to generate db.go: %w", err)
 	}
 
 	// Generate database/sqlc.yaml
-	if err := generateFile(string(sqlcYamlTmpl), data, filepath.Join(appName, "internal", "database", "sqlc.yaml"), kitInfo); err != nil {
+	if err := generateFile(string(sqlcYamlTmpl), data, filepath.Join(appName, "database", "sqlc.yaml"), kitInfo); err != nil {
 		return fmt.Errorf("failed to generate sqlc.yaml: %w", err)
 	}
 
 	// Generate placeholder models.go (will be replaced by sqlc)
-	if err := generateFile(string(modelsGoTmpl), data, filepath.Join(appName, "internal", "database", "models", "models.go"), kitInfo); err != nil {
+	if err := generateFile(string(modelsGoTmpl), data, filepath.Join(appName, "database", "models", "models.go"), kitInfo); err != nil {
 		return fmt.Errorf("failed to generate models.go: %w", err)
 	}
 
 	// Create empty schema.sql and queries.sql
-	if err := os.WriteFile(filepath.Join(appName, "internal", "database", "schema.sql"), []byte("-- Database schema\n"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(appName, "database", "schema.sql"), []byte("-- Database schema\n"), 0644); err != nil {
 		return fmt.Errorf("failed to create schema.sql: %w", err)
 	}
 
-	if err := os.WriteFile(filepath.Join(appName, "internal", "database", "queries.sql"), []byte("-- Database queries\n"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(appName, "database", "queries.sql"), []byte("-- Database queries\n"), 0644); err != nil {
 		return fmt.Errorf("failed to create queries.sql: %w", err)
 	}
 
 	// Generate home page handler
-	if err := generateFile(string(homeGoTmpl), data, filepath.Join(appName, "internal", "app", "home", "home.go"), kitInfo); err != nil {
+	if err := generateFile(string(homeGoTmpl), data, filepath.Join(appName, "app", "home", "home.go"), kitInfo); err != nil {
 		return fmt.Errorf("failed to generate home.go: %w", err)
 	}
 
 	// Generate home page template
-	if err := generateFile(string(homeTmplTmpl), data, filepath.Join(appName, "internal", "app", "home", "home.tmpl"), kitInfo); err != nil {
+	if err := generateFile(string(homeTmplTmpl), data, filepath.Join(appName, "app", "home", "home.tmpl"), kitInfo); err != nil {
 		return fmt.Errorf("failed to generate home.tmpl: %w", err)
 	}
 
@@ -163,9 +163,9 @@ A LiveTemplate application.
 
 3. Run sqlc to generate database code:
    `+"```"+`
-   cd internal/database
+   cd database
    go run github.com/sqlc-dev/sqlc/cmd/sqlc generate
-   cd ../..
+   cd ..
    `+"```"+`
 
 4. Run the server:
@@ -178,10 +178,10 @@ A LiveTemplate application.
 ## Project Structure
 
 - `+"`cmd/%s/`"+` - Application entry point
-- `+"`internal/app/`"+` - Handlers and templates
-- `+"`internal/database/`"+` - Database layer with sqlc
-- `+"`internal/database/migrations/`"+` - Database migrations
-- `+"`internal/shared/`"+` - Shared utilities
+- `+"`app/`"+` - Handlers and templates
+- `+"`database/`"+` - Database layer with sqlc
+- `+"`database/migrations/`"+` - Database migrations
+- `+"`shared/`"+` - Shared utilities
 
 ## Database Migrations
 

@@ -84,10 +84,10 @@ COPY --from=builder /myapp .
 # COPY app.db .
 
 # Copy migrations (needed if embedding migration runner)
-COPY internal/database/migrations ./internal/database/migrations
+COPY database/migrations ./database/migrations
 
 # Copy template files (if not embedded in binary)
-COPY internal/app ./internal/app
+COPY app ./app
 
 # Copy static files and client library
 COPY static ./static
@@ -263,12 +263,12 @@ fly deploy
 
 # Option 2: SSH and run goose
 fly ssh console
-goose -dir internal/database/migrations sqlite3 /data/app.db up
+goose -dir database/migrations sqlite3 /data/app.db up
 
 # Option 3: Auto-run migrations on deploy (add goose to Dockerfile)
 # Add to fly.toml:
 [deploy]
-  release_command = "goose -dir internal/database/migrations sqlite3 /data/app.db up"
+  release_command = "goose -dir database/migrations sqlite3 /data/app.db up"
 ```
 
 ### 5. Scale on Fly.io
@@ -470,7 +470,7 @@ lvt migration up
 
 # Option B: Use goose directly
 go install github.com/pressly/goose/v3/cmd/goose@latest
-goose -dir internal/database/migrations sqlite3 /var/lib/myapp/app.db up
+goose -dir database/migrations sqlite3 /var/lib/myapp/app.db up
 
 # 6. Enable systemd service
 sudo systemctl enable myapp
@@ -611,7 +611,7 @@ go build ./cmd/myapp
 RUN go install github.com/pressly/goose/v3/cmd/goose@latest
 
 # Run migrations on container start
-CMD goose -dir internal/database/migrations sqlite3 /data/app.db up && ./myapp
+CMD goose -dir database/migrations sqlite3 /data/app.db up && ./myapp
 ```
 
 **Option B: Run migrations manually before deploy:**
@@ -620,18 +620,18 @@ CMD goose -dir internal/database/migrations sqlite3 /data/app.db up && ./myapp
 docker run --rm \
   -v $(pwd)/data:/data \
   myapp:latest \
-  goose -dir internal/database/migrations sqlite3 /data/app.db up
+  goose -dir database/migrations sqlite3 /data/app.db up
 
 # Fly.io
 fly ssh console
-goose -dir internal/database/migrations sqlite3 /data/app.db up
+goose -dir database/migrations sqlite3 /data/app.db up
 
 # VPS
 ssh user@server
 cd /opt/myapp
 lvt migration up  # If lvt CLI is available
 # OR
-goose -dir internal/database/migrations sqlite3 /var/lib/myapp/app.db up
+goose -dir database/migrations sqlite3 /var/lib/myapp/app.db up
 sudo systemctl restart myapp
 ```
 
@@ -651,7 +651,7 @@ func main() {
     }
 
     // Run migrations
-    if err := goose.Up(db, "internal/database/migrations"); err != nil {
+    if err := goose.Up(db, "database/migrations"); err != nil {
         log.Fatalf("Migration failed: %v", err)
     }
 
@@ -707,7 +707,7 @@ db.Exec("PRAGMA temp_store=MEMORY")  // In-memory temp tables
 
 **LiveTemplate serves:**
 - Client library: `livetemplate-client.browser.js`
-- Template files: `internal/app/**/*.tmpl`
+- Template files: `app/**/*.tmpl`
 - Static assets: CSS, images, etc.
 
 **Option A: Embed in binary (recommended):**
@@ -715,7 +715,7 @@ db.Exec("PRAGMA temp_store=MEMORY")  // In-memory temp tables
 // cmd/myapp/main.go
 import "embed"
 
-//go:embed internal/app
+//go:embed app
 var templates embed.FS
 
 //go:embed static
@@ -733,7 +733,7 @@ func main() {
 **Option B: Copy files in Docker:**
 ```dockerfile
 # Already shown in Dockerfile above
-COPY internal/app ./internal/app
+COPY app ./app
 COPY static ./static
 COPY client ./client
 ```
@@ -897,7 +897,7 @@ Auto-scale | Fly.io or K8s | `fly autoscale set min=1 max=5`
 Global distribution | Fly.io | `fly regions add iad lhr`
 Test locally | Docker Compose | `docker-compose up`
 Backup database | Cron + SQLite | `sqlite3 app.db .backup`
-Run migrations | goose | `goose -dir internal/database/migrations sqlite3 app.db up`
+Run migrations | goose | `goose -dir database/migrations sqlite3 app.db up`
 
 ## Recommended: Fly.io for SQLite Apps
 

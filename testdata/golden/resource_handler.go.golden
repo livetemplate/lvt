@@ -12,7 +12,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/livetemplate/livetemplate"
-	"testmodule/internal/database/models"
+	"testmodule/database/models"
 )
 
 var validate = validator.New()
@@ -64,7 +64,7 @@ type UserState struct {
 	TotalCount   int                   `json:"total_count"`
 	LastUpdated  string                `json:"last_updated"`
 	EditingID    string                `json:"editing_id"`
-	EditingUser *UserItem   `json:"editing_user"`
+	EditingUser *UserItem   `json:"-"` // Excluded from client state
 	IsEditingMode bool                 `json:"is_editing_mode"` // For page mode: true when at /resource/:id/edit
 	PaginationMode string              `json:"pagination_mode"` // "infinite", "load-more", "prev-next", "numbers"
 	LoadedCount    int                 `json:"loaded_count"`    // For infinite/load-more modes
@@ -506,7 +506,7 @@ func Handler(queries *models.Queries) http.Handler {
 	}
 
 	baseTmpl := livetemplate.Must(livetemplate.New("user", livetemplate.WithDevMode(false)))
-	if _, err := baseTmpl.ParseFiles("internal/app/user/user.tmpl"); err != nil {
+	if _, err := baseTmpl.ParseFiles("app/user/user.tmpl"); err != nil {
 		log.Fatalf("Failed to parse template: %v", err)
 	}
 	// Modal mode: clone template per request

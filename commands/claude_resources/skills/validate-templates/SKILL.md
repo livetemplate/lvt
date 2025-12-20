@@ -44,7 +44,7 @@ This skill typically runs in **existing LiveTemplate projects** (.lvtrc exists).
 - "Debug template errors"
 
 **Examples:**
-- "Validate internal/app/posts/posts.tmpl"
+- "Validate app/posts/posts.tmpl"
 - "Check the dashboard template for errors"
 - "Parse my custom template"
 - "Why isn't my template working?"
@@ -56,8 +56,8 @@ This skill typically runs in **existing LiveTemplate projects** (.lvtrc exists).
 lvt parse <template-file>
 
 # Examples
-lvt parse internal/app/posts/posts.tmpl
-lvt parse internal/app/home/home.tmpl
+lvt parse app/posts/posts.tmpl
+lvt parse app/home/home.tmpl
 lvt parse custom/template.tmpl
 ```
 
@@ -91,7 +91,7 @@ lvt parse custom/template.tmpl
 
 **Successful validation:**
 ```
-Parsing template: internal/app/posts/posts.tmpl
+Parsing template: app/posts/posts.tmpl
 Template name: posts
 ============================================================
 
@@ -118,7 +118,7 @@ Template name: posts
 
 **Failed validation:**
 ```
-Parsing template: internal/app/broken/broken.tmpl
+Parsing template: app/broken/broken.tmpl
 Template name: broken
 ============================================================
 

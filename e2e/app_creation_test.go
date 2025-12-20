@@ -26,10 +26,10 @@ func TestAppCreation_DefaultsMultiTailwind(t *testing.T) {
 		"go.mod",
 		"README.md",
 		"cmd/testapp/main.go",
-		"internal/database/db.go",
-		"internal/database/schema.sql",
-		"internal/database/queries.sql",
-		"internal/database/sqlc.yaml",
+		"database/db.go",
+		"database/schema.sql",
+		"database/queries.sql",
+		"database/sqlc.yaml",
 	}
 
 	for _, file := range expectedFiles {

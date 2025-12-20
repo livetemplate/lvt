@@ -107,7 +107,7 @@ I got "undefined: queries" after adding a resource
 **Expected:**
 - References Common Issues
 - Diagnoses: missing sqlc generate
-- Provides fix: cd internal/database && sqlc generate
+- Provides fix: cd database && sqlc generate
 
 ---
 
@@ -317,7 +317,7 @@ Check my posts template for errors
 
 **Expected:**
 - Uses lvt:validate-templates skill
-- Runs `lvt parse internal/app/posts/posts.tmpl`
+- Runs `lvt parse app/posts/posts.tmpl`
 - Shows validation results
 
 **Test 2 - Template error:**

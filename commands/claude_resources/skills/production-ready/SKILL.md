@@ -80,15 +80,15 @@ lvt gen auth --no-password    # Magic link only
 **Apply migrations:**
 ```bash
 lvt migration up
-cd internal/database && sqlc generate && cd ../..
+cd database && sqlc generate && cd ../..
 go mod tidy
 ```
 
 **Wire auth routes in main.go:**
 ```go
 import (
-    "myapp/internal/app/auth"
-    "myapp/internal/shared/email"
+    "myapp/app/auth"
+    "myapp/shared/email"
 )
 
 // Email sender (production)
@@ -255,7 +255,7 @@ Configure SMTP settings in .env for production email delivery.
 # 1. Add authentication
 lvt gen auth
 lvt migration up
-cd internal/database && sqlc generate && cd ../..
+cd database && sqlc generate && cd ../..
 go mod tidy
 
 # 2. Add deployment config
@@ -281,7 +281,7 @@ docker-compose up -d
 # 1. Add auth
 lvt gen auth
 lvt migration up
-cd internal/database && sqlc generate && cd ../..
+cd database && sqlc generate && cd ../..
 
 # 2. Generate Fly.io config
 lvt gen stack fly

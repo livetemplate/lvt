@@ -188,7 +188,7 @@ lvt gen resource categories name slug description
 
 # Apply migrations
 lvt migration up
-cd internal/database && sqlc generate && cd ../..
+cd database && sqlc generate && cd ../..
 go mod tidy
 ```
 
@@ -204,8 +204,8 @@ Comments added! You can now:
 3. Moderate comments (add approved:bool field)
 
 To customize:
-- Edit internal/app/comments/comments.go
-- Modify internal/app/comments/comments.tmpl
+- Edit app/comments/comments.go
+- Modify app/comments/comments.tmpl
 ```
 
 **For categories:**

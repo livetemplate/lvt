@@ -24,7 +24,7 @@ cd "$TEMP_DIR"
 # 1. Build CLI
 echo "1️⃣  Building CLI..."
 cd "$PROJECT_ROOT"
-go build -o "$TEMP_DIR/lvt" ./cmd/lvt
+go build -o "$TEMP_DIR/lvt" .
 echo
 
 cd "$TEMP_DIR"
@@ -35,10 +35,10 @@ echo "2️⃣  Testing: lvt new testapp..."
 echo "✅ App structure created successfully"
 echo
 
-# 3. Test: lvt gen (CRUD resource)
-echo "3️⃣  Testing: lvt gen users name:string email:string..."
+# 3. Test: lvt gen resource (CRUD resource)
+echo "3️⃣  Testing: lvt gen resource users name:string email:string..."
 cd testapp
-"$TEMP_DIR/lvt" gen users name:string email:string
+"$TEMP_DIR/lvt" gen resource users name:string email:string
 echo "✅ Resource files generated successfully (including tests)"
 echo
 
@@ -61,14 +61,13 @@ REQUIRED_FILES=(
   "go.mod"
   "README.md"
   "cmd/testapp/main.go"
-  "internal/database/db.go"
-  "internal/database/schema.sql"
-  "internal/database/queries.sql"
-  "internal/database/sqlc.yaml"
-  "internal/app/users/users.go"
-  "internal/app/users/users.tmpl"
-  "internal/app/users/users_ws_test.go"
-  "internal/app/users/users_test.go"
+  "database/db.go"
+  "database/schema.sql"
+  "database/queries.sql"
+  "database/sqlc.yaml"
+  "app/users/users.go"
+  "app/users/users.tmpl"
+  "app/users/users_test.go"
 )
 
 ALL_EXIST=true
@@ -93,10 +92,9 @@ echo "✅ View files generated successfully"
 
 # Verify view files
 VIEW_FILES=(
-  "internal/app/dashboard/dashboard.go"
-  "internal/app/dashboard/dashboard.tmpl"
-  "internal/app/dashboard/dashboard_ws_test.go"
-  "internal/app/dashboard/dashboard_test.go"
+  "app/dashboard/dashboard.go"
+  "app/dashboard/dashboard.tmpl"
+  "app/dashboard/dashboard_test.go"
 )
 
 ALL_VIEW_EXIST=true

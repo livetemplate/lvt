@@ -33,7 +33,7 @@ func Test[[.ResourceName]]E2E(t *testing.T) {
 	serverURL := fmt.Sprintf("http://localhost:%d/[[.ResourceNameLower]]", serverPort)
 
 	t.Logf("Starting test server on port %s", portStr)
-	serverCmd := exec.Command("go", "run", "../../cmd/[[.ModuleName]]/main.go", "../../internal/database/db.go")
+	serverCmd := exec.Command("go", "run", "../../cmd/[[.ModuleName]]/main.go", "../../database/db.go")
 	serverCmd.Env = append([]string{"PORT=" + portStr, "TEST_MODE=1"}, serverCmd.Environ()...)
 
 	if err := serverCmd.Start(); err != nil {

@@ -150,7 +150,7 @@ lvt gen resource products \
 
 5. **Validate templates before deploying**
    ```bash
-   lvt parse internal/app/posts/posts.tmpl
+   lvt parse app/posts/posts.tmpl
    ```
 
 ## Project Structure
@@ -199,7 +199,7 @@ lvt migration status
 # Check specific resource
 lvt resource describe <name>
 
-# Review migration files in internal/database/migrations/
+# Review migration files in database/migrations/
 
 # Fix and retry
 lvt migration up
@@ -208,7 +208,7 @@ lvt migration up
 ### Template Issues
 ```bash
 # Validate template
-lvt parse internal/app/<resource>/<resource>.tmpl
+lvt parse app/<resource>/<resource>.tmpl
 
 # Review error output
 # Fix template
@@ -265,7 +265,7 @@ go run cmd/blog/main.go
 # Create empty migration
 lvt migration create add_indexes
 
-# Edit the generated file in internal/database/migrations/
+# Edit the generated file in database/migrations/
 
 # Apply
 lvt migration up
@@ -284,8 +284,8 @@ lvt seed comments --count 150 --cleanup
 lvt migration status
 
 # 2. Validate templates
-lvt parse internal/app/posts/posts.tmpl
-lvt parse internal/app/comments/comments.tmpl
+lvt parse app/posts/posts.tmpl
+lvt parse app/comments/comments.tmpl
 
 # 3. Generate env template
 lvt env generate

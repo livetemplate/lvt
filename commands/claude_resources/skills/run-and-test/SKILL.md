@@ -92,8 +92,8 @@ lvt serve
 ### Generated Tests
 
 Each resource/view gets a test file:
-- `internal/app/products/products_test.go`
-- `internal/app/dashboard/dashboard_test.go`
+- `app/products/products_test.go`
+- `app/dashboard/dashboard_test.go`
 
 Tests verify:
 - HTTP endpoint responds
@@ -107,10 +107,10 @@ Tests verify:
 go test ./...
 
 # Or specific package
-go test ./internal/app/products
+go test ./app/products
 
 # Verbose output
-go test -v ./internal/app/products
+go test -v ./app/products
 
 # Skip slow WebSocket tests
 go test -short ./...
@@ -304,10 +304,10 @@ sqlite3 app.db
 
 ```bash
 # Run single test
-go test -v ./internal/app/products -run TestProductsWebSocket
+go test -v ./app/products -run TestProductsWebSocket
 
 # With more detail
-go test -v ./internal/app/products -run TestProductsWebSocket 2>&1 | less
+go test -v ./app/products -run TestProductsWebSocket 2>&1 | less
 ```
 
 ## Production Build
@@ -335,7 +335,7 @@ Run development server | `lvt serve`
 Change port | `lvt serve --port 3000`
 Run all tests | `go test ./...`
 Run fast tests only | `go test -short ./...`
-Test one package | `go test ./internal/app/products`
+Test one package | `go test ./app/products`
 Stop server | Ctrl+C or `pkill -f "lvt serve"`
 Check what's on port | `lsof -i:8080`
 View database | `sqlite3 app.db`

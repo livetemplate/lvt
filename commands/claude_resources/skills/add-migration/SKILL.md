@@ -49,8 +49,8 @@ LiveTemplate uses **goose** for migration version control and **sqlc** for type-
 ### Auto-Generated Migrations (Resources)
 
 When you generate a resource, lvt creates:
-- `internal/database/schema.sql` - Updated with new table
-- `internal/database/queries.sql` - CRUD operations
+- `database/schema.sql` - Updated with new table
+- `database/queries.sql` - CRUD operations
 - Migration file - Timestamped in `migrations/`
 
 ```bash
@@ -75,7 +75,7 @@ For indexes, constraints, or data transformations:
 lvt migration create add_products_price_index
 
 # 2. Edit generated file
-# internal/database/migrations/YYYYMMDDHHMMSS_add_products_price_index.sql
+# database/migrations/YYYYMMDDHHMMSS_add_products_price_index.sql
 
 # 3. Add SQL in goose format:
 -- +goose Up
@@ -198,7 +198,7 @@ DROP TABLE users;
 
 ```bash
 # WRONG - loses version control
-vim internal/database/schema.sql  # add index manually
+vim database/schema.sql  # add index manually
 lvt migration up  # nothing happens
 ```
 
@@ -209,7 +209,7 @@ lvt migration up  # nothing happens
 ```bash
 # WRONG - unnecessary step
 lvt migration up
-cd internal/database && sqlc generate  # already done!
+cd database && sqlc generate  # already done!
 ```
 
 **Why wrong:** `lvt migration up` auto-runs sqlc generate.
@@ -295,7 +295,7 @@ lvt migration create add_products_price_index
 lvt migration up
 
 # 4. Code is generated, start developing
-vim internal/app/products/products.go
+vim app/products/products.go
 ```
 
 ## File Locations
@@ -331,7 +331,7 @@ Fix data | `lvt migration create fix_<description>`
 ✓ `lvt migration up` auto-runs sqlc generate
 ✓ Always write Down migrations when possible
 ✓ Use goose format (`-- +goose Up/Down`)
-✓ Custom migrations go in `internal/database/migrations/`
+✓ Custom migrations go in `database/migrations/`
 
 ✗ Don't edit schema.sql directly without creating migration
 ✗ Don't manually run sqlc after `migration up`

@@ -93,7 +93,7 @@ lvt resource show users   # alias
 
 **Issue: "failed to parse schema"**
 - schema.sql might be corrupted
-- Fix: Check `internal/database/schema.sql`
+- Fix: Check `database/schema.sql`
 
 **Issue: "No resources found in schema"**
 - No tables created yet
@@ -147,7 +147,7 @@ Foreign Keys:
 ## Notes
 
 - Read-only operation (never modifies database)
-- Parses internal/database/schema.sql
+- Parses database/schema.sql
 - Works with all table types (resources, views, auth)
 - Helpful before customizations
 - No database connection needed (reads schema file)

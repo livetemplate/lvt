@@ -24,9 +24,9 @@ func TestViewGen_Basic(t *testing.T) {
 
 	// Verify files created
 	expectedFiles := []string{
-		"internal/app/dashboard/dashboard.go",
-		"internal/app/dashboard/dashboard.tmpl",
-		"internal/app/dashboard/dashboard_test.go",
+		"app/dashboard/dashboard.go",
+		"app/dashboard/dashboard.tmpl",
+		"app/dashboard/dashboard_test.go",
 	}
 
 	for _, file := range expectedFiles {
@@ -37,7 +37,7 @@ func TestViewGen_Basic(t *testing.T) {
 	}
 
 	// Verify handler does NOT import database packages
-	handlerPath := filepath.Join(appDir, "internal/app/dashboard/dashboard.go")
+	handlerPath := filepath.Join(appDir, "app/dashboard/dashboard.go")
 	handler, err := os.ReadFile(handlerPath)
 	if err != nil {
 		t.Fatalf("Failed to read handler: %v", err)
@@ -54,7 +54,7 @@ func TestViewGen_Basic(t *testing.T) {
 	}
 
 	// Verify template file exists and is not empty
-	tmplPath := filepath.Join(appDir, "internal/app/dashboard/dashboard.tmpl")
+	tmplPath := filepath.Join(appDir, "app/dashboard/dashboard.tmpl")
 	tmpl, err := os.ReadFile(tmplPath)
 	if err != nil {
 		t.Fatalf("Failed to read template: %v", err)
@@ -65,7 +65,7 @@ func TestViewGen_Basic(t *testing.T) {
 	}
 
 	// Verify database files were NOT updated
-	schemaPath := filepath.Join(appDir, "internal/database/schema.sql")
+	schemaPath := filepath.Join(appDir, "database/schema.sql")
 	schemaContent, err := os.ReadFile(schemaPath)
 	if err != nil {
 		t.Fatalf("Failed to read schema.sql: %v", err)
@@ -94,12 +94,12 @@ func TestViewGen_Interactive(t *testing.T) {
 	}
 
 	// Verify files created
-	handlerPath := filepath.Join(appDir, "internal/app/counter/counter.go")
+	handlerPath := filepath.Join(appDir, "app/counter/counter.go")
 	if _, err := os.Stat(handlerPath); os.IsNotExist(err) {
 		t.Fatal("Handler file not created")
 	}
 
-	tmplPath := filepath.Join(appDir, "internal/app/counter/counter.tmpl")
+	tmplPath := filepath.Join(appDir, "app/counter/counter.tmpl")
 	if _, err := os.Stat(tmplPath); os.IsNotExist(err) {
 		t.Fatal("Template file not created")
 	}
@@ -144,17 +144,17 @@ func TestViewGen_MultipleViews(t *testing.T) {
 
 	// Verify all views were created
 	for _, view := range views {
-		handlerPath := filepath.Join(appDir, "internal/app", view, view+".go")
+		handlerPath := filepath.Join(appDir, "app", view, view+".go")
 		if _, err := os.Stat(handlerPath); os.IsNotExist(err) {
 			t.Errorf("Handler for %s not created", view)
 		}
 
-		tmplPath := filepath.Join(appDir, "internal/app", view, view+".tmpl")
+		tmplPath := filepath.Join(appDir, "app", view, view+".tmpl")
 		if _, err := os.Stat(tmplPath); os.IsNotExist(err) {
 			t.Errorf("Template for %s not created", view)
 		}
 
-		testPath := filepath.Join(appDir, "internal/app", view, view+"_test.go")
+		testPath := filepath.Join(appDir, "app", view, view+"_test.go")
 		if _, err := os.Stat(testPath); os.IsNotExist(err) {
 			t.Errorf("Test file for %s not created", view)
 		}
@@ -176,7 +176,7 @@ func TestViewGen_MultipleViews(t *testing.T) {
 	}
 
 	// Verify database files were NOT updated for any view
-	schemaPath := filepath.Join(appDir, "internal/database/schema.sql")
+	schemaPath := filepath.Join(appDir, "database/schema.sql")
 	schemaContent, err := os.ReadFile(schemaPath)
 	if err != nil {
 		t.Fatalf("Failed to read schema.sql: %v", err)

@@ -400,9 +400,9 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     go mod tidy && go mod download
 
 # Generate database code if sqlc.yaml exists
-RUN if [ -f internal/database/sqlc.yaml ]; then \
+RUN if [ -f database/sqlc.yaml ]; then \
       echo "Running sqlc generate..." && \
-      sqlc generate -f internal/database/sqlc.yaml; \
+      sqlc generate -f database/sqlc.yaml; \
     fi
 
 # Build the app
@@ -516,9 +516,9 @@ COPY . .
 RUN go mod tidy
 
 # Generate sqlc models if sqlc.yaml exists (multi kit with database)
-RUN if [ -f internal/database/sqlc.yaml ]; then \
+RUN if [ -f database/sqlc.yaml ]; then \
       echo "Running sqlc generate..." && \
-      sqlc generate -f internal/database/sqlc.yaml; \
+      sqlc generate -f database/sqlc.yaml; \
     fi
 
 # Build binary with CGO enabled for SQLite
@@ -705,7 +705,7 @@ func buildAndRunNative(t *testing.T, appDir string, port int) *exec.Cmd {
 	writeEmbeddedClientLibrary(t, appDir)
 
 	// Run sqlc generate if sqlc.yaml exists
-	sqlcPath := filepath.Join(appDir, "internal/database/sqlc.yaml")
+	sqlcPath := filepath.Join(appDir, "database/sqlc.yaml")
 	if _, err := os.Stat(sqlcPath); err == nil {
 		t.Log("Running sqlc generate...")
 		sqlcCmd := exec.Command("go", "run", "github.com/sqlc-dev/sqlc/cmd/sqlc@latest", "generate", "-f", sqlcPath)

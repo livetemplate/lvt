@@ -65,14 +65,14 @@ Before executing this skill, verify:
 1. **In Project Directory:**
    - Check for `.lvtrc` file (confirms it's an lvt project)
    - Check for `go.mod` (confirms it's a Go project)
-   - Check for `internal/app/` directory
+   - Check for `app/` directory
 
 2. **Dependencies Available:**
    - `lvt` binary is installed and accessible
    - Project was created with `lvt new`
 
 3. **Not Already Exists:**
-   - Check if view directory already exists in `internal/app/[viewname]/`
+   - Check if view directory already exists in `app/[viewname]/`
    - Warn user if view name conflicts
 
 ## Checklist
@@ -80,7 +80,7 @@ Before executing this skill, verify:
 - [ ] **Step 1:** Verify we're in an lvt project directory
   - Check for `.lvtrc` file
   - Check for `go.mod` file
-  - Check for `internal/app/` directory
+  - Check for `app/` directory
   - If missing, inform user they need to create an app first (use lvt:new-app skill)
 
 - [ ] **Step 2:** Validate prerequisites
@@ -97,7 +97,7 @@ Before executing this skill, verify:
   - Common names: dashboard, about, contact, landing, privacy, terms, faq, help
 
 - [ ] **Step 5:** Check for naming conflicts
-  - Check if `internal/app/[viewname]/` already exists
+  - Check if `app/[viewname]/` already exists
   - If exists, ask user if they want to:
     - Overwrite existing view (warning: will lose customizations)
     - Choose a different name
@@ -110,12 +110,12 @@ Before executing this skill, verify:
 - [ ] **Step 7:** Verify view generation succeeded
   - Check for success message from lvt
   - Verify files created:
-    - `internal/app/<view>/<view>.go` (handler)
-    - `internal/app/<view>/<view>.tmpl` (template)
-    - `internal/app/<view>/<view>_test.go` (test)
+    - `app/<view>/<view>.go` (handler)
+    - `app/<view>/<view>.tmpl` (template)
+    - `app/<view>/<view>_test.go` (test)
   - Verify files updated:
     - `cmd/<app>/main.go` or `main.go` (route injected)
-    - `internal/app/home/home.tmpl` (view registered on home page)
+    - `app/home/home.tmpl` (view registered on home page)
 
 - [ ] **Step 8:** Run `go mod tidy`
   - Ensure all dependencies are up to date
@@ -176,21 +176,21 @@ Help users understand when to use views vs resources:
 
 After generating a view, guide users on common customizations:
 
-**Handler Customization (`internal/app/<view>/<view>.go`):**
+**Handler Customization (`app/<view>/<view>.go`):**
 - Add data to pass to template
 - Fetch data from external APIs
 - Add query parameters handling
 - Add form handling (if needed)
 - Add middleware (auth, logging, etc.)
 
-**Template Customization (`internal/app/<view>/<view>.tmpl`):**
+**Template Customization (`app/<view>/<view>.tmpl`):**
 - Update page title and content
 - Add custom HTML/CSS
 - Use CSS framework utilities (Tailwind, Bulma, Pico)
 - Add interactive elements
 - Include components from other views
 
-**Test Customization (`internal/app/<view>/<view>_test.go`):**
+**Test Customization (`app/<view>/<view>_test.go`):**
 - Add E2E tests for specific functionality
 - Test WebSocket interactions
 - Test form submissions
@@ -204,22 +204,22 @@ After successful view generation, provide:
 ✅ View '[name]' generated successfully!
 
 📁 Files created:
-  - internal/app/[view]/[view].go
-  - internal/app/[view]/[view].tmpl
-  - internal/app/[view]/[view]_test.go
+  - app/[view]/[view].go
+  - app/[view]/[view].tmpl
+  - app/[view]/[view]_test.go
 
 📝 Files updated:
   - cmd/[app]/main.go (route: /[view])
-  - internal/app/home/home.tmpl (view link added)
+  - app/home/home.tmpl (view link added)
 
 ✅ App builds successfully
 
 🚀 Next steps:
-  1. Customize content: internal/app/[view]/[view].tmpl
-  2. Add logic: internal/app/[view]/[view].go
+  1. Customize content: app/[view]/[view].tmpl
+  2. Add logic: app/[view]/[view].go
   3. Start your app: lvt serve (or go run main.go)
   4. Visit: http://localhost:8080/[view]
-  5. Run tests: go test ./internal/app/[view]
+  5. Run tests: go test ./app/[view]
 ```
 
 ## Common User Scenarios

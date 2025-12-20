@@ -157,10 +157,10 @@ func (m genViewModel) renderContent() string {
 		b.WriteString(BoxStyle.Render(
 			fmt.Sprintf("View: %s\n\n", HighlightStyle.Render(viewNameLower)) +
 				"Will create:\n" +
-				fmt.Sprintf("  • internal/app/%s/%s.go\n", viewNameLower, viewNameLower) +
-				fmt.Sprintf("  • internal/app/%s/%s.tmpl\n", viewNameLower, viewNameLower) +
-				fmt.Sprintf("  • internal/app/%s/%s_test.go\n", viewNameLower, viewNameLower) +
-				fmt.Sprintf("  • internal/app/%s/%s_ws_test.go\n", viewNameLower, viewNameLower) +
+				fmt.Sprintf("  • app/%s/%s.go\n", viewNameLower, viewNameLower) +
+				fmt.Sprintf("  • app/%s/%s.tmpl\n", viewNameLower, viewNameLower) +
+				fmt.Sprintf("  • app/%s/%s_test.go\n", viewNameLower, viewNameLower) +
+				fmt.Sprintf("  • app/%s/%s_ws_test.go\n", viewNameLower, viewNameLower) +
 				"  • Auto-inject route",
 		))
 		b.WriteString("\n\n")
@@ -180,8 +180,8 @@ func (m genViewModel) renderContent() string {
 				"Registration auto-injected:\n" +
 				fmt.Sprintf("  router.Register(\"%s\", %s.NewStore())\n\n", viewNameLower, viewNameLower) +
 				"Next steps:\n" +
-				fmt.Sprintf("  1. Customize handler: internal/app/%s/%s.go\n", viewNameLower, viewNameLower) +
-				fmt.Sprintf("  2. Edit template: internal/app/%s/%s.tmpl\n", viewNameLower, viewNameLower) +
+				fmt.Sprintf("  1. Customize handler: app/%s/%s.go\n", viewNameLower, viewNameLower) +
+				fmt.Sprintf("  2. Edit template: app/%s/%s.tmpl\n", viewNameLower, viewNameLower) +
 				"  3. Run your app",
 		))
 		b.WriteString("\n\n")

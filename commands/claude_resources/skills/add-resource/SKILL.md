@@ -66,7 +66,7 @@ Before executing this skill, verify:
 1. **In Project Directory:**
    - Check for `.lvtrc` file (confirms it's an lvt project)
    - Check for `go.mod` (confirms it's a Go project)
-   - Check for `internal/database/` directory
+   - Check for `database/` directory
 
 2. **Dependencies Available:**
    - `lvt` binary is installed and accessible
@@ -76,29 +76,81 @@ Before executing this skill, verify:
    - Check if resource directory already exists
    - Warn user if resource name conflicts
 
+## ⚠️ CONFIRM BEFORE EXECUTING
+
+**When adding a resource, show what will be created and ask for confirmation:**
+
+```
+I'll add a **products** resource with these fields:
+- name (string)
+- price (float)
+- quantity (int)
+- description (text)
+
+This will create:
+- app/products/products.go (handler)
+- app/products/products.tmpl (template)
+- database/migrations/..._create_products.sql
+- Update database/queries.sql
+
+**Proceed?**
+- **yes** - create the resource
+- **change X** - modify fields or name
+- **advanced** - explore options (pagination, edit mode, references)
+- **no** - cancel
+```
+
+**If user says "advanced"**, show:
+```
+⚙️ **Advanced Resource Options**
+
+| Option | Current | Alternatives |
+|--------|---------|--------------|
+| Pagination | infinite scroll | page numbers |
+| Edit Mode | modal | inline, page |
+| Page Size | 20 | 10, 50, 100 |
+
+**Field modifiers:**
+- `field:references:table` - foreign key relationship
+- `field:references:table:CASCADE` - with cascade delete
+
+What would you like to change?
+```
+
+Then WAIT for user response before running commands.
+
+---
+
 ## Checklist
 
+**Confirmation Phase:**
 - [ ] **Step 1:** Verify we're in an lvt project directory
   - Check for `.lvtrc` file
   - Check for `go.mod` file
-  - Check for `internal/database/` directory
+  - Check for `database/` directory
   - If missing, inform user they need to create an app first (use lvt:new-app skill)
 
-- [ ] **Step 2:** Validate prerequisites
-  - Verify `lvt` command is available
-  - Check current directory is project root
-
-- [ ] **Step 3:** Extract resource details from user request
+- [ ] **Step 2:** Extract resource details from user request
   - Resource name (singular form preferred, e.g., "post", "user", "task")
   - Field list with types (explicit or to be inferred)
 
-- [ ] **Step 4:** Parse and organize fields
+- [ ] **Step 3:** Present what will be created and ask for confirmation
+  - Show resource name and fields
+  - Show files that will be created/updated
+  - Wait for user approval
+
+**Execution Phase (after approval):**
+- [ ] **Step 4:** Validate prerequisites
+  - Verify `lvt` command is available
+  - Check current directory is project root
+
+- [ ] **Step 5:** Parse and organize fields
   - If user provides field:type format, use as-is
   - If user provides just field names, rely on lvt's type inference
   - Validate field names are valid Go identifiers
 
-- [ ] **Step 5:** Check for naming conflicts
-  - Check if `internal/app/[resource]/` already exists
+- [ ] **Step 6:** Check for naming conflicts
+  - Check if `app/[resource]/` already exists
   - If exists, ask user if they want to:
     - Overwrite existing resource (warning: data loss)
     - Choose a different name
@@ -120,13 +172,13 @@ Before executing this skill, verify:
 - [ ] **Step 8:** Verify resource generation succeeded
   - Check for success message from lvt
   - Verify files created:
-    - `internal/app/<resource>/<resource>.go` (handler)
-    - `internal/app/<resource>/<resource>.tmpl` (template)
-    - `internal/app/<resource>/<resource>_test.go` (tests)
+    - `app/<resource>/<resource>.go` (handler)
+    - `app/<resource>/<resource>.tmpl` (template)
+    - `app/<resource>/<resource>_test.go` (tests)
   - Verify files updated:
-    - `internal/database/schema.sql` (schema updated)
-    - `internal/database/queries.sql` (queries added)
-    - `internal/database/migrations/<timestamp>_create_<table>.sql` (migration created)
+    - `database/schema.sql` (schema updated)
+    - `database/queries.sql` (queries added)
+    - `database/migrations/<timestamp>_create_<table>.sql` (migration created)
     - `cmd/<app>/main.go` or `main.go` (route injected)
 
 - [ ] **Step 9:** Run database migration
@@ -135,7 +187,7 @@ Before executing this skill, verify:
   - Handle errors if migration fails
 
 - [ ] **Step 10:** Generate sqlc models
-  - Navigate to `internal/database/` directory
+  - Navigate to `database/` directory
   - Run: `go run github.com/sqlc-dev/sqlc/cmd/sqlc generate`
   - Verify models generated successfully
   - Return to project root
@@ -246,14 +298,14 @@ After successful resource generation, provide:
 ✅ Resource '[name]' generated successfully!
 
 📁 Files created:
-  - internal/app/[resource]/[resource].go
-  - internal/app/[resource]/[resource].tmpl
-  - internal/app/[resource]/[resource]_test.go
-  - internal/database/migrations/[timestamp]_create_[table].sql
+  - app/[resource]/[resource].go
+  - app/[resource]/[resource].tmpl
+  - app/[resource]/[resource]_test.go
+  - database/migrations/[timestamp]_create_[table].sql
 
 📝 Files updated:
-  - internal/database/schema.sql
-  - internal/database/queries.sql
+  - database/schema.sql
+  - database/queries.sql
   - cmd/[app]/main.go (route: /[resource])
 
 ✅ Migration applied successfully

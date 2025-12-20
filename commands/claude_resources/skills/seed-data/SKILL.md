@@ -414,7 +414,7 @@ lvt seed products --cleanup --count 500
 ```bash
 # Before running tests
 lvt seed products --cleanup --count 30
-go test ./internal/app/products
+go test ./app/products
 
 # After tests
 lvt seed products --cleanup

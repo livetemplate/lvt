@@ -125,10 +125,10 @@ This document provides detailed manual testing checklists for validating Claude 
 **Manual Testing Checklist:**
 
 #### Code Generation
-- [ ] Handler file created: `internal/app/{resource}/{resource}.go`
-- [ ] Template file created: `internal/app/{resource}/{resource}.tmpl`
-- [ ] Test file created: `internal/app/{resource}/{resource}_test.go`
-- [ ] WebSocket test created: `internal/app/{resource}/{resource}_ws_test.go`
+- [ ] Handler file created: `app/{resource}/{resource}.go`
+- [ ] Template file created: `app/{resource}/{resource}.tmpl`
+- [ ] Test file created: `app/{resource}/{resource}_test.go`
+- [ ] WebSocket test created: `app/{resource}/{resource}_ws_test.go`
 
 #### Database
 - [ ] Migration file created with timestamp
@@ -140,7 +140,7 @@ This document provides detailed manual testing checklists for validating Claude 
 
 #### Build & Tests
 - [ ] `go build` succeeds
-- [ ] `go test ./internal/app/{resource}` passes
+- [ ] `go test ./app/{resource}` passes
 - [ ] No compilation errors
 
 #### List View
@@ -225,8 +225,8 @@ This document provides detailed manual testing checklists for validating Claude 
 **Manual Testing Checklist:**
 
 #### Code Generation
-- [ ] Handler file created: `internal/app/{view}/{view}.go`
-- [ ] Template file created: `internal/app/{view}/{view}.tmpl`
+- [ ] Handler file created: `app/{view}/{view}.go`
+- [ ] Template file created: `app/{view}/{view}.tmpl`
 - [ ] Route added to main.go
 
 #### View Rendering
@@ -260,8 +260,8 @@ This document provides detailed manual testing checklists for validating Claude 
 - [ ] Queries added to queries.sql
 
 #### Code Generation
-- [ ] Password utilities created: `internal/shared/password/`
-- [ ] Email utilities created: `internal/shared/email/`
+- [ ] Password utilities created: `shared/password/`
+- [ ] Email utilities created: `shared/email/`
 - [ ] Auth queries available
 
 #### Integration (Phase 2 when available)

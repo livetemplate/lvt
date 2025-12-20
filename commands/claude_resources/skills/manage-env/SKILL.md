@@ -149,12 +149,12 @@ lvt env validate --strict # Also validate values
 The commands automatically detect what features your app uses:
 
 **Database:**
-- Checks for `internal/database/schema.sql`
-- Checks for `internal/database/migrations/`
+- Checks for `database/schema.sql`
+- Checks for `database/migrations/`
 - Requires: `DATABASE_PATH`
 
 **Auth:**
-- Checks for `internal/app/auth/` directory
+- Checks for `app/auth/` directory
 - Requires: `SESSION_SECRET`, `CSRF_SECRET`
 
 **Email (Auth with Email Features):**

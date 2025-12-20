@@ -42,7 +42,7 @@ LiveTemplate generates working code that you customize for your needs. All gener
 - ✓ Business logic
 
 **Don't customize directly:**
-- ✗ Generated database models (`internal/database/models/`)
+- ✗ Generated database models (`database/models/`)
 - ✗ Schema files (`schema.sql`) - use migrations instead
 
 ## Generated Code Structure
@@ -73,7 +73,7 @@ project/
 
 **Generated handler:**
 ```go
-// internal/app/products/products.go
+// app/products/products.go
 func Handler(queries *models.Queries) http.HandlerFunc {
     return livetemplate.Handler(func(r *http.Request, lt *livetemplate.LiveTemplate) error {
         // Default: List all products
@@ -117,7 +117,7 @@ func Handler(queries *models.Queries) http.HandlerFunc {
 
 **Generated template:**
 ```html
-<!-- internal/app/products/products.tmpl -->
+<!-- app/products/products.tmpl -->
 <div class="container">
     <h1>Products</h1>
     {{range .Products}}
@@ -154,7 +154,7 @@ func Handler(queries *models.Queries) http.HandlerFunc {
 
 **Add to queries.sql:**
 ```sql
--- internal/database/queries.sql
+-- database/queries.sql
 
 -- Generated queries (don't remove)
 -- name: ListProducts :many
@@ -187,7 +187,7 @@ lvt migration up
 ### 4. Add Validation
 
 ```go
-// internal/app/products/products.go
+// app/products/products.go
 func Handler(queries *models.Queries) http.HandlerFunc {
     return livetemplate.Handler(func(r *http.Request, lt *livetemplate.LiveTemplate) error {
         if r.Method == http.MethodPost {
@@ -224,7 +224,7 @@ func Handler(queries *models.Queries) http.HandlerFunc {
 ### 5. Add Authentication
 
 ```go
-// internal/app/admin/admin.go
+// app/admin/admin.go
 func Handler(queries *models.Queries) http.HandlerFunc {
     return livetemplate.Handler(func(r *http.Request, lt *livetemplate.LiveTemplate) error {
         // Check authentication
@@ -294,7 +294,7 @@ LiveTemplate templates have access to Go template functions:
 Generated resources include WebSocket support for real-time updates:
 
 ```go
-// internal/app/products/products.go
+// app/products/products.go
 func Handler(queries *models.Queries) http.HandlerFunc {
     return livetemplate.Handler(func(r *http.Request, lt *livetemplate.LiveTemplate) error {
         // Listen for WebSocket actions
@@ -441,7 +441,7 @@ func Handler(queries *models.Queries) http.HandlerFunc {
 
 **Keep related code together:**
 ```
-internal/app/products/
+app/products/
 ├── products.go           # Main handler
 ├── products.tmpl         # Main template
 ├── products_test.go      # Tests
@@ -463,9 +463,9 @@ internal/
 
 **I want to...** | **How**
 ---|---
-Change handler logic | Edit `internal/app/<name>/<name>.go`
-Customize HTML/UI | Edit `internal/app/<name>/<name>.tmpl`
-Add custom query | Edit `internal/database/queries.sql` + run `lvt migration up`
+Change handler logic | Edit `app/<name>/<name>.go`
+Customize HTML/UI | Edit `app/<name>/<name>.tmpl`
+Add custom query | Edit `database/queries.sql` + run `lvt migration up`
 Add validation | Add checks in handler before database calls
 Change CSS framework | Use `--css` flag when generating
 Add authentication | Check session/user in handler
@@ -481,6 +481,6 @@ Pass complex data | Use `map[string]interface{}` or custom structs
 ✓ Use Go template syntax in `.tmpl` files
 ✓ WebSocket actions update the page automatically
 
-✗ Don't edit generated models in `internal/database/models/`
+✗ Don't edit generated models in `database/models/`
 ✗ Don't edit `schema.sql` directly - use migrations
 ✗ Don't forget to run migrations after query changes

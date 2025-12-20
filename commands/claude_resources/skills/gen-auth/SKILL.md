@@ -70,7 +70,7 @@ Before executing this skill, verify:
 1. **In Project Directory:**
    - Check for `.lvtrc` file (confirms it's an lvt project)
    - Check for `go.mod` (confirms it's a Go project)
-   - Check for `internal/database/` directory
+   - Check for `database/` directory
 
 2. **Dependencies Available:**
    - `lvt` binary is installed and accessible
@@ -78,38 +78,84 @@ Before executing this skill, verify:
    - Database initialized
 
 3. **Not Already Exists:**
-   - Check if `internal/app/auth/` already exists
+   - Check if `app/auth/` already exists
    - Warn user if auth is already generated (will overwrite)
+
+## ⚠️ CONFIRM BEFORE EXECUTING
+
+**Authentication is a significant change. Show what will be created and ask for confirmation:**
+
+```
+I'll add authentication with these features:
+- Password auth (email + password login)
+- Magic link auth (passwordless email login)
+- Email confirmation
+- Password reset
+- Session management UI
+- CSRF protection
+
+This will create:
+- app/auth/auth.go (handler)
+- app/auth/auth.tmpl (templates)
+- app/auth/middleware.go (route protection)
+- shared/password/password.go (bcrypt utilities)
+- shared/email/email.go (email sender interface)
+- database/migrations/..._create_auth_tables.sql
+
+**Proceed?**
+- **yes** - add authentication
+- **change X** - modify features
+- **advanced** - explore options (disable features, custom names)
+- **no** - cancel
+```
+
+**If user says "advanced"**, show:
+```
+⚙️ **Advanced Auth Options**
+
+| Feature | Default | Can Disable |
+|---------|---------|-------------|
+| Password auth | enabled | --no-password |
+| Magic link auth | enabled | --no-magic-link |
+| Email confirmation | enabled | --no-email-confirm |
+| Password reset | enabled | --no-password-reset |
+| Sessions UI | enabled | --no-sessions-ui |
+| CSRF protection | enabled | --no-csrf |
+
+**Custom names:**
+- Struct name: User (default)
+- Table name: users (default)
+
+What would you like to change?
+```
+
+Then WAIT for user response before running commands.
+
+---
 
 ## Checklist
 
+**Confirmation Phase:**
 - [ ] **Step 1:** Verify we're in an lvt project directory
   - Check for `.lvtrc` file
   - Check for `go.mod` file
-  - Check for `internal/database/` directory
+  - Check for `database/` directory
   - If missing, inform user they need to create an app first (use lvt:new-app skill)
 
-- [ ] **Step 2:** Validate prerequisites
+- [ ] **Step 2:** Check for existing auth
+  - Check if `app/auth/` already exists
+  - If exists, warn user it will be overwritten
+
+- [ ] **Step 3:** Present what will be created
+  - Show features that will be added
+  - Show files that will be created
+  - Ask for confirmation before proceeding
+
+**Execution Phase (after approval):**
+- [ ] **Step 4:** Validate prerequisites
   - Verify `lvt` command is available
   - Check current directory is project root
   - Verify database directory exists
-
-- [ ] **Step 3:** Understand user requirements
-  - Ask if they want password auth (default: yes)
-  - Ask if they want magic link auth (default: yes)
-  - Ask if they want email confirmation (default: yes)
-  - Ask if they want password reset (default: yes)
-  - Ask if they want sessions UI (default: yes)
-  - Ask if they want CSRF protection (default: yes)
-  - Ask for struct name (default: User)
-  - Ask for table name (default: users)
-
-- [ ] **Step 4:** Check for existing auth
-  - Check if `internal/app/auth/` already exists
-  - If exists, ask user if they want to:
-    - Overwrite existing auth (warning: will lose customizations)
-    - Cancel operation
-    - Use different struct/table names
 
 - [ ] **Step 5:** Build and run the `lvt gen auth` command
   - Format: `lvt gen auth [StructName] [table_name] [flags...]`
@@ -126,15 +172,15 @@ Before executing this skill, verify:
 - [ ] **Step 6:** Verify auth generation succeeded
   - Check for success message from lvt
   - Verify files created:
-    - `internal/app/auth/auth.go` (handler with all auth flows)
-    - `internal/app/auth/auth.tmpl` (LiveTemplate UI)
-    - `internal/app/auth/middleware.go` (route protection middleware)
-    - `internal/app/auth/auth_e2e_test.go` (E2E tests)
-    - `internal/shared/password/password.go` (bcrypt utilities)
-    - `internal/shared/email/email.go` (email sender interface)
+    - `app/auth/auth.go` (handler with all auth flows)
+    - `app/auth/auth.tmpl` (LiveTemplate UI)
+    - `app/auth/middleware.go` (route protection middleware)
+    - `app/auth/auth_e2e_test.go` (E2E tests)
+    - `shared/password/password.go` (bcrypt utilities)
+    - `shared/email/email.go` (email sender interface)
   - Verify files updated:
-    - `internal/database/migrations/<timestamp>_create_auth_tables.sql`
-    - `internal/database/queries.sql` (auth queries appended)
+    - `database/migrations/<timestamp>_create_auth_tables.sql`
+    - `database/queries.sql` (auth queries appended)
 
 - [ ] **Step 7:** Run database migration
   - Execute: `lvt migration up`
@@ -142,7 +188,7 @@ Before executing this skill, verify:
   - Handle errors if migration fails
 
 - [ ] **Step 8:** Generate sqlc models
-  - Navigate to `internal/database/` directory
+  - Navigate to `database/` directory
   - Run: `go run github.com/sqlc-dev/sqlc/cmd/sqlc generate`
   - Verify models generated successfully (User, Session types)
   - Return to project root
@@ -160,13 +206,13 @@ Before executing this skill, verify:
   - Explain that routes are NOT auto-injected (by design)
   - Show example code for registering auth routes in main.go
   - Explain that user needs to decide which routes to expose
-  - Provide clear code examples from internal/app/auth/auth.go comments
+  - Provide clear code examples from app/auth/auth.go comments
 
 - [ ] **Step 12:** Guide user on configuring email sender
   - Explain that email interface needs implementation
   - Show example for console email (development)
   - Show example for SMTP email (production)
-  - Point to internal/shared/email/email.go for interface
+  - Point to shared/email/email.go for interface
 
 - [ ] **Step 13:** Provide user with success summary
   - List files created
@@ -302,8 +348,8 @@ Before executing this skill, verify:
 // In main.go, after database initialization
 
 import (
-    "myapp/internal/app/auth"
-    "myapp/internal/shared/email"
+    "myapp/app/auth"
+    "myapp/shared/email"
 )
 
 // Configure email sender (required for magic links, email confirm, password reset)
@@ -359,7 +405,7 @@ http.Handle("/dashboard", auth.RequireAuth(queries, dashboardHandler))
 **Development (Console Sender):**
 
 ```go
-import "myapp/internal/shared/email"
+import "myapp/shared/email"
 
 emailSender := &email.ConsoleEmailSender{} // Prints to console
 ```
@@ -367,7 +413,7 @@ emailSender := &email.ConsoleEmailSender{} // Prints to console
 **Production (SMTP):**
 
 ```go
-import "myapp/internal/shared/email"
+import "myapp/shared/email"
 
 emailSender := email.NewSMTPSender(email.SMTPConfig{
     Host:     "smtp.gmail.com",
@@ -528,7 +574,7 @@ lvt gen auth                  # Both (recommended)
 lvt migration up
 
 # Generate sqlc models
-cd internal/database
+cd database
 go run github.com/sqlc-dev/sqlc/cmd/sqlc generate
 cd ../..
 
@@ -593,7 +639,7 @@ data := struct {
 
 **Fix:**
 ```go
-// Modify session expiration in internal/app/auth/auth.go
+// Modify session expiration in app/auth/auth.go
 // Change the constant:
 const SessionDuration = 7 * 24 * time.Hour // 7 days instead of 30
 ```
@@ -608,12 +654,12 @@ const SessionDuration = 7 * 24 * time.Hour // 7 days instead of 30
 **Run tests:**
 ```bash
 # Run all auth E2E tests
-go test ./internal/app/auth -run TestAuthE2E -v
+go test ./app/auth -run TestAuthE2E -v
 
 # Run specific test
-go test ./internal/app/auth -run TestAuthE2E/Registration -v
-go test ./internal/app/auth -run TestAuthE2E/Login -v
-go test ./internal/app/auth -run TestAuthE2E/MagicLink -v
+go test ./app/auth -run TestAuthE2E/Registration -v
+go test ./app/auth -run TestAuthE2E/Login -v
+go test ./app/auth -run TestAuthE2E/MagicLink -v
 ```
 
 **What the tests verify:**
@@ -635,16 +681,16 @@ After successful auth generation, provide:
 ✅ Authentication system generated successfully!
 
 📁 Generated files:
-  - internal/app/auth/auth.go
-  - internal/app/auth/auth.tmpl
-  - internal/app/auth/middleware.go
-  - internal/app/auth/auth_e2e_test.go
-  - internal/shared/password/password.go
-  - internal/shared/email/email.go
-  - internal/database/migrations/<timestamp>_create_auth_tables.sql
+  - app/auth/auth.go
+  - app/auth/auth.tmpl
+  - app/auth/middleware.go
+  - app/auth/auth_e2e_test.go
+  - shared/password/password.go
+  - shared/email/email.go
+  - database/migrations/<timestamp>_create_auth_tables.sql
 
 📝 Files updated:
-  - internal/database/queries.sql
+  - database/queries.sql
 
 ⚠️  IMPORTANT: Auth routes are NOT auto-injected
 
@@ -653,16 +699,16 @@ After successful auth generation, provide:
      lvt migration up
 
   2. Generate sqlc code:
-     cd internal/database && go run github.com/sqlc-dev/sqlc/cmd/sqlc generate && cd ../..
+     cd database && go run github.com/sqlc-dev/sqlc/cmd/sqlc generate && cd ../..
 
   3. Wire auth routes in main.go (see skill for examples)
 
-  4. Configure email sender (see internal/shared/email/email.go)
+  4. Configure email sender (see shared/email/email.go)
 
   5. Run E2E tests:
-     go test ./internal/app/auth -run TestAuthE2E -v
+     go test ./app/auth -run TestAuthE2E -v
 
-💡 Tip: Check internal/app/auth/auth.go for complete usage examples!
+💡 Tip: Check app/auth/auth.go for complete usage examples!
 ```
 
 ## Common User Scenarios
@@ -715,19 +761,19 @@ After generation, users can customize:
 
 **1. Session duration:**
 ```go
-// In internal/app/auth/auth.go
+// In app/auth/auth.go
 const SessionDuration = 7 * 24 * time.Hour // Change from 30 days
 ```
 
 **2. Password requirements:**
 ```go
-// In internal/shared/password/password.go
+// In shared/password/password.go
 const MinPasswordLength = 12 // Change from 8
 ```
 
 **3. Token expiration:**
 ```go
-// In internal/app/auth/auth.go
+// In app/auth/auth.go
 const MagicLinkExpiration = 5 * time.Minute // Change from 15
 const ResetTokenExpiration = 30 * time.Minute // Change from 1 hour
 ```

@@ -574,9 +574,9 @@ COPY . .
 RUN go mod tidy
 
 # Generate sqlc models if sqlc.yaml exists (multi kit with database)
-RUN if [ -f internal/database/sqlc.yaml ]; then \
+RUN if [ -f database/sqlc.yaml ]; then \
       echo "Running sqlc generate..." && \
-      sqlc generate -f internal/database/sqlc.yaml; \
+      sqlc generate -f database/sqlc.yaml; \
     fi
 
 # Build binary with CGO enabled for SQLite

@@ -3,12 +3,103 @@ name: lvt-quickstart
 description: Rapid end-to-end workflow - creates app, adds resources, sets up development environment in one flow
 keywords: ["lvt", "livetemplate", "lt"]
 category: workflows
-version: 1.0.0
+version: 1.1.0
 ---
 
 # lvt-quickstart
 
 Get from zero to working app in minutes. This workflow chains multiple skills to create a complete working application with resources and development environment ready.
+
+## ⚠️ MANDATORY: PLAN FIRST, THEN EXECUTE
+
+**NEVER start executing commands without user approval.**
+
+```
+User request
+     ↓
+┌─────────────────────────────┐
+│ 1. INFER from request       │
+│    - App name               │
+│    - Domain (blog/shop/etc) │
+│    - Resources needed       │
+│    - Auth (if mentioned)    │
+└─────────────────────────────┘
+     ↓
+┌─────────────────────────────┐
+│ 2. PRESENT complete plan    │
+│    - All settings in table  │
+│    - Commands to execute    │
+│    - "Ready?" prompt        │
+└─────────────────────────────┘
+     ↓
+┌─────────────────────────────┐
+│ 3. WAIT for user response   │  ← MANDATORY STOP
+│    - "yes" → Execute        │
+│    - "change X" → Update    │
+│    - "no" → Cancel          │
+└─────────────────────────────┘
+     ↓
+Execute ONLY after approval
+```
+
+**Example - What you MUST do:**
+
+User: "create a [domain] app with [features] using livetemplate"
+
+You respond with a plan like this:
+```
+📋 **Plan for your [domain] app**
+
+| Setting | Value |
+|---------|-------|
+| App name | [inferred from domain] |
+| Primary resource | [domain-appropriate resource] |
+| Fields | [domain-appropriate fields] |
+| Authentication | [if requested: Password/Magic Link/None] |
+| Kit | multi (Tailwind CSS) |
+| Test data | 50 records |
+
+**Commands I'll run:**
+
+lvt new [name] --kit multi
+cd [name]
+lvt gen resource [resource] [fields...]
+[lvt gen auth - if auth requested]
+lvt migration up
+go mod tidy
+lvt seed [resource] --count 50
+
+**Ready to create?**
+- **yes** - proceed with this plan
+- **change X** - modify a setting (e.g., "change name to myblog", "add comments resource")
+- **advanced** - explore more options (kit, pagination, edit mode, CSS framework)
+- **no** - cancel
+```
+
+Then WAIT. Do not execute until user approves.
+
+**If user says "advanced"**, show additional options:
+```
+⚙️ **Advanced Options**
+
+| Option | Current | Alternatives |
+|--------|---------|--------------|
+| Kit | multi | single, simple |
+| CSS Framework | tailwind | pico, bulma, bootstrap |
+| Pagination | infinite scroll | page numbers |
+| Edit Mode | modal | inline, page |
+| Database | sqlite | postgres (requires setup) |
+
+What would you like to change?
+```
+
+**Concrete examples by domain:**
+- "shop app" → products resource with name, price, quantity
+- "blog app" → posts resource with title, content, published
+- "todo app" → tasks resource with title, description, completed, due_date
+- "crm app" → contacts resource with name, email, company, phone
+
+---
 
 ## 🎯 ACTIVATION RULES
 
@@ -78,26 +169,21 @@ This skill activates when **LiveTemplate context is established**:
 
 ---
 
-## 💡 Want to Plan First?
+## 💡 Quickstart vs Brainstorming
 
-If you're not sure about your app structure, consider using the brainstorming skill instead:
+**Quickstart (this skill):**
+- User: "quickstart a blog with lvt"
+- → Shows plan with sensible defaults
+- → Waits for approval, then executes
+- → Best when user knows what they want
 
-**Brainstorming (guided planning):**
+**Brainstorming (guided discovery):**
 - User: "help me plan a livetemplate blog"
-- → Uses `lvt-brainstorm` skill
 - → Asks questions to understand requirements
-- → Shows preview before creating anything
-- → Then executes the plan
+- → Explores options together
+- → Then shows plan and executes
 
-**Quickstart (fast path):**
-- User: "quickstart a blog with lvt posts comments"
-- → Uses `lvt-quickstart` skill
-- → Executes directly with minimal prompting
-- → Best when you know what you want
-
-**When to use which:**
-- **Brainstorm**: New to LiveTemplate, want guidance, unsure about structure
-- **Quickstart**: Know what you want, want speed, have done this before
+**Both skills present a plan and wait for approval before executing.**
 
 ---
 
@@ -119,12 +205,23 @@ If you're not sure about your app structure, consider using the brainstorming sk
 ## Workflow Steps
 
 This skill chains together:
-1. **lvt:new-app** - Create application
-2. **lvt:add-resource** - Add initial resource(s)
-3. **lvt:run-and-test** - Start dev server
-4. **lvt:seed-data** (optional) - Add test data
+1. **Present Plan** - Show complete plan and wait for approval
+2. **lvt:new-app** - Create application
+3. **lvt:add-resource** - Add initial resource(s)
+4. **lvt:run-and-test** - Start dev server
+5. **lvt:seed-data** (optional) - Add test data
 
-### Step 1: Understand Requirements
+### Step 1: Present Plan and Wait for Approval
+
+**This step is MANDATORY. Do NOT skip it.**
+
+1. Extract from user request: app name, domain, resources, auth needs
+2. Apply domain defaults (see Domain Detection below)
+3. Present complete plan in table format
+4. End with "Ready to create?" prompt
+5. **WAIT for user response before proceeding**
+
+### Step 2: Understand Requirements (after approval)
 
 Extract from user request:
 - App name
@@ -174,7 +271,7 @@ lvt gen resource products name price quantity image_url
 Apply migrations:
 ```bash
 lvt migration up
-cd internal/database && sqlc generate && cd ../..
+cd database && sqlc generate && cd ../..
 go mod tidy
 ```
 
@@ -187,7 +284,7 @@ For domains with multiple resources, suggest adding related ones:
 # Add comments with foreign key to posts
 lvt gen resource comments post_id:references:posts:CASCADE content author
 lvt migration up
-cd internal/database && sqlc generate && cd ../..
+cd database && sqlc generate && cd ../..
 ```
 
 **Shop:**
@@ -195,7 +292,7 @@ cd internal/database && sqlc generate && cd ../..
 # Add orders
 lvt gen resource orders user_email:string total:float status:string
 lvt migration up
-cd internal/database && sqlc generate && cd ../..
+cd database && sqlc generate && cd ../..
 ```
 
 ### Step 5: Seed Test Data (Optional)
@@ -222,7 +319,7 @@ cd myblog
 lvt gen resource posts title content published
 lvt gen resource comments post_id:references:posts:CASCADE content author
 lvt migration up
-cd internal/database && sqlc generate && cd ../..
+cd database && sqlc generate && cd ../..
 go mod tidy
 lvt seed posts --count 10
 lvt seed comments --count 30
@@ -235,7 +332,7 @@ lvt new mytodos
 cd mytodos
 lvt gen resource tasks title description due_date completed
 lvt migration up
-cd internal/database && sqlc generate && cd ../..
+cd database && sqlc generate && cd ../..
 go mod tidy
 lvt seed tasks --count 20
 lvt serve
@@ -248,7 +345,7 @@ cd myshop
 lvt gen resource products name price:float quantity:int image_url
 lvt gen resource orders user_email total:float status
 lvt migration up
-cd internal/database && sqlc generate && cd ../..
+cd database && sqlc generate && cd ../..
 go mod tidy
 lvt seed products --count 50
 lvt seed orders --count 100
@@ -257,15 +354,22 @@ lvt serve
 
 ## Checklist
 
+**Plan Phase (MANDATORY):**
 - [ ] Extract app name and domain from user request
-- [ ] Detect domain type and suggest initial resources
+- [ ] Detect domain type and determine resources
+- [ ] Apply domain defaults (fields, auth, kit, seed count)
+- [ ] Present complete plan in table format
+- [ ] Show exact commands that will be run
+- [ ] End with "Ready to create?" prompt
+- [ ] **WAIT for user approval before proceeding**
+
+**Execution Phase (only after approval):**
 - [ ] Use lvt:new-app to create application
 - [ ] Verify app created successfully
 - [ ] Use lvt:add-resource for primary resource
 - [ ] Run migrations and generate models
-- [ ] Suggest related resources based on domain
-- [ ] Add related resources if user agrees
-- [ ] Offer to seed test data
+- [ ] Add auth if included in plan
+- [ ] Seed test data
 - [ ] Use lvt:run-and-test to start dev server
 - [ ] Verify app runs and is accessible
 - [ ] Show user the URL and next steps

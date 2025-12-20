@@ -123,7 +123,7 @@ func TestMigration_CreateCustom(t *testing.T) {
 	}
 
 	// Verify migration file was created
-	migrationsDir := filepath.Join(appDir, "internal/database/migrations")
+	migrationsDir := filepath.Join(appDir, "database/migrations")
 	entries, err := os.ReadDir(migrationsDir)
 	if err != nil {
 		t.Fatalf("Failed to read migrations directory: %v", err)

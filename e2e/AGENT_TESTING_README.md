@@ -80,7 +80,7 @@ To add a new test:
        require.NoError(t, err)
 
        // Verify outcomes
-       env.AssertFileExists("internal/app/items/items.go")
+       env.AssertFileExists("app/items/items.go")
    }
    ```
 3. Run the test to verify it works
@@ -234,7 +234,7 @@ func TestMyWorkflow(t *testing.T) {
     require.NoError(t, err)
 
     // Verify files exist
-    env.AssertFileExists("internal/app/items/items.go")
+    env.AssertFileExists("app/items/items.go")
 }
 ```
 

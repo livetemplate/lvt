@@ -70,9 +70,9 @@ lvt gen schema audit_logs user_id:references:users action:string details:text cr
 ## What It Generates
 
 **Files created:**
-- `internal/database/migrations/<timestamp>_create_<table>.sql` - Migration file
-- Updates `internal/database/schema.sql` - Schema definition
-- Updates `internal/database/queries.sql` - CRUD queries for sqlc
+- `database/migrations/<timestamp>_create_<table>.sql` - Migration file
+- Updates `database/schema.sql` - Schema definition
+- Updates `database/queries.sql` - CRUD queries for sqlc
 
 **Does NOT create:**
 - Handler files (*.go)
@@ -88,7 +88,7 @@ lvt gen schema audit_logs user_id:references:users action:string details:text cr
 - [ ] Run: `lvt gen schema <table> <fields...>`
 - [ ] Verify migration created
 - [ ] Run: `lvt migration up`
-- [ ] Run: `cd internal/database && sqlc generate && cd ../..`
+- [ ] Run: `cd database && sqlc generate && cd ../..`
 - [ ] Run: `go mod tidy`
 - [ ] Verify build succeeds
 
@@ -104,7 +104,7 @@ lvt gen schema audit_logs user_id:references:users action:string details:text cr
 
 **Issue: Build fails after generation**
 - Forgot to run sqlc generate
-- Fix: `cd internal/database && sqlc generate`
+- Fix: `cd database && sqlc generate`
 
 ## Success Response
 
@@ -112,13 +112,13 @@ lvt gen schema audit_logs user_id:references:users action:string details:text cr
 ✅ Schema generated successfully!
 
 Files created/updated:
-  - internal/database/migrations/<timestamp>_create_<table>.sql
-  - internal/database/schema.sql (updated)
-  - internal/database/queries.sql (updated)
+  - database/migrations/<timestamp>_create_<table>.sql
+  - database/schema.sql (updated)
+  - database/queries.sql (updated)
 
 Next steps:
   1. Run migration: lvt migration up
-  2. Generate models: cd internal/database && sqlc generate
+  2. Generate models: cd database && sqlc generate
   3. Use generated types in your handlers
 ```
 

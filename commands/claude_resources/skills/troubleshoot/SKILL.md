@@ -86,14 +86,14 @@ Each category has known solutions and patterns.
 
 **Symptom:**
 ```
-internal/app/posts/posts.go:25:15: undefined: queries
+app/posts/posts.go:25:15: undefined: queries
 ```
 
 **Cause:** sqlc models not generated or outdated
 
 **Solution:**
 ```bash
-cd internal/database
+cd database
 sqlc generate
 cd ../..
 go mod tidy
@@ -107,7 +107,7 @@ go mod tidy
 
 **Symptom:**
 ```
-package myapp/internal/app/auth is not in GOROOT
+package myapp/app/auth is not in GOROOT
 ```
 
 **Cause:** Missing dependency or incorrect module name
@@ -161,15 +161,15 @@ CGO_ENABLED=1 go build
 **Symptom:**
 ```
 import cycle not allowed
-package myapp/internal/app/posts
-	imports myapp/internal/app/auth
-	imports myapp/internal/app/posts
+package myapp/app/posts
+	imports myapp/app/auth
+	imports myapp/app/posts
 ```
 
 **Cause:** Circular dependencies between packages
 
 **Solution:**
-- Move shared code to internal/shared/
+- Move shared code to shared/
 - Use interfaces to break cycles
 - Restructure package dependencies
 
@@ -314,7 +314,7 @@ Error: template: posts.tmpl:45: unexpected EOF
 **Solution:**
 ```bash
 # Use lvt parse to find error
-lvt parse internal/app/posts/posts.tmpl
+lvt parse app/posts/posts.tmpl
 
 # Common issues:
 {{ if .Items }}  # Missing end
@@ -337,7 +337,7 @@ Error: template: posts.tmpl:20: can't evaluate field Title in type *models.Post
 **Solution:**
 ```bash
 # Check database model
-cat internal/database/models.go | grep "type Post"
+cat database/models.go | grep "type Post"
 
 # Verify field names match (case-sensitive)
 # Title vs title
@@ -598,7 +598,7 @@ ls static/
 
 **Symptom:**
 ```
-Error: cannot find package "myapp/internal/app/posts"
+Error: cannot find package "myapp/app/posts"
 ```
 
 **Cause:** Files not copied to Docker image
@@ -702,7 +702,7 @@ sqlite3 dev.db ".tables"
 lvt migration status
 
 # Validate template
-lvt parse internal/app/posts/posts.tmpl
+lvt parse app/posts/posts.tmpl
 
 # Test build
 go build -v

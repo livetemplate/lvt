@@ -157,19 +157,19 @@ Generate a full CRUD resource with database integration.
   "success": true,
   "message": "Resource generated successfully",
   "files_created": [
-    "internal/app/posts/posts.go",
-    "internal/app/posts/posts.tmpl",
-    "internal/database/migrations/20240101120000_create_posts.sql"
+    "app/posts/posts.go",
+    "app/posts/posts.tmpl",
+    "database/migrations/20240101120000_create_posts.sql"
   ]
 }
 ```
 
 **Generated Files:**
-- `internal/app/{resource}/{resource}.go` - CRUD handler
-- `internal/app/{resource}/{resource}.tmpl` - UI template
-- `internal/app/{resource}/{resource}_test.go` - E2E tests
-- `internal/database/migrations/*.sql` - Migration file
-- `internal/database/queries.sql` - SQL queries (appended)
+- `app/{resource}/{resource}.go` - CRUD handler
+- `app/{resource}/{resource}.tmpl` - UI template
+- `app/{resource}/{resource}_test.go` - E2E tests
+- `database/migrations/*.sql` - Migration file
+- `database/queries.sql` - SQL queries (appended)
 
 ---
 
@@ -475,7 +475,7 @@ Create a new empty migration file.
 {
   "success": true,
   "message": "Migration created",
-  "file_path": "internal/database/migrations/20240103160000_add_indexes.sql"
+  "file_path": "database/migrations/20240103160000_add_indexes.sql"
 }
 ```
 
@@ -631,7 +631,7 @@ Validate and analyze a template file.
 ```json
 // Input
 {
-  "template_file": "internal/app/posts/posts.tmpl"
+  "template_file": "app/posts/posts.tmpl"
 }
 
 // Output

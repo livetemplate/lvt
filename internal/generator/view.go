@@ -54,7 +54,7 @@ func GenerateView(basePath, moduleName, viewName string, kitName, cssFramework s
 	}
 
 	// Create view directory
-	viewDir := filepath.Join(basePath, "internal", "app", viewNameLower)
+	viewDir := filepath.Join(basePath, "app", viewNameLower)
 	if err := os.MkdirAll(viewDir, 0755); err != nil {
 		return fmt.Errorf("failed to create view directory: %w", err)
 	}
@@ -97,7 +97,7 @@ func GenerateView(basePath, moduleName, viewName string, kitName, cssFramework s
 			Path:        "/" + viewNameLower,
 			PackageName: viewNameLower,
 			HandlerCall: viewNameLower + ".Handler()",
-			ImportPath:  moduleName + "/internal/app/" + viewNameLower,
+			ImportPath:  moduleName + "/app/" + viewNameLower,
 		}
 		if err := InjectRoute(mainGoPath, route); err != nil {
 			// Log warning but don't fail - user can add route manually

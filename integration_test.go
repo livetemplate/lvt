@@ -16,7 +16,7 @@ func TestGeneratedCodeSyntax(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Create database directory structure
-	dbDir := filepath.Join(tmpDir, "internal", "database")
+	dbDir := filepath.Join(tmpDir, "database")
 	if err := os.MkdirAll(dbDir, 0755); err != nil {
 		t.Fatalf("Failed to create database directory: %v", err)
 	}
@@ -38,8 +38,8 @@ func TestGeneratedCodeSyntax(t *testing.T) {
 
 	// Check generated Go files for syntax errors
 	goFiles := []string{
-		filepath.Join(tmpDir, "internal", "app", "user", "user.go"),
-		filepath.Join(tmpDir, "internal", "app", "counter", "counter.go"),
+		filepath.Join(tmpDir, "app", "user", "user.go"),
+		filepath.Join(tmpDir, "app", "counter", "counter.go"),
 	}
 
 	for _, file := range goFiles {
@@ -89,10 +89,10 @@ func TestGeneratedFilesExist(t *testing.T) {
 		"go.mod",
 		"README.md",
 		"cmd/testapp/main.go",
-		"internal/database/db.go",
-		"internal/database/schema.sql",
-		"internal/database/queries.sql",
-		"internal/database/sqlc.yaml",
+		"database/db.go",
+		"database/schema.sql",
+		"database/queries.sql",
+		"database/sqlc.yaml",
 	}
 
 	for _, file := range expectedAppFiles {
@@ -113,9 +113,9 @@ func TestGeneratedFilesExist(t *testing.T) {
 
 	// Check resource files
 	expectedResourceFiles := []string{
-		"internal/app/post/post.go",
-		"internal/app/post/post.tmpl",
-		"internal/app/post/post_test.go",
+		"app/post/post.go",
+		"app/post/post.tmpl",
+		"app/post/post_test.go",
 	}
 
 	for _, file := range expectedResourceFiles {
@@ -132,9 +132,9 @@ func TestGeneratedFilesExist(t *testing.T) {
 
 	// Check view files
 	expectedViewFiles := []string{
-		"internal/app/dashboard/dashboard.go",
-		"internal/app/dashboard/dashboard.tmpl",
-		"internal/app/dashboard/dashboard_test.go",
+		"app/dashboard/dashboard.go",
+		"app/dashboard/dashboard.tmpl",
+		"app/dashboard/dashboard_test.go",
 	}
 
 	for _, file := range expectedViewFiles {
@@ -152,7 +152,7 @@ func TestForeignKeyGeneration(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Create database directory structure
-	dbDir := filepath.Join(tmpDir, "internal", "database", "migrations")
+	dbDir := filepath.Join(tmpDir, "database", "migrations")
 	if err := os.MkdirAll(dbDir, 0755); err != nil {
 		t.Fatalf("Failed to create database directory: %v", err)
 	}
@@ -187,7 +187,7 @@ func TestForeignKeyGeneration(t *testing.T) {
 	}
 
 	// Read the generated migration file for comments
-	migrationsDir := filepath.Join(tmpDir, "internal", "database", "migrations")
+	migrationsDir := filepath.Join(tmpDir, "database", "migrations")
 	entries, err := os.ReadDir(migrationsDir)
 	if err != nil {
 		t.Fatalf("Failed to read migrations directory: %v", err)
@@ -235,7 +235,7 @@ func TestForeignKeyGeneration(t *testing.T) {
 	}
 
 	// Check schema.sql as well
-	schemaPath := filepath.Join(tmpDir, "internal", "database", "schema.sql")
+	schemaPath := filepath.Join(tmpDir, "database", "schema.sql")
 	schemaData, err := os.ReadFile(schemaPath)
 	if err != nil {
 		t.Fatalf("Failed to read schema.sql: %v", err)

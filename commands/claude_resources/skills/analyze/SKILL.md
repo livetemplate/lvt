@@ -140,9 +140,9 @@ Check file structure:
 === Code Organization ===
 
 App Structure:
-✅ internal/app/ - Handler organization
-✅ internal/database/ - Database layer
-✅ internal/shared/ - Shared utilities
+✅ app/ - Handler organization
+✅ database/ - Database layer
+✅ shared/ - Shared utilities
 
 Resources with Full Stack:
 - posts (handler, template, tests)

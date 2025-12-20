@@ -1,719 +1,357 @@
 ---
 name: lvt-plan
-description: Plan and create LiveTemplate applications - Interactive workflow for creating new LiveTemplate/lvt apps. Use for "create/build/make a lvt/livetemplate [type] app/application". Asks progressive questions about app name, resources, auth, and styling before generating code.
+description: "Use when creating new LiveTemplate/lvt apps - this is THE definitive skill for lvt app creation. Supersedes generic brainstorming/planning skills. Triggers: 'create/build/make a lvt/livetemplate [type] app', 'plan a livetemplate app'."
 keywords: ["lvt", "livetemplate", "lt", "app", "application", "create", "build", "make", "new", "plan"]
 requires_keywords: true
 category: workflows
-version: 1.1.0
+version: 1.3.0
 ---
 
 # lvt-plan
 
-Interactive planning skill that guides users through progressive questions to design their LiveTemplate application before generating any code.
+Plan-first skill for creating LiveTemplate applications. Presents a complete plan with sensible defaults upfront, lets user modify before execution.
 
-## 🎯 ACTIVATION RULES
+## SKILL PRIORITY
 
-### Special Rule: Always Requires Keywords
+**This is THE definitive skill for LiveTemplate app creation. Use it directly - do NOT use generic brainstorming or planning skills first.**
 
-**Unlike other skills**, brainstorming ALWAYS requires keywords, even if:
-- `.lvtrc` exists (already in project)
-- `lvt-assistant` agent is active
-- Previous keywords established context
+When a user says "create a lvt blog app" or similar:
+- Use `lvt-plan` directly - it handles the planning process
+- Do NOT use generic creative/brainstorming skills first
 
-**Why**: "Help me plan an app" is too generic - user might want to plan any type of app (Next.js, Rails, etc.). Requiring keywords ensures they want LiveTemplate planning.
+**Why**: This skill is domain-specific for LiveTemplate and provides a tailored experience with lvt-specific defaults (resources, auth, kits, pagination, etc.). Generic brainstorming skills lack this context.
+
+---
+
+## ACTIVATION RULES
 
 ### Keyword Matching
 
-**Accepted keywords** (case-insensitive, whole words):
+**Accepted keywords** (case-insensitive):
 - `lvt`
 - `livetemplate`
 - `lt`
 
-**Accepted patterns:**
-
-**Planning patterns:**
-✅ "help me plan a **livetemplate** app"
-✅ "walk me through **lvt** project design"
-✅ "**lt** brainstorm for blog"
-✅ "design a shop **with livetemplate**"
-✅ "use **lvt** to help me plan"
-
-**Creation patterns (WITHOUT specific resources):**
-✅ "create a **lvt** blog app" (domain mentioned, no resources)
-✅ "build a **livetemplate** shop" (domain mentioned, no resources)
-✅ "make an **lvt** CRM" (domain mentioned, no resources)
-✅ "start a **livetemplate** todo app" (domain mentioned, no resources)
-
-❌ "help me plan an app" (too generic, even with context)
-❌ "let's brainstorm" (no LiveTemplate keywords)
-❌ "create an app" (no keywords, too generic)
-
-### Examples
-
 **Will Activate:**
-- "Help me plan a LiveTemplate blog"
-- "Walk me through creating an lvt e-commerce app"
-- "I want to brainstorm a todo app using livetemplate"
-- "Can you help me design a CRM with lvt?"
-- **"Create a lvt blog app"** ✅ NEW: Domain without resources
-- **"Build a livetemplate shop"** ✅ NEW: Domain without resources
-- **"Make an lvt todo application"** ✅ NEW: Domain without resources
+- "Create a **lvt** blog app"
+- "Build a **livetemplate** shop with auth"
+- "Make an **lt** todo application"
+- "Help me plan a **livetemplate** app"
 
 **Won't Activate:**
 - "Help me plan a blog" (no keywords)
-- "Let's brainstorm an app" (no keywords)
-- "I need help designing my application" (no keywords)
-- "Create blog app with posts(title,content) and multi kit" (detailed requirements, skip to new-app)
+- "Create an app" (no keywords)
+- "Create blog app with posts(title,content)" (detailed spec → use new-app skill directly)
 
 ---
 
-## Purpose
+## THE FLOW: Plan-First
 
-Guide users through progressive questions to understand requirements, then execute appropriate LiveTemplate commands.
-
-**Not a CLI command** - purely conversational in Claude Code.
-
-**Progressive disclosure**: Start with 3-5 core questions, offer "more options" for detailed configuration.
-
----
-
-## Progressive Question Flow
-
-### Pre-Question Analysis
-
-**IMPORTANT:** Before asking any questions, analyze the user's initial prompt to extract information they've already provided.
-
-#### Step 1: Show Opening Summary
-
-After analyzing the prompt, show what you understood:
-
-"👋 I'll help you create a LiveTemplate {domain} application!
-
-**What I understood from your request:**
-{extracted_info_summary}
-
-Let me ask a few questions to complete the setup..."
-
-**Example summaries:**
-
-User: "create a lvt blog app"
 ```
-👋 I'll help you create a LiveTemplate blog application!
-
-**What I understood:**
-✅ App name: blog
-✅ Domain: Blog (posts, comments, etc.)
-
-Let me ask a few questions to complete the setup...
+User request
+     ↓
+┌─────────────────────────────┐
+│ 1. INFER from request       │
+│    - App name               │
+│    - Domain (blog/shop/etc) │
+│    - Auth (if mentioned)    │
+└─────────────────────────────┘
+     ↓
+┌─────────────────────────────┐
+│ 2. APPLY domain defaults    │
+│    - Primary resource       │
+│    - Fields                 │
+│    - Typical settings       │
+└─────────────────────────────┘
+     ↓
+┌─────────────────────────────┐
+│ 3. PRESENT complete plan    │
+│    - All settings in table  │
+│    - Commands to execute    │
+│    - "Ready?" prompt        │
+└─────────────────────────────┘
+     ↓
+User: "yes" → Execute
+User: "change X" → Update plan, show again
+User: "no" → Cancel
 ```
 
-User: "build a todo-app using lvt"
+---
+
+## Step 1: Infer from User Request
+
+Extract as much as possible from the initial prompt:
+
+| Pattern | Extract |
+|---------|---------|
+| "create a lvt **blog** app" | name=blog, domain=Blog |
+| "build **myblog** with lvt" | name=myblog, domain=Blog |
+| "lvt **shop** with auth" | name=shop, domain=E-commerce, auth=yes |
+| "make a **todo-app** using lt" | name=todo-app, domain=Todo |
+| "create a lvt app" | name=?, domain=? (need to ask) |
+
+**If domain is unclear**: Ask ONE question: "What type of app are you building? (blog, shop, todo, crm, or describe it)"
+
+---
+
+## Step 2: Apply Domain Defaults
+
+Use domain-specific intelligence to fill in all settings:
+
+### Blog Domain
 ```
-👋 I'll help you create a LiveTemplate task management application!
-
-**What I understood:**
-✅ App name: todo-app
-✅ Domain: Todo/Tasks
-
-Let me ask a few questions to complete the setup...
+name: blog (or extracted)
+resource: posts
+fields: title:string, content:text, published:bool
+auth: optional (default: no)
+kit: multi
+seed: 50
 ```
 
-User: "create a lvt app"
+### E-commerce Domain
 ```
-👋 I'll help you create a LiveTemplate application!
-
-I'll need to ask you a few questions to understand what you want to build...
+name: shop (or extracted)
+resource: products
+fields: name:string, description:text, price:float, quantity:int
+auth: optional (default: no)
+kit: multi
+seed: 50
 ```
 
-#### Step 2: Extract App Name from Initial Prompt
+### Todo Domain
+```
+name: todo (or extracted)
+resource: tasks
+fields: title:string, description:text, completed:bool, due_date:time
+auth: yes (each user has own tasks)
+kit: multi
+seed: 50
+```
 
-Look for app name patterns in the user's message:
+### CRM Domain
+```
+name: crm (or extracted)
+resource: contacts
+fields: name:string, email:string, company:string, phone:string
+auth: yes (sales team accounts)
+kit: multi
+seed: 50
+```
 
-**Common patterns:**
-- "create a **{name}** app/application"
-- "build a **{name}** [using] lvt"
-- "make a **{name}** project/site"
-- "I want to create **{name}**"
-- "{name} app with livetemplate"
+### Forum Domain
+```
+name: forum (or extracted)
+resource: topics
+fields: title:string, content:text, pinned:bool
+auth: yes
+kit: multi
+seed: 50
+```
 
-**Examples:**
-- "create a lvt **blog** app" → extracted name: `blog`
-- "build a **todo-app** using lvt" → extracted name: `todo-app`
-- "make a **shop** application" → extracted name: `shop`
-- "create **my-awesome-blog**" → extracted name: `my-awesome-blog`
-
-#### Validate Extracted Name
-
-If a name is found, validate it:
-- ✅ **Valid:** Lowercase, alphanumeric, hyphens only (regex: `^[a-z][a-z0-9-]*$`)
-- ❌ **Invalid:** Contains uppercase, spaces, special characters
-
-**If valid:**
-- Skip Question 1
-- Confirm with user: "✅ I'll create an app called **'{name}'**. Let's configure it..."
-- Proceed directly to Question 2
-
-**If invalid:**
-- Suggest corrected version (lowercase, replace spaces with hyphens)
-- Ask Question 1: "I noticed you mentioned '{name}', but app names must be lowercase with hyphens. How about '{suggested_name}' instead?"
-
-**If no name found or ambiguous:**
-- Ask Question 1 normally
-
----
-
-### Phase 1: Core Questions (Always Ask)
-
-Ask these questions to establish basics (skip any already answered in pre-analysis):
-
-#### Question 1: App Name (Skip if extracted from prompt)
-"What would you like to name your app?
-
-This will be:
-- The directory name (e.g., `myblog`)
-- The Go module name (e.g., `github.com/yourname/myblog`)
-- Used in your code and configuration
-
-**Requirements:**
-- Lowercase letters, numbers, hyphens
-- No spaces or special characters
-- Example: `myblog`, `todo-app`, `my-shop`
-
-Your answer:"
-
-#### Question 2: App Domain (Skip if obvious from prompt)
-
-**First, check if domain is mentioned in the initial prompt:**
-- "create a lvt **blog** app" → domain: Blog
-- "build a **shop** application" → domain: E-commerce
-- "make a **todo** app" → domain: Todo/Tasks
-- "create a **forum**" → domain: Forum
-- "build a **crm**" → domain: CRM
-
-**If domain is clear:**
-- Skip Question 2
-- Confirm: "✅ Building a **{domain}** application..."
-- Proceed to Question 3
-
-**If unclear, ask:**
-
-"What type of application are you building?
-
-Common types:
-- **Blog** (posts, comments, categories)
-- **E-commerce** (products, orders, cart)
-- **SaaS** (users, organizations, subscriptions)
-- **Todo/Tasks** (tasks, projects, labels)
-- **CRM** (contacts, deals, activities)
-- **Forum** (topics, posts, replies)
-- **Other** (describe it)
-
-Your answer:"
-
-#### Question 3: Primary Resource (Can infer from domain)
-
-**If domain is known, suggest the obvious primary resource:**
-
-- Blog → suggest `posts`
-- E-commerce/Shop → suggest `products`
-- Todo/Tasks → suggest `tasks`
-- CRM → suggest `contacts`
-- Forum → suggest `topics`
-- SaaS → suggest `users` or `organizations`
-
-**Smart prompt:**
-
-"For a **{domain}** app, the primary resource is typically **{suggested_resource}**.
-
-Would you like to use **{suggested_resource}**, or something different?
-
-Your answer (press Enter for '{suggested_resource}', or type custom name):"
-
-**If domain is "Other" or no clear suggestion:**
-
-"What's the main thing you're tracking in your app?
-
-Examples:
-- Blog → `posts`
-- Shop → `products`
-- Todos → `tasks`
-- CRM → `contacts`
-
-Your answer:"
-
-#### Question 3: Authentication
-"Will users need to log in to your app?
-
-Options:
-- **Yes, with password** (email + password login)
-- **Yes, passwordless** (magic link via email)
-- **Yes, both** (password + magic link options)
-- **No** (public app, no user accounts)
-
-Your answer:"
-
-#### Question 4: Related Resources
-"Besides {primary_resource}, are you tracking anything else?
-
-For a blog → maybe `comments`, `categories`, `tags`?
-For a shop → maybe `orders`, `reviews`, `cart_items`?
-For todos → maybe `projects`, `labels`, `users`?
-
-List them separated by commas, or say 'none':
-Your answer:"
-
-#### Question 5: Test Data
-"Want me to generate sample data for testing?
-
-Options:
-- **10 records** (quick testing)
-- **50 records** (realistic amount)
-- **100 records** (stress testing)
-- **None** (I'll add my own data)
-
-Your answer:"
+### Generic/Unknown Domain
+```
+name: app (or extracted)
+resource: items
+fields: name:string, description:text
+auth: no
+kit: multi
+seed: 50
+```
 
 ---
 
-### Phase 2: Summary & Offer More Options
+## Step 3: Present Complete Plan
 
-After collecting core answers, show summary and offer to dive deeper:
+Show the FULL plan immediately. Do not ask questions one-by-one.
 
-"📋 **Summary So Far**
+**Template:**
 
-- **App name**: {app_name}
-- **App type**: {domain}
-- **Primary resource**: {primary_resource}
-- **Authentication**: {yes/no + method}
-- **Related data**: {related_resources or "none"}
-- **Test data**: {count} records
+```
+📋 **Plan for your {domain} app**
 
-I have enough information to create a working app!
+| Setting | Value |
+|---------|-------|
+| App name | {name} |
+| Primary resource | {resource} |
+| Fields | {fields} |
+| Authentication | {auth_description} |
+| Kit | {kit} ({css_framework}) |
+| Test data | {seed_count} records |
 
-**Want to configure more details?**
-- Field types (I'll infer smart defaults, but you can customize)
-- Pagination style (infinite scroll, load more, page numbers)
-- Edit mode (modal popup vs dedicated page)
-- CSS framework (Tailwind, Bulma, Pico, none)
+**Commands I'll run:**
 
-Configure more options? (yes/no):"
-
-**If NO** → Skip to Phase 4 (Preview)
-**If YES** → Continue to Phase 3
-
----
-
-### Phase 3: Detailed Configuration (Optional)
-
-Only ask these if user wants detailed configuration:
-
-#### Question 6: Field Types
-"What fields should **{primary_resource}** have?
-
-**Option A: Let me infer** (recommended for speed):
-Just list field names: `title content published`
-
-**Option B: Specify types explicitly**:
-`title:string content:text published:bool published_at:time`
-
-**Available types:**
-- `string` - Short text (VARCHAR)
-- `text` - Long text, textarea (TEXT)
-- `int` - Integer numbers
-- `float` - Decimal numbers
-- `bool` - True/false checkbox
-- `time` - Timestamp (created_at, updated_at)
-- `references:{table}` - Foreign key to another table
-
-Your answer:"
-
-#### Question 7: Pagination Style
-"How should the **{primary_resource}** list display items?
-
-Options:
-1. **Infinite scroll** - Load more as you scroll down (like Twitter)
-2. **Load more button** - Manual click to load more (like Instagram)
-3. **Prev/Next buttons** - Simple forward/back navigation
-4. **Page numbers** - Numbered pages 1, 2, 3... (like Google)
-
-Your answer (1-4 or name):"
-
-#### Question 8: Edit Mode
-"Where should users edit **{primary_resource}**?
-
-Options:
-1. **Modal popup** - Overlay dialog, stays on same page (default)
-2. **Dedicated page** - Separate URL like `/posts/123/edit`
-
-Your answer (1-2 or name):"
-
-#### Question 9: App Architecture
-"What type of application architecture do you need?
-
-Options:
-1. **Multi-page app** - Full-featured CRUD with layouts (uses Tailwind CSS)
-2. **Single-page app** - Component-based SPA (uses Tailwind CSS)
-3. **Quick prototype** - Minimal example to start (uses Pico CSS)
-
-Your answer (1-3 or name):"
-
-#### Question 10: Related Resources Details
-
-For each related resource mentioned, ask:
-
-"For **{related_resource}**:
-
-**Fields**: List fields (or 'auto' to let me infer)
-Your answer:
-
-**Relationship to {primary_resource}**:
-- **belongs_to** - Each {related_resource} has ONE {primary_resource}
-- **has_many** - Each {primary_resource} has MANY {related_resource}
-
-Your answer:"
-
----
-
-### Phase 4: Complete Preview & Confirmation
-
-Show the complete plan before executing anything:
-
-"📋 **Complete Plan**
-
-## App Configuration
-
-- **Name**: {app_name}
-- **Domain**: {domain}
-- **Architecture**: {architecture} (Kit: {kit_name})
-- **CSS Framework**: {css_framework} (locked to kit)
-- **Authentication**: {auth_method or "None"}
-
-## Resources
-
-### 1. {primary_resource}
-- **Fields**: {fields}
-- **Pagination**: {pagination_style}
-- **Edit Mode**: {edit_mode}
-- **Test Records**: {count}
-
-### 2. {related_resource} (if any)
-- **Fields**: {fields}
-- **Relationship**: {relationship} {primary_resource}
-- **Test Records**: {count}
-
----
-
-## Commands I Will Execute
-
-**IMPORTANT**: Create the app in the current working directory (CWD), NOT in /tmp or a git worktree.
-New applications should be created directly in the user's current location.
-
-**Kit Selection Based on Architecture**:
-- Multi-page app → use `--kit multi` (includes Tailwind CSS)
-- Single-page app → use `--kit single` (includes Tailwind CSS)
-- Quick prototype → use `--kit simple` (includes Pico CSS)
-
-**Note**: CSS framework is locked per kit. There is no --css flag for lvt new.
-
-\`\`\`bash
-# 1. Create app in current directory with chosen kit
-lvt new {app_name} --kit {kit}
-cd {app_name}
-
-# 2. Generate primary resource
-# CSS framework comes from kit - no --css flag needed
-lvt gen resource {primary_resource} {fields} \\
-  --pagination {pagination_style} \\
-  --edit-mode {edit_mode}
-
-# 3. Generate related resource(s)
-lvt gen resource {related_resource} {fields_with_foreign_key}
-
-# 4. Add authentication (if requested)
-lvt gen auth {options}
-
-# 5. Apply database migrations
+lvt new {name} --kit {kit}
+cd {name}
+lvt gen resource {resource} {fields}
+{auth_command if auth}
 lvt migration up
-cd internal/database && sqlc generate && cd ../..
 go mod tidy
+lvt seed {resource} --count {seed_count}
 
-# 6. Generate test data
-lvt seed {primary_resource} --count {count}
-lvt seed {related_resource} --count {count}
+**Ready to create?**
+- **yes** - proceed with this plan
+- **change X** - modify a setting
+- **advanced** - explore more options
+- **no** - cancel
+```
 
-# 7. Start development server
-PORT=8080 go run cmd/{app_name}/main.go
-\`\`\`
+**If user says "advanced"**, show additional options:
+```
+⚙️ **Advanced Options**
 
----
+| Option | Current | Alternatives |
+|--------|---------|--------------|
+| Kit | multi | single, simple |
+| CSS Framework | tailwind | pico, bulma, bootstrap |
+| Pagination | infinite scroll | page numbers |
+| Edit Mode | modal | inline, page |
+| Database | sqlite | postgres (requires setup) |
 
-## Files That Will Be Created
+What would you like to change?
+```
 
-\`\`\`
-{app_name}/
-├── cmd/{app_name}/
-│   └── main.go                    ← Entry point
-├── internal/
-│   ├── app/
-│   │   ├── home/                  ← Homepage
-│   │   ├── {primary_resource}/
-│   │   │   ├── handler.go         ← HTTP handlers
-│   │   │   ├── routes.go          ← URL routes
-│   │   │   └── {primary_resource}.tmpl  ← HTML template
-│   │   ├── {related_resource}/
-│   │   │   └── ... (same structure)
-│   │   └── auth/ (if enabled)
-│   │       ├── handler.go
-│   │       ├── middleware.go
-│   │       ├── login.tmpl
-│   │       └── register.tmpl
-│   ├── database/
-│   │   ├── migrations/             ← SQL migration files
-│   │   ├── queries.sql             ← SQL queries for all resources
-│   │   ├── schema.sql              ← Combined schema
-│   │   ├── models/                 ← Generated by sqlc
-│   │   │   └── models.go
-│   │   ├── db.go                   ← Database connection
-│   │   └── sqlc.yaml               ← sqlc configuration
-│   └── shared/                     ← Shared utilities
-├── web/
-│   └── assets/
-│       ├── css/                    ← Stylesheets
-│       └── js/                     ← JavaScript
-├── go.mod
-├── go.sum
-└── .lvtrc                          ← Project config
-\`\`\`
+**Example - Blog with auth:**
 
----
+```
+📋 **Plan for your blog app**
 
-**Ready to proceed?**
+| Setting | Value |
+|---------|-------|
+| App name | blog |
+| Primary resource | posts |
+| Fields | title:string, content:text, published:bool |
+| Authentication | Password (email + password) |
+| Kit | multi (Tailwind CSS) |
+| Test data | 50 records |
 
-**1. Yes, create it!** → I'll execute all commands
-**2. Let me customize** → Modify steps before executing
-**3. Cancel** → Don't create anything
+**Commands I'll run:**
 
-Your choice:"
+lvt new blog --kit multi
+cd blog
+lvt gen resource posts title:string content:text published:bool
+lvt gen auth
+lvt migration up
+go mod tidy
+lvt seed posts --count 50
 
-**Based on answer:**
-- **1 (Yes)** → Execute Phase 5
-- **2 (Customize)** → Ask what to change, update plan, show preview again
-- **3 (Cancel)** → Confirm cancellation, stop
+**Ready to create?**
+- **yes** - proceed with this plan
+- **change X** - modify a setting
+- **advanced** - explore more options
+- **no** - cancel
+```
 
 ---
 
-### Phase 5: Execution
+## Handling User Responses
+
+### "yes" / "y" / "go" / "create" / "do it"
+Execute the plan immediately. Proceed to Execution phase.
+
+### "no" / "cancel" / "stop"
+Acknowledge and stop: "No problem. Let me know when you're ready to create an app."
+
+### "advanced" / "options" / "customize"
+Show the advanced options table:
+
+| Option | Description | Values |
+|--------|-------------|--------|
+| Kit | Project structure | multi (recommended), single, simple |
+| CSS Framework | Styling | tailwind (default), pico, bulma, bootstrap |
+| Pagination | List navigation | infinite (default), page |
+| Edit Mode | How items are edited | modal (default), inline, page |
+| Database | Data storage | sqlite (default), postgres |
+
+After user selects options, update the plan and show it again.
+
+### Modification Requests
+Update the plan and show it again. Examples:
+
+| User says | Action |
+|-----------|--------|
+| "no auth" | Remove auth, show updated plan |
+| "add auth" | Add `lvt gen auth`, show updated plan |
+| "add comments" | Add comments resource with post_id reference |
+| "call it myblog" | Change app name to myblog |
+| "use pico" / "simple kit" | Change kit to simple (Pico CSS) |
+| "100 records" | Change seed count to 100 |
+| "add categories" | Add categories resource |
+
+After updating, show the plan again with: "Updated plan: ... Ready to create?"
+
+---
+
+## Execution Phase
 
 Execute commands sequentially, showing progress:
 
-"🚀 **Creating your {app_name} app...**
+```
+🚀 **Creating your {name} app...**
 
-⏳ Step 1/7: Creating app structure...
-✅ Created app with `lvt new {app_name}`
+⏳ Creating app structure...
+✅ Created with `lvt new {name} --kit {kit}`
 
-⏳ Step 2/7: Generating {primary_resource} resource...
-✅ Generated {primary_resource} with {field_count} fields
+⏳ Generating {resource} resource...
+✅ Generated {resource} with {field_count} fields
 
-⏳ Step 3/7: Generating {related_resource} resource...
-✅ Generated {related_resource} with foreign key to {primary_resource}
+⏳ Adding authentication... (if applicable)
+✅ Auth system added
 
-⏳ Step 4/7: Adding authentication system...
-✅ Generated auth with {auth_method}
+⏳ Running migrations...
+✅ Database ready
 
-⏳ Step 5/7: Applying database migrations...
-✅ Migrations applied, models generated with sqlc
+⏳ Seeding test data...
+✅ Added {seed_count} {resource} records
 
-⏳ Step 6/7: Generating test data...
-✅ Seeded {count} {primary_resource} records
-✅ Seeded {count} {related_resource} records
+🎉 **Done! Your {name} app is ready.**
 
-⏳ Step 7/7: Starting development server...
-✅ Server running at http://localhost:8080
+Start the server:
+  cd {name}
+  go run cmd/{name}/main.go
 
----
-
-🎉 **Success! Your {app_name} is ready!**
-
-## What Just Happened
-
-I created a complete LiveTemplate application with:
-- ✅ {resource_count} database-backed resources
-- ✅ {auth_status} authentication system
-- ✅ {count} test records for each resource
-- ✅ Full CRUD operations (Create, Read, Update, Delete)
-- ✅ Real-time updates via WebSockets
-- ✅ {css_framework} styling
-
-## Try It Out
-
-1. **Visit**: http://localhost:8080/{primary_resource}
-2. **Create** new {primary_resource}
-3. **Edit** existing {primary_resource}
-4. **Delete** {primary_resource}
-5. **Check database**: `cat internal/database/db.sqlite | head`
-
-## Next Steps
-
-Want to add more features? Just ask:
-- \"Add search to {primary_resource}\"
-- \"Add file upload for {primary_resource} images\"
-- \"Add a dashboard view\"
-- \"Add email notifications\"
-- \"Deploy to production\"
-
----
-
-**Note**: LiveTemplate context is now established. You can use generic prompts like \"add search\" without saying \"lvt\" or \"livetemplate\" each time."
+Then visit: http://localhost:8080/{resource}
+```
 
 ---
 
 ## Error Handling
 
-If any command fails during execution:
+If any command fails:
 
-### 1. Show Exact Error
-Display the command output verbatim in a code block.
+1. **Show exact error** in code block
+2. **Explain in plain language**
+3. **Suggest fix**
+4. **Offer to retry**
 
-### 2. Explain in Plain Language
-"❌ **Failed at Step {N}: {step_name}**
+Common errors:
 
-The `{command}` command failed with this error:
-
-\`\`\`
-{error_output}
-\`\`\`
-
-**What this means**: {plain_language_explanation}"
-
-### 3. Suggest Fix
-Based on common error patterns:
-
-**Error: `lvt: command not found`**
-- **Cause**: LiveTemplate CLI not installed
-- **Fix**: `go install github.com/livetemplate/lvt@latest`
-- **Then**: Add `$GOPATH/bin` to PATH, or run `export PATH=$PATH:$(go env GOPATH)/bin`
-
-**Error: `directory already exists`**
-- **Cause**: An app with name `{app_name}` already exists
-- **Fix Option 1**: Choose different name: \"Let's use {app_name}2 instead\"
-- **Fix Option 2**: Delete existing: `rm -rf {app_name}` (⚠️ loses data!)
-
-**Error: `go mod tidy failed`**
-- **Cause**: Network issues or Go proxy problems
-- **Fix**: Check internet connection, retry with `GOPROXY=direct go mod tidy`
-
-**Error: `go build` failed**
-- **Cause**: Code generation or dependency issues
-- **Fix**: Run `cd internal/database && sqlc generate` manually
-- **Then**: Try `go mod tidy` again
-
-**Error: `port already in use`**
-- **Cause**: Another process using port 8080
-- **Fix Option 1**: Kill process: `lsof -ti:8080 | xargs kill`
-- **Fix Option 2**: Use different port: `PORT=8081 go run cmd/{app_name}/main.go`
-
-### 4. Offer to Retry
-"Would you like me to:
-1. **Retry** after you fix the issue
-2. **Skip this step** and continue with next steps
-3. **Cancel** the whole operation
-
-Your choice:"
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `lvt: command not found` | CLI not installed | `go install github.com/livetemplate/lvt@latest` |
+| `directory already exists` | Name taken | Choose different name or delete existing |
+| `go mod tidy failed` | Network issue | Retry with `GOPROXY=direct go mod tidy` |
+| `port already in use` | Port 8080 busy | Use `PORT=8081 go run ...` |
 
 ---
 
 ## Context Persistence
 
-After brainstorming completes successfully:
-
-✅ **LiveTemplate context established**
-- You're now in a LiveTemplate project (`.lvtrc` exists)
-- Generic prompts will use LiveTemplate skills automatically
-- No need to say "lvt" or "livetemplate" in every message
-
-**Examples of what you can now say:**
-- "Add a dashboard view"
-- "Add search functionality"
-- "Generate more test data"
-- "Add file uploads"
-- "Deploy this to production"
-
-All of these will use the appropriate `lvt-*` skills automatically.
-
----
-
-## Domain-Specific Intelligence
-
-### Blog Domain
-**Typical structure:**
-- Primary: `posts` (title, content, published_at, author_id)
-- Related: `comments` (post_id, content, author), `categories`, `tags`
-- Auth: Yes (authors need accounts)
-- Features: Rich text editing, categories, tags, comments
-
-### E-commerce Domain
-**Typical structure:**
-- Primary: `products` (name, price, quantity, image_url)
-- Related: `orders` (user_email, total, status), `cart_items`, `reviews`
-- Auth: Optional (guest checkout vs user accounts)
-- Features: Shopping cart, checkout, payment integration, inventory
-
-### Todo/Task Management
-**Typical structure:**
-- Primary: `tasks` (title, description, due_date, completed, user_id)
-- Related: `projects` (name, description), `labels`, `assignments`
-- Auth: Yes (each user has their own tasks)
-- Features: Filtering, sorting, due dates, priorities
-
-### SaaS/Multi-tenant
-**Typical structure:**
-- Primary: `organizations` or `workspaces`
-- Related: `users` (org_id), `projects`, `subscriptions`
-- Auth: Yes (complex: users belong to orgs)
-- Features: Roles, permissions, billing, teams
-
-### CRM
-**Typical structure:**
-- Primary: `contacts` (name, email, company, phone)
-- Related: `deals` (contact_id, value, stage), `activities`, `notes`
-- Auth: Yes (sales team accounts)
-- Features: Pipeline stages, activity tracking, reporting
-
-**Use domain detection** to provide smart defaults when asking questions.
-
----
-
-## Testing Considerations
-
-**Manual Verification** (skill invocation cannot be automated):
-
-Testing checklist for developers:
-
-- [ ] Skill activates for "help me plan a livetemplate app"
-- [ ] Skill DOES NOT activate for "help me plan an app" (no keywords)
-- [ ] Phase 1: Core questions are asked (5 questions)
-- [ ] Phase 2: Summary shown, "more options" offered
-- [ ] Phase 3: Detailed questions asked if user says yes
-- [ ] Phase 4: Complete preview shown with all commands and files
-- [ ] User can cancel at preview phase → nothing created
-- [ ] Phase 5: Commands execute successfully
-- [ ] Error handling shows helpful messages
-- [ ] Context persists after completion (generic prompts work)
-
-**Structure Validation** (can be automated):
-
-See `e2e/agent_skills_validation_test.go`:
-- Skill exists in `skills/brainstorm/SKILL.md`
-- Skill has valid frontmatter (name, description, keywords)
-- Skill name follows format: `lvt-plan`
+After successful creation:
+- `.lvtrc` exists in the new app directory
+- User can use generic prompts: "add search", "add comments", "deploy"
+- No need to say "lvt" or "livetemplate" anymore
 
 ---
 
 ## Version History
 
+- **v1.3.0** (2025-12-18): Plan-first approach
+  - Present complete plan with defaults upfront
+  - Single confirmation point instead of 5+ questions
+  - User modifies plan with natural language
+
+- **v1.2.0** (2025-12-18): Added skill priority language
+  - Supersedes generic brainstorming skills
+
 - **v1.0.0** (2025-11-28): Initial implementation
-  - Progressive disclosure (3-5 core → offer more → 8-12 detailed)
-  - Always requires keywords (prevents false positives)
-  - Domain-specific intelligence for common app types
-  - Complete preview before execution
-  - Error handling with plain-language explanations
+  - Progressive question flow (deprecated)

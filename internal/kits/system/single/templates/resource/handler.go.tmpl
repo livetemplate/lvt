@@ -12,7 +12,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/livetemplate/livetemplate"
-	"[[.ModuleName]]/internal/database/models"
+	"[[.ModuleName]]/database/models"
 )
 
 var validate = validator.New()
@@ -78,7 +78,7 @@ type [[.ResourceName]]State struct {
 	TotalCount   int                   `json:"total_count"`
 	LastUpdated  string                `json:"last_updated"`
 	EditingID    string                `json:"editing_id"`
-	Editing[[.ResourceName]] *[[.ResourceName]]Item   `json:"editing_[[.ResourceNameLower]]"`
+	Editing[[.ResourceName]] *[[.ResourceName]]Item   `json:"-"` // Excluded from client state
 	IsEditingMode bool                 `json:"is_editing_mode"` // For page mode: true when at /resource/:id/edit
 	PaginationMode string              `json:"pagination_mode"` // "infinite", "load-more", "prev-next", "numbers"
 	LoadedCount    int                 `json:"loaded_count"`    // For infinite/load-more modes
@@ -530,7 +530,7 @@ func Handler(queries *models.Queries) http.Handler {
 	}
 
 	baseTmpl := livetemplate.Must(livetemplate.New("[[.ResourceNameLower]]", livetemplate.WithDevMode([[.DevMode]])))
-	if _, err := baseTmpl.ParseFiles("internal/app/[[.ResourceNameLower]]/[[.ResourceNameLower]].tmpl"); err != nil {
+	if _, err := baseTmpl.ParseFiles("app/[[.ResourceNameLower]]/[[.ResourceNameLower]].tmpl"); err != nil {
 		log.Fatalf("Failed to parse template: %v", err)
 	}
 

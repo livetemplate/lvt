@@ -196,10 +196,10 @@ func registerGenResourceTool(server *mcp.Server) {
 
 		// List generated files
 		files := []string{
-			fmt.Sprintf("internal/app/%s/%s.go", input.Name, input.Name),
-			fmt.Sprintf("internal/app/%s/%s.tmpl", input.Name, input.Name),
-			fmt.Sprintf("internal/app/%s/%s_test.go", input.Name, input.Name),
-			fmt.Sprintf("internal/app/%s/%s_ws_test.go", input.Name, input.Name),
+			fmt.Sprintf("app/%s/%s.go", input.Name, input.Name),
+			fmt.Sprintf("app/%s/%s.tmpl", input.Name, input.Name),
+			fmt.Sprintf("app/%s/%s_test.go", input.Name, input.Name),
+			fmt.Sprintf("app/%s/%s_ws_test.go", input.Name, input.Name),
 		}
 
 		return nil, GenResourceOutput{
@@ -248,8 +248,8 @@ func registerGenViewTool(server *mcp.Server) {
 		}
 
 		files := []string{
-			fmt.Sprintf("internal/app/%s/%s.go", input.Name, input.Name),
-			fmt.Sprintf("internal/app/%s/%s.tmpl", input.Name, input.Name),
+			fmt.Sprintf("app/%s/%s.go", input.Name, input.Name),
+			fmt.Sprintf("app/%s/%s.tmpl", input.Name, input.Name),
 		}
 
 		return nil, GenViewOutput{

@@ -271,10 +271,10 @@ lvt gen products name price quantity enabled created_at
 ```
 
 This generates:
-- `internal/app/users/users.go` - Full CRUD handler
-- `internal/app/users/users.tmpl` - Tailwind CSS UI
-- `internal/app/users/users_ws_test.go` - WebSocket tests
-- `internal/app/users/users_test.go` - Chromedp E2E tests
+- `app/users/users.go` - Full CRUD handler
+- `app/users/users.tmpl` - Tailwind CSS UI
+- `app/users/users_ws_test.go` - WebSocket tests
+- `app/users/users_test.go` - Chromedp E2E tests
 - Database schema and queries (appended)
 
 ### 3. Run Migrations
@@ -293,7 +293,7 @@ This automatically:
 Add to `cmd/myapp/main.go`:
 
 ```go
-import "myapp/internal/app/users"
+import "myapp/app/users"
 
 // In main():
 http.Handle("/users", users.Handler(queries))
@@ -329,11 +329,11 @@ lvt gen comments post_id:references:posts author text
 ```
 
 This generates for each resource:
-- ✅ `internal/app/{resource}/{resource}.go` - CRUD handler with LiveTemplate integration
-- ✅ `internal/app/{resource}/{resource}.tmpl` - Component-based template with Tailwind CSS
-- ✅ `internal/app/{resource}/{resource}_test.go` - E2E tests with chromedp
+- ✅ `app/{resource}/{resource}.go` - CRUD handler with LiveTemplate integration
+- ✅ `app/{resource}/{resource}.tmpl` - Component-based template with Tailwind CSS
+- ✅ `app/{resource}/{resource}_test.go` - E2E tests with chromedp
 - ✅ Database migration file with unique timestamps
-- ✅ SQL queries appended to `internal/database/queries.sql`
+- ✅ SQL queries appended to `database/queries.sql`
 
 For the `comments` resource with `post_id:references:posts`:
 - ✅ Creates `post_id` field as TEXT (matching posts.id type)
@@ -377,9 +377,9 @@ The routes are auto-injected, but verify in `cmd/myblog/main.go`:
 
 ```go
 import (
-    "myblog/internal/app/posts"
-    "myblog/internal/app/categories"
-    "myblog/internal/app/comments"
+    "myblog/app/posts"
+    "myblog/app/categories"
+    "myblog/app/comments"
 )
 
 func main() {
@@ -416,7 +416,7 @@ go mod tidy
 go run cmd/myblog/main.go
 ```
 
-This creates a view-only handler (no database operations). Edit `internal/app/home/home.tmpl` to create your landing page, then visit http://localhost:8080/home.
+This creates a view-only handler (no database operations). Edit `app/home/home.tmpl` to create your landing page, then visit http://localhost:8080/home.
 
 ### Step 8: Test the Application
 
@@ -425,7 +425,7 @@ This creates a view-only handler (no database operations). Edit `internal/app/ho
 go test ./...
 
 # Run specific resource tests
-go test ./internal/app/posts -v
+go test ./app/posts -v
 ```
 
 ### Customization Ideas
@@ -607,10 +607,10 @@ lvt gen view dashboard
 ```
 
 **Generates:**
-- `internal/app/dashboard/dashboard.go` - View handler with state management
-- `internal/app/dashboard/dashboard.tmpl` - Bulma CSS template
-- `internal/app/dashboard/dashboard_ws_test.go` - WebSocket tests
-- `internal/app/dashboard/dashboard_test.go` - Chromedp E2E tests
+- `app/dashboard/dashboard.go` - View handler with state management
+- `app/dashboard/dashboard.tmpl` - Bulma CSS template
+- `app/dashboard/dashboard_ws_test.go` - WebSocket tests
+- `app/dashboard/dashboard_test.go` - Chromedp E2E tests
 
 **Features:**
 - ✅ State management
@@ -653,10 +653,10 @@ lvt gen auth --no-csrf
 **Note:** At least one authentication method (password or magic-link) must be enabled.
 
 **Generates:**
-- `internal/shared/password/password.go` - Password hashing utilities (bcrypt)
-- `internal/shared/email/email.go` - Email sender interface with console logger
-- `internal/database/migrations/YYYYMMDDHHMMSS_create_auth_tables.sql` - Auth tables migration
-- Auth queries appended to `internal/database/queries.sql`
+- `shared/password/password.go` - Password hashing utilities (bcrypt)
+- `shared/email/email.go` - Email sender interface with console logger
+- `database/migrations/YYYYMMDDHHMMSS_create_auth_tables.sql` - Auth tables migration
+- Auth queries appended to `database/queries.sql`
 
 **Features:**
 - ✅ Password authentication with bcrypt hashing
@@ -693,7 +693,7 @@ When you generate a resource or view, `lvt` automatically:
 1. **Adds the import** to your `cmd/*/main.go`:
    ```go
    import (
-       "yourapp/internal/app/users"  // ← Auto-added
+       "yourapp/app/users"  // ← Auto-added
    )
    ```
 
@@ -789,9 +789,9 @@ In upcoming phases, this will power:
 The generated app follows idiomatic Go conventions:
 
 - **`cmd/`** - Application entry points
-- **`internal/app/`** - Handlers and templates (co-located!)
-- **`internal/database/`** - Database layer with sqlc
-- **`internal/shared/`** - Shared utilities
+- **`app/`** - Handlers and templates (co-located!)
+- **`database/`** - Database layer with sqlc
+- **`shared/`** - Shared utilities
 - **`web/assets/`** - Static assets
 
 **Key Design Decision:** Templates live next to their handlers for easy discovery.
@@ -898,7 +898,7 @@ go test ./commands -v
 Fast unit tests for WebSocket protocol and state changes in generated resources:
 
 ```bash
-go test ./internal/app/users -run WebSocket
+go test ./app/users -run WebSocket
 ```
 
 **Features**:
@@ -914,7 +914,7 @@ go test ./internal/app/users -run WebSocket
 Full browser testing with real user interactions for generated resources:
 
 ```bash
-go test ./internal/app/users -run E2E
+go test ./app/users -run E2E
 ```
 
 **Features**:

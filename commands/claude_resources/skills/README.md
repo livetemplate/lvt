@@ -188,7 +188,7 @@ Claude: Shows multi (Tailwind), single (Tailwind SPA), simple (Pico)
 
 **Example:**
 ```
-User: "Parse internal/app/posts/posts.tmpl"
+User: "Parse app/posts/posts.tmpl"
 Claude: Validates html/template + LiveTemplate syntax, checks for issues
 ```
 

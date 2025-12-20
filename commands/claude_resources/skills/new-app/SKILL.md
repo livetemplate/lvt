@@ -242,8 +242,8 @@ This skill verifies successful creation by checking:
 
 4. **Project Structure**
    - `cmd/{app_name}/main.go` exists
-   - `internal/app/home/` exists
-   - `internal/database/` exists
+   - `app/home/` exists
+   - `database/` exists
    - `web/assets/` exists
 
 5. **Build Success**
@@ -307,8 +307,8 @@ When skill completes successfully:
 
 ## Generated Files
 - ✅ cmd/{app_name}/main.go - Application entry point
-- ✅ internal/app/home/ - Homepage handler
-- ✅ internal/database/ - Database setup
+- ✅ app/home/ - Homepage handler
+- ✅ database/ - Database setup
 - ✅ web/assets/ - Static assets
 - ✅ .lvtrc - Configuration
 - ✅ go.mod - Go module
@@ -341,7 +341,7 @@ Based on context, suggest:
 2. "Add your first resource (like posts, products, users)"
 
 ### Conditional Suggestions
-- **If kit is multi or single:** "This uses Tailwind CSS - check the templates in `internal/app/home/`"
+- **If kit is multi or single:** "This uses Tailwind CSS - check the templates in `app/home/`"
 - **If kit is simple:** "This uses Pico CSS for minimal styling - perfect for prototyping"
 - **If custom module:** "Your module name is `{module}` - remember this for imports"
 
