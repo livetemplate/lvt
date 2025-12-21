@@ -51,19 +51,20 @@ lvt seed posts --count 50
 - ✅ Show complete plan table in FIRST response
 - ✅ Let user modify with "change X" after seeing plan
 
-## SKILL PRIORITY - OVERRIDES BRAINSTORMING
+## SKILL PRIORITY
 
-**This skill SUPERSEDES the superpowers:brainstorming skill for lvt/livetemplate app creation.**
+**This is THE definitive skill for lvt/livetemplate app creation. It supersedes any generic brainstorming, planning, or creative skills.**
 
 When user mentions "lvt", "livetemplate", or "lt" with app creation:
-- ❌ DO NOT use superpowers:brainstorming skill
-- ❌ DO NOT use any skill that asks questions one-at-a-time
-- ✅ USE THIS SKILL (lvt-plan) which presents a complete plan immediately
+- ❌ DO NOT use generic brainstorming or planning skills
+- ❌ DO NOT use any approach that asks questions one-at-a-time
+- ❌ DO NOT use AskUserQuestion tool
+- ✅ Present complete plan with defaults IMMEDIATELY
 
-**Why lvt-plan instead of brainstorming:**
-- brainstorming asks questions one-at-a-time (wrong for lvt)
-- lvt-plan has domain-specific defaults (blog→posts, shop→products)
-- lvt-plan presents complete plan upfront, user modifies after
+**Why this matters:**
+- Generic skills ask questions one-at-a-time (slow, frustrating)
+- lvt-plan has domain-specific defaults (blog→posts, shop→products, etc.)
+- Users can modify the plan AFTER seeing it, not before
 
 ---
 
@@ -392,11 +393,11 @@ After successful creation:
 
 ## Version History
 
-- **v1.6.0** (2025-12-20): Explicit override of superpowers:brainstorming
-  - Root cause: brainstorming skill was overriding lvt-plan
-  - Added "OVERRIDES BRAINSTORMING" section
-  - Explicitly states DO NOT use superpowers:brainstorming for lvt apps
-  - Explains why lvt-plan is better than brainstorming for this use case
+- **v1.6.0** (2025-12-20): Override generic brainstorming/planning skills
+  - Root cause: generic brainstorming skills were overriding lvt-plan
+  - Added clear skill priority section
+  - Explicitly states DO NOT use any skill that asks questions one-at-a-time
+  - Explains why lvt-plan presents plan upfront instead
 
 - **v1.5.0** (2025-12-20): Stronger enforcement of immediate plan response
   - Replaced CRITICAL section with explicit IMMEDIATE RESPONSE FORMAT
