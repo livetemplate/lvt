@@ -1,102 +1,56 @@
 ---
 name: lvt-plan
-description: "Use when creating new LiveTemplate/lvt apps - this is THE definitive skill for lvt app creation. Supersedes generic brainstorming/planning skills. Triggers: 'create/build/make a lvt/livetemplate [type] app', 'plan a livetemplate app'."
+description: "Present a complete plan for new LiveTemplate apps. NO QUESTIONS - just fill in the template below and show it."
 keywords: ["lvt", "livetemplate", "lt", "app", "application", "create", "build", "make", "new", "plan"]
 requires_keywords: true
 category: workflows
-version: 2.0.0
+version: 3.0.0
 ---
 
-# lvt-plan
+# OUTPUT THIS EXACTLY (fill in blanks from table below):
 
-## YOUR FIRST RESPONSE
-
-When user asks to create an app, respond with this IMMEDIATELY (no questions):
-
-```
-📋 **Plan for your {domain} app**
+📋 **Plan for your ___DOMAIN___ app**
 
 | Setting | Value |
 |---------|-------|
-| App name | {name} |
-| Primary resource | {resource} ({fields}) |
-| Authentication | {auth_type} |
+| App name | ___NAME___ |
+| Primary resource | ___RESOURCE___ (___FIELDS___) |
+| Authentication | ___AUTH___ |
 | Kit | multi (Tailwind CSS) |
 | Test data | 50 records |
 
 **Commands I'll run:**
-lvt new {name} --kit multi
-lvt gen resource {resource} {fields}
-{lvt gen auth  # if auth requested}
+```
+lvt new ___NAME___ --kit multi
+lvt gen resource ___RESOURCE___ ___FIELDS___
+___AUTH_COMMAND___
 lvt migration up && go mod tidy
-lvt seed {resource} --count 50
-
-**Ready to create?** (yes / change X / advanced)
+lvt seed ___RESOURCE___ --count 50
 ```
 
-Fill in `{placeholders}` using the Domain Defaults below.
+**Ready to create?** Type `yes` to proceed, or tell me what to change.
 
 ---
 
-## Domain Defaults
+# FILL IN BLANKS FROM THIS TABLE:
 
-| Domain | name | resource | fields | auth |
-|--------|------|----------|--------|------|
-| Blog | blog | posts | title:string content:text published:bool | if mentioned |
-| Shop/E-commerce | shop | products | name:string description:text price:float quantity:int | if mentioned |
-| Todo | todo | tasks | title:string description:text completed:bool due_date:time | yes |
-| CRM | crm | contacts | name:string email:string company:string phone:string | yes |
-| Forum | forum | topics | title:string content:text pinned:bool | yes |
-| Unknown | app | items | name:string description:text | no |
+| If user mentions | DOMAIN | NAME | RESOURCE | FIELDS | AUTH | AUTH_COMMAND |
+|------------------|--------|------|----------|--------|------|--------------|
+| blog | blog | blog | posts | title:string content:text published:bool | Password | lvt gen auth |
+| shop/store/ecommerce | e-commerce | shop | products | name:string description:text price:float | Password | lvt gen auth |
+| todo | todo | todo | tasks | title:string completed:bool due_date:time | Password | lvt gen auth |
+| crm/contacts | CRM | crm | contacts | name:string email:string company:string | Password | lvt gen auth |
+| forum | forum | forum | topics | title:string content:text | Password | lvt gen auth |
+| (other) | app | app | items | name:string description:text | None | (remove line) |
 
-**Auth types:** Password (email + password), Magic Link (email only), None
+- If user mentions "auth" or "authentication" → AUTH = Password, AUTH_COMMAND = lvt gen auth
+- If user gives a specific name like "myblog" → use that for NAME
+- If no auth mentioned and domain doesn't require it → AUTH = None, remove AUTH_COMMAND line
 
----
+# IMPORTANT
 
-## After User Responds
-
-| User says | Action |
-|-----------|--------|
-| "yes" | Execute the commands |
-| "change X" | Update plan, show again |
-| "no auth" | Remove auth, show updated plan |
-| "add comments" | Add resource with foreign key |
-| "advanced" | Show kit/pagination/database options |
-| "no" | Cancel |
-
----
-
-## Execution
-
-Show progress as you run each command:
-
-```
-🚀 Creating your {name} app...
-
-⏳ Creating app structure...
-✅ Created with lvt new {name} --kit multi
-
-⏳ Generating {resource} resource...
-✅ Generated {resource}
-
-⏳ Running migrations...
-✅ Database ready
-
-🎉 Done! Run: cd {name} && go run cmd/{name}/main.go
-```
-
----
-
-## Version History
-
-- **v2.0.0** (2025-12-21): Complete rewrite - minimal structure
-  - Root cause: 450-line skill with "Step 1, 2, 3" implied sequential process
-  - Now just: template + defaults table + response handling
-  - No numbered steps, no phases, no wizard-like structure
-  - Claude follows structure - so structure is now "show plan immediately"
-
-- **v1.7.0** (2025-12-21): Add CRITICAL-STOP-AND-READ section (didn't fix it)
-- **v1.6.0** (2025-12-20): Override brainstorming skills (didn't fix it)
-- **v1.5.0** (2025-12-20): FORBIDDEN list (didn't fix it)
-- **v1.4.0** (2025-12-20): Reinforce no-questions (didn't fix it)
-- **v1.3.0** (2025-12-18): Plan-first approach (partial fix)
+- DO NOT ask questions
+- DO NOT say "let me gather details"
+- DO NOT ask for app name, auth type, or anything else
+- JUST output the filled template above
+- User can modify after seeing the plan
