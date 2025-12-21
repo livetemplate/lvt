@@ -63,10 +63,12 @@ This document provides detailed manual testing checklists for validating Claude 
 
 #### Application Structure
 - [ ] Directory created with app name
-- [ ] `.lvtrc` file exists
+- [ ] `.lvtrc` file exists with module name
 - [ ] `go.mod` file has correct module name
 - [ ] `cmd/{app}/main.go` exists
-- [ ] `internal/` directory structure correct
+- [ ] `app/` directory exists (handlers/templates)
+- [ ] `database/` directory exists (schema, queries, models)
+- [ ] `shared/` directory exists
 - [ ] `web/assets/` directory exists
 
 #### Build & Dependencies

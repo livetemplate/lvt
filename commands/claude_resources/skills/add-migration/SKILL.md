@@ -302,14 +302,13 @@ vim app/products/products.go
 
 ```
 project/
-├── internal/
-│   └── database/
-│       ├── migrations/           ← Migration files here
-│       │   ├── 20240101120000_create_products.sql
-│       │   └── 20240101120100_add_products_price_index.sql
-│       ├── schema.sql            ← Current schema (updated by gen resource)
-│       ├── queries.sql           ← SQL queries (updated by gen resource)
-│       └── models/              ← Generated Go code (auto-generated)
+├── database/
+│   ├── migrations/               ← Migration files here
+│   │   ├── 20240101120000_create_products.sql
+│   │   └── 20240101120100_add_products_price_index.sql
+│   ├── schema.sql                ← Current schema (updated by gen resource)
+│   ├── queries.sql               ← SQL queries (updated by gen resource)
+│   └── models/                   ← Generated Go code (auto-generated)
 └── app.db                        ← SQLite database
 ```
 
