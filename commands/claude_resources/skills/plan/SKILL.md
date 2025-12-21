@@ -4,14 +4,34 @@ description: "Use when creating new LiveTemplate/lvt apps - this is THE definiti
 keywords: ["lvt", "livetemplate", "lt", "app", "application", "create", "build", "make", "new", "plan"]
 requires_keywords: true
 category: workflows
-version: 1.6.0
+version: 1.7.0
 ---
 
 # lvt-plan
 
+<CRITICAL-STOP-AND-READ>
+## DO NOT ASK ANY QUESTIONS
+
+Your FIRST response MUST be a complete plan table. Not a question. Not "Let me ask you a few things." Not "What would you like to name it?"
+
+**PRESENT THE PLAN. IMMEDIATELY. WITH DEFAULTS.**
+
+If you find yourself typing ANY of these, STOP and present the plan instead:
+- "Let me walk you through..."
+- "What would you like to..."
+- "Let's start with..."
+- "First, I need to know..."
+- "Question 1:"
+- Any use of the AskUserQuestion tool
+
+**This is a RIGID skill. Follow it EXACTLY. No creative interpretation.**
+</CRITICAL-STOP-AND-READ>
+
+---
+
 Plan-first skill for creating LiveTemplate applications. Presents a complete plan with sensible defaults upfront, lets user modify before execution.
 
-## CRITICAL: IMMEDIATE RESPONSE FORMAT
+## IMMEDIATE RESPONSE FORMAT
 
 **YOUR FIRST RESPONSE MUST BE A COMPLETE PLAN TABLE - NO QUESTIONS**
 
@@ -392,6 +412,12 @@ After successful creation:
 ---
 
 ## Version History
+
+- **v1.7.0** (2025-12-21): Add unmissable CRITICAL-STOP-AND-READ section
+  - Root cause: Claude still asking questions despite FORBIDDEN list
+  - Added prominent XML-tagged warning at very top of skill
+  - Listed exact phrases that trigger the anti-pattern
+  - Explicitly marked as RIGID skill with no creative interpretation
 
 - **v1.6.0** (2025-12-20): Override generic brainstorming/planning skills
   - Root cause: generic brainstorming skills were overriding lvt-plan
