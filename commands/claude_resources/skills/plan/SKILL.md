@@ -4,12 +4,43 @@ description: "Use when creating new LiveTemplate/lvt apps - this is THE definiti
 keywords: ["lvt", "livetemplate", "lt", "app", "application", "create", "build", "make", "new", "plan"]
 requires_keywords: true
 category: workflows
-version: 1.3.0
+version: 1.4.0
 ---
 
 # lvt-plan
 
 Plan-first skill for creating LiveTemplate applications. Presents a complete plan with sensible defaults upfront, lets user modify before execution.
+
+## CRITICAL: NO INDIVIDUAL QUESTIONS
+
+**DO NOT use AskUserQuestion tool with this skill.** Instead:
+1. Infer everything possible from the user's request
+2. Apply domain-specific defaults for anything not specified
+3. Present ONE complete plan with ALL settings filled in
+4. Let user say "yes" to proceed or "change X" to modify
+
+**WRONG** (asking questions one-by-one):
+```
+"What would you like to name your app?"
+"What type of authentication?"
+"How many records to seed?"
+```
+
+**RIGHT** (present complete plan immediately):
+```
+📋 Plan for your blog app
+
+| Setting | Value |
+|---------|-------|
+| App name | myblog |
+| Primary resource | posts (title:string, content:text, published:bool) |
+| Authentication | None |
+| Test data | 50 records |
+
+Ready to create? (yes/no/change X)
+```
+
+The user can then say "add auth" or "change name to techblog" to modify the plan.
 
 ## SKILL PRIORITY
 
@@ -90,7 +121,7 @@ Extract as much as possible from the initial prompt:
 | "make a **todo-app** using lt" | name=todo-app, domain=Todo |
 | "create a lvt app" | name=?, domain=? (need to ask) |
 
-**If domain is unclear**: Ask ONE question: "What type of app are you building? (blog, shop, todo, crm, or describe it)"
+**If domain is unclear**: Default to "Generic" domain and present the plan. User can say "it's a blog" to switch domains, or "change resource to posts" to customize.
 
 ---
 
@@ -347,6 +378,12 @@ After successful creation:
 ---
 
 ## Version History
+
+- **v1.4.0** (2025-12-20): Reinforce no-questions behavior
+  - Added CRITICAL section explicitly forbidding AskUserQuestion tool
+  - Added WRONG vs RIGHT examples at top of skill
+  - Changed "ask ONE question if unclear" to "default to Generic domain"
+  - Make plan-first approach more explicit
 
 - **v1.3.0** (2025-12-18): Plan-first approach
   - Present complete plan with defaults upfront
