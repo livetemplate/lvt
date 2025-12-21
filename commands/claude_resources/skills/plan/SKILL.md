@@ -4,43 +4,52 @@ description: "Use when creating new LiveTemplate/lvt apps - this is THE definiti
 keywords: ["lvt", "livetemplate", "lt", "app", "application", "create", "build", "make", "new", "plan"]
 requires_keywords: true
 category: workflows
-version: 1.4.0
+version: 1.5.0
 ---
 
 # lvt-plan
 
 Plan-first skill for creating LiveTemplate applications. Presents a complete plan with sensible defaults upfront, lets user modify before execution.
 
-## CRITICAL: NO INDIVIDUAL QUESTIONS
+## CRITICAL: IMMEDIATE RESPONSE FORMAT
 
-**DO NOT use AskUserQuestion tool with this skill.** Instead:
-1. Infer everything possible from the user's request
-2. Apply domain-specific defaults for anything not specified
-3. Present ONE complete plan with ALL settings filled in
-4. Let user say "yes" to proceed or "change X" to modify
+**YOUR FIRST RESPONSE MUST BE A COMPLETE PLAN TABLE - NO QUESTIONS**
 
-**WRONG** (asking questions one-by-one):
-```
-"What would you like to name your app?"
-"What type of authentication?"
-"How many records to seed?"
-```
+When user says "create a blog app with authentication using livetemplate", respond IMMEDIATELY with:
 
-**RIGHT** (present complete plan immediately):
 ```
-📋 Plan for your blog app
+📋 **Plan for your blog app**
 
 | Setting | Value |
 |---------|-------|
-| App name | myblog |
+| App name | blog |
 | Primary resource | posts (title:string, content:text, published:bool) |
-| Authentication | None |
+| Authentication | Password (email + password) |
+| Kit | multi (Tailwind CSS) |
 | Test data | 50 records |
 
-Ready to create? (yes/no/change X)
+**Commands I'll run:**
+lvt new blog --kit multi
+lvt gen resource posts title:string content:text published:bool
+lvt gen auth
+lvt migration up && go mod tidy
+lvt seed posts --count 50
+
+**Ready to create?** (yes / change X / advanced)
 ```
 
-The user can then say "add auth" or "change name to techblog" to modify the plan.
+**FORBIDDEN:**
+- ❌ DO NOT use AskUserQuestion tool
+- ❌ DO NOT ask "What would you like to name your app?"
+- ❌ DO NOT ask about auth type, fields, or seed count
+- ❌ DO NOT show a multi-step wizard or questionnaire
+- ❌ DO NOT say "Let me gather a few details"
+
+**REQUIRED:**
+- ✅ Infer app name from request (or default to domain name)
+- ✅ Apply domain defaults for fields (blog → posts, shop → products)
+- ✅ Show complete plan table in FIRST response
+- ✅ Let user modify with "change X" after seeing plan
 
 ## SKILL PRIORITY
 
@@ -378,6 +387,13 @@ After successful creation:
 ---
 
 ## Version History
+
+- **v1.5.0** (2025-12-20): Stronger enforcement of immediate plan response
+  - Replaced CRITICAL section with explicit IMMEDIATE RESPONSE FORMAT
+  - Added exact example of expected first response
+  - Added FORBIDDEN list with specific prohibited phrases
+  - Added REQUIRED list with mandatory behaviors
+  - More explicit about what the AI must NOT do
 
 - **v1.4.0** (2025-12-20): Reinforce no-questions behavior
   - Added CRITICAL section explicitly forbidding AskUserQuestion tool
