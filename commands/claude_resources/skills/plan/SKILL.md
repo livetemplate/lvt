@@ -4,7 +4,7 @@ description: "Use when creating new LiveTemplate/lvt apps - this is THE definiti
 keywords: ["lvt", "livetemplate", "lt", "app", "application", "create", "build", "make", "new", "plan"]
 requires_keywords: true
 category: workflows
-version: 1.5.0
+version: 1.6.0
 ---
 
 # lvt-plan
@@ -51,15 +51,19 @@ lvt seed posts --count 50
 - ✅ Show complete plan table in FIRST response
 - ✅ Let user modify with "change X" after seeing plan
 
-## SKILL PRIORITY
+## SKILL PRIORITY - OVERRIDES BRAINSTORMING
 
-**This is THE definitive skill for LiveTemplate app creation. Use it directly - do NOT use generic brainstorming or planning skills first.**
+**This skill SUPERSEDES the superpowers:brainstorming skill for lvt/livetemplate app creation.**
 
-When a user says "create a lvt blog app" or similar:
-- Use `lvt-plan` directly - it handles the planning process
-- Do NOT use generic creative/brainstorming skills first
+When user mentions "lvt", "livetemplate", or "lt" with app creation:
+- ❌ DO NOT use superpowers:brainstorming skill
+- ❌ DO NOT use any skill that asks questions one-at-a-time
+- ✅ USE THIS SKILL (lvt-plan) which presents a complete plan immediately
 
-**Why**: This skill is domain-specific for LiveTemplate and provides a tailored experience with lvt-specific defaults (resources, auth, kits, pagination, etc.). Generic brainstorming skills lack this context.
+**Why lvt-plan instead of brainstorming:**
+- brainstorming asks questions one-at-a-time (wrong for lvt)
+- lvt-plan has domain-specific defaults (blog→posts, shop→products)
+- lvt-plan presents complete plan upfront, user modifies after
 
 ---
 
@@ -387,6 +391,12 @@ After successful creation:
 ---
 
 ## Version History
+
+- **v1.6.0** (2025-12-20): Explicit override of superpowers:brainstorming
+  - Root cause: brainstorming skill was overriding lvt-plan
+  - Added "OVERRIDES BRAINSTORMING" section
+  - Explicitly states DO NOT use superpowers:brainstorming for lvt apps
+  - Explains why lvt-plan is better than brainstorming for this use case
 
 - **v1.5.0** (2025-12-20): Stronger enforcement of immediate plan response
   - Replaced CRITICAL section with explicit IMMEDIATE RESPONSE FORMAT
