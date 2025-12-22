@@ -1,3 +1,5 @@
+//go:build browser
+
 package e2e
 
 import (
@@ -7,7 +9,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -15,63 +16,6 @@ import (
 	"github.com/chromedp/chromedp"
 	e2etest "github.com/livetemplate/lvt/testing"
 )
-
-var (
-	baseImageBuilt bool
-	baseImageMutex sync.Mutex
-)
-
-// getTimeout returns local or CI timeout based on environment
-func getTimeout(envVar string, localDefault, ciDefault time.Duration) time.Duration {
-	if os.Getenv("CI") == "true" {
-		return ciDefault
-	}
-	if val := os.Getenv(envVar); val != "" {
-		if d, err := time.ParseDuration(val); err == nil {
-			return d
-		}
-	}
-	return localDefault
-}
-
-// buildBaseImage builds the shared base Docker image once
-func buildBaseImage(t *testing.T) {
-	baseImageMutex.Lock()
-	defer baseImageMutex.Unlock()
-
-	if baseImageBuilt {
-		return
-	}
-
-	// Check if Docker is available
-	if _, err := exec.Command("docker", "version").CombinedOutput(); err != nil {
-		t.Skip("Docker not available, skipping test that requires Docker image build")
-	}
-
-	t.Log("Building base Docker image (one-time setup)...")
-
-	// Get the directory where this test file lives
-	_, filename, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("Failed to get current file path")
-	}
-	e2eDir := filepath.Dir(filename)
-
-	cmd := exec.Command("docker", "build",
-		"-f", "Dockerfile.base",
-		"-t", "lvt-base:latest",
-		".",
-	)
-	cmd.Dir = e2eDir
-
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("Failed to build base image: %v\nOutput: %s", err, output)
-	}
-
-	t.Log("Base image built successfully")
-	baseImageBuilt = true
-}
 
 // Shared test resources that persist across all tests
 var (
@@ -81,10 +25,6 @@ var (
 	sharedSetupOnce   sync.Once
 	sharedCleanupOnce sync.Once
 	sharedSetupError  error
-
-	// Port allocation for parallel tests
-	portMutex    sync.Mutex
-	nextTestPort int = 8800
 )
 
 // TestMain sets up shared resources before running tests and cleans up after
@@ -264,15 +204,6 @@ func getIsolatedChromeContext(t *testing.T) (context.Context, context.CancelFunc
 	return ctx, combinedCancel
 }
 
-// allocateTestPort returns a unique port for a test
-func allocateTestPort() int {
-	portMutex.Lock()
-	defer portMutex.Unlock()
-
-	port := nextTestPort
-	nextTestPort++
-	return port
-}
 
 // Unused: Kept for potential future use
 // getSharedTestApp returns the path to the pre-compiled test application

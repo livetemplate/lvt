@@ -1,3 +1,5 @@
+//go:build browser
+
 package e2e
 
 import (

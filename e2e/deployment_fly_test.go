@@ -1,3 +1,5 @@
+//go:build deployment
+
 package e2e
 
 import (

@@ -54,12 +54,45 @@ Migrate to a 4-tier testing strategy that maintains rendering library confidence
 - [ ] TestWebSocket_Reconnect
 - [ ] TestConditional_Rendering
 
-### Phase 3: Migrate 98 Tests [PENDING]
-- [ ] Migrate app_creation_test.go (4 tests)
-- [ ] Migrate resource_generation_test.go (12 tests)
-- [ ] Migrate serve_test.go (9 tests)
-- [ ] Migrate kit_management_test.go (9 tests)
-- [ ] Migrate remaining tests
+### Phase 3: Migrate Tests with Build Tags [COMPLETED]
+- [x] Add `//go:build http` to HTTP-compatible tests:
+  - app_creation_test.go
+  - resource_generation_test.go
+  - serve_test.go
+  - migration_test.go
+  - view_generation_test.go
+  - agent_doc_validation_test.go
+  - agent_skills_validation_test.go
+  - css_frameworks_test.go
+  - seeding_test.go
+  - parsing_test.go
+  - type_inference_test.go
+  - textarea_fields_test.go
+  - pagination_modes_test.go
+  - resource_inspection_test.go
+  - skill_debug_rendering_test.go
+  - kit_runtime_test.go
+  - kit_workflow_test.go
+  - kit_management_test.go
+  - editmode_test.go
+- [x] Add `//go:build browser` to browser tests:
+  - modal_test.go
+  - pagemode_test.go
+  - url_routing_test.go
+  - tutorial_test.go
+  - livetemplate_core_test.go
+  - complete_workflow_test.go
+  - delete_multi_post_test.go
+  - shared_test.go
+  - common_test.go
+  - chrome_pool.go
+  - helpers.go
+  - test_main_test.go
+- [x] Add `//go:build deployment` to deployment tests:
+  - deployment_docker_test.go
+  - deployment_fly_test.go
+  - deployment_mock_test.go
+- [x] Refactor helper files to work with build tags
 
 ### Phase 4: Template Updates [PENDING]
 - [ ] Convert `resource/e2e_test.go.tmpl` to HTTP
