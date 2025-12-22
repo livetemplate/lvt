@@ -353,5 +353,69 @@ func GenerateAuth(projectRoot string, authConfig *AuthConfig) error {
 		}
 	}
 
+	// Inject auth routes into main.go
+	mainGoPath := findMainGo(projectRoot)
+	if mainGoPath != "" {
+		// Main auth route (LiveTemplate handler)
+		routes := []RouteInfo{
+			{
+				Path:        "/auth",
+				PackageName: "auth",
+				HandlerCall: "auth.Handler(queries)",
+				ImportPath:  authConfig.ModuleName + "/app/auth",
+			},
+			// Logout route
+			{
+				Path:        "/auth/logout",
+				PackageName: "auth",
+				HandlerCall: "auth.LogoutHandler(queries)",
+				ImportPath:  authConfig.ModuleName + "/app/auth",
+			},
+		}
+
+		// Add magic link route if enabled
+		if authConfig.EnableMagicLink {
+			routes = append(routes, RouteInfo{
+				Path:        "/auth/magic",
+				PackageName: "auth",
+				HandlerCall: "auth.MagicLinkHandler(queries)",
+				ImportPath:  authConfig.ModuleName + "/app/auth",
+			})
+		}
+
+		// Add password reset route if enabled
+		if authConfig.EnablePasswordReset {
+			routes = append(routes, RouteInfo{
+				Path:        "/auth/reset",
+				PackageName: "auth",
+				HandlerCall: "auth.ResetPasswordHandler(queries)",
+				ImportPath:  authConfig.ModuleName + "/app/auth",
+			})
+		}
+
+		// Add email confirmation route if enabled
+		if authConfig.EnableEmailConfirm {
+			routes = append(routes, RouteInfo{
+				Path:        "/auth/confirm",
+				PackageName: "auth",
+				HandlerCall: "auth.ConfirmEmailHandler(queries)",
+				ImportPath:  authConfig.ModuleName + "/app/auth",
+			})
+		}
+
+		for _, route := range routes {
+			if err := InjectRoute(mainGoPath, route); err != nil {
+				// Log warning but don't fail - user can add route manually
+				fmt.Printf("⚠️  Could not auto-inject route %s: %v\n", route.Path, err)
+				fmt.Printf("   Please add manually: http.Handle(\"%s\", auth.Handler(queries))\n", route.Path)
+			}
+		}
+
+		// Register auth in home page
+		if err := RegisterResource(projectRoot, "Auth", "/auth", "auth"); err != nil {
+			fmt.Printf("⚠️  Could not register auth in home page: %v\n", err)
+		}
+	}
+
 	return nil
 }

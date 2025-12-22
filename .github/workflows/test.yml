@@ -24,6 +24,9 @@ jobs:
       - name: Install dependencies
         run: go mod download
 
+      - name: Install sqlc
+        run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+
       - name: Check code formatting
         run: |
           gofmt_output=$(go fmt ./...)

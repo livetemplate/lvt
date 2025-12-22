@@ -233,8 +233,8 @@ func TestAuthCommand_CustomNames(t *testing.T) {
 			}
 
 			// Check migration contains correct table name
-			if !strings.Contains(migrationContent, "CREATE TABLE "+tt.expectedTable) {
-				t.Errorf("migration does not contain 'CREATE TABLE %s'", tt.expectedTable)
+			if !strings.Contains(migrationContent, "CREATE TABLE IF NOT EXISTS "+tt.expectedTable) {
+				t.Errorf("migration does not contain 'CREATE TABLE IF NOT EXISTS %s'", tt.expectedTable)
 			}
 
 			// Read queries.sql
