@@ -27,7 +27,7 @@ func GetClientLibraryJS() []byte {
 const (
 	dockerImage           = "chromedp/headless-shell:latest"
 	chromeContainerPrefix = "chrome-e2e-test-"
-	staleContainerGrace   = 10 * time.Minute
+	staleContainerGrace   = 1 * time.Minute // Reduced from 10 min for faster cleanup
 )
 
 func removeContainersByFilter(filter string, shouldRemove func(string) (bool, error)) ([]string, error) {
@@ -171,8 +171,12 @@ func StartDockerChrome(t *testing.T, debugPort int) error {
 	portMapping := fmt.Sprintf("%d:9222", debugPort)
 
 	// Run in detached mode (-d) to avoid process I/O issues during cleanup
-	// Don't use --rm here; we'll clean up manually in StopDockerChrome
+	// Use --rm for automatic cleanup when container stops
+	// Memory and CPU limits prevent resource exhaustion (4 containers × 512MB = 2GB max)
 	cmd := exec.Command("docker", "run", "-d",
+		"--rm",
+		"--memory", "512m",
+		"--cpus", "0.5",
 		"-p", portMapping,
 		"--name", containerName,
 		"--add-host", "host.docker.internal:host-gateway",

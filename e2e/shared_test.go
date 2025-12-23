@@ -8,8 +8,10 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -29,6 +31,23 @@ var (
 
 // TestMain sets up shared resources before running tests and cleans up after
 func TestMain(m *testing.M) {
+	// Setup signal handling for cleanup on interrupt (Ctrl+C)
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		<-sigCh
+		log.Println("🛑 Interrupted - cleaning up Chrome containers...")
+		chromePoolMu.Lock()
+		if chromePool != nil {
+			chromePool.Cleanup()
+		}
+		chromePoolMu.Unlock()
+		cleanupChromeContainers()
+		log.Println("✅ Cleanup complete")
+		os.Exit(1)
+	}()
+
 	// Cleanup any leftover containers from previous runs
 	// This is safe to run even if Docker is not available - it will just log a warning
 	cleanupChromeContainers()
