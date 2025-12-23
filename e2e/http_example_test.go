@@ -1,6 +1,9 @@
-//go:build http
+//go:build integration
 
 // Package e2e contains end-to-end tests for LiveTemplate.
+// NOTE: These tests are tagged 'integration' because they create full apps,
+// which is slow and requires all dependencies (sqlc, go, etc).
+// Run with: go test -tags=integration ./e2e/...
 //
 // HTTP Tests (this file):
 // Tests tagged with "http" run without a browser, using direct HTTP requests.
