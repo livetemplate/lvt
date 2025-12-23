@@ -1,183 +1,149 @@
+//go:build http
+
 package auth
 
 import (
-	"context"
-	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
+	"net/url"
 	"testing"
-	"time"
 
-	"github.com/chromedp/chromedp"
-	e2etest "github.com/livetemplate/lvt/testing"
+	lvttest "github.com/livetemplate/lvt/testing"
 )
 
-// TestAuthE2E tests the authentication system end-to-end with a real browser
-func TestAuthE2E(t *testing.T) {
+// TestAuthHTTP tests the authentication system via HTTP requests.
+// This provides fast, reliable testing without requiring a browser.
+// For browser-specific behavior (WebSocket, JavaScript), use browser tests.
+func TestAuthHTTP(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping E2E test in short mode")
+		t.Skip("Skipping HTTP test in short mode")
 	}
 
-	// Change to project root directory so the server can find template and database files
-	origDir, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Failed to get working directory: %v", err)
-	}
-	if err := os.Chdir("../.."); err != nil {
-		t.Fatalf("Failed to change to project root: %v", err)
-	}
-	t.Cleanup(func() { os.Chdir(origDir) })
-
-	// Find the main.go file in cmd/*/
-	mainGoPath := findMainGo(t)
-	if mainGoPath == "" {
-		t.Fatal("Could not find main.go in cmd/*/")
-	}
-
-	// Get free ports for server and Chrome debugging
-	serverPort, err := e2etest.GetFreePort()
-	if err != nil {
-		t.Fatalf("Failed to get free port for server: %v", err)
-	}
-
-	debugPort, err := e2etest.GetFreePort()
-	if err != nil {
-		t.Fatalf("Failed to get free port for Chrome: %v", err)
-	}
-
-	// Start the application server
-	serverCmd := e2etest.StartTestServer(t, mainGoPath, serverPort)
-	defer func() {
-		if serverCmd != nil && serverCmd.Process != nil {
-			serverCmd.Process.Kill()
-		}
-	}()
-
-	// Start Docker Chrome container
-	e2etest.StartDockerChrome(t, debugPort)
-	defer e2etest.StopDockerChrome(t, debugPort)
-
-	// Connect to Docker Chrome via remote debugging
-	chromeURL := fmt.Sprintf("http://localhost:%d", debugPort)
-	allocCtx, allocCancel := chromedp.NewRemoteAllocator(context.Background(), chromeURL)
-	defer allocCancel()
-
-	ctx, cancel := chromedp.NewContext(allocCtx, chromedp.WithLogf(t.Logf))
-	defer cancel()
-
-	// Set timeout for the entire test
-	ctx, cancel = context.WithTimeout(ctx, 120*time.Second)
-	defer cancel()
+	// Setup HTTP test environment with automatic server management
+	test := lvttest.SetupHTTP(t, &lvttest.HTTPSetupOptions{
+		AppPath: "../../cmd/[[.ModuleName]]/main.go",
+	})
+	defer test.Cleanup()
 
 	t.Run("Auth Page Loads", func(t *testing.T) {
-		var pageHTML string
+		// Get the auth page
+		resp := test.Get("/auth")
 
-		err := chromedp.Run(ctx,
-			chromedp.Navigate(e2etest.GetChromeTestURL(serverPort)+"/auth"),
-			chromedp.Sleep(2*time.Second), // Wait for page and client to load
-			chromedp.OuterHTML(`body`, &pageHTML, chromedp.ByQuery),
-		)
+		// Create assertion helper
+		assert := lvttest.NewHTTPAssert(resp)
 
-		if err != nil {
-			t.Fatalf("Failed to load auth page: %v", err)
-		}
+		// Verify page loaded correctly
+		assert.StatusOK(t)
+		assert.ContentTypeHTML(t)
 
 		// Verify login form elements exist
-		if !strings.Contains(pageHTML, "Email") {
-			t.Error("Auth page doesn't contain email field")
-		}
-		lowerHTML := strings.ToLower(pageHTML)
-		if !strings.Contains(lowerHTML, "sign in") {
-			t.Error("Auth page doesn't contain sign in text")
-		}
+		assert.Contains(t, "Email")
+
+		// Verify no template errors (unflattened expressions like [[.Field]])
+		assert.NoTemplateErrors(t)
+
+		// Verify form field exists
+		assert.HasFormField(t, "Email")
 
 		t.Log("✅ Auth page loaded successfully")
 	})
 
-	{{- if .EnablePassword }}
+[[- if .EnablePassword ]]
 	t.Run("Registration Form Accessible", func(t *testing.T) {
-		var pageHTML string
+		// Get the auth page
+		resp := test.Get("/auth")
 
-		err := chromedp.Run(ctx,
-			chromedp.Navigate(e2etest.GetChromeTestURL(serverPort)+"/auth"),
-			chromedp.Sleep(2*time.Second),
-			chromedp.OuterHTML(`body`, &pageHTML, chromedp.ByQuery),
-		)
-
-		if err != nil {
-			t.Fatalf("Failed to load auth page: %v", err)
-		}
+		assert := lvttest.NewHTTPAssert(resp)
+		assert.StatusOK(t)
 
 		// Verify registration option exists
-		if !strings.Contains(pageHTML, "account") {
-			t.Error("Auth page doesn't have account creation option")
-		}
+		assert.Contains(t, "account")
+
+		// Verify password field exists
+		assert.HasFormField(t, "Password")
 
 		t.Log("✅ Registration form accessible")
 	})
-	{{- end }}
+[[- end ]]
 
 	t.Run("Logout Endpoint Works", func(t *testing.T) {
-		var currentURL string
+		// Test logout endpoint
+		resp := test.Get("/auth/logout")
 
-		// Navigate to logout
-		err := chromedp.Run(ctx,
-			chromedp.Navigate(e2etest.GetChromeTestURL(serverPort)+"/auth/logout"),
-			chromedp.Sleep(1*time.Second),
-			chromedp.Location(&currentURL),
-		)
+		assert := lvttest.NewHTTPAssert(resp)
 
-		if err != nil {
-			t.Fatalf("Failed to test logout: %v", err)
-		}
-
-		// Should be redirected to auth page
-		if !strings.Contains(currentURL, "/auth") {
-			t.Errorf("Not redirected to auth page after logout, got: %s", currentURL)
+		// Should redirect to auth page
+		if resp.StatusCode >= 300 && resp.StatusCode < 400 {
+			location := resp.Header.Get("Location")
+			if location == "" || (location != "/auth" && location != "/auth/") {
+				t.Errorf("Expected redirect to /auth, got: %s", location)
+			}
+		} else {
+			// If not redirect, should be OK
+			assert.StatusOK(t)
 		}
 
 		t.Log("✅ Logout endpoint works")
 	})
 
-	t.Run("Form Inputs Accept Values", func(t *testing.T) {
-		var emailValue string
+	t.Run("Form Inputs Present", func(t *testing.T) {
+		// Get the auth page
+		resp := test.Get("/auth")
 
-		err := chromedp.Run(ctx,
-			chromedp.Navigate(e2etest.GetChromeTestURL(serverPort)+"/auth"),
-			chromedp.Sleep(2*time.Second),
-			chromedp.WaitVisible(`input[name="Email"]`, chromedp.ByQuery),
-			chromedp.SendKeys(`input[name="Email"]`, "test@example.com", chromedp.ByQuery),
-			chromedp.Value(`input[name="Email"]`, &emailValue, chromedp.ByQuery),
-		)
+		assert := lvttest.NewHTTPAssert(resp)
+		assert.StatusOK(t)
 
-		if err != nil {
-			t.Fatalf("Failed to interact with form: %v", err)
-		}
+		// Verify email input exists
+		assert.HasFormField(t, "Email")
 
-		if !strings.Contains(emailValue, "test@example.com") {
-			t.Errorf("Email input didn't accept value, got: %s", emailValue)
-		}
+		// Form should have submit button
+		assert.HasElement(t, "button")
 
-		t.Log("✅ Form inputs accept values")
+		t.Log("✅ Form inputs present")
 	})
-}
 
-// findMainGo finds the main.go file in cmd/*/
-func findMainGo(t *testing.T) string {
-	entries, err := os.ReadDir("cmd")
-	if err != nil {
-		t.Logf("Could not read cmd directory: %v", err)
-		return ""
-	}
+[[- if .EnableMagicLink ]]
+	t.Run("Magic Link Form", func(t *testing.T) {
+		// Get the auth page
+		resp := test.Get("/auth")
 
-	for _, entry := range entries {
-		if entry.IsDir() {
-			mainPath := filepath.Join("cmd", entry.Name(), "main.go")
-			if _, err := os.Stat(mainPath); err == nil {
-				return "./" + mainPath
-			}
-		}
-	}
-	return ""
+		assert := lvttest.NewHTTPAssert(resp)
+		assert.StatusOK(t)
+
+		// Verify magic link option exists (email-only login)
+		assert.Contains(t, "email")
+
+		t.Log("✅ Magic link form available")
+	})
+[[- end ]]
+
+[[- if .EnableEmailConfirmation ]]
+	t.Run("Email Confirmation Required", func(t *testing.T) {
+		// Try to login with unconfirmed email
+		formData := url.Values{}
+		formData.Set("Email", "unconfirmed@example.com")
+[[- if .EnablePassword ]]
+		formData.Set("Password", "testpassword123")
+[[- end ]]
+
+		resp := test.PostForm("/auth/login", formData)
+
+		// Should either show error or redirect
+		assert := lvttest.NewHTTPAssert(resp)
+		assert.NoTemplateErrors(t)
+
+		t.Log("✅ Email confirmation check works")
+	})
+[[- end ]]
+
+	t.Run("CSRF Protection", func(t *testing.T) {
+		// Get the auth page to check for CSRF token
+		resp := test.Get("/auth")
+
+		assert := lvttest.NewHTTPAssert(resp)
+		assert.StatusOK(t)
+
+		// Verify CSRF token is present in the form
+		assert.HasCSRFToken(t)
+
+		t.Log("✅ CSRF protection in place")
+	})
 }

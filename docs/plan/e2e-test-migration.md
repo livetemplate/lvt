@@ -94,9 +94,9 @@ Migrate to a 4-tier testing strategy that maintains rendering library confidence
   - deployment_mock_test.go
 - [x] Refactor helper files to work with build tags
 
-### Phase 4: Template Updates [PENDING]
-- [ ] Convert `resource/e2e_test.go.tmpl` to HTTP
-- [ ] Convert `auth/e2e_test.go.tmpl` to HTTP
+### Phase 4: Template Updates [COMPLETED]
+- [x] Convert `resource/e2e_test.go.tmpl` to HTTP (multi, single, generator)
+- [x] Convert `auth/e2e_test.go.tmpl` to HTTP (multi)
 
 ---
 
@@ -136,6 +136,15 @@ make test-all
 - `e2e/rendering_test.go` - 12 focused browser tests for rendering library validation
   - Uses self-contained HTML pattern (embedded test pages)
   - Validates DOM operations, forms, modals, focus, events, scrolling, lifecycle, pagination, infinite scroll, WebSocket
+
+### Phase 4 (Completed)
+- `internal/kits/system/multi/templates/resource/e2e_test.go.tmpl` - HTTP-based resource tests
+- `internal/kits/system/single/templates/resource/e2e_test.go.tmpl` - HTTP-based resource tests
+- `internal/generator/templates/resource/e2e_test.go.tmpl` - HTTP-based resource tests
+- `internal/kits/system/multi/templates/auth/e2e_test.go.tmpl` - HTTP-based auth tests
+  - All templates now use `//go:build http` tag
+  - Use `SetupHTTP()`, `test.Get()`, `test.PostForm()`, `NewHTTPAssert()` pattern
+  - Tests: Initial Load, Add Resource, Search, Form Validation, CSRF Protection
 
 ---
 
