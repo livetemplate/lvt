@@ -67,7 +67,7 @@ jobs:
           docker --version
           docker ps
 
-      - name: Run Tests
+      - name: Run Tests (All Tiers)
         env:
           DOCKER_BUILDKIT: 1
-        run: make test-commit
+        run: make test-all
