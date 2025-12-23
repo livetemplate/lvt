@@ -84,8 +84,8 @@ func TestHTTP_HomePageRendering(t *testing.T) {
 	assert := lvttest.NewHTTPAssert(resp)
 	assert.StatusOK(t)
 	assert.ContentTypeHTML(t)
-	assert.Contains(t, "httptest2")  // App name should appear
-	assert.NoTemplateErrors(t)       // No unflattened {{.Field}} expressions
+	assert.Contains(t, "httptest2") // App name should appear
+	assert.NoTemplateErrors(t)      // No unflattened {{.Field}} expressions
 }
 
 // TestHTTP_ResourceListPage tests that a resource list page renders correctly.

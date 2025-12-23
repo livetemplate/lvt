@@ -223,7 +223,6 @@ func getIsolatedChromeContext(t *testing.T) (context.Context, context.CancelFunc
 	return ctx, combinedCancel
 }
 
-
 // Unused: Kept for potential future use
 // getSharedTestApp returns the path to the pre-compiled test application
 // func getSharedTestApp(t *testing.T) string {

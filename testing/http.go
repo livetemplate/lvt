@@ -596,18 +596,18 @@ func (h *HTTPTest) DBPath() string {
 
 // templateErrorPatterns are patterns that indicate unflattened Go template expressions
 var templateErrorPatterns = []*regexp.Regexp{
-	regexp.MustCompile(`\{\{\s*\.`),           // {{.Field}}
-	regexp.MustCompile(`\{\{\s*if\s`),         // {{if ...}}
-	regexp.MustCompile(`\{\{\s*range\s`),      // {{range ...}}
-	regexp.MustCompile(`\{\{\s*end\s*\}\}`),   // {{end}}
-	regexp.MustCompile(`\{\{\s*else\s*\}\}`),  // {{else}}
-	regexp.MustCompile(`\{\{\s*template\s`),   // {{template ...}}
-	regexp.MustCompile(`\{\{\s*block\s`),      // {{block ...}}
-	regexp.MustCompile(`\{\{\s*with\s`),       // {{with ...}}
-	regexp.MustCompile(`\{\{\s*define\s`),     // {{define ...}}
-	regexp.MustCompile(`\[\[\s*\.`),           // [[.Field]] (alternate delimiters)
-	regexp.MustCompile(`\[\[\s*if\s`),         // [[if ...]]
-	regexp.MustCompile(`\[\[\s*range\s`),      // [[range ...]]
+	regexp.MustCompile(`\{\{\s*\.`),          // {{.Field}}
+	regexp.MustCompile(`\{\{\s*if\s`),        // {{if ...}}
+	regexp.MustCompile(`\{\{\s*range\s`),     // {{range ...}}
+	regexp.MustCompile(`\{\{\s*end\s*\}\}`),  // {{end}}
+	regexp.MustCompile(`\{\{\s*else\s*\}\}`), // {{else}}
+	regexp.MustCompile(`\{\{\s*template\s`),  // {{template ...}}
+	regexp.MustCompile(`\{\{\s*block\s`),     // {{block ...}}
+	regexp.MustCompile(`\{\{\s*with\s`),      // {{with ...}}
+	regexp.MustCompile(`\{\{\s*define\s`),    // {{define ...}}
+	regexp.MustCompile(`\[\[\s*\.`),          // [[.Field]] (alternate delimiters)
+	regexp.MustCompile(`\[\[\s*if\s`),        // [[if ...]]
+	regexp.MustCompile(`\[\[\s*range\s`),     // [[range ...]]
 }
 
 // HasTemplateErrors checks if the response body contains unflattened template expressions.

@@ -420,4 +420,3 @@ func readLvtrc(t *testing.T, appDir string) (kit string) {
 
 	return kit
 }
-
