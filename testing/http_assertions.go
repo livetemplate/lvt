@@ -623,15 +623,21 @@ func (d *DatabaseAssert) RecordDeleted(t *testing.T, table string, id interface{
 	d.RecordNotExists(t, table, map[string]interface{}{"id": id})
 }
 
+// validColumnNameRegex validates SQL column names to prevent injection
+var validColumnNameRegex = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
+
 func buildSelectQuery(table string, conditions map[string]interface{}) (string, []interface{}) {
 	var whereClauses []string
 	var args []interface{}
-	i := 1
 
 	for col, val := range conditions {
-		whereClauses = append(whereClauses, fmt.Sprintf("%s = $%d", col, i))
+		// Validate column name to prevent SQL injection
+		if !validColumnNameRegex.MatchString(col) {
+			panic(fmt.Sprintf("invalid column name: %s", col))
+		}
+		// Use ? placeholders for compatibility with SQLite and PostgreSQL
+		whereClauses = append(whereClauses, fmt.Sprintf("%s = ?", col))
 		args = append(args, val)
-		i++
 	}
 
 	where := ""

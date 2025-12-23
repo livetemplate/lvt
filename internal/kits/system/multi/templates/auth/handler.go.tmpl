@@ -619,18 +619,9 @@ func (c *{{.StructName}}Controller) GetCurrentUser(r *http.Request) (*models.{{.
 // Handler creates an http.Handler for the auth LiveTemplate view
 // It sets up the controller and returns a handler that can be registered with http.Handle
 func Handler(queries *models.Queries) http.Handler {
-	// Get base URL from environment, or use default for development
-	baseURL := "http://localhost:8080"
-	if envURL := os.Getenv("BASE_URL"); envURL != "" {
-		baseURL = envURL
-	}
-
-	// Use console email sender by default (logs emails to console)
-	// Replace with production email sender in your deployment
-	emailSender := email.NewConsoleEmailSender()
-
 	// Create controller with dependencies
-	controller := New{{.StructName}}Controller(queries, emailSender, baseURL)
+	// ⚠️ IMPORTANT: Replace getEmailSender() with real email sender for production!
+	controller := New{{.StructName}}Controller(queries, getEmailSender(), getBaseURL())
 
 	// Create initial state
 	initialState := New{{.StructName}}State()
@@ -653,26 +644,36 @@ func Handler(queries *models.Queries) http.Handler {
 	})
 }
 
+// getEmailSender returns the appropriate email sender based on environment
+func getEmailSender() email.EmailSender {
+	if os.Getenv("APP_ENV") == "production" {
+		// Production: Use NoOp sender to avoid logging tokens
+		// Replace this with your production email sender
+		log.Printf("⚠️ WARNING: Using NoOp email sender - magic links won't be delivered!")
+		return email.NewNoOpEmailSender()
+	}
+	// Development: Log emails to console for debugging
+	return email.NewConsoleEmailSender()
+}
+
+// getBaseURL returns the base URL from environment or default
+func getBaseURL() string {
+	if envURL := os.Getenv("BASE_URL"); envURL != "" {
+		return envURL
+	}
+	return "http://localhost:8080"
+}
+
 // LogoutHandler returns an http.Handler for the logout endpoint
 func LogoutHandler(queries *models.Queries) http.Handler {
-	baseURL := "http://localhost:8080"
-	if envURL := os.Getenv("BASE_URL"); envURL != "" {
-		baseURL = envURL
-	}
-	emailSender := email.NewConsoleEmailSender()
-	controller := New{{.StructName}}Controller(queries, emailSender, baseURL)
+	controller := New{{.StructName}}Controller(queries, getEmailSender(), getBaseURL())
 	return http.HandlerFunc(controller.HandleLogout)
 }
 
 {{- if .EnableMagicLink }}
 // MagicLinkHandler returns an http.Handler for magic link verification
 func MagicLinkHandler(queries *models.Queries) http.Handler {
-	baseURL := "http://localhost:8080"
-	if envURL := os.Getenv("BASE_URL"); envURL != "" {
-		baseURL = envURL
-	}
-	emailSender := email.NewConsoleEmailSender()
-	controller := New{{.StructName}}Controller(queries, emailSender, baseURL)
+	controller := New{{.StructName}}Controller(queries, getEmailSender(), getBaseURL())
 	return http.HandlerFunc(controller.HandleMagicLinkVerify)
 }
 {{- end }}
@@ -680,12 +681,7 @@ func MagicLinkHandler(queries *models.Queries) http.Handler {
 {{- if .EnablePasswordReset }}
 // ResetPasswordHandler returns an http.Handler for password reset
 func ResetPasswordHandler(queries *models.Queries) http.Handler {
-	baseURL := "http://localhost:8080"
-	if envURL := os.Getenv("BASE_URL"); envURL != "" {
-		baseURL = envURL
-	}
-	emailSender := email.NewConsoleEmailSender()
-	controller := New{{.StructName}}Controller(queries, emailSender, baseURL)
+	controller := New{{.StructName}}Controller(queries, getEmailSender(), getBaseURL())
 	return http.HandlerFunc(controller.HandleResetPassword)
 }
 {{- end }}
@@ -693,12 +689,7 @@ func ResetPasswordHandler(queries *models.Queries) http.Handler {
 {{- if .EnableEmailConfirm }}
 // ConfirmEmailHandler returns an http.Handler for email confirmation
 func ConfirmEmailHandler(queries *models.Queries) http.Handler {
-	baseURL := "http://localhost:8080"
-	if envURL := os.Getenv("BASE_URL"); envURL != "" {
-		baseURL = envURL
-	}
-	emailSender := email.NewConsoleEmailSender()
-	controller := New{{.StructName}}Controller(queries, emailSender, baseURL)
+	controller := New{{.StructName}}Controller(queries, getEmailSender(), getBaseURL())
 	return http.HandlerFunc(controller.HandleConfirmEmail)
 }
 {{- end }}

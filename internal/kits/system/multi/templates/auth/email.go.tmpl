@@ -11,21 +11,39 @@ type EmailSender interface {
 }
 
 // ConsoleEmailSender logs emails to stdout for development.
-// Replace with a real email sender for production.
+// ⚠️ WARNING: This sender logs magic links and reset tokens to stdout!
+// Only use in development. For production, use a real email sender.
 type ConsoleEmailSender struct{}
 
 // NewConsoleEmailSender creates a new console email sender.
+// ⚠️ SECURITY: This logs sensitive tokens. Use only for local development!
 func NewConsoleEmailSender() *ConsoleEmailSender {
 	return &ConsoleEmailSender{}
 }
 
 // Send logs the email to stdout instead of actually sending it.
+// ⚠️ WARNING: This logs the full email body including magic links and tokens.
 func (s *ConsoleEmailSender) Send(to, subject, body string) error {
-	log.Printf("📧 EMAIL (Console Mode)\n")
+	log.Printf("📧 EMAIL (Console Mode - DEVELOPMENT ONLY)\n")
 	log.Printf("To: %s\n", to)
 	log.Printf("Subject: %s\n", subject)
 	log.Printf("Body:\n%s\n", body)
 	log.Printf("---\n")
+	return nil
+}
+
+// NoOpEmailSender discards all emails silently.
+// Use this as a placeholder when email is not configured.
+type NoOpEmailSender struct{}
+
+// NewNoOpEmailSender creates a new no-op email sender.
+func NewNoOpEmailSender() *NoOpEmailSender {
+	return &NoOpEmailSender{}
+}
+
+// Send discards the email without logging or sending.
+func (s *NoOpEmailSender) Send(to, subject, body string) error {
+	// Silently discard - no logging of sensitive data
 	return nil
 }
 
