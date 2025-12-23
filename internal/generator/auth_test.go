@@ -128,12 +128,12 @@ func TestGenerateAuth_Migration(t *testing.T) {
 	contentStr := string(content)
 
 	// Check for users table
-	if !strings.Contains(contentStr, "CREATE TABLE users") {
+	if !strings.Contains(contentStr, "CREATE TABLE IF NOT EXISTS users") {
 		t.Error("migration missing users table")
 	}
 
 	// Check for users_tokens table
-	if !strings.Contains(contentStr, "CREATE TABLE users_tokens") {
+	if !strings.Contains(contentStr, "CREATE TABLE IF NOT EXISTS users_tokens") {
 		t.Error("migration missing users_tokens table")
 	}
 

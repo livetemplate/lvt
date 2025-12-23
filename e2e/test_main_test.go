@@ -1,3 +1,5 @@
+//go:build browser
+
 package e2e
 
 import e2etest "github.com/livetemplate/lvt/testing"

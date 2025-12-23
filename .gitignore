@@ -45,4 +45,7 @@ e2e/*/
 
 # Environment variables (added by lvt)
 .env
-.claude/
+
+# Claude Code (keep skills for team sharing)
+.claude/*
+!.claude/skills/

@@ -1,43 +1,35 @@
 package auth
 
-// Usage: Wire this handler to your main.go
+// Auth handler for LiveTemplate applications.
+// Routes are automatically registered in main.go when running `lvt gen auth`.
 //
-// Example setup in main.go:
-//
-//	import (
-//		"{{.ModuleName}}/app/auth"
-//		"{{.ModuleName}}/shared/email"
-//	)
-//
-//	// Create auth state
-//	emailSender := email.NewConsoleEmailSender() // or your production email sender
-//	authState := auth.New{{.StructName}}State(db, emailSender, "http://localhost:8080")
-//
-//	// Register LiveTemplate routes
-//	http.Handle("/auth", livetemplate.NewHandler(authState, "app/auth/auth.tmpl"))
-//
-//	// Register HTTP-only routes (no LiveTemplate)
-//	http.HandleFunc("/auth/logout", authState.HandleLogout)
+// Available routes:
+//   - /auth          - Main authentication page (login, register, forgot password)
+//   - /auth/logout   - Logout endpoint
 {{- if .EnableMagicLink }}
-//	http.HandleFunc("/auth/magic", authState.HandleMagicLinkVerify)
+//   - /auth/magic    - Magic link verification
 {{- end }}
 {{- if .EnablePasswordReset }}
-//	http.HandleFunc("/auth/reset", authState.HandleResetPassword)
+//   - /auth/reset    - Password reset
 {{- end }}
 {{- if .EnableEmailConfirm }}
-//	http.HandleFunc("/auth/confirm", authState.HandleConfirmEmail)
+//   - /auth/confirm  - Email confirmation
 {{- end }}
 //
-// For protected routes, use GetCurrentUser:
+// Configuration:
+//   - Set BASE_URL environment variable for email links (default: http://localhost:8080)
+//   - By default, emails are logged to console. Replace email.NewConsoleEmailSender()
+//     in Handler() with your production email sender.
 //
-//	func protectedHandler(w http.ResponseWriter, r *http.Request) {
-//		user, err := authState.GetCurrentUser(r)
-//		if err != nil {
-//			http.Redirect(w, r, "/auth", http.StatusSeeOther)
-//			return
-//		}
-//		// ... user is authenticated
+// For protected routes, use the auth middleware or GetCurrentUser:
+//
+//	controller := auth.New{{.StructName}}Controller(queries, emailSender, baseURL)
+//	user, err := controller.GetCurrentUser(r)
+//	if err != nil {
+//		http.Redirect(w, r, "/auth", http.StatusSeeOther)
+//		return
 //	}
+//	// ... user is authenticated
 
 import (
 	"context"
@@ -47,6 +39,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"{{.ModuleName}}/database/models"
@@ -63,7 +56,6 @@ var validate = validator.New()
 
 // {{.StructName}}Controller is a singleton that holds dependencies
 type {{.StructName}}Controller struct {
-	db          *sql.DB
 	queries     *models.Queries
 	emailSender email.EmailSender
 	baseURL     string
@@ -81,10 +73,9 @@ type {{.StructName}}State struct {
 	ShowPassword  bool   `json:"show_password"`
 }
 
-func New{{.StructName}}Controller(db *sql.DB, emailSender email.EmailSender, baseURL string) *{{.StructName}}Controller {
+func New{{.StructName}}Controller(queries *models.Queries, emailSender email.EmailSender, baseURL string) *{{.StructName}}Controller {
 	return &{{.StructName}}Controller{
-		db:          db,
-		queries:     models.New(db),
+		queries:     queries,
 		emailSender: emailSender,
 		baseURL:     baseURL,
 	}
@@ -624,3 +615,81 @@ func (c *{{.StructName}}Controller) GetCurrentUser(r *http.Request) (*models.{{.
 
 	return &user, nil
 }
+
+// Handler creates an http.Handler for the auth LiveTemplate view
+// It sets up the controller and returns a handler that can be registered with http.Handle
+func Handler(queries *models.Queries) http.Handler {
+	// Create controller with dependencies
+	// ⚠️ IMPORTANT: Replace getEmailSender() with real email sender for production!
+	controller := New{{.StructName}}Controller(queries, getEmailSender(), getBaseURL())
+
+	// Create initial state
+	initialState := New{{.StructName}}State()
+
+	// Parse the template
+	baseTmpl := livetemplate.Must(livetemplate.New("auth", livetemplate.WithDevMode(false)))
+	if _, err := baseTmpl.ParseFiles("app/auth/auth.tmpl"); err != nil {
+		log.Fatalf("Failed to parse auth template: %v", err)
+	}
+
+	// Return handler that serves the LiveTemplate view
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tmpl, err := baseTmpl.Clone()
+		if err != nil {
+			log.Printf("Failed to clone auth template: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		tmpl.Handle(controller, livetemplate.AsState(initialState)).ServeHTTP(w, r)
+	})
+}
+
+// getEmailSender returns the appropriate email sender based on environment
+func getEmailSender() email.EmailSender {
+	if os.Getenv("APP_ENV") == "production" {
+		// Production: Use NoOp sender to avoid logging tokens
+		// Replace this with your production email sender
+		log.Printf("⚠️ WARNING: Using NoOp email sender - magic links won't be delivered!")
+		return email.NewNoOpEmailSender()
+	}
+	// Development: Log emails to console for debugging
+	return email.NewConsoleEmailSender()
+}
+
+// getBaseURL returns the base URL from environment or default
+func getBaseURL() string {
+	if envURL := os.Getenv("BASE_URL"); envURL != "" {
+		return envURL
+	}
+	return "http://localhost:8080"
+}
+
+// LogoutHandler returns an http.Handler for the logout endpoint
+func LogoutHandler(queries *models.Queries) http.Handler {
+	controller := New{{.StructName}}Controller(queries, getEmailSender(), getBaseURL())
+	return http.HandlerFunc(controller.HandleLogout)
+}
+
+{{- if .EnableMagicLink }}
+// MagicLinkHandler returns an http.Handler for magic link verification
+func MagicLinkHandler(queries *models.Queries) http.Handler {
+	controller := New{{.StructName}}Controller(queries, getEmailSender(), getBaseURL())
+	return http.HandlerFunc(controller.HandleMagicLinkVerify)
+}
+{{- end }}
+
+{{- if .EnablePasswordReset }}
+// ResetPasswordHandler returns an http.Handler for password reset
+func ResetPasswordHandler(queries *models.Queries) http.Handler {
+	controller := New{{.StructName}}Controller(queries, getEmailSender(), getBaseURL())
+	return http.HandlerFunc(controller.HandleResetPassword)
+}
+{{- end }}
+
+{{- if .EnableEmailConfirm }}
+// ConfirmEmailHandler returns an http.Handler for email confirmation
+func ConfirmEmailHandler(queries *models.Queries) http.Handler {
+	controller := New{{.StructName}}Controller(queries, getEmailSender(), getBaseURL())
+	return http.HandlerFunc(controller.HandleConfirmEmail)
+}
+{{- end }}

@@ -1,3 +1,5 @@
+//go:build http
+
 package e2e
 
 import (

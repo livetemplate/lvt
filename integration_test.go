@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/livetemplate/lvt/internal/generator"
 	"github.com/livetemplate/lvt/internal/parser"
@@ -249,4 +250,115 @@ func TestForeignKeyGeneration(t *testing.T) {
 
 	t.Log("✅ Foreign key generation test passed")
 	t.Logf("Migration content:\n%s", commentsMigration)
+}
+
+// TestGeneratedAppFullFlow tests the complete workflow: generate app, resource, auth,
+// then build and run the generated tests. This ensures the generated app works in a single shot.
+func TestGeneratedAppFullFlow(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping full flow test in short mode")
+	}
+
+	// sqlc is required - fail if not installed
+	if _, err := exec.LookPath("sqlc"); err != nil {
+		t.Fatal("sqlc not installed - run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest")
+	}
+
+	tmpDir := t.TempDir()
+
+	// Save original working directory
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get current directory: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chdir(origDir); err != nil {
+			t.Logf("Warning: failed to restore directory: %v", err)
+		}
+	})
+
+	// Change to temp directory
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("Failed to change directory: %v", err)
+	}
+
+	appName := "testblog"
+	appDir := filepath.Join(tmpDir, appName)
+
+	// Step 1: Generate app
+	t.Log("Step 1: Generating app...")
+	if err := generator.GenerateApp(appName, appName, "multi", false); err != nil {
+		t.Fatalf("Failed to generate app: %v", err)
+	}
+	t.Log("✅ App generated")
+
+	// Step 2: Generate resource
+	t.Log("Step 2: Generating resource...")
+	fields := []parser.Field{
+		{Name: "title", Type: "string", GoType: "string", SQLType: "TEXT"},
+		{Name: "content", Type: "text", GoType: "string", SQLType: "TEXT"},
+		{Name: "published", Type: "bool", GoType: "bool", SQLType: "BOOLEAN"},
+	}
+	if err := generator.GenerateResource(appDir, appName, "Post", fields, "multi", "tailwind", "infinite", 20, "modal"); err != nil {
+		t.Fatalf("Failed to generate resource: %v", err)
+	}
+	t.Log("✅ Resource generated")
+
+	// Step 3: Generate auth (with delay to avoid migration timestamp collision)
+	t.Log("Step 3: Generating auth...")
+	time.Sleep(2 * time.Second)
+	authConfig := &generator.AuthConfig{
+		ModuleName:         appName,
+		TableName:          "users",
+		EnablePassword:     true,
+		EnableMagicLink:    true,
+		EnableEmailConfirm: true,
+	}
+	if err := generator.GenerateAuth(appDir, authConfig); err != nil {
+		t.Fatalf("Failed to generate auth: %v", err)
+	}
+	t.Log("✅ Auth generated")
+
+	// Step 4: Run go mod tidy
+	t.Log("Step 4: Running go mod tidy...")
+	cmd := exec.Command("go", "mod", "tidy")
+	cmd.Dir = appDir
+	cmd.Env = append(os.Environ(), "GOWORK=off")
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("go mod tidy failed: %v\nOutput: %s", err, output)
+	}
+	t.Log("✅ go mod tidy completed")
+
+	// Step 5: Generate sqlc code
+	t.Log("Step 5: Generating sqlc code...")
+	cmd = exec.Command("sqlc", "generate")
+	cmd.Dir = filepath.Join(appDir, "database")
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("sqlc generate failed: %v\nOutput: %s", err, output)
+	}
+	t.Log("✅ sqlc generate completed")
+
+	// Step 6: Build the app
+	t.Log("Step 6: Building app...")
+	cmd = exec.Command("go", "build", "./...")
+	cmd.Dir = appDir
+	cmd.Env = append(os.Environ(), "GOWORK=off")
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("go build failed: %v\nOutput: %s", err, output)
+	}
+	t.Log("✅ Build successful")
+
+	// Step 7: Run short tests (skip E2E which requires Docker/Chrome)
+	t.Log("Step 7: Running generated tests (short mode)...")
+	cmd = exec.Command("go", "test", "./...", "-short", "-v")
+	cmd.Dir = appDir
+	cmd.Env = append(os.Environ(), "GOWORK=off")
+	output, err := cmd.CombinedOutput()
+	t.Logf("Test output:\n%s", output)
+	if err != nil {
+		t.Fatalf("go test failed: %v", err)
+	}
+	t.Log("✅ Short tests passed")
+
+	t.Log("✅ Full flow test passed - generated app works in a single shot!")
 }

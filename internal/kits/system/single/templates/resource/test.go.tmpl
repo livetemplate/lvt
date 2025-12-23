@@ -1,9 +1,9 @@
 package [[.PackageName]]
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"net"
 	"net/http"
 	"os/exec"
 	"strings"
@@ -11,138 +11,159 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	e2etest "github.com/livetemplate/lvt/testing"
 )
-
-// getFreePort asks the kernel for a free open port that is ready to use
-func getFreePort() (port int, err error) {
-	var a *net.TCPAddr
-	if a, err = net.ResolveTCPAddr("tcp", "localhost:0"); err == nil {
-		var l *net.TCPListener
-		if l, err = net.ListenTCP("tcp", a); err == nil {
-			defer l.Close()
-			return l.Addr().(*net.TCPAddr).Port, nil
-		}
-	}
-	return
-}
 
 func Test[[.ResourceName]]WebSocket(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping WebSocket test in short mode")
 	}
 
-	// Get free port for server
-	serverPort, err := getFreePort()
+	// Get a free port
+	port, err := e2etest.GetFreePort()
 	if err != nil {
-		t.Fatalf("Failed to get free port for server: %v", err)
+		t.Fatalf("Failed to get free port: %v", err)
 	}
 
-	// Start server
-	portStr := fmt.Sprintf("%d", serverPort)
-	wsURL := fmt.Sprintf("ws://localhost:%d/[[.ResourceNameLower]]", serverPort)
+	portStr := fmt.Sprintf("%d", port)
+	serverURL := fmt.Sprintf("http://localhost:%s", portStr)
+	wsURL := fmt.Sprintf("ws://localhost:%s/[[.ResourceNameLower]]", portStr)
 
-	t.Logf("Starting test server on port %s", portStr)
-	serverCmd := exec.Command("go", "run", "../../cmd/[[.ModuleName]]/main.go")
-	serverCmd.Env = append([]string{"PORT=" + portStr}, serverCmd.Environ()...)
+	// Start server on dynamic port
+	cmd := exec.Command("go", "run", "./cmd/[[.ModuleName]]/main.go")
+	cmd.Dir = "../.." // Run from project root
+	cmd.Env = append([]string{"PORT=" + portStr, "TEST_MODE=1"}, cmd.Environ()...)
 
-	if err := serverCmd.Start(); err != nil {
+	serverLogs := &bytes.Buffer{}
+	cmd.Stdout = serverLogs
+	cmd.Stderr = serverLogs
+
+	if err := cmd.Start(); err != nil {
 		t.Fatalf("Failed to start server: %v", err)
 	}
 	defer func() {
-		if serverCmd != nil && serverCmd.Process != nil {
-			serverCmd.Process.Kill()
+		if cmd.Process != nil {
+			cmd.Process.Kill()
 		}
+		// Don't wait - Kill() is sufficient and Wait() may hang on I/O
+		t.Logf("=== SERVER LOGS ===\n%s", serverLogs.String())
 	}()
 
-	// Wait for server to be ready
-	httpURL := fmt.Sprintf("http://localhost:%d/[[.ResourceNameLower]]", serverPort)
-	for i := 0; i < 30; i++ {
-		resp, err := http.Get(httpURL)
-		if err == nil {
+	// Wait for server
+	time.Sleep(2 * time.Second)
+	serverReady := false
+	for i := 0; i < 50; i++ {
+		if resp, err := http.Get(serverURL); err == nil {
 			resp.Body.Close()
+			serverReady = true
 			break
 		}
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(200 * time.Millisecond)
+	}
+	if !serverReady {
+		t.Fatalf("Server failed to start within timeout\nServer logs:\n%s", serverLogs.String())
 	}
 
-	t.Log("✅ Test server ready")
+	t.Log("Server is up, trying to connect WebSocket...")
 
-	// Connect to WebSocket
-	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	// Try to connect
+	dialer := websocket.Dialer{}
+	conn, resp, err := dialer.Dial(wsURL, nil)
 	if err != nil {
-		t.Fatalf("Failed to connect to WebSocket: %v", err)
+		t.Fatalf("Failed to connect: %v, response: %v", err, resp)
 	}
 	defer conn.Close()
 
-	t.Log("✅ WebSocket connected")
+	t.Log("WebSocket connected successfully!")
 
-	// Test: Add [[.ResourceName]]
-	t.Run("Add[[.ResourceName]]", func(t *testing.T) {
-		addEvent := map[string]interface{}{
-			"event": "add",
-			"data": map[string]interface{}{
+	// Read first message (initial tree)
+	_, msg, err := conn.ReadMessage()
+	if err != nil {
+		t.Fatalf("Failed to read message: %v", err)
+	}
+
+	t.Logf("Received initial message, length: %d bytes", len(msg))
+
+	// Verify initial state contains expected structure
+	if !strings.Contains(string(msg), "[[.ResourceName]]") {
+		t.Error("Initial message should contain '[[.ResourceName]]'")
+	}
+
+	// Send add action
+	t.Log("Sending add [[.ResourceNameLower]] action...")
+	addAction := map[string]interface{}{
+		"action": "add",
+		"data": map[string]interface{}{
 [[- range .Fields]]
 [[- if eq .GoType "string"]]
-				"[[.Name]]": "Test [[.Name | title]]",
+			"[[.Name]]": "Test [[.Name | title]]",
 [[- else if eq .GoType "int64"]]
-				"[[.Name]]": 42,
+			"[[.Name]]": 42,
 [[- else if eq .GoType "bool"]]
-				"[[.Name]]": true,
+			"[[.Name]]": true,
 [[- else if eq .GoType "float64"]]
-				"[[.Name]]": 3.14,
+			"[[.Name]]": 3.14,
 [[- end]]
 [[- end]]
+		},
+	}
+	addJSON, _ := json.Marshal(addAction)
+
+	if err := conn.WriteMessage(websocket.TextMessage, addJSON); err != nil {
+		t.Fatalf("Failed to send add action: %v", err)
+	}
+
+	// Read add response with timeout
+	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	_, msg, err = conn.ReadMessage()
+	if err != nil {
+		time.Sleep(500 * time.Millisecond)
+		t.Fatalf("Failed to read add response: %v\nServer logs:\n%s", err, serverLogs.String())
+	}
+
+	t.Logf("Received add response, length: %d bytes", len(msg))
+
+	// Verify the response indicates success
+	if !strings.Contains(string(msg), `"success":true`) {
+		t.Errorf("Response doesn't indicate success: %s", string(msg))
+	}
+
+	// Extract [[.ResourceNameLower]] ID from response for delete test
+	var [[.ResourceNameLower]]ID string
+	msgStr := string(msg)
+	if idx := strings.Index(msgStr, `data-key="`); idx != -1 {
+		start := idx + len(`data-key="`)
+		end := strings.Index(msgStr[start:], `"`)
+		if end != -1 {
+			[[.ResourceNameLower]]ID = msgStr[start : start+end]
+			t.Logf("Extracted [[.ResourceNameLower]] ID: %s", [[.ResourceNameLower]]ID)
+		}
+	}
+
+	if [[.ResourceNameLower]]ID != "" {
+		// Send delete action
+		t.Log("Sending delete action...")
+		deleteAction := map[string]interface{}{
+			"action": "delete",
+			"data": map[string]interface{}{
+				"id": [[.ResourceNameLower]]ID,
 			},
 		}
+		deleteJSON, _ := json.Marshal(deleteAction)
 
-		payload, _ := json.Marshal(addEvent)
-		if err := conn.WriteMessage(websocket.TextMessage, payload); err != nil {
-			t.Fatalf("Failed to send add event: %v", err)
+		if err := conn.WriteMessage(websocket.TextMessage, deleteJSON); err != nil {
+			t.Fatalf("Failed to send delete action: %v", err)
 		}
 
-		// Read response
-		_, msg, err := conn.ReadMessage()
+		// Read delete response
+		conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+		_, msg, err = conn.ReadMessage()
 		if err != nil {
-			t.Fatalf("Failed to read response: %v", err)
+			t.Fatalf("Failed to read delete response: %v", err)
 		}
 
-		// Verify response contains update
-		response := string(msg)
-		if !strings.Contains(response, "Test [[(index .Fields 0).Name | title]]") {
-			t.Errorf("Response doesn't contain expected data: %s", response)
-		}
+		t.Logf("Received delete response: %s", msg)
+	}
 
-		t.Log("✅ [[.ResourceName]] added successfully via WebSocket")
-	})
-
-	// Test: Delete [[.ResourceName]]
-	t.Run("Delete[[.ResourceName]]", func(t *testing.T) {
-		// First get the ID from the previous add
-		_, msg, err := conn.ReadMessage()
-		if err == nil {
-			// Parse to get ID (simplified - in real test you'd parse JSON properly)
-			if strings.Contains(string(msg), "id") {
-				deleteEvent := map[string]interface{}{
-					"event": "delete",
-					"data": map[string]interface{}{
-						"id": "test-id", // Would extract from previous response
-					},
-				}
-
-				payload, _ := json.Marshal(deleteEvent)
-				if err := conn.WriteMessage(websocket.TextMessage, payload); err != nil {
-					t.Fatalf("Failed to send delete event: %v", err)
-				}
-
-				// Read delete response
-				_, msg, err := conn.ReadMessage()
-				if err != nil {
-					t.Fatalf("Failed to read delete response: %v", err)
-				}
-
-				t.Logf("Delete response: %s", string(msg))
-				t.Log("✅ [[.ResourceName]] deleted successfully via WebSocket")
-			}
-		}
-	})
+	t.Log("✅ WebSocket test passed!")
 }

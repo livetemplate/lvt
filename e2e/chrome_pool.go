@@ -1,3 +1,5 @@
+//go:build browser
+
 package e2e
 
 import (
@@ -160,8 +162,8 @@ func GetPooledChrome(t *testing.T) (context.Context, context.CancelFunc, func())
 		defer chromePoolMu.Unlock()
 
 		t.Log("Initializing Chrome pool (first use)...")
-		// Pool size of 8 to handle up to 8 concurrent tests (we have 7 tests using Chrome)
-		chromePool = NewChromePool(t, 8)
+		// Pool size of 4 to stay under 4GB memory limit (4 × 512MB = 2GB max)
+		chromePool = NewChromePool(t, 4)
 	})
 
 	container := chromePool.Get()

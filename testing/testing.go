@@ -187,7 +187,7 @@ func (e *E2ETest) Cleanup() {
 		e.Server.Stop()
 	}
 
-	// Cancel context
+	// Cancel context (this kills local Chrome via allocator cancel)
 	if e.Cancel != nil {
 		e.Cancel()
 	}
@@ -195,6 +195,12 @@ func (e *E2ETest) Cleanup() {
 	// Stop Chrome
 	if e.ChromeMode == ChromeDocker {
 		StopDockerChrome(e.T, e.ChromePort)
+	}
+
+	// For ChromeLocal, the allocatorCancel() in the goroutine handles cleanup
+	// Give it time to complete to avoid zombie Chrome processes
+	if e.ChromeMode == ChromeLocal {
+		time.Sleep(100 * time.Millisecond)
 	}
 
 	// Stop server
