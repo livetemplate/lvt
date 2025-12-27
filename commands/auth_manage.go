@@ -13,34 +13,53 @@ import (
 // AuthManage handles auth management subcommands (confirm, list, etc.)
 func AuthManage(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("missing subcommand\n\nUsage:\n  lvt auth confirm <email>    Confirm a user's email (for testing)\n  lvt auth list               List all users")
+		return fmt.Errorf("missing subcommand\n\nUsage:\n  lvt auth [--db <path>] confirm <email>    Confirm a user's email (for testing)\n  lvt auth [--db <path>] list               List all users")
 	}
 
-	subcommand := args[0]
-	subArgs := args[1:]
+	// Parse --db flag
+	var dbPath string
+	var filteredArgs []string
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--db" && i+1 < len(args) {
+			dbPath = args[i+1]
+			i++ // skip the path argument
+		} else {
+			filteredArgs = append(filteredArgs, args[i])
+		}
+	}
+
+	if len(filteredArgs) == 0 {
+		return fmt.Errorf("missing subcommand\n\nUsage:\n  lvt auth [--db <path>] confirm <email>    Confirm a user's email (for testing)\n  lvt auth [--db <path>] list               List all users")
+	}
+
+	subcommand := filteredArgs[0]
+	subArgs := filteredArgs[1:]
 
 	switch subcommand {
 	case "confirm":
-		return AuthConfirm(subArgs)
+		return AuthConfirm(subArgs, dbPath)
 	case "list":
-		return AuthList(subArgs)
+		return AuthList(subArgs, dbPath)
 	default:
 		return fmt.Errorf("unknown auth subcommand: %s\n\nAvailable subcommands:\n  confirm <email>    Confirm a user's email (for testing)\n  list               List all users", subcommand)
 	}
 }
 
 // AuthConfirm confirms a user's email in the database
-func AuthConfirm(args []string) error {
+func AuthConfirm(args []string, dbPath string) error {
 	if len(args) == 0 {
 		return fmt.Errorf("missing email address\n\nUsage: lvt auth confirm <email>")
 	}
 
 	email := args[0]
 
-	// Find the database file
-	dbPath, err := findDatabaseFile()
-	if err != nil {
-		return err
+	// Find the database file if not specified
+	if dbPath == "" {
+		var err error
+		dbPath, err = findDatabaseFile()
+		if err != nil {
+			return err
+		}
 	}
 
 	// Open database
@@ -79,11 +98,14 @@ func AuthConfirm(args []string) error {
 }
 
 // AuthList lists all users in the database
-func AuthList(args []string) error {
-	// Find the database file
-	dbPath, err := findDatabaseFile()
-	if err != nil {
-		return err
+func AuthList(args []string, dbPath string) error {
+	// Find the database file if not specified
+	if dbPath == "" {
+		var err error
+		dbPath, err = findDatabaseFile()
+		if err != nil {
+			return err
+		}
 	}
 
 	// Open database
