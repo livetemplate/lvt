@@ -73,10 +73,12 @@ func TestAuthCommand_Integration(t *testing.T) {
 	}
 
 	// Verify files were created
-	// Password auth is enabled by default in v0.5.1+
+	// Note: shared/password and shared/email are no longer generated
+	// They are imported from github.com/livetemplate/lvt/pkg/
 	expectedFiles := []string{
-		"shared/password/password.go",
-		"shared/email/email.go",
+		"app/auth/auth.go",
+		"app/auth/auth.tmpl",
+		"app/auth/middleware.go",
 		"database/queries.sql",
 	}
 

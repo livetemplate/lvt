@@ -39,13 +39,14 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
 
 	"{{.ModuleName}}/database/models"
-	"{{.ModuleName}}/shared/email"
+	"github.com/livetemplate/lvt/pkg/email"
 	{{- if .EnablePassword }}
-	"{{.ModuleName}}/shared/password"
+	"github.com/livetemplate/lvt/pkg/password"
 	{{- end }}
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
@@ -69,6 +70,8 @@ type {{.StructName}}State struct {
 	Token         string `json:"token"`
 	ShowMagicLink bool   `json:"show_magic_link"`
 	ShowPassword  bool   `json:"show_password"`
+	FlashError    string `json:"flash_error"`
+	FlashSuccess  string `json:"flash_success"`
 }
 
 func New{{.StructName}}Controller(queries *models.Queries, emailSender email.EmailSender, baseURL string) *{{.StructName}}Controller {
@@ -105,24 +108,8 @@ var successMessages = map[string]string{
 }
 
 // Mount is called once per session to initialize state.
-// It reads query params from redirects (e.g., ?error=invalid_credentials) and sets flash messages.
+// Flash messages are handled via cookies in the HTTP handler for proper one-time display.
 func (c *{{.StructName}}Controller) Mount(state {{.StructName}}State, ctx *livetemplate.Context) ({{.StructName}}State, error) {
-	// Check for error code from redirect
-	if errCode := ctx.GetString("error"); errCode != "" {
-		if msg, ok := errorMessages[errCode]; ok {
-			ctx.SetFlash("error", msg)
-		} else {
-			ctx.SetFlash("error", "An error occurred")
-		}
-	}
-
-	// Check for success code from redirect
-	if successCode := ctx.GetString("success"); successCode != "" {
-		if msg, ok := successMessages[successCode]; ok {
-			ctx.SetFlash("success", msg)
-		}
-	}
-
 	return state, nil
 }
 
@@ -766,8 +753,59 @@ func Handler(queries *models.Queries) http.Handler {
 	}
 
 	// Return handler that clones template per-request
-	// Query params (?error=xxx, ?success=xxx) are handled in Mount via ctx.GetString()
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Handle error/success query params by setting flash cookies and redirecting to clean URL
+		errCode := r.URL.Query().Get("error")
+		successCode := r.URL.Query().Get("success")
+
+		if errCode != "" || successCode != "" {
+			// Clear livetemplate-id to force new session on next request
+			// This ensures the flash message will be properly displayed
+			http.SetCookie(w, &http.Cookie{
+				Name:   "livetemplate-id",
+				Value:  "",
+				Path:   "/",
+				MaxAge: -1,
+			})
+
+			// Set flash message in cookie (URL-encoded to avoid quoting issues)
+			if errCode != "" {
+				if msg, ok := errorMessages[errCode]; ok {
+					http.SetCookie(w, &http.Cookie{
+						Name:     "flash_error",
+						Value:    url.QueryEscape(msg),
+						Path:     "/",
+						MaxAge:   10, // Short-lived
+						HttpOnly: true,
+					})
+				}
+			}
+			if successCode != "" {
+				if msg, ok := successMessages[successCode]; ok {
+					http.SetCookie(w, &http.Cookie{
+						Name:     "flash_success",
+						Value:    url.QueryEscape(msg),
+						Path:     "/",
+						MaxAge:   10,
+						HttpOnly: true,
+					})
+				}
+			}
+
+			// Set marker so we know flash was triggered (for one-time display)
+			http.SetCookie(w, &http.Cookie{
+				Name:     "flash_pending",
+				Value:    "1",
+				Path:     "/",
+				MaxAge:   10,
+				HttpOnly: true,
+			})
+
+			// Redirect to clean URL
+			http.Redirect(w, r, "/auth", http.StatusSeeOther)
+			return
+		}
+
 		tmpl, err := baseTmpl.Clone()
 		if err != nil {
 			log.Printf("Failed to clone auth template: %v", err)
@@ -775,7 +813,63 @@ func Handler(queries *models.Queries) http.Handler {
 			return
 		}
 
+		// Only process flash logic for GET requests (not HEAD/WebSocket preflight)
+		if r.Method == "GET" {
+			// Check if this is a fresh flash display or a reload
+			_, errFlashPending := r.Cookie("flash_pending")
+			_, errSession := r.Cookie("livetemplate-id")
+
+			hasFlashPending := errFlashPending == nil // true if cookie exists
+			hasSession := errSession == nil           // true if cookie exists
+
+			// If we have a session but no flash_pending marker, this is a reload
+			// Force new session to clear any stale flash from previous session
+			if hasSession && !hasFlashPending {
+				http.SetCookie(w, &http.Cookie{
+					Name:   "livetemplate-id",
+					Value:  "",
+					Path:   "/",
+					MaxAge: -1,
+				})
+			}
+
+			// Clear the flash_pending marker after first use
+			if hasFlashPending {
+				http.SetCookie(w, &http.Cookie{
+					Name:   "flash_pending",
+					Value:  "",
+					Path:   "/",
+					MaxAge: -1,
+				})
+			}
+		}
+
+		// Read and clear flash cookies, set in initial state
 		state := New{{.StructName}}State()
+
+		if cookie, err := r.Cookie("flash_error"); err == nil && cookie.Value != "" {
+			if msg, err := url.QueryUnescape(cookie.Value); err == nil {
+				state.FlashError = msg
+			}
+			http.SetCookie(w, &http.Cookie{
+				Name:   "flash_error",
+				Value:  "",
+				Path:   "/",
+				MaxAge: -1,
+			})
+		}
+		if cookie, err := r.Cookie("flash_success"); err == nil && cookie.Value != "" {
+			if msg, err := url.QueryUnescape(cookie.Value); err == nil {
+				state.FlashSuccess = msg
+			}
+			http.SetCookie(w, &http.Cookie{
+				Name:   "flash_success",
+				Value:  "",
+				Path:   "/",
+				MaxAge: -1,
+			})
+		}
+
 		tmpl.Handle(controller, livetemplate.AsState(state)).ServeHTTP(w, r)
 	})
 }
