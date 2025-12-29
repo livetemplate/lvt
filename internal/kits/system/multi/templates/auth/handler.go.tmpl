@@ -396,6 +396,9 @@ func (c *{{.StructName}}Controller) HandleMagicLinkVerify(w http.ResponseWriter,
 		SameSite: http.SameSiteStrictMode,
 	})
 
+	// Clear LiveTemplate session to force fresh state on home page
+	cookie.ClearLiveTemplateSession(w)
+
 	// Redirect to home
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
