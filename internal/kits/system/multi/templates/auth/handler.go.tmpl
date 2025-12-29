@@ -33,21 +33,21 @@ package auth
 
 import (
 	"context"
-	"crypto/rand"
 	"database/sql"
-	"encoding/base64"
 	"fmt"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
 	"time"
 
 	"{{.ModuleName}}/database/models"
+	"github.com/livetemplate/lvt/pkg/cookie"
 	"github.com/livetemplate/lvt/pkg/email"
+	"github.com/livetemplate/lvt/pkg/flash"
 	{{- if .EnablePassword }}
 	"github.com/livetemplate/lvt/pkg/password"
 	{{- end }}
+	"github.com/livetemplate/lvt/pkg/token"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/livetemplate/livetemplate"
@@ -630,23 +630,15 @@ func (c *{{.StructName}}Controller) HandlePasswordLogin(w http.ResponseWriter, r
 	}
 
 	// Create session token
-	token, err := c.generateToken(user.ID, "session", 30*24*time.Hour)
+	tok, err := c.generateToken(user.ID, "session", 30*24*time.Hour)
 	if err != nil {
 		log.Printf("Generate session token error: %v", err)
 		http.Redirect(w, r, "/auth?error=login_failed", http.StatusSeeOther)
 		return
 	}
 
-	// Set session cookie
-	http.SetCookie(w, &http.Cookie{
-		Name:     "{{.TableName}}_token",
-		Value:    token,
-		Path:     "/",
-		MaxAge:   30 * 24 * 60 * 60,
-		HttpOnly: true,
-		Secure:   false, // Set to true in production with HTTPS
-		SameSite: http.SameSiteLaxMode,
-	})
+	// Set session cookie (30 days)
+	cookie.SetSession(w, "{{.TableName}}_token", tok, 30)
 
 	// Redirect to home
 	http.Redirect(w, r, "/", http.StatusSeeOther)
@@ -654,34 +646,16 @@ func (c *{{.StructName}}Controller) HandlePasswordLogin(w http.ResponseWriter, r
 
 // HandleLogout handles user logout (HTTP-only, no LiveTemplate)
 func (c *{{.StructName}}Controller) HandleLogout(w http.ResponseWriter, r *http.Request) {
-	// Get session token from cookie
-	cookie, err := r.Cookie("{{.TableName}}_token")
-	if err == nil {
-		// Delete the token from database
-		c.queries.Delete{{.StructName}}Token(context.Background(), cookie.Value)
+	// Get session token from cookie and delete from database
+	if tok := cookie.Get(r, "{{.TableName}}_token"); tok != "" {
+		c.queries.Delete{{.StructName}}Token(context.Background(), tok)
 	}
 
 	// Clear auth cookie
-	http.SetCookie(w, &http.Cookie{
-		Name:     "{{.TableName}}_token",
-		Value:    "",
-		Path:     "/",
-		MaxAge:   -1,
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
-	})
+	cookie.ClearSecure(w, "{{.TableName}}_token")
 
 	// Clear LiveTemplate session cookie to force fresh state on home page
-	// This ensures the home page gets a new session with IsLoggedIn=false
-	http.SetCookie(w, &http.Cookie{
-		Name:     "livetemplate-id",
-		Value:    "",
-		Path:     "/",
-		MaxAge:   -1,
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-	})
+	cookie.ClearLiveTemplateSession(w)
 
 	// Redirect to home
 	http.Redirect(w, r, "/", http.StatusSeeOther)
@@ -690,21 +664,20 @@ func (c *{{.StructName}}Controller) HandleLogout(w http.ResponseWriter, r *http.
 // generateToken creates a random token and stores it
 func (c *{{.StructName}}Controller) generateToken(userID, tokenContext string, duration time.Duration) (string, error) {
 	// Generate random token
-	b := make([]byte, 32)
-	if _, err := rand.Read(b); err != nil {
+	tok, err := token.Generate()
+	if err != nil {
 		return "", err
 	}
-	token := base64.URLEncoding.EncodeToString(b)
 
 	// Store token
 	tokenID := uuid.New().String()
 	now := time.Now()
 	expiresAt := sql.NullTime{Time: now.Add(duration), Valid: true}
 
-	_, err := c.queries.Create{{.StructName}}Token(context.Background(), models.Create{{.StructName}}TokenParams{
+	_, err = c.queries.Create{{.StructName}}Token(context.Background(), models.Create{{.StructName}}TokenParams{
 		ID:        tokenID,
 		{{.StructName}}ID:   userID,
-		Token:     token,
+		Token:     tok,
 		Context:   tokenContext,
 		CreatedAt: now,
 		ExpiresAt: expiresAt,
@@ -713,18 +686,18 @@ func (c *{{.StructName}}Controller) generateToken(userID, tokenContext string, d
 		return "", err
 	}
 
-	return token, nil
+	return tok, nil
 }
 
 // GetCurrentUser returns the authenticated user or nil
 func (c *{{.StructName}}Controller) GetCurrentUser(r *http.Request) (*models.{{.StructName}}, error) {
-	cookie, err := r.Cookie("{{.TableName}}_token")
-	if err != nil {
-		return nil, err
+	tok := cookie.Get(r, "{{.TableName}}_token")
+	if tok == "" {
+		return nil, http.ErrNoCookie
 	}
 
 	userToken, err := c.queries.Get{{.StructName}}Token(context.Background(), models.Get{{.StructName}}TokenParams{
-		Token:     cookie.Value,
+		Token:     tok,
 		ExpiresAt: sql.NullTime{Time: time.Now(), Valid: true},
 	})
 	if err != nil {
@@ -771,46 +744,22 @@ func Handler(queries *models.Queries) http.Handler {
 
 		if errCode != "" || successCode != "" {
 			// Clear livetemplate-id to force new session on next request
-			// This ensures the flash message will be properly displayed
-			http.SetCookie(w, &http.Cookie{
-				Name:   "livetemplate-id",
-				Value:  "",
-				Path:   "/",
-				MaxAge: -1,
-			})
+			cookie.ClearLiveTemplateSession(w)
 
-			// Set flash message in cookie (URL-encoded to avoid quoting issues)
+			// Set flash message from error/success code
 			if errCode != "" {
 				if msg, ok := errorMessages[errCode]; ok {
-					http.SetCookie(w, &http.Cookie{
-						Name:     "flash_error",
-						Value:    url.QueryEscape(msg),
-						Path:     "/",
-						MaxAge:   10, // Short-lived
-						HttpOnly: true,
-					})
+					flash.Error(w, msg)
 				}
 			}
 			if successCode != "" {
 				if msg, ok := successMessages[successCode]; ok {
-					http.SetCookie(w, &http.Cookie{
-						Name:     "flash_success",
-						Value:    url.QueryEscape(msg),
-						Path:     "/",
-						MaxAge:   10,
-						HttpOnly: true,
-					})
+					flash.Success(w, msg)
 				}
 			}
 
 			// Set marker so we know flash was triggered (for one-time display)
-			http.SetCookie(w, &http.Cookie{
-				Name:     "flash_pending",
-				Value:    "1",
-				Path:     "/",
-				MaxAge:   10,
-				HttpOnly: true,
-			})
+			flash.SetPending(w)
 
 			// Redirect to clean URL
 			http.Redirect(w, r, "/auth", http.StatusSeeOther)
@@ -826,60 +775,26 @@ func Handler(queries *models.Queries) http.Handler {
 
 		// Only process flash logic for GET requests (not HEAD/WebSocket preflight)
 		if r.Method == "GET" {
-			// Check if this is a fresh flash display or a reload
-			_, errFlashPending := r.Cookie("flash_pending")
-			_, errSession := r.Cookie("livetemplate-id")
-
-			hasFlashPending := errFlashPending == nil // true if cookie exists
-			hasSession := errSession == nil           // true if cookie exists
+			hasFlashPending := flash.IsPending(r)
+			hasSession := cookie.Get(r, "livetemplate-id") != ""
 
 			// If we have a session but no flash_pending marker, this is a reload
 			// Force new session to clear any stale flash from previous session
 			if hasSession && !hasFlashPending {
-				http.SetCookie(w, &http.Cookie{
-					Name:   "livetemplate-id",
-					Value:  "",
-					Path:   "/",
-					MaxAge: -1,
-				})
+				cookie.ClearLiveTemplateSession(w)
 			}
 
 			// Clear the flash_pending marker after first use
 			if hasFlashPending {
-				http.SetCookie(w, &http.Cookie{
-					Name:   "flash_pending",
-					Value:  "",
-					Path:   "/",
-					MaxAge: -1,
-				})
+				flash.ClearPending(w)
 			}
 		}
 
 		// Read and clear flash cookies, set in initial state
 		state := New{{.StructName}}State()
-
-		if cookie, err := r.Cookie("flash_error"); err == nil && cookie.Value != "" {
-			if msg, err := url.QueryUnescape(cookie.Value); err == nil {
-				state.FlashError = msg
-			}
-			http.SetCookie(w, &http.Cookie{
-				Name:   "flash_error",
-				Value:  "",
-				Path:   "/",
-				MaxAge: -1,
-			})
-		}
-		if cookie, err := r.Cookie("flash_success"); err == nil && cookie.Value != "" {
-			if msg, err := url.QueryUnescape(cookie.Value); err == nil {
-				state.FlashSuccess = msg
-			}
-			http.SetCookie(w, &http.Cookie{
-				Name:   "flash_success",
-				Value:  "",
-				Path:   "/",
-				MaxAge: -1,
-			})
-		}
+		msgs := flash.GetAll(r, w)
+		state.FlashError = msgs.Error
+		state.FlashSuccess = msgs.Success
 
 		tmpl.Handle(controller, livetemplate.AsState(state)).ServeHTTP(w, r)
 	})
