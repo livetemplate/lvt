@@ -152,21 +152,21 @@ type RegisterInput struct {
 func (c *{{.StructName}}Controller) Register(state {{.StructName}}State, ctx *livetemplate.Context) ({{.StructName}}State, error) {
 	var input RegisterInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
-		ctx.SetFlash("error", "Email and password are required")
+		state.FlashError = "Email and password are required"
 		return state, nil
 	}
 
 	// Check if user already exists
 	existing, err := c.queries.Get{{.StructName}}ByEmail(context.Background(), input.Email)
 	if err == nil && existing.ID != "" {
-		ctx.SetFlash("error", "Email already registered")
+		state.FlashError = "Email already registered"
 		return state, nil
 	}
 
 	// Hash password
 	hashedPassword, err := password.Hash(input.Password)
 	if err != nil {
-		ctx.SetFlash("error", "Failed to process password")
+		state.FlashError = "Failed to process password"
 		log.Printf("Password hash error: %v", err)
 		return state, nil
 	}
@@ -183,7 +183,7 @@ func (c *{{.StructName}}Controller) Register(state {{.StructName}}State, ctx *li
 		UpdatedAt:      now,
 	})
 	if err != nil {
-		ctx.SetFlash("error", "Failed to create account")
+		state.FlashError = "Failed to create account"
 		log.Printf("Create user error: %v", err)
 		return state, nil
 	}
@@ -192,7 +192,7 @@ func (c *{{.StructName}}Controller) Register(state {{.StructName}}State, ctx *li
 	// Send confirmation email
 	token, err := c.generateToken(userID, "confirm", 24*time.Hour)
 	if err != nil {
-		ctx.SetFlash("error", "Account created but failed to send confirmation email")
+		state.FlashError = "Account created but failed to send confirmation email"
 		log.Printf("Generate token error: %v", err)
 		return state, nil
 	}
@@ -207,9 +207,9 @@ func (c *{{.StructName}}Controller) Register(state {{.StructName}}State, ctx *li
 		log.Printf("Send email error: %v", err)
 	}
 
-	ctx.SetFlash("success", "Account created! Please check your email to confirm your account.")
+	state.FlashSuccess = "Account created! Please check your email to confirm your account."
 	{{- else }}
-	ctx.SetFlash("success", "Account created! You can now log in.")
+	state.FlashSuccess = "Account created! You can now log in."
 	{{- end }}
 
 	state.View = "login"
@@ -228,35 +228,35 @@ type LoginInput struct {
 func (c *{{.StructName}}Controller) Login(state {{.StructName}}State, ctx *livetemplate.Context) ({{.StructName}}State, error) {
 	var input LoginInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
-		ctx.SetFlash("error", "Email and password are required")
+		state.FlashError = "Email and password are required"
 		return state, nil
 	}
 
 	// Get user
 	user, err := c.queries.Get{{.StructName}}ByEmail(context.Background(), input.Email)
 	if err != nil {
-		ctx.SetFlash("error", "Invalid email or password")
+		state.FlashError = "Invalid email or password"
 		return state, nil
 	}
 
 	{{- if .EnableEmailConfirm }}
 	// Check if email is confirmed
 	if !user.ConfirmedAt.Valid {
-		ctx.SetFlash("error", "Please confirm your email before logging in")
+		state.FlashError = "Please confirm your email before logging in"
 		return state, nil
 	}
 	{{- end }}
 
 	// Verify password
 	if !password.Verify(input.Password, user.HashedPassword) {
-		ctx.SetFlash("error", "Invalid email or password")
+		state.FlashError = "Invalid email or password"
 		return state, nil
 	}
 
 	// Create session token
 	token, err := c.generateToken(user.ID, "session", 30*24*time.Hour) // 30 days
 	if err != nil {
-		ctx.SetFlash("error", "Login failed")
+		state.FlashError = "Login failed"
 		log.Printf("Generate session token error: %v", err)
 		return state, nil
 	}
@@ -276,9 +276,9 @@ func (c *{{.StructName}}Controller) Login(state {{.StructName}}State, ctx *livet
 		// The login form should use HTTP POST via /auth/login endpoint
 		log.Printf("Set cookie error: %v", err)
 		{{- if .EnableMagicLink }}
-		ctx.SetFlash("error", "Login via WebSocket not supported. Please use the magic link option.")
+		state.FlashError = "Login via WebSocket not supported. Please use the magic link option."
 		{{- else }}
-		ctx.SetFlash("error", "Login failed. Please try again.")
+		state.FlashError = "Login failed. Please try again."
 		{{- end }}
 		return state, nil
 	}
@@ -304,7 +304,7 @@ type MagicLinkInput struct {
 func (c *{{.StructName}}Controller) MagicLink(state {{.StructName}}State, ctx *livetemplate.Context) ({{.StructName}}State, error) {
 	var input MagicLinkInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
-		ctx.SetFlash("error", "Email is required")
+		state.FlashError = "Email is required"
 		return state, nil
 	}
 
@@ -324,7 +324,7 @@ func (c *{{.StructName}}Controller) MagicLink(state {{.StructName}}State, ctx *l
 			UpdatedAt: now,
 		})
 		if err != nil {
-			ctx.SetFlash("error", "Failed to process request")
+			state.FlashError = "Failed to process request"
 			log.Printf("Create user error: %v", err)
 			return state, nil
 		}
@@ -333,7 +333,7 @@ func (c *{{.StructName}}Controller) MagicLink(state {{.StructName}}State, ctx *l
 	// Generate magic link token
 	token, err := c.generateToken(user.ID, "magic", 15*time.Minute)
 	if err != nil {
-		ctx.SetFlash("error", "Failed to send magic link")
+		state.FlashError = "Failed to send magic link"
 		log.Printf("Generate token error: %v", err)
 		return state, nil
 	}
@@ -346,12 +346,12 @@ func (c *{{.StructName}}Controller) MagicLink(state {{.StructName}}State, ctx *l
 		fmt.Sprintf("Click here to log in: %s\n\nThis link expires in 15 minutes.", magicURL),
 	)
 	if err != nil {
-		ctx.SetFlash("error", "Failed to send magic link")
+		state.FlashError = "Failed to send magic link"
 		log.Printf("Send email error: %v", err)
 		return state, nil
 	}
 
-	ctx.SetFlash("success", "Check your email for a login link!")
+	state.FlashSuccess = "Check your email for a login link!"
 	state.Email = ""
 	return state, nil
 }
@@ -412,7 +412,7 @@ type ForgotPasswordInput struct {
 func (c *{{.StructName}}Controller) ForgotPassword(state {{.StructName}}State, ctx *livetemplate.Context) ({{.StructName}}State, error) {
 	var input ForgotPasswordInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
-		ctx.SetFlash("error", "Email is required")
+		state.FlashError = "Email is required"
 		return state, nil
 	}
 
@@ -420,7 +420,7 @@ func (c *{{.StructName}}Controller) ForgotPassword(state {{.StructName}}State, c
 	user, err := c.queries.Get{{.StructName}}ByEmail(context.Background(), input.Email)
 	if err != nil {
 		// Don't reveal if email exists or not for security
-		ctx.SetFlash("success", "If that email is registered, you'll receive a password reset link shortly.")
+		state.FlashSuccess = "If that email is registered, you'll receive a password reset link shortly."
 		state.Email = ""
 		return state, nil
 	}
@@ -428,7 +428,7 @@ func (c *{{.StructName}}Controller) ForgotPassword(state {{.StructName}}State, c
 	// Generate reset token
 	token, err := c.generateToken(user.ID, "reset", 1*time.Hour)
 	if err != nil {
-		ctx.SetFlash("error", "Failed to send reset link")
+		state.FlashError = "Failed to send reset link"
 		log.Printf("Generate token error: %v", err)
 		return state, nil
 	}
@@ -444,7 +444,7 @@ func (c *{{.StructName}}Controller) ForgotPassword(state {{.StructName}}State, c
 		log.Printf("Send email error: %v", err)
 	}
 
-	ctx.SetFlash("success", "If that email is registered, you'll receive a password reset link shortly.")
+	state.FlashSuccess = "If that email is registered, you'll receive a password reset link shortly."
 	state.Email = ""
 	return state, nil
 }
