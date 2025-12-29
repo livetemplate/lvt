@@ -661,7 +661,7 @@ func (c *{{.StructName}}Controller) HandleLogout(w http.ResponseWriter, r *http.
 		c.queries.Delete{{.StructName}}Token(context.Background(), cookie.Value)
 	}
 
-	// Clear cookie
+	// Clear auth cookie
 	http.SetCookie(w, &http.Cookie{
 		Name:     "{{.TableName}}_token",
 		Value:    "",
@@ -672,8 +672,19 @@ func (c *{{.StructName}}Controller) HandleLogout(w http.ResponseWriter, r *http.
 		SameSite: http.SameSiteStrictMode,
 	})
 
-	// Redirect to login
-	http.Redirect(w, r, "/auth", http.StatusSeeOther)
+	// Clear LiveTemplate session cookie to force fresh state on home page
+	// This ensures the home page gets a new session with IsLoggedIn=false
+	http.SetCookie(w, &http.Cookie{
+		Name:     "livetemplate-id",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	// Redirect to home
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 // generateToken creates a random token and stores it
