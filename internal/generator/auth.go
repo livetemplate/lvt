@@ -435,25 +435,31 @@ func updateHomeHandler(projectRoot string, authConfig *AuthConfig) error {
 		return nil // Already updated
 	}
 
-	// Add auth import
+	// Add auth and models imports if not present
 	authImport := fmt.Sprintf("\t\"%s/app/auth\"", authConfig.ModuleName)
+	modelsImport := fmt.Sprintf("\t\"%s/database/models\"", authConfig.ModuleName)
+
+	var missingImports []string
 	if !strings.Contains(homeContent, authImport) {
-		// Find the import block and add auth import
-		importEnd := strings.Index(homeContent, "\n)")
-		if importEnd == -1 {
-			return fmt.Errorf("could not find import block")
-		}
-		homeContent = homeContent[:importEnd] + "\n" + authImport + homeContent[importEnd:]
+		missingImports = append(missingImports, authImport)
+	}
+	if !strings.Contains(homeContent, modelsImport) {
+		missingImports = append(missingImports, modelsImport)
 	}
 
-	// Add models import if not present
-	modelsImport := fmt.Sprintf("\t\"%s/database/models\"", authConfig.ModuleName)
-	if !strings.Contains(homeContent, modelsImport) {
-		importEnd := strings.Index(homeContent, "\n)")
-		if importEnd == -1 {
-			return fmt.Errorf("could not find import block")
+	if len(missingImports) > 0 {
+		// Find the import block start, then find its closing parenthesis
+		importStart := strings.Index(homeContent, "import (")
+		if importStart == -1 {
+			return fmt.Errorf("could not find import block start")
 		}
-		homeContent = homeContent[:importEnd] + "\n" + modelsImport + homeContent[importEnd:]
+		importEndRel := strings.Index(homeContent[importStart:], "\n)")
+		if importEndRel == -1 {
+			return fmt.Errorf("could not find import block end")
+		}
+		insertPos := importStart + importEndRel
+		toInsert := "\n" + strings.Join(missingImports, "\n")
+		homeContent = homeContent[:insertPos] + toInsert + homeContent[insertPos:]
 	}
 
 	// Add IsLoggedIn and UserEmail fields to HomeState
@@ -480,8 +486,7 @@ func updateHomeHandler(projectRoot string, authConfig *AuthConfig) error {
 	// Add auth controller and wrap the handler to check auth state
 	// Find the return statement and replace the handler logic
 	oldReturn := "return tmpl.Handle(controller, livetemplate.AsState(initialState))"
-	if strings.Contains(homeContent, oldReturn) {
-		newHandler := `// Create auth controller to check login state
+	newHandler := `// Create auth controller to check login state
 	authController := auth.NewUserController(queries, nil, "")
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -496,8 +501,11 @@ func updateHomeHandler(projectRoot string, authConfig *AuthConfig) error {
 
 		tmpl.Handle(controller, livetemplate.AsState(&state)).ServeHTTP(w, r)
 	})`
-		homeContent = strings.Replace(homeContent, oldReturn, newHandler, 1)
+
+	if !strings.Contains(homeContent, oldReturn) {
+		return fmt.Errorf("could not find expected handler return statement in home.go")
 	}
+	homeContent = strings.Replace(homeContent, oldReturn, newHandler, 1)
 
 	if err := os.WriteFile(homeGoPath, []byte(homeContent), 0644); err != nil {
 		return fmt.Errorf("failed to write home.go: %w", err)
@@ -531,14 +539,14 @@ func updateHomeTemplate(projectRoot string, authConfig *AuthConfig) error {
 
 	authButtons := `
   <!-- Auth buttons -->
-  <div style="display: flex; justify-content: flex-end; gap: 1rem; align-items: center; margin-bottom: 1rem;">
+  <div class="flex justify-end gap-4 items-center mb-4">
     {{if .IsLoggedIn}}
-      <a href="/dashboard" style="padding: 0.5rem 1rem; background: #059669; color: white; border-radius: 4px; text-decoration: none;">Dashboard</a>
-      <span style="color: #666;">{{.UserEmail}}</span>
-      <a href="/auth/logout" style="padding: 0.5rem 1rem; background: #dc2626; color: white; border-radius: 4px; text-decoration: none;">Logout</a>
+      <a href="/dashboard" class="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700">Dashboard</a>
+      <span class="text-gray-600">{{.UserEmail}}</span>
+      <a href="/auth/logout" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Logout</a>
     {{else}}
-      <a href="/dashboard" style="padding: 0.5rem 1rem; background: #6b7280; color: white; border-radius: 4px; text-decoration: none;">Dashboard (protected)</a>
-      <a href="/auth" style="padding: 0.5rem 1rem; background: #4f46e5; color: white; border-radius: 4px; text-decoration: none;">Login</a>
+      <a href="/dashboard" class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">Dashboard (protected)</a>
+      <a href="/auth" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Login</a>
     {{end}}
   </div>
 `

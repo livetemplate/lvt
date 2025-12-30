@@ -519,10 +519,10 @@ func main() {
 	}
 	homeGoStr := string(content)
 
-	// Count occurrences of IsLoggedIn - should be exactly 1
-	count := strings.Count(homeGoStr, "IsLoggedIn")
+	// Count occurrences of IsLoggedIn field declaration - should not be duplicated
+	count := strings.Count(homeGoStr, "IsLoggedIn   bool")
 	if count > 1 {
-		t.Errorf("home.go has duplicate IsLoggedIn fields (found %d)", count)
+		t.Errorf("home.go has duplicate IsLoggedIn field declarations (found %d)", count)
 	}
 
 	// Verify home.tmpl was not duplicated
