@@ -96,8 +96,12 @@ func ClearLiveTemplateSession(w http.ResponseWriter) {
 	})
 }
 
-// SetSession sets a session cookie with appropriate security settings.
+// SetSession sets a session cookie with strict security settings.
 // The maxAgeDays parameter specifies how long the session should last.
+// Uses HttpOnly, Secure, and SameSite=Strict for authentication cookies.
+//
+// Note: Secure=true requires HTTPS. For localhost HTTP development,
+// browsers may still accept the cookie on localhost domains.
 //
 // Example:
 //
@@ -109,7 +113,8 @@ func SetSession(w http.ResponseWriter, name, value string, maxAgeDays int) {
 		Path:     "/",
 		MaxAge:   maxAgeDays * 24 * 60 * 60,
 		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
 	})
 }
 

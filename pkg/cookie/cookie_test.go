@@ -110,6 +110,12 @@ func TestSetSession(t *testing.T) {
 	if c.MaxAge != expectedMaxAge {
 		t.Errorf("expected MaxAge %d, got %d", expectedMaxAge, c.MaxAge)
 	}
+	if !c.Secure {
+		t.Error("expected Secure to be true")
+	}
+	if c.SameSite != http.SameSiteStrictMode {
+		t.Errorf("expected SameSite %v, got %v", http.SameSiteStrictMode, c.SameSite)
+	}
 }
 
 func TestGet(t *testing.T) {
