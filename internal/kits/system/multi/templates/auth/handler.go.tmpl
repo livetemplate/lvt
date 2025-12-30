@@ -47,6 +47,7 @@ import (
 	{{- if .EnablePassword }}
 	"github.com/livetemplate/lvt/pkg/password"
 	{{- end }}
+	"github.com/livetemplate/lvt/pkg/security"
 	"github.com/livetemplate/lvt/pkg/token"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
@@ -597,24 +598,11 @@ func (c *{{.StructName}}Controller) HandlePasswordLogin(w http.ResponseWriter, r
 		return
 	}
 
-	// Basic CSRF protection: validate Origin/Referer header
-	origin := r.Header.Get("Origin")
-	referer := r.Header.Get("Referer")
-	host := r.Host
-	if origin != "" {
-		// Check Origin header matches host
-		if !strings.Contains(origin, host) && !strings.HasPrefix(origin, "http://localhost") && !strings.HasPrefix(origin, "http://127.0.0.1") {
-			log.Printf("CSRF protection: Origin mismatch (origin=%s, host=%s)", origin, host)
-			http.Redirect(w, r, "/auth?error=invalid_form", http.StatusSeeOther)
-			return
-		}
-	} else if referer != "" {
-		// Fallback to Referer if Origin not present
-		if !strings.Contains(referer, host) && !strings.HasPrefix(referer, "http://localhost") && !strings.HasPrefix(referer, "http://127.0.0.1") {
-			log.Printf("CSRF protection: Referer mismatch (referer=%s, host=%s)", referer, host)
-			http.Redirect(w, r, "/auth?error=invalid_form", http.StatusSeeOther)
-			return
-		}
+	// CSRF protection: validate Origin/Referer header matches request host
+	if !security.ValidateOriginAllowEmpty(r) {
+		log.Printf("CSRF protection: Origin/Referer mismatch for host %s", r.Host)
+		http.Redirect(w, r, "/auth?error=invalid_form", http.StatusSeeOther)
+		return
 	}
 
 	// Parse form data
@@ -660,8 +648,8 @@ func (c *{{.StructName}}Controller) HandlePasswordLogin(w http.ResponseWriter, r
 		return
 	}
 
-	// Set session cookie (30 days)
-	cookie.SetSession(w, "{{.TableName}}_token", tok, 30)
+	// Set session cookie (30 days) - Secure flag is auto-detected from request
+	cookie.SetSession(w, r, "{{.TableName}}_token", tok, 30)
 
 	// Redirect to home
 	http.Redirect(w, r, "/", http.StatusSeeOther)

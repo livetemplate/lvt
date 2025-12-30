@@ -2,7 +2,10 @@
 // with secure defaults appropriate for authentication and session management.
 package cookie
 
-import "net/http"
+import (
+	"net/http"
+	"strings"
+)
 
 // Set sets a cookie with secure defaults.
 // Uses HttpOnly and SameSite=Lax for security.
@@ -98,24 +101,48 @@ func ClearLiveTemplateSession(w http.ResponseWriter) {
 
 // SetSession sets a session cookie with strict security settings.
 // The maxAgeDays parameter specifies how long the session should last.
-// Uses HttpOnly, Secure, and SameSite=Strict for authentication cookies.
-//
-// Note: Secure=true requires HTTPS. For localhost HTTP development,
-// browsers may still accept the cookie on localhost domains.
+// Uses HttpOnly and SameSite=Strict for authentication cookies.
+// The Secure flag is automatically set based on the request protocol.
 //
 // Example:
 //
-//	cookie.SetSession(w, "users_token", token, 30) // 30 days
-func SetSession(w http.ResponseWriter, name, value string, maxAgeDays int) {
+//	cookie.SetSession(w, r, "users_token", token, 30) // 30 days
+func SetSession(w http.ResponseWriter, r *http.Request, name, value string, maxAgeDays int) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     name,
 		Value:    value,
 		Path:     "/",
 		MaxAge:   maxAgeDays * 24 * 60 * 60,
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   IsSecure(r),
 		SameSite: http.SameSiteStrictMode,
 	})
+}
+
+// IsSecure returns true if the request is over HTTPS.
+// It checks both the URL scheme and common proxy headers.
+func IsSecure(r *http.Request) bool {
+	// Check direct TLS connection
+	if r.TLS != nil {
+		return true
+	}
+
+	// Check URL scheme
+	if r.URL.Scheme == "https" {
+		return true
+	}
+
+	// Check common proxy headers
+	if r.Header.Get("X-Forwarded-Proto") == "https" {
+		return true
+	}
+
+	// Check if behind a load balancer
+	if strings.HasPrefix(r.Header.Get("X-Forwarded-Ssl"), "on") {
+		return true
+	}
+
+	return false
 }
 
 // Get retrieves a cookie value by name.

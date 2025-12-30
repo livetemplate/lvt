@@ -97,24 +97,89 @@ func TestClearLiveTemplateSession(t *testing.T) {
 }
 
 func TestSetSession(t *testing.T) {
-	w := httptest.NewRecorder()
-	SetSession(w, "users_token", "abc123", 30)
+	t.Run("HTTP request - not secure", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("POST", "http://localhost/login", nil)
+		SetSession(w, r, "users_token", "abc123", 30)
 
-	cookies := w.Result().Cookies()
-	if len(cookies) != 1 {
-		t.Fatalf("expected 1 cookie, got %d", len(cookies))
+		cookies := w.Result().Cookies()
+		if len(cookies) != 1 {
+			t.Fatalf("expected 1 cookie, got %d", len(cookies))
+		}
+
+		c := cookies[0]
+		expectedMaxAge := 30 * 24 * 60 * 60
+		if c.MaxAge != expectedMaxAge {
+			t.Errorf("expected MaxAge %d, got %d", expectedMaxAge, c.MaxAge)
+		}
+		if c.Secure {
+			t.Error("expected Secure to be false for HTTP")
+		}
+		if c.SameSite != http.SameSiteStrictMode {
+			t.Errorf("expected SameSite %v, got %v", http.SameSiteStrictMode, c.SameSite)
+		}
+	})
+
+	t.Run("HTTPS request via X-Forwarded-Proto", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("POST", "http://example.com/login", nil)
+		r.Header.Set("X-Forwarded-Proto", "https")
+		SetSession(w, r, "users_token", "abc123", 30)
+
+		cookies := w.Result().Cookies()
+		if len(cookies) != 1 {
+			t.Fatalf("expected 1 cookie, got %d", len(cookies))
+		}
+
+		c := cookies[0]
+		if !c.Secure {
+			t.Error("expected Secure to be true for HTTPS")
+		}
+	})
+}
+
+func TestIsSecure(t *testing.T) {
+	tests := []struct {
+		name     string
+		setup    func(*http.Request)
+		expected bool
+	}{
+		{
+			name:     "plain HTTP",
+			setup:    func(r *http.Request) {},
+			expected: false,
+		},
+		{
+			name: "X-Forwarded-Proto https",
+			setup: func(r *http.Request) {
+				r.Header.Set("X-Forwarded-Proto", "https")
+			},
+			expected: true,
+		},
+		{
+			name: "X-Forwarded-Ssl on",
+			setup: func(r *http.Request) {
+				r.Header.Set("X-Forwarded-Ssl", "on")
+			},
+			expected: true,
+		},
+		{
+			name: "https URL scheme",
+			setup: func(r *http.Request) {
+				r.URL.Scheme = "https"
+			},
+			expected: true,
+		},
 	}
 
-	c := cookies[0]
-	expectedMaxAge := 30 * 24 * 60 * 60
-	if c.MaxAge != expectedMaxAge {
-		t.Errorf("expected MaxAge %d, got %d", expectedMaxAge, c.MaxAge)
-	}
-	if !c.Secure {
-		t.Error("expected Secure to be true")
-	}
-	if c.SameSite != http.SameSiteStrictMode {
-		t.Errorf("expected SameSite %v, got %v", http.SameSiteStrictMode, c.SameSite)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := httptest.NewRequest("GET", "/", nil)
+			tt.setup(r)
+			if got := IsSecure(r); got != tt.expected {
+				t.Errorf("IsSecure() = %v, want %v", got, tt.expected)
+			}
+		})
 	}
 }
 

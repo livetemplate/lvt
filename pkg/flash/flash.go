@@ -4,6 +4,7 @@
 package flash
 
 import (
+	"log"
 	"net/http"
 	"net/url"
 )
@@ -16,8 +17,9 @@ const (
 	// PendingKey marks that a flash message was just set (for one-time display)
 	PendingKey = "flash_pending"
 
-	// DefaultMaxAge is how long flash cookies live (10 seconds)
-	DefaultMaxAge = 10
+	// DefaultMaxAge is how long flash cookies live (30 seconds)
+	// This allows time for slow redirects or network delays
+	DefaultMaxAge = 30
 )
 
 // Set sets a flash message cookie with the given key.
@@ -61,6 +63,7 @@ func Get(r *http.Request, w http.ResponseWriter, key string) string {
 
 	msg, err := url.QueryUnescape(cookie.Value)
 	if err != nil {
+		log.Printf("flash: failed to decode cookie value: %v", err)
 		return ""
 	}
 	return msg
