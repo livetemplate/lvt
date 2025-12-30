@@ -33,9 +33,7 @@ package auth
 
 import (
 	"context"
-	"crypto/rand"
 	"database/sql"
-	"encoding/base64"
 	"fmt"
 	"log"
 	"net/http"
@@ -43,10 +41,14 @@ import (
 	"time"
 
 	"{{.ModuleName}}/database/models"
-	"{{.ModuleName}}/shared/email"
+	"github.com/livetemplate/lvt/pkg/cookie"
+	"github.com/livetemplate/lvt/pkg/email"
+	"github.com/livetemplate/lvt/pkg/flash"
 	{{- if .EnablePassword }}
-	"{{.ModuleName}}/shared/password"
+	"github.com/livetemplate/lvt/pkg/password"
 	{{- end }}
+	"github.com/livetemplate/lvt/pkg/security"
+	"github.com/livetemplate/lvt/pkg/token"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/livetemplate/livetemplate"
@@ -66,11 +68,11 @@ type {{.StructName}}State struct {
 	View          string `json:"view"` // "login", "register", "forgot", "reset", "confirm"
 	Email         string `json:"email"`
 	Password      string `json:"password"`
-	Error         string `json:"error"`
-	Success       string `json:"success"`
 	Token         string `json:"token"`
 	ShowMagicLink bool   `json:"show_magic_link"`
 	ShowPassword  bool   `json:"show_password"`
+	FlashError    string `json:"flash_error"`
+	FlashSuccess  string `json:"flash_success"`
 }
 
 func New{{.StructName}}Controller(queries *models.Queries, emailSender email.EmailSender, baseURL string) *{{.StructName}}Controller {
@@ -89,14 +91,54 @@ func New{{.StructName}}State() *{{.StructName}}State {
 	}
 }
 
+// Error messages for query parameter codes (from HTTP redirects)
+var errorMessages = map[string]string{
+	"invalid_form":            "Invalid form submission",
+	"email_password_required": "Email and password are required",
+	"invalid_credentials":     "Invalid email or password",
+	"email_not_confirmed":     "Please confirm your email before logging in",
+	"login_failed":            "Login failed. Please try again.",
+	"invalid_token":           "Invalid or expired token",
+	"expired_token":           "Token has expired",
+	"confirm_failed":          "Failed to confirm email",
+}
+
+var successMessages = map[string]string{
+	"email_confirmed": "Email confirmed! You can now log in.",
+	"password_reset":  "Password reset successfully. You can now log in.",
+}
+
+// Mount is called once per session to initialize state.
+// Flash messages are handled via cookies in the HTTP handler for proper one-time display.
+func (c *{{.StructName}}Controller) Mount(state {{.StructName}}State, ctx *livetemplate.Context) ({{.StructName}}State, error) {
+	return state, nil
+}
+
 // SwitchView handles the "switch_view" action to switch between login/register/forgot views
 func (c *{{.StructName}}Controller) SwitchView(state {{.StructName}}State, ctx *livetemplate.Context) ({{.StructName}}State, error) {
 	view := ctx.GetString("view")
 	if view != "" {
 		state.View = view
-		state.Error = ""
-		state.Success = ""
+		// Flash messages are cleared automatically after each render
 	}
+	return state, nil
+}
+
+// SwitchToLogin switches to the login view
+func (c *{{.StructName}}Controller) SwitchToLogin(state {{.StructName}}State, ctx *livetemplate.Context) ({{.StructName}}State, error) {
+	state.View = "login"
+	return state, nil
+}
+
+// SwitchToRegister switches to the register view
+func (c *{{.StructName}}Controller) SwitchToRegister(state {{.StructName}}State, ctx *livetemplate.Context) ({{.StructName}}State, error) {
+	state.View = "register"
+	return state, nil
+}
+
+// SwitchToForgot switches to the forgot password view
+func (c *{{.StructName}}Controller) SwitchToForgot(state {{.StructName}}State, ctx *livetemplate.Context) ({{.StructName}}State, error) {
+	state.View = "forgot"
 	return state, nil
 }
 
@@ -111,21 +153,21 @@ type RegisterInput struct {
 func (c *{{.StructName}}Controller) Register(state {{.StructName}}State, ctx *livetemplate.Context) ({{.StructName}}State, error) {
 	var input RegisterInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
-		state.Error = "Email and password are required"
+		state.FlashError = "Email and password are required"
 		return state, nil
 	}
 
 	// Check if user already exists
 	existing, err := c.queries.Get{{.StructName}}ByEmail(context.Background(), input.Email)
 	if err == nil && existing.ID != "" {
-		state.Error = "Email already registered"
+		state.FlashError = "Email already registered"
 		return state, nil
 	}
 
 	// Hash password
 	hashedPassword, err := password.Hash(input.Password)
 	if err != nil {
-		state.Error = "Failed to process password"
+		state.FlashError = "Failed to process password"
 		log.Printf("Password hash error: %v", err)
 		return state, nil
 	}
@@ -142,7 +184,7 @@ func (c *{{.StructName}}Controller) Register(state {{.StructName}}State, ctx *li
 		UpdatedAt:      now,
 	})
 	if err != nil {
-		state.Error = "Failed to create account"
+		state.FlashError = "Failed to create account"
 		log.Printf("Create user error: %v", err)
 		return state, nil
 	}
@@ -151,7 +193,7 @@ func (c *{{.StructName}}Controller) Register(state {{.StructName}}State, ctx *li
 	// Send confirmation email
 	token, err := c.generateToken(userID, "confirm", 24*time.Hour)
 	if err != nil {
-		state.Error = "Account created but failed to send confirmation email"
+		state.FlashError = "Account created but failed to send confirmation email"
 		log.Printf("Generate token error: %v", err)
 		return state, nil
 	}
@@ -166,15 +208,14 @@ func (c *{{.StructName}}Controller) Register(state {{.StructName}}State, ctx *li
 		log.Printf("Send email error: %v", err)
 	}
 
-	state.Success = "Account created! Please check your email to confirm your account."
+	state.FlashSuccess = "Account created! Please check your email to confirm your account."
 	{{- else }}
-	state.Success = "Account created! You can now log in."
+	state.FlashSuccess = "Account created! You can now log in."
 	{{- end }}
 
 	state.View = "login"
 	state.Email = ""
 	state.Password = ""
-	state.Error = ""
 
 	return state, nil
 }
@@ -188,40 +229,41 @@ type LoginInput struct {
 func (c *{{.StructName}}Controller) Login(state {{.StructName}}State, ctx *livetemplate.Context) ({{.StructName}}State, error) {
 	var input LoginInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
-		state.Error = "Email and password are required"
+		state.FlashError = "Email and password are required"
 		return state, nil
 	}
 
 	// Get user
 	user, err := c.queries.Get{{.StructName}}ByEmail(context.Background(), input.Email)
 	if err != nil {
-		state.Error = "Invalid email or password"
+		state.FlashError = "Invalid email or password"
 		return state, nil
 	}
 
 	{{- if .EnableEmailConfirm }}
 	// Check if email is confirmed
 	if !user.ConfirmedAt.Valid {
-		state.Error = "Please confirm your email before logging in"
+		state.FlashError = "Please confirm your email before logging in"
 		return state, nil
 	}
 	{{- end }}
 
 	// Verify password
 	if !password.Verify(input.Password, user.HashedPassword) {
-		state.Error = "Invalid email or password"
+		state.FlashError = "Invalid email or password"
 		return state, nil
 	}
 
 	// Create session token
 	token, err := c.generateToken(user.ID, "session", 30*24*time.Hour) // 30 days
 	if err != nil {
-		state.Error = "Login failed"
+		state.FlashError = "Login failed"
 		log.Printf("Generate session token error: %v", err)
 		return state, nil
 	}
 
 	// Set session cookie using Context API
+	// NOTE: This may fail over WebSocket - the login form should use HTTP POST instead
 	if err := ctx.SetCookie(&http.Cookie{
 		Name:     "{{.TableName}}_token",
 		Value:    token,
@@ -231,16 +273,21 @@ func (c *{{.StructName}}Controller) Login(state {{.StructName}}State, ctx *livet
 		Secure:   true,
 		SameSite: http.SameSiteStrictMode,
 	}); err != nil {
-		state.Error = "Login failed"
+		// Cookie can't be set over WebSocket - this is expected
+		// The login form should use HTTP POST via /auth/login endpoint
 		log.Printf("Set cookie error: %v", err)
+		{{- if .EnableMagicLink }}
+		state.FlashError = "Login via WebSocket not supported. Please use the magic link option."
+		{{- else }}
+		state.FlashError = "Login failed. Please try again."
+		{{- end }}
 		return state, nil
 	}
 
 	// Redirect to home using Context API
 	if err := ctx.Redirect("/", http.StatusSeeOther); err != nil {
-		state.Error = "Login failed"
-		log.Printf("Redirect error: %v", err)
-		return state, nil
+		log.Printf("Redirect warning: %v", err)
+		// Don't fail on redirect error - cookie was set successfully
 	}
 
 	return state, nil
@@ -258,7 +305,7 @@ type MagicLinkInput struct {
 func (c *{{.StructName}}Controller) MagicLink(state {{.StructName}}State, ctx *livetemplate.Context) ({{.StructName}}State, error) {
 	var input MagicLinkInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
-		state.Error = "Email is required"
+		state.FlashError = "Email is required"
 		return state, nil
 	}
 
@@ -278,7 +325,7 @@ func (c *{{.StructName}}Controller) MagicLink(state {{.StructName}}State, ctx *l
 			UpdatedAt: now,
 		})
 		if err != nil {
-			state.Error = "Failed to process request"
+			state.FlashError = "Failed to process request"
 			log.Printf("Create user error: %v", err)
 			return state, nil
 		}
@@ -287,7 +334,7 @@ func (c *{{.StructName}}Controller) MagicLink(state {{.StructName}}State, ctx *l
 	// Generate magic link token
 	token, err := c.generateToken(user.ID, "magic", 15*time.Minute)
 	if err != nil {
-		state.Error = "Failed to send magic link"
+		state.FlashError = "Failed to send magic link"
 		log.Printf("Generate token error: %v", err)
 		return state, nil
 	}
@@ -300,12 +347,12 @@ func (c *{{.StructName}}Controller) MagicLink(state {{.StructName}}State, ctx *l
 		fmt.Sprintf("Click here to log in: %s\n\nThis link expires in 15 minutes.", magicURL),
 	)
 	if err != nil {
-		state.Error = "Failed to send magic link"
+		state.FlashError = "Failed to send magic link"
 		log.Printf("Send email error: %v", err)
 		return state, nil
 	}
 
-	state.Success = "Check your email for a login link!"
+	state.FlashSuccess = "Check your email for a login link!"
 	state.Email = ""
 	return state, nil
 }
@@ -350,6 +397,9 @@ func (c *{{.StructName}}Controller) HandleMagicLinkVerify(w http.ResponseWriter,
 		SameSite: http.SameSiteStrictMode,
 	})
 
+	// Clear LiveTemplate session to force fresh state on home page
+	cookie.ClearLiveTemplateSession(w)
+
 	// Redirect to home
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
@@ -366,7 +416,7 @@ type ForgotPasswordInput struct {
 func (c *{{.StructName}}Controller) ForgotPassword(state {{.StructName}}State, ctx *livetemplate.Context) ({{.StructName}}State, error) {
 	var input ForgotPasswordInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
-		state.Error = "Email is required"
+		state.FlashError = "Email is required"
 		return state, nil
 	}
 
@@ -374,7 +424,7 @@ func (c *{{.StructName}}Controller) ForgotPassword(state {{.StructName}}State, c
 	user, err := c.queries.Get{{.StructName}}ByEmail(context.Background(), input.Email)
 	if err != nil {
 		// Don't reveal if email exists or not for security
-		state.Success = "If that email is registered, you'll receive a password reset link shortly."
+		state.FlashSuccess = "If that email is registered, you'll receive a password reset link shortly."
 		state.Email = ""
 		return state, nil
 	}
@@ -382,7 +432,7 @@ func (c *{{.StructName}}Controller) ForgotPassword(state {{.StructName}}State, c
 	// Generate reset token
 	token, err := c.generateToken(user.ID, "reset", 1*time.Hour)
 	if err != nil {
-		state.Error = "Failed to send reset link"
+		state.FlashError = "Failed to send reset link"
 		log.Printf("Generate token error: %v", err)
 		return state, nil
 	}
@@ -398,7 +448,7 @@ func (c *{{.StructName}}Controller) ForgotPassword(state {{.StructName}}State, c
 		log.Printf("Send email error: %v", err)
 	}
 
-	state.Success = "If that email is registered, you'll receive a password reset link shortly."
+	state.FlashSuccess = "If that email is registered, you'll receive a password reset link shortly."
 	state.Email = ""
 	return state, nil
 }
@@ -540,48 +590,105 @@ func (c *{{.StructName}}Controller) HandleConfirmEmail(w http.ResponseWriter, r 
 
 {{- end }}
 
-// HandleLogout handles user logout (HTTP-only, no LiveTemplate)
-func (c *{{.StructName}}Controller) HandleLogout(w http.ResponseWriter, r *http.Request) {
-	// Get session token from cookie
-	cookie, err := r.Cookie("{{.TableName}}_token")
-	if err == nil {
-		// Delete the token from database
-		c.queries.Delete{{.StructName}}Token(context.Background(), cookie.Value)
+// HandlePasswordLogin handles password-based login via HTTP POST
+// This is needed because cookies cannot be set over WebSocket
+func (c *{{.StructName}}Controller) HandlePasswordLogin(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Redirect(w, r, "/auth", http.StatusSeeOther)
+		return
 	}
 
-	// Clear cookie
-	http.SetCookie(w, &http.Cookie{
-		Name:     "{{.TableName}}_token",
-		Value:    "",
-		Path:     "/",
-		MaxAge:   -1,
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
-	})
+	// CSRF protection: validate Origin/Referer header matches request host
+	if !security.ValidateOriginAllowEmpty(r) {
+		log.Printf("CSRF protection: Origin/Referer mismatch for host %s", r.Host)
+		http.Redirect(w, r, "/auth?error=invalid_form", http.StatusSeeOther)
+		return
+	}
 
-	// Redirect to login
-	http.Redirect(w, r, "/auth", http.StatusSeeOther)
+	// Parse form data
+	if err := r.ParseForm(); err != nil {
+		http.Redirect(w, r, "/auth?error=invalid_form", http.StatusSeeOther)
+		return
+	}
+
+	email := r.FormValue("email")
+	pass := r.FormValue("password")
+
+	if email == "" || pass == "" {
+		http.Redirect(w, r, "/auth?error=email_password_required", http.StatusSeeOther)
+		return
+	}
+
+	// Get user
+	user, err := c.queries.Get{{.StructName}}ByEmail(context.Background(), email)
+	if err != nil {
+		http.Redirect(w, r, "/auth?error=invalid_credentials", http.StatusSeeOther)
+		return
+	}
+
+	{{- if .EnableEmailConfirm }}
+	// Check if email is confirmed
+	if !user.ConfirmedAt.Valid {
+		http.Redirect(w, r, "/auth?error=email_not_confirmed", http.StatusSeeOther)
+		return
+	}
+	{{- end }}
+
+	// Verify password
+	if !password.Verify(pass, user.HashedPassword) {
+		http.Redirect(w, r, "/auth?error=invalid_credentials", http.StatusSeeOther)
+		return
+	}
+
+	// Create session token
+	tok, err := c.generateToken(user.ID, "session", 30*24*time.Hour)
+	if err != nil {
+		log.Printf("Generate session token error: %v", err)
+		http.Redirect(w, r, "/auth?error=login_failed", http.StatusSeeOther)
+		return
+	}
+
+	// Set session cookie (30 days) - Secure flag is auto-detected from request
+	cookie.SetSession(w, r, "{{.TableName}}_token", tok, 30)
+
+	// Redirect to home
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+// HandleLogout handles user logout (HTTP-only, no LiveTemplate)
+func (c *{{.StructName}}Controller) HandleLogout(w http.ResponseWriter, r *http.Request) {
+	// Get session token from cookie and delete from database
+	if tok := cookie.Get(r, "{{.TableName}}_token"); tok != "" {
+		c.queries.Delete{{.StructName}}Token(context.Background(), tok)
+	}
+
+	// Clear auth cookie
+	cookie.ClearSecure(w, "{{.TableName}}_token")
+
+	// Clear LiveTemplate session cookie to force fresh state on home page
+	cookie.ClearLiveTemplateSession(w)
+
+	// Redirect to home
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 // generateToken creates a random token and stores it
 func (c *{{.StructName}}Controller) generateToken(userID, tokenContext string, duration time.Duration) (string, error) {
 	// Generate random token
-	b := make([]byte, 32)
-	if _, err := rand.Read(b); err != nil {
+	tok, err := token.Generate()
+	if err != nil {
 		return "", err
 	}
-	token := base64.URLEncoding.EncodeToString(b)
 
 	// Store token
 	tokenID := uuid.New().String()
 	now := time.Now()
 	expiresAt := sql.NullTime{Time: now.Add(duration), Valid: true}
 
-	_, err := c.queries.Create{{.StructName}}Token(context.Background(), models.Create{{.StructName}}TokenParams{
+	_, err = c.queries.Create{{.StructName}}Token(context.Background(), models.Create{{.StructName}}TokenParams{
 		ID:        tokenID,
 		{{.StructName}}ID:   userID,
-		Token:     token,
+		Token:     tok,
 		Context:   tokenContext,
 		CreatedAt: now,
 		ExpiresAt: expiresAt,
@@ -590,18 +697,18 @@ func (c *{{.StructName}}Controller) generateToken(userID, tokenContext string, d
 		return "", err
 	}
 
-	return token, nil
+	return tok, nil
 }
 
 // GetCurrentUser returns the authenticated user or nil
 func (c *{{.StructName}}Controller) GetCurrentUser(r *http.Request) (*models.{{.StructName}}, error) {
-	cookie, err := r.Cookie("{{.TableName}}_token")
-	if err != nil {
-		return nil, err
+	tok := cookie.Get(r, "{{.TableName}}_token")
+	if tok == "" {
+		return nil, http.ErrNoCookie
 	}
 
 	userToken, err := c.queries.Get{{.StructName}}Token(context.Background(), models.Get{{.StructName}}TokenParams{
-		Token:     cookie.Value,
+		Token:     tok,
 		ExpiresAt: sql.NullTime{Time: time.Now(), Valid: true},
 	})
 	if err != nil {
@@ -619,61 +726,111 @@ func (c *{{.StructName}}Controller) GetCurrentUser(r *http.Request) (*models.{{.
 // Handler creates an http.Handler for the auth LiveTemplate view
 // It sets up the controller and returns a handler that can be registered with http.Handle
 func Handler(queries *models.Queries) http.Handler {
-	// Create controller with dependencies
-	// ⚠️ IMPORTANT: Replace getEmailSender() with real email sender for production!
-	controller := New{{.StructName}}Controller(queries, getEmailSender(), getBaseURL())
+	// Get base URL from environment, or use default for development
+	baseURL := "http://localhost:8080"
+	if envURL := os.Getenv("BASE_URL"); envURL != "" {
+		baseURL = envURL
+	}
 
-	// Create initial state
-	initialState := New{{.StructName}}State()
+	// Use console email sender by default (logs emails to console)
+	// Replace with production email sender in your deployment
+	emailSender := email.NewConsoleEmailSender()
+
+	// Create controller with dependencies
+	controller := New{{.StructName}}Controller(queries, emailSender, baseURL)
 
 	// Parse the template
-	baseTmpl := livetemplate.Must(livetemplate.New("auth", livetemplate.WithDevMode(false)))
+	baseTmpl := livetemplate.Must(livetemplate.New("auth",
+		livetemplate.WithDevMode(false),
+	))
 	if _, err := baseTmpl.ParseFiles("app/auth/auth.tmpl"); err != nil {
 		log.Fatalf("Failed to parse auth template: %v", err)
 	}
 
-	// Return handler that serves the LiveTemplate view
+	// Return handler that clones template per-request
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Handle error/success query params by setting flash cookies and redirecting to clean URL
+		errCode := r.URL.Query().Get("error")
+		successCode := r.URL.Query().Get("success")
+
+		if errCode != "" || successCode != "" {
+			// Clear livetemplate-id to force new session on next request
+			cookie.ClearLiveTemplateSession(w)
+
+			// Set flash message from error/success code
+			if errCode != "" {
+				if msg, ok := errorMessages[errCode]; ok {
+					flash.Error(w, msg)
+				}
+			}
+			if successCode != "" {
+				if msg, ok := successMessages[successCode]; ok {
+					flash.Success(w, msg)
+				}
+			}
+
+			// Set marker so we know flash was triggered (for one-time display)
+			flash.SetPending(w)
+
+			// Redirect to clean URL
+			http.Redirect(w, r, "/auth", http.StatusSeeOther)
+			return
+		}
+
 		tmpl, err := baseTmpl.Clone()
 		if err != nil {
 			log.Printf("Failed to clone auth template: %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
-		tmpl.Handle(controller, livetemplate.AsState(initialState)).ServeHTTP(w, r)
+
+		// Only process flash logic for GET requests (not HEAD/WebSocket preflight)
+		if r.Method == "GET" {
+			hasFlashPending := flash.IsPending(r)
+			hasSession := cookie.Get(r, "livetemplate-id") != ""
+
+			// If we have a session but no flash_pending marker, this is a reload
+			// Force new session to clear any stale flash from previous session
+			if hasSession && !hasFlashPending {
+				cookie.ClearLiveTemplateSession(w)
+			}
+
+			// Clear the flash_pending marker after first use
+			if hasFlashPending {
+				flash.ClearPending(w)
+			}
+		}
+
+		// Read and clear flash cookies, set in initial state
+		state := New{{.StructName}}State()
+		msgs := flash.GetAll(r, w)
+		state.FlashError = msgs.Error
+		state.FlashSuccess = msgs.Success
+
+		tmpl.Handle(controller, livetemplate.AsState(state)).ServeHTTP(w, r)
 	})
-}
-
-// getEmailSender returns the appropriate email sender based on environment
-func getEmailSender() email.EmailSender {
-	if os.Getenv("APP_ENV") == "production" {
-		// Production: Use NoOp sender to avoid logging tokens
-		// Replace this with your production email sender
-		log.Printf("⚠️ WARNING: Using NoOp email sender - magic links won't be delivered!")
-		return email.NewNoOpEmailSender()
-	}
-	// Development: Log emails to console for debugging
-	return email.NewConsoleEmailSender()
-}
-
-// getBaseURL returns the base URL from environment or default
-func getBaseURL() string {
-	if envURL := os.Getenv("BASE_URL"); envURL != "" {
-		return envURL
-	}
-	return "http://localhost:8080"
 }
 
 // LogoutHandler returns an http.Handler for the logout endpoint
 func LogoutHandler(queries *models.Queries) http.Handler {
-	controller := New{{.StructName}}Controller(queries, getEmailSender(), getBaseURL())
+	baseURL := "http://localhost:8080"
+	if envURL := os.Getenv("BASE_URL"); envURL != "" {
+		baseURL = envURL
+	}
+	emailSender := email.NewConsoleEmailSender()
+	controller := New{{.StructName}}Controller(queries, emailSender, baseURL)
 	return http.HandlerFunc(controller.HandleLogout)
 }
 
 {{- if .EnableMagicLink }}
 // MagicLinkHandler returns an http.Handler for magic link verification
 func MagicLinkHandler(queries *models.Queries) http.Handler {
-	controller := New{{.StructName}}Controller(queries, getEmailSender(), getBaseURL())
+	baseURL := "http://localhost:8080"
+	if envURL := os.Getenv("BASE_URL"); envURL != "" {
+		baseURL = envURL
+	}
+	emailSender := email.NewConsoleEmailSender()
+	controller := New{{.StructName}}Controller(queries, emailSender, baseURL)
 	return http.HandlerFunc(controller.HandleMagicLinkVerify)
 }
 {{- end }}
@@ -681,7 +838,12 @@ func MagicLinkHandler(queries *models.Queries) http.Handler {
 {{- if .EnablePasswordReset }}
 // ResetPasswordHandler returns an http.Handler for password reset
 func ResetPasswordHandler(queries *models.Queries) http.Handler {
-	controller := New{{.StructName}}Controller(queries, getEmailSender(), getBaseURL())
+	baseURL := "http://localhost:8080"
+	if envURL := os.Getenv("BASE_URL"); envURL != "" {
+		baseURL = envURL
+	}
+	emailSender := email.NewConsoleEmailSender()
+	controller := New{{.StructName}}Controller(queries, emailSender, baseURL)
 	return http.HandlerFunc(controller.HandleResetPassword)
 }
 {{- end }}
@@ -689,7 +851,23 @@ func ResetPasswordHandler(queries *models.Queries) http.Handler {
 {{- if .EnableEmailConfirm }}
 // ConfirmEmailHandler returns an http.Handler for email confirmation
 func ConfirmEmailHandler(queries *models.Queries) http.Handler {
-	controller := New{{.StructName}}Controller(queries, getEmailSender(), getBaseURL())
+	baseURL := "http://localhost:8080"
+	if envURL := os.Getenv("BASE_URL"); envURL != "" {
+		baseURL = envURL
+	}
+	emailSender := email.NewConsoleEmailSender()
+	controller := New{{.StructName}}Controller(queries, emailSender, baseURL)
 	return http.HandlerFunc(controller.HandleConfirmEmail)
 }
 {{- end }}
+
+// PasswordLoginHandler returns an http.Handler for password-based login
+func PasswordLoginHandler(queries *models.Queries) http.Handler {
+	baseURL := "http://localhost:8080"
+	if envURL := os.Getenv("BASE_URL"); envURL != "" {
+		baseURL = envURL
+	}
+	emailSender := email.NewConsoleEmailSender()
+	controller := New{{.StructName}}Controller(queries, emailSender, baseURL)
+	return http.HandlerFunc(controller.HandlePasswordLogin)
+}

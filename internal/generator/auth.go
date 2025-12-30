@@ -43,66 +43,8 @@ func GenerateAuth(projectRoot string, authConfig *AuthConfig) error {
 	// Load kit loader
 	kitLoader := kits.DefaultLoader()
 
-	// Create directories
-	passwordDir := filepath.Join(projectRoot, "shared", "password")
-	if err := os.MkdirAll(passwordDir, 0755); err != nil {
-		return fmt.Errorf("failed to create password directory: %w", err)
-	}
-
-	// Generate password.go if password auth enabled
-	if authConfig.EnablePassword {
-		templateContent, err := kitLoader.LoadKitTemplate(kitName, "auth/password.go.tmpl")
-		if err != nil {
-			return fmt.Errorf("failed to load password template: %w", err)
-		}
-
-		outputPath := filepath.Join(passwordDir, "password.go")
-
-		tmpl, err := template.New("password").Parse(string(templateContent))
-		if err != nil {
-			return fmt.Errorf("failed to parse password template: %w", err)
-		}
-
-		file, err := os.Create(outputPath)
-		if err != nil {
-			return fmt.Errorf("failed to create password.go: %w", err)
-		}
-		defer file.Close()
-
-		if err := tmpl.Execute(file, authConfig); err != nil {
-			return fmt.Errorf("failed to execute password template: %w", err)
-		}
-	}
-
-	// Generate email.go if email features enabled
-	if authConfig.EnableEmailConfirm || authConfig.EnablePasswordReset {
-		emailDir := filepath.Join(projectRoot, "shared", "email")
-		if err := os.MkdirAll(emailDir, 0755); err != nil {
-			return fmt.Errorf("failed to create email directory: %w", err)
-		}
-
-		templateContent, err := kitLoader.LoadKitTemplate(kitName, "auth/email.go.tmpl")
-		if err != nil {
-			return fmt.Errorf("failed to load email template: %w", err)
-		}
-
-		outputPath := filepath.Join(emailDir, "email.go")
-
-		tmpl, err := template.New("email").Parse(string(templateContent))
-		if err != nil {
-			return fmt.Errorf("failed to parse email template: %w", err)
-		}
-
-		file, err := os.Create(outputPath)
-		if err != nil {
-			return fmt.Errorf("failed to create email.go: %w", err)
-		}
-		defer file.Close()
-
-		if err := tmpl.Execute(file, authConfig); err != nil {
-			return fmt.Errorf("failed to execute email template: %w", err)
-		}
-	}
+	// Note: password and email utilities are imported from github.com/livetemplate/lvt/pkg
+	// No need to generate shared/ directory anymore
 
 	// Generate migration
 	migrationsDir := filepath.Join(projectRoot, "database", "migrations")
@@ -335,6 +277,7 @@ func GenerateAuth(projectRoot string, authConfig *AuthConfig) error {
 		dependencies := []string{
 			"github.com/google/uuid@latest",
 			"github.com/chromedp/chromedp@latest", // For E2E tests
+			"github.com/livetemplate/lvt@latest",  // Auth utilities (password, email)
 		}
 		if authConfig.EnablePassword {
 			dependencies = append(dependencies, "golang.org/x/crypto@latest")

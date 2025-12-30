@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestGenerateAuth_PasswordUtilities(t *testing.T) {
+func TestGenerateAuth_Handler(t *testing.T) {
 	// Create temp directory
 	tmpDir := t.TempDir()
 
@@ -20,33 +20,39 @@ func TestGenerateAuth_PasswordUtilities(t *testing.T) {
 		t.Fatalf("GenerateAuth failed: %v", err)
 	}
 
-	// Check password.go exists
-	passwordPath := filepath.Join(tmpDir, "shared", "password", "password.go")
-	if _, err := os.Stat(passwordPath); os.IsNotExist(err) {
-		t.Errorf("password.go not generated at %s", passwordPath)
+	// Check auth.go exists in app/auth/
+	authPath := filepath.Join(tmpDir, "app", "auth", "auth.go")
+	if _, err := os.Stat(authPath); os.IsNotExist(err) {
+		t.Errorf("auth.go not generated at %s", authPath)
 	}
 
-	// Read and verify content
-	content, err := os.ReadFile(passwordPath)
+	// Read and verify content imports from pkg/
+	content, err := os.ReadFile(authPath)
 	if err != nil {
-		t.Fatalf("failed to read password.go: %v", err)
+		t.Fatalf("failed to read auth.go: %v", err)
 	}
 
 	contentStr := string(content)
-	requiredFuncs := []string{"Hash", "Verify"}
-	for _, fn := range requiredFuncs {
-		if !strings.Contains(contentStr, "func "+fn) {
-			t.Errorf("password.go missing function: %s", fn)
-		}
+
+	// Verify imports from lvt/pkg/ packages (not shared/)
+	if !strings.Contains(contentStr, "github.com/livetemplate/lvt/pkg/password") {
+		t.Error("auth.go should import password from lvt/pkg/password")
+	}
+	if !strings.Contains(contentStr, "github.com/livetemplate/lvt/pkg/email") {
+		t.Error("auth.go should import email from lvt/pkg/email")
 	}
 
-	// Verify imports bcrypt
-	if !strings.Contains(contentStr, "golang.org/x/crypto/bcrypt") {
-		t.Error("password.go missing bcrypt import")
+	// Verify does NOT import from shared/
+	if strings.Contains(contentStr, "/shared/password") {
+		t.Error("auth.go should NOT import from shared/password (use lvt/pkg/password instead)")
+	}
+	if strings.Contains(contentStr, "/shared/email") {
+		t.Error("auth.go should NOT import from shared/email (use lvt/pkg/email instead)")
 	}
 }
 
-func TestGenerateAuth_EmailSender(t *testing.T) {
+func TestGenerateAuth_NoSharedDirectory(t *testing.T) {
+	// Verify that shared/ directory is no longer generated
 	tmpDir := t.TempDir()
 
 	err := GenerateAuth(tmpDir, &AuthConfig{
@@ -58,31 +64,10 @@ func TestGenerateAuth_EmailSender(t *testing.T) {
 		t.Fatalf("GenerateAuth failed: %v", err)
 	}
 
-	emailPath := filepath.Join(tmpDir, "shared", "email", "email.go")
-	if _, err := os.Stat(emailPath); os.IsNotExist(err) {
-		t.Errorf("email.go not generated at %s", emailPath)
-	}
-
-	content, err := os.ReadFile(emailPath)
-	if err != nil {
-		t.Fatalf("failed to read email.go: %v", err)
-	}
-
-	contentStr := string(content)
-
-	// Check for EmailSender interface
-	if !strings.Contains(contentStr, "type EmailSender interface") {
-		t.Error("email.go missing EmailSender interface")
-	}
-
-	// Check for console logger implementation
-	if !strings.Contains(contentStr, "type ConsoleEmailSender struct") {
-		t.Error("email.go missing ConsoleEmailSender")
-	}
-
-	// Check for Send method
-	if !strings.Contains(contentStr, "func (s *ConsoleEmailSender) Send") {
-		t.Error("email.go missing Send method")
+	// Verify shared/ directory does NOT exist
+	sharedPath := filepath.Join(tmpDir, "shared")
+	if _, err := os.Stat(sharedPath); err == nil {
+		t.Error("shared/ directory should NOT be generated (utilities are now in lvt/pkg/)")
 	}
 }
 

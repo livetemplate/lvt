@@ -64,6 +64,8 @@ func main() {
 		err = commands.MCPServer(args)
 	case "component", "comp":
 		err = commands.Component(args)
+	case "auth":
+		err = commands.AuthManage(args)
 	case "version", "--version", "-v":
 		printVersion()
 		return
@@ -156,6 +158,7 @@ func printUsage() {
 	fmt.Println("  lvt install-agent [--llm <type>]              Install AI agent for your LLM")
 	fmt.Println("  lvt mcp-server [--help|--setup|--list-tools]  Start MCP server or show setup guide")
 	fmt.Println("  lvt component <command>                       Manage UI components (list, eject)")
+	fmt.Println("  lvt auth <command>                            Manage auth users (confirm, list)")
 	fmt.Println("  lvt version                                   Show version information")
 	fmt.Println()
 	fmt.Println("Generate Subcommands:")
@@ -178,7 +181,7 @@ func printUsage() {
 	fmt.Println("  lvt gen auth                                  (full auth system)")
 	fmt.Println("  lvt gen auth Account admin_users              (custom names)")
 	fmt.Println()
-	fmt.Println("Auth Options:")
+	fmt.Println("Auth Generation Options:")
 	fmt.Println("  lvt gen auth                                  Generate full auth system (all features)")
 	fmt.Println("  lvt gen auth --no-password                    Disable password authentication")
 	fmt.Println("  lvt gen auth --no-magic-link                  Disable magic-link authentication")
@@ -186,6 +189,10 @@ func printUsage() {
 	fmt.Println("  lvt gen auth --no-password-reset              Skip password reset flow")
 	fmt.Println("  lvt gen auth --no-sessions-ui                 Skip session management UI")
 	fmt.Println("  lvt gen auth --no-csrf                        Skip CSRF protection")
+	fmt.Println()
+	fmt.Println("Auth Management Commands (for testing):")
+	fmt.Println("  lvt auth [--db <path>] confirm <email>        Confirm a user's email")
+	fmt.Println("  lvt auth [--db <path>] list                   List all users")
 	fmt.Println()
 	fmt.Println("Migration Commands:")
 	fmt.Println("  lvt migration up                          Run pending migrations")
