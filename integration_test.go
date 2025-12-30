@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -319,11 +320,26 @@ func TestGeneratedAppFullFlow(t *testing.T) {
 	}
 	t.Log("✅ Auth generated")
 
+	// Step 3.5: Add replace directive to use local lvt packages
+	// This is needed because the new pkg/* packages are not yet published
+	t.Log("Step 3.5: Adding replace directive for local packages...")
+	goModPath := filepath.Join(appDir, "go.mod")
+	goModContent, err := os.ReadFile(goModPath)
+	if err != nil {
+		t.Fatalf("Failed to read go.mod: %v", err)
+	}
+	// Add replace directive at the end
+	replaceDirective := fmt.Sprintf("\nreplace github.com/livetemplate/lvt => %s\n", origDir)
+	if err := os.WriteFile(goModPath, append(goModContent, []byte(replaceDirective)...), 0644); err != nil {
+		t.Fatalf("Failed to update go.mod: %v", err)
+	}
+	t.Log("✅ Replace directive added")
+
 	// Step 4: Run go mod tidy
 	t.Log("Step 4: Running go mod tidy...")
 	cmd := exec.Command("go", "mod", "tidy")
 	cmd.Dir = appDir
-	cmd.Env = append(os.Environ(), "GOWORK=off")
+	// Don't set GOWORK=off - we want to use the go.work file
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("go mod tidy failed: %v\nOutput: %s", err, output)
 	}
@@ -338,11 +354,10 @@ func TestGeneratedAppFullFlow(t *testing.T) {
 	}
 	t.Log("✅ sqlc generate completed")
 
-	// Step 6: Build the app
+	// Step 6: Build the app (uses go.work to find local lvt packages)
 	t.Log("Step 6: Building app...")
 	cmd = exec.Command("go", "build", "./...")
 	cmd.Dir = appDir
-	cmd.Env = append(os.Environ(), "GOWORK=off")
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("go build failed: %v\nOutput: %s", err, output)
 	}
@@ -352,7 +367,6 @@ func TestGeneratedAppFullFlow(t *testing.T) {
 	t.Log("Step 7: Running generated tests (short mode)...")
 	cmd = exec.Command("go", "test", "./...", "-short", "-v")
 	cmd.Dir = appDir
-	cmd.Env = append(os.Environ(), "GOWORK=off")
 	output, err := cmd.CombinedOutput()
 	t.Logf("Test output:\n%s", output)
 	if err != nil {
