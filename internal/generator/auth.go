@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"text/template"
 	"time"
 
@@ -358,6 +359,195 @@ func GenerateAuth(projectRoot string, authConfig *AuthConfig) error {
 		if err := RegisterResource(projectRoot, "Auth", "/auth", "auth"); err != nil {
 			fmt.Printf("⚠️  Could not register auth in home page: %v\n", err)
 		}
+
+		// Update home page to show login/logout buttons
+		if err := updateHomeForAuth(projectRoot, authConfig); err != nil {
+			fmt.Printf("⚠️  Could not update home page for auth: %v\n", err)
+			fmt.Println("   You may need to manually add login/logout buttons to your home page")
+		}
+	}
+
+	return nil
+}
+
+// updateHomeForAuth modifies the home page handler and template to show login/logout buttons
+func updateHomeForAuth(projectRoot string, authConfig *AuthConfig) error {
+	// Update home.go to accept queries and check auth state
+	if err := updateHomeHandler(projectRoot, authConfig); err != nil {
+		return fmt.Errorf("failed to update home handler: %w", err)
+	}
+
+	// Update home.tmpl to show login/logout buttons
+	if err := updateHomeTemplate(projectRoot, authConfig); err != nil {
+		return fmt.Errorf("failed to update home template: %w", err)
+	}
+
+	// Update main.go to pass queries to home.Handler
+	if err := updateMainGoHomeHandler(projectRoot); err != nil {
+		return fmt.Errorf("failed to update main.go home handler: %w", err)
+	}
+
+	return nil
+}
+
+// updateMainGoHomeHandler updates the home.Handler() call in main.go to pass queries
+func updateMainGoHomeHandler(projectRoot string) error {
+	mainGoPath := findMainGo(projectRoot)
+	if mainGoPath == "" {
+		return fmt.Errorf("could not find main.go")
+	}
+
+	content, err := os.ReadFile(mainGoPath)
+	if err != nil {
+		return fmt.Errorf("failed to read main.go: %w", err)
+	}
+
+	mainContent := string(content)
+
+	// Check if already updated
+	if strings.Contains(mainContent, "home.Handler(queries)") {
+		return nil // Already updated
+	}
+
+	// Update home.Handler() to home.Handler(queries)
+	mainContent = strings.Replace(mainContent, "home.Handler()", "home.Handler(queries)", 1)
+
+	if err := os.WriteFile(mainGoPath, []byte(mainContent), 0644); err != nil {
+		return fmt.Errorf("failed to write main.go: %w", err)
+	}
+
+	return nil
+}
+
+// updateHomeHandler modifies home.go to check auth state and pass it to the template
+func updateHomeHandler(projectRoot string, authConfig *AuthConfig) error {
+	homeGoPath := filepath.Join(projectRoot, "app", "home", "home.go")
+
+	content, err := os.ReadFile(homeGoPath)
+	if err != nil {
+		return fmt.Errorf("failed to read home.go: %w", err)
+	}
+
+	homeContent := string(content)
+
+	// Check if already updated
+	if strings.Contains(homeContent, "IsLoggedIn") {
+		return nil // Already updated
+	}
+
+	// Add auth import
+	authImport := fmt.Sprintf("\t\"%s/app/auth\"", authConfig.ModuleName)
+	if !strings.Contains(homeContent, authImport) {
+		// Find the import block and add auth import
+		importEnd := strings.Index(homeContent, "\n)")
+		if importEnd == -1 {
+			return fmt.Errorf("could not find import block")
+		}
+		homeContent = homeContent[:importEnd] + "\n" + authImport + homeContent[importEnd:]
+	}
+
+	// Add models import if not present
+	modelsImport := fmt.Sprintf("\t\"%s/database/models\"", authConfig.ModuleName)
+	if !strings.Contains(homeContent, modelsImport) {
+		importEnd := strings.Index(homeContent, "\n)")
+		if importEnd == -1 {
+			return fmt.Errorf("could not find import block")
+		}
+		homeContent = homeContent[:importEnd] + "\n" + modelsImport + homeContent[importEnd:]
+	}
+
+	// Add IsLoggedIn and UserEmail fields to HomeState
+	stateFields := `	IsLoggedIn   bool       ` + "`json:\"is_logged_in\"`" + `
+	UserEmail    string     ` + "`json:\"user_email\"`"
+
+	// Find the LastUpdated field and add after it
+	lastUpdatedIdx := strings.Index(homeContent, "LastUpdated  string")
+	if lastUpdatedIdx != -1 {
+		// Find the end of that line (after the json tag)
+		lineEnd := strings.Index(homeContent[lastUpdatedIdx:], "\n")
+		if lineEnd != -1 {
+			insertPos := lastUpdatedIdx + lineEnd
+			homeContent = homeContent[:insertPos] + "\n" + stateFields + homeContent[insertPos:]
+		}
+	}
+
+	// Update Handler function signature to accept queries
+	homeContent = strings.Replace(homeContent,
+		"func Handler() http.Handler {",
+		"func Handler(queries *models.Queries) http.Handler {",
+		1)
+
+	// Add auth controller and wrap the handler to check auth state
+	// Find the return statement and replace the handler logic
+	oldReturn := "return tmpl.Handle(controller, livetemplate.AsState(initialState))"
+	if strings.Contains(homeContent, oldReturn) {
+		newHandler := `// Create auth controller to check login state
+	authController := auth.NewUserController(queries, nil, "")
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Clone state for this request
+		state := *initialState
+
+		// Check if user is logged in
+		if user, err := authController.GetCurrentUser(r); err == nil && user != nil {
+			state.IsLoggedIn = true
+			state.UserEmail = user.Email
+		}
+
+		tmpl.Handle(controller, livetemplate.AsState(&state)).ServeHTTP(w, r)
+	})`
+		homeContent = strings.Replace(homeContent, oldReturn, newHandler, 1)
+	}
+
+	if err := os.WriteFile(homeGoPath, []byte(homeContent), 0644); err != nil {
+		return fmt.Errorf("failed to write home.go: %w", err)
+	}
+
+	return nil
+}
+
+// updateHomeTemplate modifies home.tmpl to show login/logout buttons
+func updateHomeTemplate(projectRoot string, authConfig *AuthConfig) error {
+	homeTmplPath := filepath.Join(projectRoot, "app", "home", "home.tmpl")
+
+	content, err := os.ReadFile(homeTmplPath)
+	if err != nil {
+		return fmt.Errorf("failed to read home.tmpl: %w", err)
+	}
+
+	tmplContent := string(content)
+
+	// Check if already updated
+	if strings.Contains(tmplContent, "IsLoggedIn") {
+		return nil // Already updated
+	}
+
+	// Find {{define "content"}} and add auth buttons after it
+	contentDefine := `{{define "content"}}`
+	contentIdx := strings.Index(tmplContent, contentDefine)
+	if contentIdx == -1 {
+		return fmt.Errorf("could not find content template definition")
+	}
+
+	authButtons := `
+  <!-- Auth buttons -->
+  <div style="display: flex; justify-content: flex-end; gap: 1rem; align-items: center; margin-bottom: 1rem;">
+    {{if .IsLoggedIn}}
+      <a href="/dashboard" style="padding: 0.5rem 1rem; background: #059669; color: white; border-radius: 4px; text-decoration: none;">Dashboard</a>
+      <span style="color: #666;">{{.UserEmail}}</span>
+      <a href="/auth/logout" style="padding: 0.5rem 1rem; background: #dc2626; color: white; border-radius: 4px; text-decoration: none;">Logout</a>
+    {{else}}
+      <a href="/dashboard" style="padding: 0.5rem 1rem; background: #6b7280; color: white; border-radius: 4px; text-decoration: none;">Dashboard (protected)</a>
+      <a href="/auth" style="padding: 0.5rem 1rem; background: #4f46e5; color: white; border-radius: 4px; text-decoration: none;">Login</a>
+    {{end}}
+  </div>
+`
+
+	insertPos := contentIdx + len(contentDefine)
+	tmplContent = tmplContent[:insertPos] + authButtons + tmplContent[insertPos:]
+
+	if err := os.WriteFile(homeTmplPath, []byte(tmplContent), 0644); err != nil {
+		return fmt.Errorf("failed to write home.tmpl: %w", err)
 	}
 
 	return nil
