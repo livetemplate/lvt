@@ -538,3 +538,77 @@ func main() {
 		t.Errorf("home.tmpl has duplicate auth buttons (found %d)", count)
 	}
 }
+
+func TestGenerateAuth_HomePageButtons_EmptyModuleName(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create home directory with home.go and home.tmpl
+	homeDir := filepath.Join(tmpDir, "app", "home")
+	if err := os.MkdirAll(homeDir, 0755); err != nil {
+		t.Fatalf("failed to create home directory: %v", err)
+	}
+
+	// Create minimal home.go
+	homeGoContent := `package home
+
+import (
+	"net/http"
+
+	"github.com/livetemplate/livetemplate"
+)
+
+type HomeState struct {
+	Title       string ` + "`json:\"title\"`" + `
+	LastUpdated string ` + "`json:\"last_updated\"`" + `
+}
+
+func Handler() http.Handler {
+	tmpl := livetemplate.MustParse("home.tmpl")
+	return tmpl.Handle(controller, livetemplate.AsState(initialState))
+}
+`
+	if err := os.WriteFile(filepath.Join(homeDir, "home.go"), []byte(homeGoContent), 0644); err != nil {
+		t.Fatalf("failed to write home.go: %v", err)
+	}
+
+	// Create cmd/app/main.go
+	cmdDir := filepath.Join(tmpDir, "cmd", "app")
+	if err := os.MkdirAll(cmdDir, 0755); err != nil {
+		t.Fatalf("failed to create cmd directory: %v", err)
+	}
+
+	mainGoContent := `package main
+
+func main() {}
+`
+	if err := os.WriteFile(filepath.Join(cmdDir, "main.go"), []byte(mainGoContent), 0644); err != nil {
+		t.Fatalf("failed to write main.go: %v", err)
+	}
+
+	// Generate auth with empty ModuleName - should print warning but not fail overall
+	// (the home page update fails gracefully with a warning)
+	err := GenerateAuth(tmpDir, &AuthConfig{
+		ModuleName:     "", // Empty module name
+		EnablePassword: true,
+	})
+
+	// GenerateAuth should succeed overall (home page update failure is just a warning)
+	if err != nil {
+		t.Fatalf("GenerateAuth failed unexpectedly: %v", err)
+	}
+
+	// Verify the home.go was NOT modified with malformed imports
+	// (since the validation rejects empty ModuleName)
+	content, readErr := os.ReadFile(filepath.Join(homeDir, "home.go"))
+	if readErr != nil {
+		t.Fatalf("failed to read home.go: %v", readErr)
+	}
+	// Check that we don't have malformed imports like `"/app/auth"`
+	if strings.Contains(string(content), `"/app/auth"`) {
+		t.Error("home.go has malformed import with empty module name")
+	}
+	// Check that auth import was NOT added (due to validation failure)
+	if strings.Contains(string(content), `app/auth`) {
+		t.Error("home.go should not have auth import when ModuleName is empty")
+	}
+}

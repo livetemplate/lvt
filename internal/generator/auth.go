@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"text/template"
 	"time"
@@ -370,8 +371,44 @@ func GenerateAuth(projectRoot string, authConfig *AuthConfig) error {
 	return nil
 }
 
-// updateHomeForAuth modifies the home page handler and template to show login/logout buttons
+// updateHomeForAuth modifies the home page handler and template to show login/logout buttons.
+//
+// Expected home.go structure:
+//
+//	package home
+//
+//	import (
+//	    "net/http"
+//	    "github.com/livetemplate/livetemplate"
+//	)
+//
+//	type HomeState struct {
+//	    Title       string `json:"title"`
+//	    LastUpdated string `json:"last_updated"`  // <- Fields are added after this
+//	}
+//
+//	func Handler() http.Handler {  // <- Signature is updated to accept queries
+//	    tmpl := livetemplate.MustParse("home.tmpl")
+//	    return tmpl.Handle(controller, livetemplate.AsState(initialState))  // <- Replaced with auth wrapper
+//	}
+//
+// Expected home.tmpl structure:
+//
+//	{{define "content"}}  <- Auth buttons are inserted after this line
+//	    ... existing content ...
+//	{{end}}
+//
+// Expected main.go structure:
+//
+//	mux.Handle("/", home.Handler())  <- Updated to home.Handler(queries)
+//
+// This function is idempotent - it checks for existing auth integration before making changes.
 func updateHomeForAuth(projectRoot string, authConfig *AuthConfig) error {
+	// Validate ModuleName to prevent malformed imports
+	if authConfig.ModuleName == "" {
+		return fmt.Errorf("ModuleName is required for home page auth integration")
+	}
+
 	// Update home.go to accept queries and check auth state
 	if err := updateHomeHandler(projectRoot, authConfig); err != nil {
 		return fmt.Errorf("failed to update home handler: %w", err)
@@ -466,26 +503,27 @@ func updateHomeHandler(projectRoot string, authConfig *AuthConfig) error {
 	stateFields := `	IsLoggedIn   bool       ` + "`json:\"is_logged_in\"`" + `
 	UserEmail    string     ` + "`json:\"user_email\"`"
 
-	// Find the LastUpdated field and add after it
-	lastUpdatedIdx := strings.Index(homeContent, "LastUpdated  string")
-	if lastUpdatedIdx != -1 {
-		// Find the end of that line (after the json tag)
-		lineEnd := strings.Index(homeContent[lastUpdatedIdx:], "\n")
+	// Find the LastUpdated field and add after it (whitespace-tolerant)
+	lastUpdatedRe := regexp.MustCompile(`LastUpdated\s+string\s+` + "`" + `json:"last_updated"` + "`")
+	if loc := lastUpdatedRe.FindStringIndex(homeContent); loc != nil {
+		// Find the end of that line
+		lineEnd := strings.Index(homeContent[loc[1]:], "\n")
 		if lineEnd != -1 {
-			insertPos := lastUpdatedIdx + lineEnd
+			insertPos := loc[1] + lineEnd
 			homeContent = homeContent[:insertPos] + "\n" + stateFields + homeContent[insertPos:]
+		} else {
+			// Field is at end of file, append after it
+			homeContent = homeContent + "\n" + stateFields
 		}
 	}
 
-	// Update Handler function signature to accept queries
-	homeContent = strings.Replace(homeContent,
-		"func Handler() http.Handler {",
-		"func Handler(queries *models.Queries) http.Handler {",
-		1)
+	// Update Handler function signature to accept queries (whitespace-tolerant)
+	handlerSigRe := regexp.MustCompile(`func\s+Handler\s*\(\s*\)\s*http\.Handler\s*\{`)
+	homeContent = handlerSigRe.ReplaceAllString(homeContent, "func Handler(queries *models.Queries) http.Handler {")
 
 	// Add auth controller and wrap the handler to check auth state
-	// Find the return statement and replace the handler logic
-	oldReturn := "return tmpl.Handle(controller, livetemplate.AsState(initialState))"
+	// Find the return statement and replace the handler logic (whitespace-tolerant)
+	returnRe := regexp.MustCompile(`return\s+tmpl\.Handle\s*\(\s*controller\s*,\s*livetemplate\.AsState\s*\(\s*initialState\s*\)\s*\)`)
 	newHandler := `// Create auth controller to check login state
 	authController := auth.NewUserController(queries, nil, "")
 
@@ -502,10 +540,10 @@ func updateHomeHandler(projectRoot string, authConfig *AuthConfig) error {
 		tmpl.Handle(controller, livetemplate.AsState(&state)).ServeHTTP(w, r)
 	})`
 
-	if !strings.Contains(homeContent, oldReturn) {
+	if !returnRe.MatchString(homeContent) {
 		return fmt.Errorf("could not find expected handler return statement in home.go")
 	}
-	homeContent = strings.Replace(homeContent, oldReturn, newHandler, 1)
+	homeContent = returnRe.ReplaceAllString(homeContent, newHandler)
 
 	if err := os.WriteFile(homeGoPath, []byte(homeContent), 0644); err != nil {
 		return fmt.Errorf("failed to write home.go: %w", err)
