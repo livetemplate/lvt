@@ -272,3 +272,343 @@ go 1.21
 		t.Error("go.mod missing github.com/gorilla/csrf dependency")
 	}
 }
+
+func TestGenerateAuth_HomePageButtons(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create home directory with home.go and home.tmpl
+	homeDir := filepath.Join(tmpDir, "app", "home")
+	if err := os.MkdirAll(homeDir, 0755); err != nil {
+		t.Fatalf("failed to create home directory: %v", err)
+	}
+
+	// Create minimal home.go
+	homeGoContent := `package home
+
+import (
+	"net/http"
+
+	"testapp/database/models"
+
+	"github.com/livetemplate/livetemplate"
+)
+
+type HomeState struct {
+	Title       string ` + "`json:\"title\"`" + `
+	LastUpdated string ` + "`json:\"last_updated\"`" + `
+}
+
+type HomeController struct{}
+
+func (c *HomeController) HandleEvent(state *HomeState, event livetemplate.Event) error {
+	return nil
+}
+
+var initialState = &HomeState{
+	Title:       "Welcome",
+	LastUpdated: "2024-01-01",
+}
+
+var controller = &HomeController{}
+
+func Handler() http.Handler {
+	tmpl := livetemplate.MustParse("home.tmpl")
+	return tmpl.Handle(controller, livetemplate.AsState(initialState))
+}
+`
+	if err := os.WriteFile(filepath.Join(homeDir, "home.go"), []byte(homeGoContent), 0644); err != nil {
+		t.Fatalf("failed to write home.go: %v", err)
+	}
+
+	// Create minimal home.tmpl
+	homeTmplContent := `{{define "content"}}
+<div class="container">
+  <h1>{{.Title}}</h1>
+  <p>Last updated: {{.LastUpdated}}</p>
+</div>
+{{end}}
+`
+	if err := os.WriteFile(filepath.Join(homeDir, "home.tmpl"), []byte(homeTmplContent), 0644); err != nil {
+		t.Fatalf("failed to write home.tmpl: %v", err)
+	}
+
+	// Create cmd/app/main.go (findMainGo expects cmd/*/main.go)
+	cmdDir := filepath.Join(tmpDir, "cmd", "app")
+	if err := os.MkdirAll(cmdDir, 0755); err != nil {
+		t.Fatalf("failed to create cmd directory: %v", err)
+	}
+
+	mainGoContent := `package main
+
+import (
+	"net/http"
+	"testapp/app/home"
+	"testapp/database/models"
+)
+
+func main() {
+	queries := &models.Queries{}
+	mux := http.NewServeMux()
+	mux.Handle("/", home.Handler())
+	http.ListenAndServe(":8080", mux)
+}
+`
+	if err := os.WriteFile(filepath.Join(cmdDir, "main.go"), []byte(mainGoContent), 0644); err != nil {
+		t.Fatalf("failed to write main.go: %v", err)
+	}
+
+	// Generate auth with home page buttons enabled
+	err := GenerateAuth(tmpDir, &AuthConfig{
+		ModuleName:     "testapp",
+		EnablePassword: true,
+	})
+	if err != nil {
+		t.Fatalf("GenerateAuth failed: %v", err)
+	}
+
+	// Verify home.go was updated
+	homeGoPath := filepath.Join(homeDir, "home.go")
+	content, err := os.ReadFile(homeGoPath)
+	if err != nil {
+		t.Fatalf("failed to read updated home.go: %v", err)
+	}
+	homeGoStr := string(content)
+
+	// Check for auth import
+	if !strings.Contains(homeGoStr, `"testapp/app/auth"`) {
+		t.Error("home.go should import auth package")
+	}
+
+	// Check for IsLoggedIn field
+	if !strings.Contains(homeGoStr, "IsLoggedIn") {
+		t.Error("home.go should have IsLoggedIn field in HomeState")
+	}
+
+	// Check for UserEmail field
+	if !strings.Contains(homeGoStr, "UserEmail") {
+		t.Error("home.go should have UserEmail field in HomeState")
+	}
+
+	// Check for handler accepting queries parameter
+	if !strings.Contains(homeGoStr, "Handler(queries *models.Queries)") {
+		t.Error("home.go Handler should accept queries parameter")
+	}
+
+	// Verify home.tmpl was updated
+	homeTmplPath := filepath.Join(homeDir, "home.tmpl")
+	content, err = os.ReadFile(homeTmplPath)
+	if err != nil {
+		t.Fatalf("failed to read updated home.tmpl: %v", err)
+	}
+	homeTmplStr := string(content)
+
+	// Check for auth buttons
+	if !strings.Contains(homeTmplStr, "{{if .IsLoggedIn}}") {
+		t.Error("home.tmpl should have IsLoggedIn conditional")
+	}
+
+	if !strings.Contains(homeTmplStr, "/auth/logout") {
+		t.Error("home.tmpl should have logout link")
+	}
+
+	if !strings.Contains(homeTmplStr, "/auth") {
+		t.Error("home.tmpl should have login link")
+	}
+
+	// Verify main.go was updated (cmdDir is tmpDir/cmd/app)
+	content, err = os.ReadFile(filepath.Join(cmdDir, "main.go"))
+	if err != nil {
+		t.Fatalf("failed to read updated main.go: %v", err)
+	}
+	mainGoStr := string(content)
+
+	// Check that home.Handler(queries) is called
+	if !strings.Contains(mainGoStr, "home.Handler(queries)") {
+		t.Error("main.go should call home.Handler(queries)")
+	}
+}
+
+func TestGenerateAuth_HomePageButtons_Idempotent(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create home directory with home.go and home.tmpl already containing auth
+	homeDir := filepath.Join(tmpDir, "app", "home")
+	if err := os.MkdirAll(homeDir, 0755); err != nil {
+		t.Fatalf("failed to create home directory: %v", err)
+	}
+
+	// Create home.go with existing auth integration
+	homeGoContent := `package home
+
+import (
+	"net/http"
+
+	"testapp/app/auth"
+	"testapp/database/models"
+
+	"github.com/livetemplate/livetemplate"
+)
+
+type HomeState struct {
+	Title        string ` + "`json:\"title\"`" + `
+	LastUpdated  string ` + "`json:\"last_updated\"`" + `
+	IsLoggedIn   bool   ` + "`json:\"is_logged_in\"`" + `
+	UserEmail    string ` + "`json:\"user_email\"`" + `
+}
+
+func Handler(queries *models.Queries) http.Handler {
+	return nil
+}
+`
+	if err := os.WriteFile(filepath.Join(homeDir, "home.go"), []byte(homeGoContent), 0644); err != nil {
+		t.Fatalf("failed to write home.go: %v", err)
+	}
+
+	// Create home.tmpl with existing auth buttons
+	homeTmplContent := `{{define "content"}}
+  <!-- Auth buttons -->
+  <div>
+    {{if .IsLoggedIn}}
+      <a href="/auth/logout">Logout</a>
+    {{else}}
+      <a href="/auth">Login</a>
+    {{end}}
+  </div>
+{{end}}
+`
+	if err := os.WriteFile(filepath.Join(homeDir, "home.tmpl"), []byte(homeTmplContent), 0644); err != nil {
+		t.Fatalf("failed to write home.tmpl: %v", err)
+	}
+
+	// Create main.go with existing queries call (findMainGo expects cmd/*/main.go)
+	cmdDir := filepath.Join(tmpDir, "cmd", "app")
+	if err := os.MkdirAll(cmdDir, 0755); err != nil {
+		t.Fatalf("failed to create cmd directory: %v", err)
+	}
+
+	mainGoContent := `package main
+
+import (
+	"net/http"
+	"testapp/app/home"
+	"testapp/database/models"
+)
+
+func main() {
+	queries := &models.Queries{}
+	mux.Handle("/", home.Handler(queries))
+}
+`
+	if err := os.WriteFile(filepath.Join(cmdDir, "main.go"), []byte(mainGoContent), 0644); err != nil {
+		t.Fatalf("failed to write main.go: %v", err)
+	}
+
+	// Run GenerateAuth - should not duplicate auth additions
+	err := GenerateAuth(tmpDir, &AuthConfig{
+		ModuleName:     "testapp",
+		EnablePassword: true,
+	})
+	if err != nil {
+		t.Fatalf("GenerateAuth failed: %v", err)
+	}
+
+	// Verify home.go was not duplicated
+	content, err := os.ReadFile(filepath.Join(homeDir, "home.go"))
+	if err != nil {
+		t.Fatalf("failed to read home.go: %v", err)
+	}
+	homeGoStr := string(content)
+
+	// Count occurrences of IsLoggedIn field declaration - should not be duplicated
+	count := strings.Count(homeGoStr, "IsLoggedIn   bool")
+	if count > 1 {
+		t.Errorf("home.go has duplicate IsLoggedIn field declarations (found %d)", count)
+	}
+
+	// Verify home.tmpl was not duplicated
+	content, err = os.ReadFile(filepath.Join(homeDir, "home.tmpl"))
+	if err != nil {
+		t.Fatalf("failed to read home.tmpl: %v", err)
+	}
+	homeTmplStr := string(content)
+
+	// Count occurrences of auth buttons section
+	count = strings.Count(homeTmplStr, "{{if .IsLoggedIn}}")
+	if count > 1 {
+		t.Errorf("home.tmpl has duplicate auth buttons (found %d)", count)
+	}
+}
+
+func TestGenerateAuth_HomePageButtons_EmptyModuleName(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create home directory with home.go and home.tmpl
+	homeDir := filepath.Join(tmpDir, "app", "home")
+	if err := os.MkdirAll(homeDir, 0755); err != nil {
+		t.Fatalf("failed to create home directory: %v", err)
+	}
+
+	// Create minimal home.go
+	homeGoContent := `package home
+
+import (
+	"net/http"
+
+	"github.com/livetemplate/livetemplate"
+)
+
+type HomeState struct {
+	Title       string ` + "`json:\"title\"`" + `
+	LastUpdated string ` + "`json:\"last_updated\"`" + `
+}
+
+func Handler() http.Handler {
+	tmpl := livetemplate.MustParse("home.tmpl")
+	return tmpl.Handle(controller, livetemplate.AsState(initialState))
+}
+`
+	if err := os.WriteFile(filepath.Join(homeDir, "home.go"), []byte(homeGoContent), 0644); err != nil {
+		t.Fatalf("failed to write home.go: %v", err)
+	}
+
+	// Create cmd/app/main.go
+	cmdDir := filepath.Join(tmpDir, "cmd", "app")
+	if err := os.MkdirAll(cmdDir, 0755); err != nil {
+		t.Fatalf("failed to create cmd directory: %v", err)
+	}
+
+	mainGoContent := `package main
+
+func main() {}
+`
+	if err := os.WriteFile(filepath.Join(cmdDir, "main.go"), []byte(mainGoContent), 0644); err != nil {
+		t.Fatalf("failed to write main.go: %v", err)
+	}
+
+	// Generate auth with empty ModuleName - should print warning but not fail overall
+	// (the home page update fails gracefully with a warning)
+	err := GenerateAuth(tmpDir, &AuthConfig{
+		ModuleName:     "", // Empty module name
+		EnablePassword: true,
+	})
+
+	// GenerateAuth should succeed overall (home page update failure is just a warning)
+	if err != nil {
+		t.Fatalf("GenerateAuth failed unexpectedly: %v", err)
+	}
+
+	// Verify the home.go was NOT modified with malformed imports
+	// (since the validation rejects empty ModuleName)
+	content, readErr := os.ReadFile(filepath.Join(homeDir, "home.go"))
+	if readErr != nil {
+		t.Fatalf("failed to read home.go: %v", readErr)
+	}
+	// Check that we don't have malformed imports like `"/app/auth"`
+	if strings.Contains(string(content), `"/app/auth"`) {
+		t.Error("home.go has malformed import with empty module name")
+	}
+	// Check that auth import was NOT added (due to validation failure)
+	if strings.Contains(string(content), `app/auth`) {
+		t.Error("home.go should not have auth import when ModuleName is empty")
+	}
+}
