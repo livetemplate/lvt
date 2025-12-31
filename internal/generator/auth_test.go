@@ -677,9 +677,14 @@ func main() {
 		t.Error("main.go should wrap comments handler with RequireAuth")
 	}
 
-	// Check that auth controller was added
-	if !strings.Contains(mainGoStr, `authController := auth.NewUserController(queries, nil, "")`) {
-		t.Error("main.go should have authController creation")
+	// Check that auth controller was added with email sender
+	if !strings.Contains(mainGoStr, `authController := auth.NewUserController(queries, emailSender, baseURL)`) {
+		t.Error("main.go should have authController creation with email sender")
+	}
+
+	// Check that email sender is configured
+	if !strings.Contains(mainGoStr, `email.NewConsoleEmailSender()`) {
+		t.Error("main.go should have console email sender")
 	}
 
 	// Check that auth routes are NOT wrapped (they should remain public)
@@ -704,6 +709,8 @@ import (
 	"testapp/app/auth"
 	"testapp/app/posts"
 	"testapp/database/models"
+
+	"github.com/livetemplate/lvt/pkg/email"
 )
 
 func main() {
@@ -711,7 +718,9 @@ func main() {
 	http.Handle("/auth", auth.Handler(queries))
 
 	// Create auth controller for protecting routes
-	authController := auth.NewUserController(queries, nil, "")
+	emailSender := email.NewConsoleEmailSender()
+	baseURL := "http://localhost:" + getPort()
+	authController := auth.NewUserController(queries, emailSender, baseURL)
 	http.Handle("/posts", authController.RequireAuth(posts.Handler(queries)))
 }
 `

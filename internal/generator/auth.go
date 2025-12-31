@@ -624,6 +624,20 @@ func ProtectResources(projectRoot, moduleName string, resources []ResourceEntry)
 
 	// Add auth controller creation if not present
 	if !strings.Contains(mainContent, "authController :=") {
+		// Add email import if not present
+		emailImport := `"github.com/livetemplate/lvt/pkg/email"`
+		if !strings.Contains(mainContent, emailImport) {
+			// Find the import block end
+			importStart := strings.Index(mainContent, "import (")
+			if importStart != -1 {
+				importEndRel := strings.Index(mainContent[importStart:], "\n)")
+				if importEndRel != -1 {
+					insertPos := importStart + importEndRel
+					mainContent = mainContent[:insertPos] + "\n\n\t" + emailImport + mainContent[insertPos:]
+				}
+			}
+		}
+
 		// Find where to insert the auth controller - after the auth routes
 		// Look for the last auth route to insert after
 		authRoutePatterns := []string{
@@ -649,7 +663,10 @@ func ProtectResources(projectRoot, moduleName string, resources []ResourceEntry)
 			authControllerCode := `
 
 	// Create auth controller for protecting routes
-	authController := auth.NewUserController(queries, nil, "")
+	// Console email sender prints magic links to server logs (for development)
+	emailSender := email.NewConsoleEmailSender()
+	baseURL := "http://localhost:" + getPort()
+	authController := auth.NewUserController(queries, emailSender, baseURL)
 `
 			mainContent = mainContent[:lastAuthRouteEnd+1] + authControllerCode + mainContent[lastAuthRouteEnd+1:]
 		}
