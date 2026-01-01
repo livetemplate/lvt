@@ -338,15 +338,15 @@ func WrapExistingRoutesWithAuth(mainGoPath string, structName string) error {
 
 	// Routes to exclude from protection
 	excludedPaths := map[string]bool{
-		"/":                        true,
-		"/auth":                    true,
-		"/auth/login":              true,
-		"/auth/logout":             true,
-		"/auth/magic":              true,
-		"/auth/reset":              true,
-		"/auth/confirm":            true,
-		"/health":                  true,
-		"/livetemplate-client.js":  true,
+		"/":                       true,
+		"/auth":                   true,
+		"/auth/login":             true,
+		"/auth/logout":            true,
+		"/auth/magic":             true,
+		"/auth/reset":             true,
+		"/auth/confirm":           true,
+		"/health":                 true,
+		"/livetemplate-client.js": true,
 	}
 
 	// Find routes that need wrapping
