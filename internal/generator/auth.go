@@ -598,3 +598,120 @@ func updateHomeTemplate(projectRoot string, authConfig *AuthConfig) error {
 
 	return nil
 }
+
+// ProtectResources wraps the specified resource handlers with RequireAuth middleware in main.go.
+//
+// This function modifies main.go to:
+// 1. Add an auth controller if not present
+// 2. Wrap selected resource handlers with authController.RequireAuth()
+//
+// Example transformation:
+//
+//	Before: http.Handle("/posts", posts.Handler(queries))
+//	After:  http.Handle("/posts", authController.RequireAuth(posts.Handler(queries)))
+func ProtectResources(projectRoot, _ string, resources []ResourceEntry) error {
+	mainGoPath := findMainGo(projectRoot)
+	if mainGoPath == "" {
+		return fmt.Errorf("could not find main.go")
+	}
+
+	content, err := os.ReadFile(mainGoPath)
+	if err != nil {
+		return fmt.Errorf("failed to read main.go: %w", err)
+	}
+
+	mainContent := string(content)
+
+	// Add auth controller creation if not present
+	// Check for both := and = declarations, and auth.NewUserController usage
+	authControllerDeclRe := regexp.MustCompile(`authController\s*(?::=|=)`)
+	if !authControllerDeclRe.MatchString(mainContent) && !strings.Contains(mainContent, "auth.NewUserController") {
+		// Add email import if not present
+		emailImport := `"github.com/livetemplate/lvt/pkg/email"`
+		if !strings.Contains(mainContent, emailImport) {
+			// Find the import block end
+			importStart := strings.Index(mainContent, "import (")
+			if importStart == -1 {
+				return fmt.Errorf("could not find import block in main.go - expected 'import (' format")
+			}
+			importEndRel := strings.Index(mainContent[importStart:], "\n)")
+			if importEndRel == -1 {
+				return fmt.Errorf("could not find end of import block in main.go")
+			}
+			insertPos := importStart + importEndRel
+			mainContent = mainContent[:insertPos] + "\n\n\t" + emailImport + mainContent[insertPos:]
+		}
+
+		// Find where to insert the auth controller - after the auth routes
+		// Look for the last auth route to insert after
+		authRoutePatterns := []string{
+			`http.Handle("/auth"`,
+			`http.Handle("/auth/logout"`,
+			`http.Handle("/auth/magic"`,
+			`http.Handle("/auth/reset"`,
+			`http.Handle("/auth/confirm"`,
+		}
+
+		var lastAuthRouteEnd int
+		for _, pattern := range authRoutePatterns {
+			if idx := strings.LastIndex(mainContent, pattern); idx > lastAuthRouteEnd {
+				// Find the end of this line
+				lineEnd := strings.Index(mainContent[idx:], "\n")
+				if lineEnd != -1 {
+					lastAuthRouteEnd = idx + lineEnd
+				}
+			}
+		}
+
+		// Ensure we don't generate code that references a missing authController
+		if lastAuthRouteEnd == 0 {
+			return fmt.Errorf("no auth routes found in main.go - ensure auth was generated before protecting resources")
+		}
+
+		// Determine how to get the port - use getPort() if available, otherwise hardcode
+		var baseURLCode string
+		if strings.Contains(mainContent, "func getPort()") {
+			baseURLCode = `baseURL := "http://localhost:" + getPort()`
+		} else {
+			baseURLCode = `baseURL := "http://localhost:8080" // Update port if using different value`
+		}
+
+		authControllerCode := fmt.Sprintf(`
+
+	// Create auth controller for protecting routes
+	// Console email sender prints magic links to server logs (for development)
+	emailSender := email.NewConsoleEmailSender()
+	%s
+	authController := auth.NewUserController(queries, emailSender, baseURL)
+`, baseURLCode)
+		mainContent = mainContent[:lastAuthRouteEnd+1] + authControllerCode + mainContent[lastAuthRouteEnd+1:]
+	}
+
+	// Wrap each selected resource handler with RequireAuth
+	for _, resource := range resources {
+		packageName := strings.ToLower(resource.Name)
+		path := resource.Path
+
+		// Pattern to match: http.Handle("/path", packagename.Handler(queries))
+		// Need to handle both existing and new patterns
+		pattern := fmt.Sprintf(`http\.Handle\("%s"\s*,\s*%s\.Handler\(queries\)\)`, regexp.QuoteMeta(path), regexp.QuoteMeta(packageName))
+		re := regexp.MustCompile(pattern)
+
+		// Check if already wrapped (any controller variable name followed by .RequireAuth)
+		wrappedPatternRe := regexp.MustCompile(fmt.Sprintf(`\w+\.RequireAuth\(%s\.Handler\(queries\)\)`, regexp.QuoteMeta(packageName)))
+		if wrappedPatternRe.MatchString(mainContent) {
+			continue // Already protected
+		}
+
+		if re.MatchString(mainContent) {
+			replacement := fmt.Sprintf(`http.Handle("%s", authController.RequireAuth(%s.Handler(queries)))`, path, packageName)
+			mainContent = re.ReplaceAllString(mainContent, replacement)
+		}
+	}
+
+	if err := os.WriteFile(mainGoPath, []byte(mainContent), 0644); err != nil {
+		return fmt.Errorf("failed to write main.go: %w", err)
+	}
+
+	return nil
+}

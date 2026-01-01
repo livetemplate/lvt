@@ -1,9 +1,11 @@
 package commands
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/livetemplate/lvt/internal/config"
@@ -109,14 +111,93 @@ func Auth(args []string) error {
 	fmt.Println("\n📦 Dependencies added:")
 	fmt.Println("  - github.com/livetemplate/lvt/pkg/password (bcrypt utilities)")
 	fmt.Println("  - github.com/livetemplate/lvt/pkg/email    (email sender interface)")
+
+	// Check for existing resources to protect
+	resources, err := generator.ReadResources(wd)
+	if err != nil {
+		fmt.Printf("⚠️  Could not read resources: %v\n", err)
+	} else if len(resources) > 0 {
+		// Filter out auth and home from protectable resources
+		var protectableResources []generator.ResourceEntry
+		for _, r := range resources {
+			if r.Name != "Auth" && r.Name != "Home" && r.Type == "resource" {
+				protectableResources = append(protectableResources, r)
+			}
+		}
+
+		if len(protectableResources) > 0 {
+			fmt.Println("\n🔒 Resource Protection")
+			fmt.Println("Would you like to protect any resources with authentication?")
+			fmt.Println("(Users will need to log in to access protected resources)")
+			fmt.Println()
+
+			// Show available resources
+			for i, r := range protectableResources {
+				fmt.Printf("  %d. %s (%s)\n", i+1, r.Name, r.Path)
+			}
+			fmt.Println()
+			fmt.Println("Enter your selection:")
+			fmt.Println("  - Numbers separated by commas (e.g., 1,2,3)")
+			fmt.Println("  - 'all' to protect all resources")
+			fmt.Println("  - 'none' to skip (you can protect resources later)")
+			fmt.Println()
+			fmt.Print("Your choice: ")
+
+			reader := bufio.NewReader(os.Stdin)
+			choice, err := reader.ReadString('\n')
+			if err != nil {
+				fmt.Printf("⚠️  Could not read input: %v\n", err)
+			} else {
+				choice = strings.TrimSpace(strings.ToLower(choice))
+
+				var selectedResources []generator.ResourceEntry
+
+				if choice == "all" {
+					selectedResources = protectableResources
+				} else if choice != "none" && choice != "" {
+					// Parse comma-separated numbers, preventing duplicates
+					parts := strings.Split(choice, ",")
+					seen := make(map[int]bool)
+					for _, part := range parts {
+						part = strings.TrimSpace(part)
+						if num, err := strconv.Atoi(part); err == nil {
+							if num >= 1 && num <= len(protectableResources) {
+								if !seen[num] {
+									seen[num] = true
+									selectedResources = append(selectedResources, protectableResources[num-1])
+								}
+							} else {
+								fmt.Printf("⚠️  Invalid selection: %d (out of range)\n", num)
+							}
+						} else {
+							fmt.Printf("⚠️  Invalid selection: %s (not a number)\n", part)
+						}
+					}
+				}
+
+				if len(selectedResources) > 0 {
+					fmt.Printf("\nProtecting %d resource(s)...\n", len(selectedResources))
+					if err := generator.ProtectResources(wd, genConfig.ModuleName, selectedResources); err != nil {
+						fmt.Printf("⚠️  Could not protect resources: %v\n", err)
+						fmt.Println("   You can manually wrap routes with authController.RequireAuth()")
+					} else {
+						fmt.Println("✅ Resources protected!")
+						for _, r := range selectedResources {
+							fmt.Printf("   - %s (%s)\n", r.Name, r.Path)
+						}
+					}
+				}
+			}
+		}
+	}
+
 	fmt.Println("\n📝 Next steps:")
 	fmt.Println("  1. Run migrations:")
 	fmt.Println("     lvt migration up")
 	fmt.Println("\n  2. Generate sqlc code:")
 	fmt.Println("     sqlc generate")
-	fmt.Println("\n  3. Wire auth routes in main.go (see app/auth/auth.go for examples)")
-	fmt.Println("\n  4. Configure email sender (see github.com/livetemplate/lvt/pkg/email)")
-	fmt.Println("\n  5. Run E2E tests (requires Docker):")
+	fmt.Println("\n  3. Configure email sender (see github.com/livetemplate/lvt/pkg/email)")
+	fmt.Println("\n  4. Run E2E tests (requires Docker):")
 	fmt.Println("     go test ./app/auth -run TestAuthE2E -v")
 	fmt.Println("\n💡 Tip: Check app/auth/auth.go for complete usage examples!")
 

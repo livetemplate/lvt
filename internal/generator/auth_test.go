@@ -612,3 +612,420 @@ func main() {}
 		t.Error("home.go should not have auth import when ModuleName is empty")
 	}
 }
+
+func TestProtectResources_WrapsHandlers(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create cmd/app/main.go with auth routes and resource routes
+	cmdDir := filepath.Join(tmpDir, "cmd", "app")
+	if err := os.MkdirAll(cmdDir, 0755); err != nil {
+		t.Fatalf("failed to create cmd directory: %v", err)
+	}
+
+	mainGoContent := `package main
+
+import (
+	"net/http"
+	"testapp/app/auth"
+	"testapp/app/home"
+	"testapp/app/posts"
+	"testapp/app/comments"
+	"testapp/database/models"
+)
+
+func main() {
+	queries := &models.Queries{}
+	http.Handle("/", home.Handler(queries))
+	http.Handle("/auth/confirm", auth.ConfirmEmailHandler(queries))
+	http.Handle("/auth/reset", auth.ResetPasswordHandler(queries))
+	http.Handle("/auth/magic", auth.MagicLinkHandler(queries))
+	http.Handle("/auth/logout", auth.LogoutHandler(queries))
+	http.Handle("/auth", auth.Handler(queries))
+	http.Handle("/posts", posts.Handler(queries))
+	http.Handle("/comments", comments.Handler(queries))
+}
+`
+	if err := os.WriteFile(filepath.Join(cmdDir, "main.go"), []byte(mainGoContent), 0644); err != nil {
+		t.Fatalf("failed to write main.go: %v", err)
+	}
+
+	// Protect posts and comments resources
+	resources := []ResourceEntry{
+		{Name: "Posts", Path: "/posts", Type: "resource"},
+		{Name: "Comments", Path: "/comments", Type: "resource"},
+	}
+
+	err := ProtectResources(tmpDir, "testapp", resources)
+	if err != nil {
+		t.Fatalf("ProtectResources failed: %v", err)
+	}
+
+	// Read updated main.go
+	content, err := os.ReadFile(filepath.Join(cmdDir, "main.go"))
+	if err != nil {
+		t.Fatalf("failed to read main.go: %v", err)
+	}
+	mainGoStr := string(content)
+
+	// Check that posts is wrapped with RequireAuth
+	if !strings.Contains(mainGoStr, `http.Handle("/posts", authController.RequireAuth(posts.Handler(queries)))`) {
+		t.Error("main.go should wrap posts handler with RequireAuth")
+	}
+
+	// Check that comments is wrapped with RequireAuth
+	if !strings.Contains(mainGoStr, `http.Handle("/comments", authController.RequireAuth(comments.Handler(queries)))`) {
+		t.Error("main.go should wrap comments handler with RequireAuth")
+	}
+
+	// Check that auth controller was added with email sender
+	if !strings.Contains(mainGoStr, `authController := auth.NewUserController(queries, emailSender, baseURL)`) {
+		t.Error("main.go should have authController creation with email sender")
+	}
+
+	// Check that email sender is configured
+	if !strings.Contains(mainGoStr, `email.NewConsoleEmailSender()`) {
+		t.Error("main.go should have console email sender")
+	}
+
+	// Check that auth routes are NOT wrapped (they should remain public)
+	if strings.Contains(mainGoStr, `authController.RequireAuth(auth.Handler`) {
+		t.Error("main.go should NOT wrap auth handler with RequireAuth")
+	}
+}
+
+func TestProtectResources_Idempotent(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create cmd/app/main.go with already protected resources
+	cmdDir := filepath.Join(tmpDir, "cmd", "app")
+	if err := os.MkdirAll(cmdDir, 0755); err != nil {
+		t.Fatalf("failed to create cmd directory: %v", err)
+	}
+
+	mainGoContent := `package main
+
+import (
+	"net/http"
+	"testapp/app/auth"
+	"testapp/app/posts"
+	"testapp/database/models"
+
+	"github.com/livetemplate/lvt/pkg/email"
+)
+
+func main() {
+	queries := &models.Queries{}
+	http.Handle("/auth", auth.Handler(queries))
+
+	// Create auth controller for protecting routes
+	emailSender := email.NewConsoleEmailSender()
+	baseURL := "http://localhost:" + getPort()
+	authController := auth.NewUserController(queries, emailSender, baseURL)
+	http.Handle("/posts", authController.RequireAuth(posts.Handler(queries)))
+}
+`
+	if err := os.WriteFile(filepath.Join(cmdDir, "main.go"), []byte(mainGoContent), 0644); err != nil {
+		t.Fatalf("failed to write main.go: %v", err)
+	}
+
+	// Try to protect posts again
+	resources := []ResourceEntry{
+		{Name: "Posts", Path: "/posts", Type: "resource"},
+	}
+
+	err := ProtectResources(tmpDir, "testapp", resources)
+	if err != nil {
+		t.Fatalf("ProtectResources failed: %v", err)
+	}
+
+	// Read updated main.go
+	content, err := os.ReadFile(filepath.Join(cmdDir, "main.go"))
+	if err != nil {
+		t.Fatalf("failed to read main.go: %v", err)
+	}
+	mainGoStr := string(content)
+
+	// Check that RequireAuth is not duplicated
+	count := strings.Count(mainGoStr, "authController.RequireAuth(posts.Handler(queries))")
+	if count != 1 {
+		t.Errorf("Expected exactly 1 RequireAuth wrapper for posts, found %d", count)
+	}
+
+	// Check that authController is not duplicated
+	count = strings.Count(mainGoStr, "authController :=")
+	if count != 1 {
+		t.Errorf("Expected exactly 1 authController creation, found %d", count)
+	}
+}
+
+func TestProtectResources_AddsAuthController(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create cmd/app/main.go with auth routes but no authController
+	cmdDir := filepath.Join(tmpDir, "cmd", "app")
+	if err := os.MkdirAll(cmdDir, 0755); err != nil {
+		t.Fatalf("failed to create cmd directory: %v", err)
+	}
+
+	mainGoContent := `package main
+
+import (
+	"net/http"
+	"testapp/app/auth"
+	"testapp/app/posts"
+	"testapp/database/models"
+)
+
+func main() {
+	queries := &models.Queries{}
+	http.Handle("/auth", auth.Handler(queries))
+	http.Handle("/posts", posts.Handler(queries))
+}
+`
+	if err := os.WriteFile(filepath.Join(cmdDir, "main.go"), []byte(mainGoContent), 0644); err != nil {
+		t.Fatalf("failed to write main.go: %v", err)
+	}
+
+	resources := []ResourceEntry{
+		{Name: "Posts", Path: "/posts", Type: "resource"},
+	}
+
+	err := ProtectResources(tmpDir, "testapp", resources)
+	if err != nil {
+		t.Fatalf("ProtectResources failed: %v", err)
+	}
+
+	// Read updated main.go
+	content, err := os.ReadFile(filepath.Join(cmdDir, "main.go"))
+	if err != nil {
+		t.Fatalf("failed to read main.go: %v", err)
+	}
+	mainGoStr := string(content)
+
+	// Check that authController was added after auth routes
+	authControllerIdx := strings.Index(mainGoStr, "authController :=")
+	authRouteIdx := strings.Index(mainGoStr, `http.Handle("/auth"`)
+
+	if authControllerIdx == -1 {
+		t.Fatal("authController creation not found in main.go")
+	}
+	if authControllerIdx < authRouteIdx {
+		t.Error("authController should be created after auth routes")
+	}
+
+	// Check for comment
+	if !strings.Contains(mainGoStr, "// Create auth controller for protecting routes") {
+		t.Error("authController creation should have a comment")
+	}
+}
+
+func TestProtectResources_NoMainGo(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Don't create main.go
+
+	resources := []ResourceEntry{
+		{Name: "Posts", Path: "/posts", Type: "resource"},
+	}
+
+	err := ProtectResources(tmpDir, "testapp", resources)
+	if err == nil {
+		t.Error("ProtectResources should fail when main.go doesn't exist")
+	}
+
+	if !strings.Contains(err.Error(), "could not find main.go") {
+		t.Errorf("Expected 'could not find main.go' error, got: %v", err)
+	}
+}
+
+func TestProtectResources_NoAuthRoutes(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create cmd/app/main.go WITHOUT auth routes
+	cmdDir := filepath.Join(tmpDir, "cmd", "app")
+	if err := os.MkdirAll(cmdDir, 0755); err != nil {
+		t.Fatalf("failed to create cmd directory: %v", err)
+	}
+
+	// main.go without any auth routes
+	mainGoContent := `package main
+
+import (
+	"net/http"
+	"testapp/app/posts"
+	"testapp/database/models"
+)
+
+func main() {
+	queries := &models.Queries{}
+	http.Handle("/posts", posts.Handler(queries))
+}
+`
+	if err := os.WriteFile(filepath.Join(cmdDir, "main.go"), []byte(mainGoContent), 0644); err != nil {
+		t.Fatalf("failed to write main.go: %v", err)
+	}
+
+	resources := []ResourceEntry{
+		{Name: "Posts", Path: "/posts", Type: "resource"},
+	}
+
+	err := ProtectResources(tmpDir, "testapp", resources)
+	if err == nil {
+		t.Error("ProtectResources should fail when no auth routes exist in main.go")
+	}
+
+	if !strings.Contains(err.Error(), "no auth routes found") {
+		t.Errorf("Expected 'no auth routes found' error, got: %v", err)
+	}
+}
+
+func TestProtectResources_MissingImportBlock(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create cmd/app/main.go with single-line import (not block format)
+	cmdDir := filepath.Join(tmpDir, "cmd", "app")
+	if err := os.MkdirAll(cmdDir, 0755); err != nil {
+		t.Fatalf("failed to create cmd directory: %v", err)
+	}
+
+	// main.go without import block format
+	mainGoContent := `package main
+
+import "net/http"
+
+func main() {
+	http.Handle("/auth", nil)
+	http.Handle("/posts", nil)
+}
+`
+	if err := os.WriteFile(filepath.Join(cmdDir, "main.go"), []byte(mainGoContent), 0644); err != nil {
+		t.Fatalf("failed to write main.go: %v", err)
+	}
+
+	resources := []ResourceEntry{
+		{Name: "Posts", Path: "/posts", Type: "resource"},
+	}
+
+	err := ProtectResources(tmpDir, "testapp", resources)
+	if err == nil {
+		t.Error("ProtectResources should fail when import block is missing")
+	}
+
+	if !strings.Contains(err.Error(), "could not find import block") {
+		t.Errorf("Expected 'could not find import block' error, got: %v", err)
+	}
+}
+
+func TestProtectResources_FallbackPortWithoutGetPort(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create cmd/app/main.go with auth routes but WITHOUT getPort() function
+	cmdDir := filepath.Join(tmpDir, "cmd", "app")
+	if err := os.MkdirAll(cmdDir, 0755); err != nil {
+		t.Fatalf("failed to create cmd directory: %v", err)
+	}
+
+	mainGoContent := `package main
+
+import (
+	"net/http"
+	"testapp/app/auth"
+	"testapp/app/posts"
+	"testapp/database/models"
+)
+
+func main() {
+	queries := &models.Queries{}
+	http.Handle("/auth", auth.Handler(queries))
+	http.Handle("/posts", posts.Handler(queries))
+}
+`
+	if err := os.WriteFile(filepath.Join(cmdDir, "main.go"), []byte(mainGoContent), 0644); err != nil {
+		t.Fatalf("failed to write main.go: %v", err)
+	}
+
+	resources := []ResourceEntry{
+		{Name: "Posts", Path: "/posts", Type: "resource"},
+	}
+
+	err := ProtectResources(tmpDir, "testapp", resources)
+	if err != nil {
+		t.Fatalf("ProtectResources failed: %v", err)
+	}
+
+	// Read updated main.go
+	content, err := os.ReadFile(filepath.Join(cmdDir, "main.go"))
+	if err != nil {
+		t.Fatalf("failed to read main.go: %v", err)
+	}
+	mainGoStr := string(content)
+
+	// Should use hardcoded port since getPort() doesn't exist
+	if !strings.Contains(mainGoStr, `baseURL := "http://localhost:8080"`) {
+		t.Error("main.go should use hardcoded port 8080 when getPort() doesn't exist")
+	}
+
+	// Should have comment about updating port
+	if !strings.Contains(mainGoStr, "Update port if using different value") {
+		t.Error("main.go should have comment about updating port")
+	}
+}
+
+func TestProtectResources_UsesGetPortWhenAvailable(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create cmd/app/main.go with auth routes AND getPort() function
+	cmdDir := filepath.Join(tmpDir, "cmd", "app")
+	if err := os.MkdirAll(cmdDir, 0755); err != nil {
+		t.Fatalf("failed to create cmd directory: %v", err)
+	}
+
+	mainGoContent := `package main
+
+import (
+	"net/http"
+	"os"
+	"testapp/app/auth"
+	"testapp/app/posts"
+	"testapp/database/models"
+)
+
+func main() {
+	queries := &models.Queries{}
+	http.Handle("/auth", auth.Handler(queries))
+	http.Handle("/posts", posts.Handler(queries))
+}
+
+func getPort() string {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	return port
+}
+`
+	if err := os.WriteFile(filepath.Join(cmdDir, "main.go"), []byte(mainGoContent), 0644); err != nil {
+		t.Fatalf("failed to write main.go: %v", err)
+	}
+
+	resources := []ResourceEntry{
+		{Name: "Posts", Path: "/posts", Type: "resource"},
+	}
+
+	err := ProtectResources(tmpDir, "testapp", resources)
+	if err != nil {
+		t.Fatalf("ProtectResources failed: %v", err)
+	}
+
+	// Read updated main.go
+	content, err := os.ReadFile(filepath.Join(cmdDir, "main.go"))
+	if err != nil {
+		t.Fatalf("failed to read main.go: %v", err)
+	}
+	mainGoStr := string(content)
+
+	// Should use getPort() since it exists
+	if !strings.Contains(mainGoStr, `baseURL := "http://localhost:" + getPort()`) {
+		t.Error("main.go should use getPort() when it's available")
+	}
+}
