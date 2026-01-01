@@ -609,7 +609,7 @@ func updateHomeTemplate(projectRoot string, authConfig *AuthConfig) error {
 //
 //	Before: http.Handle("/posts", posts.Handler(queries))
 //	After:  http.Handle("/posts", authController.RequireAuth(posts.Handler(queries)))
-func ProtectResources(projectRoot, moduleName string, resources []ResourceEntry) error {
+func ProtectResources(projectRoot, _ string, resources []ResourceEntry) error {
 	mainGoPath := findMainGo(projectRoot)
 	if mainGoPath == "" {
 		return fmt.Errorf("could not find main.go")
@@ -623,7 +623,9 @@ func ProtectResources(projectRoot, moduleName string, resources []ResourceEntry)
 	mainContent := string(content)
 
 	// Add auth controller creation if not present
-	if !strings.Contains(mainContent, "authController :=") {
+	// Check for both := and = declarations, and auth.NewUserController usage
+	authControllerDeclRe := regexp.MustCompile(`authController\s*(?::=|=)`)
+	if !authControllerDeclRe.MatchString(mainContent) && !strings.Contains(mainContent, "auth.NewUserController") {
 		// Add email import if not present
 		emailImport := `"github.com/livetemplate/lvt/pkg/email"`
 		if !strings.Contains(mainContent, emailImport) {
@@ -659,8 +661,12 @@ func ProtectResources(projectRoot, moduleName string, resources []ResourceEntry)
 			}
 		}
 
-		if lastAuthRouteEnd > 0 {
-			authControllerCode := `
+		// Ensure we don't generate code that references a missing authController
+		if lastAuthRouteEnd == 0 {
+			return fmt.Errorf("no auth routes found in main.go - ensure auth was generated before protecting resources")
+		}
+
+		authControllerCode := `
 
 	// Create auth controller for protecting routes
 	// Console email sender prints magic links to server logs (for development)
@@ -668,8 +674,7 @@ func ProtectResources(projectRoot, moduleName string, resources []ResourceEntry)
 	baseURL := "http://localhost:" + getPort()
 	authController := auth.NewUserController(queries, emailSender, baseURL)
 `
-			mainContent = mainContent[:lastAuthRouteEnd+1] + authControllerCode + mainContent[lastAuthRouteEnd+1:]
-		}
+		mainContent = mainContent[:lastAuthRouteEnd+1] + authControllerCode + mainContent[lastAuthRouteEnd+1:]
 	}
 
 	// Wrap each selected resource handler with RequireAuth
@@ -682,9 +687,9 @@ func ProtectResources(projectRoot, moduleName string, resources []ResourceEntry)
 		pattern := fmt.Sprintf(`http\.Handle\("%s"\s*,\s*%s\.Handler\(queries\)\)`, regexp.QuoteMeta(path), regexp.QuoteMeta(packageName))
 		re := regexp.MustCompile(pattern)
 
-		// Check if already wrapped
-		wrappedPattern := fmt.Sprintf(`authController\.RequireAuth\(%s\.Handler\(queries\)\)`, regexp.QuoteMeta(packageName))
-		if strings.Contains(mainContent, wrappedPattern) {
+		// Check if already wrapped (any controller variable name followed by .RequireAuth)
+		wrappedPatternRe := regexp.MustCompile(fmt.Sprintf(`\w+\.RequireAuth\(%s\.Handler\(queries\)\)`, regexp.QuoteMeta(packageName)))
+		if wrappedPatternRe.MatchString(mainContent) {
 			continue // Already protected
 		}
 

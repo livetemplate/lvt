@@ -837,3 +837,44 @@ func TestProtectResources_NoMainGo(t *testing.T) {
 		t.Errorf("Expected 'could not find main.go' error, got: %v", err)
 	}
 }
+
+func TestProtectResources_NoAuthRoutes(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create cmd/app/main.go WITHOUT auth routes
+	cmdDir := filepath.Join(tmpDir, "cmd", "app")
+	if err := os.MkdirAll(cmdDir, 0755); err != nil {
+		t.Fatalf("failed to create cmd directory: %v", err)
+	}
+
+	// main.go without any auth routes
+	mainGoContent := `package main
+
+import (
+	"net/http"
+	"testapp/app/posts"
+	"testapp/database/models"
+)
+
+func main() {
+	queries := &models.Queries{}
+	http.Handle("/posts", posts.Handler(queries))
+}
+`
+	if err := os.WriteFile(filepath.Join(cmdDir, "main.go"), []byte(mainGoContent), 0644); err != nil {
+		t.Fatalf("failed to write main.go: %v", err)
+	}
+
+	resources := []ResourceEntry{
+		{Name: "Posts", Path: "/posts", Type: "resource"},
+	}
+
+	err := ProtectResources(tmpDir, "testapp", resources)
+	if err == nil {
+		t.Error("ProtectResources should fail when no auth routes exist in main.go")
+	}
+
+	if !strings.Contains(err.Error(), "no auth routes found") {
+		t.Errorf("Expected 'no auth routes found' error, got: %v", err)
+	}
+}
