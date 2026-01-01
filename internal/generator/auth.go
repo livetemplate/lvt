@@ -348,12 +348,35 @@ func GenerateAuth(projectRoot string, authConfig *AuthConfig) error {
 			})
 		}
 
+		// Add password login route if password auth is enabled
+		// This enables HTTP form-based login (needed for tests)
+		if authConfig.EnablePassword {
+			routes = append(routes, RouteInfo{
+				Path:        "/auth/login",
+				PackageName: "auth",
+				HandlerCall: "auth.PasswordLoginHandler(queries)",
+				ImportPath:  authConfig.ModuleName + "/app/auth",
+			})
+		}
+
 		for _, route := range routes {
 			if err := InjectRoute(mainGoPath, route); err != nil {
 				// Log warning but don't fail - user can add route manually
 				fmt.Printf("⚠️  Could not auto-inject route %s: %v\n", route.Path, err)
 				fmt.Printf("   Please add manually: http.Handle(\"%s\", auth.Handler(queries))\n", route.Path)
 			}
+		}
+
+		// Wrap existing resource routes with RequireAuth middleware
+		if err := WrapExistingRoutesWithAuth(mainGoPath); err != nil {
+			fmt.Printf("⚠️  Could not wrap existing routes with auth: %v\n", err)
+			fmt.Println("   You may need to manually wrap protected routes with authController.RequireAuth()")
+		}
+
+		// Update existing resource tests to include authentication
+		if err := UpdateResourceTestsForAuth(projectRoot); err != nil {
+			fmt.Printf("⚠️  Could not update resource tests for auth: %v\n", err)
+			fmt.Println("   Resource tests may need to be updated manually to authenticate")
 		}
 
 		// Register auth in home page
