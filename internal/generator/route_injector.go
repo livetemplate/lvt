@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -151,4 +152,319 @@ func insertLine(lines []string, index int, line string) []string {
 	result = append(result, line)
 	result = append(result, lines[index:]...)
 	return result
+}
+
+// UpdateResourceTestsForAuth updates existing resource test files to include authentication.
+// This is called when auth is generated to ensure existing resource tests still work
+// with the newly protected routes.
+func UpdateResourceTestsForAuth(projectRoot string) error {
+	appDir := filepath.Join(projectRoot, "app")
+
+	// Find all test files in app subdirectories
+	entries, err := os.ReadDir(appDir)
+	if err != nil {
+		return fmt.Errorf("failed to read app directory: %w", err)
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		// Skip auth and home directories
+		if entry.Name() == "auth" || entry.Name() == "home" {
+			continue
+		}
+
+		resourceDir := filepath.Join(appDir, entry.Name())
+		files, err := os.ReadDir(resourceDir)
+		if err != nil {
+			continue
+		}
+
+		for _, file := range files {
+			if !strings.HasSuffix(file.Name(), "_test.go") {
+				continue
+			}
+
+			testPath := filepath.Join(resourceDir, file.Name())
+			if err := updateTestFileForAuth(testPath); err != nil {
+				// Log but don't fail - some tests might not need updating
+				fmt.Printf("   Note: Could not update %s: %v\n", testPath, err)
+			}
+		}
+	}
+
+	return nil
+}
+
+// updateTestFileForAuth modifies a test file to include authentication
+func updateTestFileForAuth(testPath string) error {
+	content, err := os.ReadFile(testPath)
+	if err != nil {
+		return err
+	}
+
+	testContent := string(content)
+
+	// Skip if already has auth (idempotent)
+	if strings.Contains(testContent, "cookiejar") || strings.Contains(testContent, "testEmail") {
+		return nil
+	}
+
+	// Skip if doesn't have WebSocket tests
+	if !strings.Contains(testContent, "websocket.Dialer") {
+		return nil
+	}
+
+	// Add cookiejar import
+	if strings.Contains(testContent, "\"net/http\"") && !strings.Contains(testContent, "\"net/http/cookiejar\"") {
+		testContent = strings.Replace(testContent,
+			"\"net/http\"",
+			"\"net/http\"\n\t\"net/http/cookiejar\"\n\t\"net/url\"",
+			1)
+	}
+
+	// Find the pattern where server is ready and add auth before WebSocket connection
+	// Look for: t.Log("Server is up, trying to connect WebSocket...")
+	serverReadyMarker := "t.Log(\"Server is up, trying to connect WebSocket...\")"
+	if !strings.Contains(testContent, serverReadyMarker) {
+		return nil // Can't find the marker, skip
+	}
+
+	authCode := `t.Log("Server is up, registering test user...")
+
+	// Create HTTP client with cookie jar for session management
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatalf("Failed to create cookie jar: %v", err)
+	}
+	client := &http.Client{Jar: jar}
+
+	// Register a test user via LiveTemplate handler
+	testEmail := fmt.Sprintf("test%d@example.com", time.Now().UnixNano())
+	testPassword := "TestPassword123!"
+
+	registerData := url.Values{
+		"action":   {"register"},
+		"email":    {testEmail},
+		"password": {testPassword},
+	}
+	resp, err := client.PostForm(serverURL+"/auth", registerData)
+	if err != nil {
+		t.Fatalf("Failed to register: %v", err)
+	}
+	resp.Body.Close()
+
+	// Login via HTTP endpoint (sets session cookie properly)
+	loginData := url.Values{
+		"email":    {testEmail},
+		"password": {testPassword},
+	}
+	resp, err = client.PostForm(serverURL+"/auth/login", loginData)
+	if err != nil {
+		t.Fatalf("Failed to login: %v", err)
+	}
+	resp.Body.Close()
+
+	t.Log("User registered and logged in, connecting WebSocket...")
+
+	// Connect WebSocket with session cookie from jar
+	dialer := websocket.Dialer{Jar: jar}
+	conn, resp, err := dialer.Dial(wsURL, nil)`
+
+	// Replace the old connection code
+	oldConnCode := `t.Log("Server is up, trying to connect WebSocket...")
+
+	// Try to connect
+	dialer := websocket.Dialer{}
+	conn, resp, err := dialer.Dial(wsURL, nil)`
+
+	if strings.Contains(testContent, oldConnCode) {
+		testContent = strings.Replace(testContent, oldConnCode, authCode, 1)
+	} else {
+		// Try alternate pattern
+		oldConnCode2 := serverReadyMarker + `
+
+	// Try to connect
+	dialer := websocket.Dialer{}
+	conn, resp, err := dialer.Dial(wsURL, nil)`
+		if strings.Contains(testContent, oldConnCode2) {
+			testContent = strings.Replace(testContent, oldConnCode2, authCode, 1)
+		} else {
+			return fmt.Errorf("could not find WebSocket connection pattern to update")
+		}
+	}
+
+	return os.WriteFile(testPath, []byte(testContent), 0644)
+}
+
+// WrapExistingRoutesWithAuth finds existing resource routes in main.go and wraps them
+// with RequireAuth middleware. It also adds the authController initialization.
+//
+// The structName parameter specifies the auth struct name (e.g., "User", "Account", "Admin")
+// which is used to generate the correct controller constructor call.
+//
+// Before:
+//
+//	http.Handle("/posts", posts.Handler(queries))
+//
+// After:
+//
+//	// Protected routes - require authentication
+//	baseURL := "http://localhost:8080"
+//	if envURL := os.Getenv("BASE_URL"); envURL != "" {
+//	    baseURL = envURL
+//	}
+//	authController := auth.NewUserController(queries, nil, baseURL)
+//	http.Handle("/posts", authController.RequireAuth(posts.Handler(queries)))
+func WrapExistingRoutesWithAuth(mainGoPath string, structName string) error {
+	content, err := os.ReadFile(mainGoPath)
+	if err != nil {
+		return fmt.Errorf("failed to read main.go: %w", err)
+	}
+
+	mainContent := string(content)
+
+	// Check if already wrapped (idempotent)
+	if strings.Contains(mainContent, "authController.RequireAuth(") {
+		return nil // Already wrapped
+	}
+
+	// Find resource routes that need wrapping
+	// Pattern: http.Handle("/something", something.Handler(queries))
+	// Exclude: auth routes, home route, health route
+	lines := strings.Split(mainContent, "\n")
+
+	// Routes to exclude from protection
+	excludedPaths := map[string]bool{
+		"/":                       true,
+		"/auth":                   true,
+		"/auth/login":             true,
+		"/auth/logout":            true,
+		"/auth/magic":             true,
+		"/auth/reset":             true,
+		"/auth/confirm":           true,
+		"/health":                 true,
+		"/livetemplate-client.js": true,
+	}
+
+	// Find routes that need wrapping
+	var routesToWrap []int
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+
+		// Skip comments
+		if strings.HasPrefix(trimmed, "//") {
+			continue
+		}
+
+		// Match http.Handle("/path", handler.Handler(queries))
+		if strings.HasPrefix(trimmed, "http.Handle(\"") && strings.Contains(line, ".Handler(queries)") {
+			// Extract the path
+			start := strings.Index(trimmed, "\"") + 1
+			end := strings.Index(trimmed[start:], "\"")
+			if end == -1 {
+				continue
+			}
+			path := trimmed[start : start+end]
+
+			// Skip excluded paths
+			if excludedPaths[path] {
+				continue
+			}
+
+			routesToWrap = append(routesToWrap, i)
+		}
+	}
+
+	if len(routesToWrap) == 0 {
+		return nil // No routes to wrap
+	}
+
+	// Find where to insert the authController initialization
+	// Should be just before the first route to wrap
+	firstRouteIndex := routesToWrap[0]
+
+	// Insert authController initialization before the first protected route
+	authControllerInit := []string{
+		"",
+		"\t// Protected routes - require authentication",
+		"\tbaseURL := \"http://localhost:8080\"",
+		"\tif envURL := os.Getenv(\"BASE_URL\"); envURL != \"\" {",
+		"\t\tbaseURL = envURL",
+		"\t}",
+		fmt.Sprintf("\tauthController := auth.New%sController(queries, nil, baseURL)", structName),
+	}
+
+	// Build new lines array
+	var newLines []string
+
+	for i, line := range lines {
+		// Insert auth controller init before first protected route
+		if i == firstRouteIndex {
+			newLines = append(newLines, authControllerInit...)
+		}
+
+		// Check if this line is a route to wrap
+		isRouteToWrap := false
+		for _, idx := range routesToWrap {
+			if i == idx {
+				isRouteToWrap = true
+				break
+			}
+		}
+
+		if isRouteToWrap {
+			// Wrap the route with RequireAuth
+			// Original: http.Handle("/posts", posts.Handler(queries))
+			// New: http.Handle("/posts", authController.RequireAuth(posts.Handler(queries)))
+			trimmed := strings.TrimSpace(line)
+
+			// Find the handler call
+			// Pattern: http.Handle("/path", handler.Handler(queries))
+			handlePrefix := "http.Handle(\""
+			handleStart := strings.Index(trimmed, handlePrefix)
+			if handleStart == -1 {
+				newLines = append(newLines, line)
+				continue
+			}
+
+			// Find the closing of the path
+			pathStart := handleStart + len(handlePrefix)
+			pathEnd := strings.Index(trimmed[pathStart:], "\"")
+			if pathEnd == -1 {
+				newLines = append(newLines, line)
+				continue
+			}
+
+			// Get the path
+			path := trimmed[pathStart : pathStart+pathEnd]
+
+			// Find the handler part: ", handler.Handler(queries))"
+			handlerStart := pathStart + pathEnd + 3 // skip '", '
+			handlerEnd := len(trimmed) - 1          // remove trailing )
+
+			if handlerStart >= handlerEnd {
+				newLines = append(newLines, line)
+				continue
+			}
+
+			handler := trimmed[handlerStart:handlerEnd]
+
+			// Build the wrapped line
+			wrappedLine := fmt.Sprintf("\thttp.Handle(\"%s\", authController.RequireAuth(%s))", path, handler)
+			newLines = append(newLines, wrappedLine)
+		} else {
+			newLines = append(newLines, line)
+		}
+	}
+
+	// Write back
+	output := strings.Join(newLines, "\n")
+	if err := os.WriteFile(mainGoPath, []byte(output), 0644); err != nil {
+		return fmt.Errorf("failed to write main.go: %w", err)
+	}
+
+	return nil
 }
