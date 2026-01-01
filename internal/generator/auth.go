@@ -631,13 +631,15 @@ func ProtectResources(projectRoot, _ string, resources []ResourceEntry) error {
 		if !strings.Contains(mainContent, emailImport) {
 			// Find the import block end
 			importStart := strings.Index(mainContent, "import (")
-			if importStart != -1 {
-				importEndRel := strings.Index(mainContent[importStart:], "\n)")
-				if importEndRel != -1 {
-					insertPos := importStart + importEndRel
-					mainContent = mainContent[:insertPos] + "\n\n\t" + emailImport + mainContent[insertPos:]
-				}
+			if importStart == -1 {
+				return fmt.Errorf("could not find import block in main.go - expected 'import (' format")
 			}
+			importEndRel := strings.Index(mainContent[importStart:], "\n)")
+			if importEndRel == -1 {
+				return fmt.Errorf("could not find end of import block in main.go")
+			}
+			insertPos := importStart + importEndRel
+			mainContent = mainContent[:insertPos] + "\n\n\t" + emailImport + mainContent[insertPos:]
 		}
 
 		// Find where to insert the auth controller - after the auth routes
@@ -666,14 +668,22 @@ func ProtectResources(projectRoot, _ string, resources []ResourceEntry) error {
 			return fmt.Errorf("no auth routes found in main.go - ensure auth was generated before protecting resources")
 		}
 
-		authControllerCode := `
+		// Determine how to get the port - use getPort() if available, otherwise hardcode
+		var baseURLCode string
+		if strings.Contains(mainContent, "func getPort()") {
+			baseURLCode = `baseURL := "http://localhost:" + getPort()`
+		} else {
+			baseURLCode = `baseURL := "http://localhost:8080" // Update port if using different value`
+		}
+
+		authControllerCode := fmt.Sprintf(`
 
 	// Create auth controller for protecting routes
 	// Console email sender prints magic links to server logs (for development)
 	emailSender := email.NewConsoleEmailSender()
-	baseURL := "http://localhost:" + getPort()
+	%s
 	authController := auth.NewUserController(queries, emailSender, baseURL)
-`
+`, baseURLCode)
 		mainContent = mainContent[:lastAuthRouteEnd+1] + authControllerCode + mainContent[lastAuthRouteEnd+1:]
 	}
 

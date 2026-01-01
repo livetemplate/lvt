@@ -155,13 +155,17 @@ func Auth(args []string) error {
 				if choice == "all" {
 					selectedResources = protectableResources
 				} else if choice != "none" && choice != "" {
-					// Parse comma-separated numbers
+					// Parse comma-separated numbers, preventing duplicates
 					parts := strings.Split(choice, ",")
+					seen := make(map[int]bool)
 					for _, part := range parts {
 						part = strings.TrimSpace(part)
 						if num, err := strconv.Atoi(part); err == nil {
 							if num >= 1 && num <= len(protectableResources) {
-								selectedResources = append(selectedResources, protectableResources[num-1])
+								if !seen[num] {
+									seen[num] = true
+									selectedResources = append(selectedResources, protectableResources[num-1])
+								}
 							} else {
 								fmt.Printf("⚠️  Invalid selection: %d (out of range)\n", num)
 							}

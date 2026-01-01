@@ -878,3 +878,154 @@ func main() {
 		t.Errorf("Expected 'no auth routes found' error, got: %v", err)
 	}
 }
+
+func TestProtectResources_MissingImportBlock(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create cmd/app/main.go with single-line import (not block format)
+	cmdDir := filepath.Join(tmpDir, "cmd", "app")
+	if err := os.MkdirAll(cmdDir, 0755); err != nil {
+		t.Fatalf("failed to create cmd directory: %v", err)
+	}
+
+	// main.go without import block format
+	mainGoContent := `package main
+
+import "net/http"
+
+func main() {
+	http.Handle("/auth", nil)
+	http.Handle("/posts", nil)
+}
+`
+	if err := os.WriteFile(filepath.Join(cmdDir, "main.go"), []byte(mainGoContent), 0644); err != nil {
+		t.Fatalf("failed to write main.go: %v", err)
+	}
+
+	resources := []ResourceEntry{
+		{Name: "Posts", Path: "/posts", Type: "resource"},
+	}
+
+	err := ProtectResources(tmpDir, "testapp", resources)
+	if err == nil {
+		t.Error("ProtectResources should fail when import block is missing")
+	}
+
+	if !strings.Contains(err.Error(), "could not find import block") {
+		t.Errorf("Expected 'could not find import block' error, got: %v", err)
+	}
+}
+
+func TestProtectResources_FallbackPortWithoutGetPort(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create cmd/app/main.go with auth routes but WITHOUT getPort() function
+	cmdDir := filepath.Join(tmpDir, "cmd", "app")
+	if err := os.MkdirAll(cmdDir, 0755); err != nil {
+		t.Fatalf("failed to create cmd directory: %v", err)
+	}
+
+	mainGoContent := `package main
+
+import (
+	"net/http"
+	"testapp/app/auth"
+	"testapp/app/posts"
+	"testapp/database/models"
+)
+
+func main() {
+	queries := &models.Queries{}
+	http.Handle("/auth", auth.Handler(queries))
+	http.Handle("/posts", posts.Handler(queries))
+}
+`
+	if err := os.WriteFile(filepath.Join(cmdDir, "main.go"), []byte(mainGoContent), 0644); err != nil {
+		t.Fatalf("failed to write main.go: %v", err)
+	}
+
+	resources := []ResourceEntry{
+		{Name: "Posts", Path: "/posts", Type: "resource"},
+	}
+
+	err := ProtectResources(tmpDir, "testapp", resources)
+	if err != nil {
+		t.Fatalf("ProtectResources failed: %v", err)
+	}
+
+	// Read updated main.go
+	content, err := os.ReadFile(filepath.Join(cmdDir, "main.go"))
+	if err != nil {
+		t.Fatalf("failed to read main.go: %v", err)
+	}
+	mainGoStr := string(content)
+
+	// Should use hardcoded port since getPort() doesn't exist
+	if !strings.Contains(mainGoStr, `baseURL := "http://localhost:8080"`) {
+		t.Error("main.go should use hardcoded port 8080 when getPort() doesn't exist")
+	}
+
+	// Should have comment about updating port
+	if !strings.Contains(mainGoStr, "Update port if using different value") {
+		t.Error("main.go should have comment about updating port")
+	}
+}
+
+func TestProtectResources_UsesGetPortWhenAvailable(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create cmd/app/main.go with auth routes AND getPort() function
+	cmdDir := filepath.Join(tmpDir, "cmd", "app")
+	if err := os.MkdirAll(cmdDir, 0755); err != nil {
+		t.Fatalf("failed to create cmd directory: %v", err)
+	}
+
+	mainGoContent := `package main
+
+import (
+	"net/http"
+	"os"
+	"testapp/app/auth"
+	"testapp/app/posts"
+	"testapp/database/models"
+)
+
+func main() {
+	queries := &models.Queries{}
+	http.Handle("/auth", auth.Handler(queries))
+	http.Handle("/posts", posts.Handler(queries))
+}
+
+func getPort() string {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	return port
+}
+`
+	if err := os.WriteFile(filepath.Join(cmdDir, "main.go"), []byte(mainGoContent), 0644); err != nil {
+		t.Fatalf("failed to write main.go: %v", err)
+	}
+
+	resources := []ResourceEntry{
+		{Name: "Posts", Path: "/posts", Type: "resource"},
+	}
+
+	err := ProtectResources(tmpDir, "testapp", resources)
+	if err != nil {
+		t.Fatalf("ProtectResources failed: %v", err)
+	}
+
+	// Read updated main.go
+	content, err := os.ReadFile(filepath.Join(cmdDir, "main.go"))
+	if err != nil {
+		t.Fatalf("failed to read main.go: %v", err)
+	}
+	mainGoStr := string(content)
+
+	// Should use getPort() since it exists
+	if !strings.Contains(mainGoStr, `baseURL := "http://localhost:" + getPort()`) {
+		t.Error("main.go should use getPort() when it's available")
+	}
+}
