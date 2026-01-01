@@ -235,7 +235,10 @@ func updateTestFileForAuth(testPath string) error {
 	authCode := `t.Log("Server is up, registering test user...")
 
 	// Create HTTP client with cookie jar for session management
-	jar, _ := cookiejar.New(nil)
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatalf("Failed to create cookie jar: %v", err)
+	}
 	client := &http.Client{Jar: jar}
 
 	// Register a test user via LiveTemplate handler
@@ -299,6 +302,9 @@ func updateTestFileForAuth(testPath string) error {
 // WrapExistingRoutesWithAuth finds existing resource routes in main.go and wraps them
 // with RequireAuth middleware. It also adds the authController initialization.
 //
+// The structName parameter specifies the auth struct name (e.g., "User", "Account", "Admin")
+// which is used to generate the correct controller constructor call.
+//
 // Before:
 //
 //	http.Handle("/posts", posts.Handler(queries))
@@ -312,7 +318,7 @@ func updateTestFileForAuth(testPath string) error {
 //	}
 //	authController := auth.NewUserController(queries, nil, baseURL)
 //	http.Handle("/posts", authController.RequireAuth(posts.Handler(queries)))
-func WrapExistingRoutesWithAuth(mainGoPath string) error {
+func WrapExistingRoutesWithAuth(mainGoPath string, structName string) error {
 	content, err := os.ReadFile(mainGoPath)
 	if err != nil {
 		return fmt.Errorf("failed to read main.go: %w", err)
@@ -332,14 +338,15 @@ func WrapExistingRoutesWithAuth(mainGoPath string) error {
 
 	// Routes to exclude from protection
 	excludedPaths := map[string]bool{
-		"/":              true,
-		"/auth":          true,
-		"/auth/logout":   true,
-		"/auth/magic":    true,
-		"/auth/reset":    true,
-		"/auth/confirm":  true,
-		"/health":        true,
-		"/livetemplate-client.js": true,
+		"/":                        true,
+		"/auth":                    true,
+		"/auth/login":              true,
+		"/auth/logout":             true,
+		"/auth/magic":              true,
+		"/auth/reset":              true,
+		"/auth/confirm":            true,
+		"/health":                  true,
+		"/livetemplate-client.js":  true,
 	}
 
 	// Find routes that need wrapping
@@ -387,20 +394,16 @@ func WrapExistingRoutesWithAuth(mainGoPath string) error {
 		"\tif envURL := os.Getenv(\"BASE_URL\"); envURL != \"\" {",
 		"\t\tbaseURL = envURL",
 		"\t}",
-		"\tauthController := auth.NewUserController(queries, nil, baseURL)",
+		fmt.Sprintf("\tauthController := auth.New%sController(queries, nil, baseURL)", structName),
 	}
 
 	// Build new lines array
 	var newLines []string
 
-	// Track offset from insertions
-	offset := 0
-
 	for i, line := range lines {
 		// Insert auth controller init before first protected route
 		if i == firstRouteIndex {
 			newLines = append(newLines, authControllerInit...)
-			offset += len(authControllerInit)
 		}
 
 		// Check if this line is a route to wrap

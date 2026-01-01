@@ -368,7 +368,7 @@ func GenerateAuth(projectRoot string, authConfig *AuthConfig) error {
 		}
 
 		// Wrap existing resource routes with RequireAuth middleware
-		if err := WrapExistingRoutesWithAuth(mainGoPath); err != nil {
+		if err := WrapExistingRoutesWithAuth(mainGoPath, authConfig.StructName); err != nil {
 			fmt.Printf("⚠️  Could not wrap existing routes with auth: %v\n", err)
 			fmt.Println("   You may need to manually wrap protected routes with authController.RequireAuth()")
 		}
