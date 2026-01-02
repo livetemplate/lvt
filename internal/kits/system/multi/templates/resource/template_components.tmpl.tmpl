@@ -15,13 +15,11 @@
   {{template "addModal" .}}
 
   <!-- Edit Modal -->
-  {{if ne .EditingID ""}}
-  <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;">
+  <div id="edit-modal" {{if eq .EditingID ""}}hidden{{end}} style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;">
     <div style="background: white; border-radius: 8px; padding: 2rem; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto;">
       {{template "editForm" .}}
     </div>
   </div>
-  {{end}}
 
   {{template "tableBox" .}}
 [[- end]]

@@ -91,7 +91,7 @@
     <input type="hidden" name="id" value="{{.EditingID}}">
     <div class="mb-4">
       <label class="block text-sm font-medium text-gray-700 mb-2">Title</label>
-      <input class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" type="text" name="title" placeholder="Enter title" value="{{.EditingPost.Title}}" required {{if .lvt.HasError "title"}}aria-invalid="true"{{end}}>
+      <input class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" type="text" name="title" placeholder="Enter title" value="{{if .EditingPost}}{{.EditingPost.Title}}{{end}}" required {{if .lvt.HasError "title"}}aria-invalid="true"{{end}}>
       {{if .lvt.HasError "title"}}
       <small style="color: #c00; font-size: 0.875rem;">{{.lvt.Error "title"}}</small>
       {{end}}
@@ -99,7 +99,7 @@
     <div class="mb-4">
       <label class="block text-sm font-medium text-gray-700 mb-2">Published</label>
       <label class="flex items-center">
-        <input type="checkbox" name="published" value="true" {{if .EditingPost.Published}}checked{{end}} {{if .lvt.HasError "published"}}aria-invalid="true"{{end}}>
+        <input type="checkbox" name="published" value="true" {{if and .EditingPost .EditingPost.Published}}checked{{end}} {{if .lvt.HasError "published"}}aria-invalid="true"{{end}}>
         Published
       </label>
       {{if .lvt.HasError "published"}}
@@ -376,13 +376,11 @@
   {{template "addModal" .}}
 
   <!-- Edit Modal -->
-  {{if ne .EditingID ""}}
-  <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;">
+  <div id="edit-modal" {{if eq .EditingID ""}}hidden{{end}} style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;">
     <div style="background: white; border-radius: 8px; padding: 2rem; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto;">
       {{template "editForm" .}}
     </div>
   </div>
-  {{end}}
 
   {{template "tableBox" .}}
 {{end}}
