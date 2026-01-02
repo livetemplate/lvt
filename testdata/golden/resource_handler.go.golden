@@ -161,17 +161,9 @@ func (c *UserController) Update(state UserState, ctx *livetemplate.Context) (Use
 		return state, err
 	}
 
-	// Re-fetch the updated resource for display
-	users, err := c.Queries.GetAllUsers(dbCtx)
-	if err == nil {
-		for _, item := range users {
-			if item.ID == input.ID {
-				itemCopy := item
-				state.EditingUser = &itemCopy
-				break
-			}
-		}
-	}
+	// Close modal / clear editing state after successful save
+	state.EditingID = ""
+	state.EditingUser = nil
 
 	state.LastUpdated = formatTime()
 	return state, nil

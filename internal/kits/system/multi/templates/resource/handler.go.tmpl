@@ -177,17 +177,9 @@ func (c *[[.ResourceName]]Controller) Update(state [[.ResourceName]]State, ctx *
 		return state, err
 	}
 
-	// Re-fetch the updated resource for display
-	[[.ResourceNameLower]]s, err := c.Queries.GetAll[[.ResourceNamePlural]](dbCtx)
-	if err == nil {
-		for _, item := range [[.ResourceNameLower]]s {
-			if item.ID == input.ID {
-				itemCopy := item
-				state.Editing[[.ResourceName]] = &itemCopy
-				break
-			}
-		}
-	}
+	// Close modal / clear editing state after successful save
+	state.EditingID = ""
+	state.Editing[[.ResourceName]] = nil
 
 	state.LastUpdated = formatTime()
 	return state, nil
