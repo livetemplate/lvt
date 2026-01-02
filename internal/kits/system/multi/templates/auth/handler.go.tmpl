@@ -651,6 +651,9 @@ func (c *{{.StructName}}Controller) HandlePasswordLogin(w http.ResponseWriter, r
 	// Set session cookie (30 days) - Secure flag is auto-detected from request
 	cookie.SetSession(w, r, "{{.TableName}}_token", tok, 30)
 
+	// Clear LiveTemplate session cookie to force fresh state on home page
+	cookie.ClearLiveTemplateSession(w)
+
 	// Redirect to home
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
