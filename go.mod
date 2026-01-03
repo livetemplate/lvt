@@ -2,7 +2,7 @@ module github.com/livetemplate/lvt
 
 go 1.25
 
-require github.com/livetemplate/livetemplate v0.7.3
+require github.com/livetemplate/livetemplate v0.7.9
 
 require (
 	github.com/brianvoe/gofakeit/v7 v7.8.2
@@ -16,6 +16,8 @@ require (
 	github.com/modelcontextprotocol/go-sdk v1.1.0
 	github.com/pressly/goose/v3 v3.26.0
 	github.com/stretchr/testify v1.11.0
+	golang.org/x/crypto v0.43.0
+	golang.org/x/net v0.46.0
 	golang.org/x/term v0.36.0
 	golang.org/x/text v0.30.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -83,9 +85,7 @@ require (
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.43.0 // indirect
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b // indirect
-	golang.org/x/net v0.46.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
 	golang.org/x/sync v0.17.0 // indirect
 	golang.org/x/sys v0.37.0 // indirect
