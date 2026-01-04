@@ -104,10 +104,34 @@ func (r *Runner) Status() error {
 
 // Create generates a new migration file with the given name
 func (r *Runner) Create(name string) error {
-	// Generate timestamp-based filename
-	timestamp := time.Now().Format("20060102150405")
-	filename := fmt.Sprintf("%s_%s.sql", timestamp, name)
-	filepath := filepath.Join(r.migrationsDir, filename)
+	// Generate unique timestamp for migration
+	// Check if file exists and increment timestamp if needed to avoid conflicts
+	const maxRetries = 3600 // Safety limit: 1 hour worth of seconds
+	timestamp := time.Now()
+	var migrationPath string
+	var filename string
+	for i := 0; i < maxRetries; i++ {
+		timestampStr := timestamp.Format("20060102150405")
+		filename = fmt.Sprintf("%s_%s.sql", timestampStr, name)
+		migrationPath = filepath.Join(r.migrationsDir, filename)
+
+		// Check if any migration file exists with this timestamp prefix
+		matches, err := filepath.Glob(filepath.Join(r.migrationsDir, timestampStr+"_*.sql"))
+		if err != nil {
+			return fmt.Errorf("failed to check for existing migrations: %w", err)
+		}
+		if len(matches) == 0 {
+			break
+		}
+
+		// Increment by 1 second and try again
+		timestamp = timestamp.Add(1 * time.Second)
+
+		// Check if we've exhausted retries (should never happen in practice)
+		if i == maxRetries-1 {
+			return fmt.Errorf("failed to generate unique migration timestamp after %d attempts", maxRetries)
+		}
+	}
 
 	// Create migration file with goose format
 	content := `-- +goose Up
@@ -121,7 +145,7 @@ func (r *Runner) Create(name string) error {
 -- +goose StatementEnd
 `
 
-	if err := os.WriteFile(filepath, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(migrationPath, []byte(content), 0644); err != nil {
 		return fmt.Errorf("failed to create migration file: %w", err)
 	}
 

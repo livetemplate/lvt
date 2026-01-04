@@ -54,9 +54,33 @@ func GenerateAuth(projectRoot string, authConfig *AuthConfig) error {
 		return fmt.Errorf("failed to create migrations directory: %w", err)
 	}
 
-	timestamp := time.Now().Format("20060102150405")
-	migrationFile := fmt.Sprintf("%s_create_auth_tables.sql", timestamp)
-	migrationPath := filepath.Join(migrationsDir, migrationFile)
+	// Generate unique timestamp for migration
+	// Check if file exists and increment timestamp if needed to avoid conflicts
+	const maxRetries = 3600 // Safety limit: 1 hour worth of seconds
+	timestamp := time.Now()
+	var migrationPath string
+	for i := 0; i < maxRetries; i++ {
+		timestampStr := timestamp.Format("20060102150405")
+		migrationFile := fmt.Sprintf("%s_create_auth_tables.sql", timestampStr)
+		migrationPath = filepath.Join(migrationsDir, migrationFile)
+
+		// Check if any migration file exists with this timestamp prefix
+		matches, err := filepath.Glob(filepath.Join(migrationsDir, timestampStr+"_*.sql"))
+		if err != nil {
+			return fmt.Errorf("failed to check for existing migrations: %w", err)
+		}
+		if len(matches) == 0 {
+			break
+		}
+
+		// Increment by 1 second and try again
+		timestamp = timestamp.Add(1 * time.Second)
+
+		// Check if we've exhausted retries (should never happen in practice)
+		if i == maxRetries-1 {
+			return fmt.Errorf("failed to generate unique migration timestamp after %d attempts", maxRetries)
+		}
+	}
 
 	templateContent, err := kitLoader.LoadKitTemplate(kitName, "auth/migration.sql.tmpl")
 	if err != nil {
