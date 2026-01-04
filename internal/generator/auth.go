@@ -54,9 +54,24 @@ func GenerateAuth(projectRoot string, authConfig *AuthConfig) error {
 		return fmt.Errorf("failed to create migrations directory: %w", err)
 	}
 
-	timestamp := time.Now().Format("20060102150405")
-	migrationFile := fmt.Sprintf("%s_create_auth_tables.sql", timestamp)
-	migrationPath := filepath.Join(migrationsDir, migrationFile)
+	// Generate unique timestamp for migration
+	// Check if file exists and increment timestamp if needed to avoid conflicts
+	timestamp := time.Now()
+	var migrationPath string
+	for {
+		timestampStr := timestamp.Format("20060102150405")
+		migrationFile := fmt.Sprintf("%s_create_auth_tables.sql", timestampStr)
+		migrationPath = filepath.Join(migrationsDir, migrationFile)
+
+		// Check if any migration file exists with this timestamp prefix
+		matches, _ := filepath.Glob(filepath.Join(migrationsDir, timestampStr+"_*.sql"))
+		if len(matches) == 0 {
+			break
+		}
+
+		// Increment by 1 second and try again
+		timestamp = timestamp.Add(1 * time.Second)
+	}
 
 	templateContent, err := kitLoader.LoadKitTemplate(kitName, "auth/migration.sql.tmpl")
 	if err != nil {
