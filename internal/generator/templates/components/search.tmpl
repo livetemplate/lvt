@@ -7,9 +7,11 @@
 [[- else]]
 <div>
 [[- end]]
-  <div[[if ne (fieldClass .CSSFramework) ""]] class="[[fieldClass .CSSFramework]]"[[end]]>
+  <div[[if ne (fieldClass .CSSFramework) ""]] class="[[fieldClass .CSSFramework]]"[[end]] style="position: relative;">
     <label[[if ne (labelClass .CSSFramework) ""]] class="[[labelClass .CSSFramework]]"[[end]]>Search</label>
-    <input[[if ne (inputClass .CSSFramework) ""]] class="[[inputClass .CSSFramework]]"[[end]] type="search" name="query" placeholder="Search [[.ResourceNameLower]]s..." value="{{.SearchQuery}}" lvt-change="search" lvt-debounce="300">
+    <style>input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }</style>
+    <input[[if ne (inputClass .CSSFramework) ""]] class="[[inputClass .CSSFramework]]"[[end]] type="search" name="query" placeholder="Search [[.ResourceNameLower]]s..." value="{{.SearchQuery}}" lvt-input="search" lvt-debounce="300" style="padding-right: 2rem;">
+    <button type="button" lvt-click="search" lvt-data-query="" onclick="this.previousElementSibling.value=''; this.style.display='none';" style="position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 0.25rem; color: #9ca3af; font-size: 1.25rem; line-height: 1;{{if not .SearchQuery}} display: none;{{end}}" title="Clear search">&times;</button>
   </div>
 [[- if needsArticle .CSSFramework]]
 </article>
