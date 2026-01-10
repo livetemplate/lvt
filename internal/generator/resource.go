@@ -293,7 +293,17 @@ func generateFile(tmplStr string, data interface{}, outPath string, kit *kits.Ki
 		funcs["selectWrapperClass"] = func(args ...interface{}) string { return "" } // Not in interface
 		funcs["checkboxClass"] = func(args ...interface{}) string { return kit.Helpers.CheckboxClass() }
 		funcs["textareaClass"] = func(args ...interface{}) string { return kit.Helpers.TextareaClass() }
-		funcs["buttonClass"] = func(variant string, args ...interface{}) string { return kit.Helpers.ButtonClass(variant) }
+		funcs["buttonClass"] = func(framework string, args ...interface{}) string {
+			// Template calls: buttonClass .CSSFramework "variant"
+			// framework is .CSSFramework (unused), args[0] is the actual variant
+			variant := "primary"
+			if len(args) > 0 {
+				if v, ok := args[0].(string); ok {
+					variant = v
+				}
+			}
+			return kit.Helpers.ButtonClass(variant)
+		}
 		funcs["buttonGroupClass"] = func(args ...interface{}) string { return kit.Helpers.ButtonGroupClass() }
 		funcs["formClass"] = func(args ...interface{}) string { return kit.Helpers.FormClass() }
 		funcs["tableClass"] = func(args ...interface{}) string { return kit.Helpers.TableClass() }
@@ -380,7 +390,17 @@ func appendToFile(tmplStr string, data interface{}, outPath, separator string, k
 		funcs["selectWrapperClass"] = func(args ...interface{}) string { return "" } // Not in interface
 		funcs["checkboxClass"] = func(args ...interface{}) string { return kit.Helpers.CheckboxClass() }
 		funcs["textareaClass"] = func(args ...interface{}) string { return kit.Helpers.TextareaClass() }
-		funcs["buttonClass"] = func(variant string, args ...interface{}) string { return kit.Helpers.ButtonClass(variant) }
+		funcs["buttonClass"] = func(framework string, args ...interface{}) string {
+			// Template calls: buttonClass .CSSFramework "variant"
+			// framework is .CSSFramework (unused), args[0] is the actual variant
+			variant := "primary"
+			if len(args) > 0 {
+				if v, ok := args[0].(string); ok {
+					variant = v
+				}
+			}
+			return kit.Helpers.ButtonClass(variant)
+		}
 		funcs["buttonGroupClass"] = func(args ...interface{}) string { return kit.Helpers.ButtonGroupClass() }
 		funcs["formClass"] = func(args ...interface{}) string { return kit.Helpers.FormClass() }
 		funcs["tableClass"] = func(args ...interface{}) string { return kit.Helpers.TableClass() }

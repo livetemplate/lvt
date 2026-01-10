@@ -146,18 +146,22 @@ func CSSHelpers() template.FuncMap {
 				if variant == "primary" {
 					return "bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
 				} else if variant == "secondary" {
-					return "bg-gray-600 text-white px-2 py-1 text-sm rounded hover:bg-gray-700"
+					return "bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 disabled:opacity-50"
+				} else if variant == "danger" {
+					return "bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:opacity-50"
 				}
-				return "bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:opacity-50"
+				return "bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
 			case "none":
 				return ""
 			default:
 				if variant == "primary" {
 					return "bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
 				} else if variant == "secondary" {
-					return "bg-gray-600 text-white px-2 py-1 text-sm rounded hover:bg-gray-700"
+					return "bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 disabled:opacity-50"
+				} else if variant == "danger" {
+					return "bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:opacity-50"
 				}
-				return "bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:opacity-50"
+				return "bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
 			}
 		},
 
