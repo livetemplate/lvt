@@ -33,6 +33,11 @@
           {
             "1": "todo-6",
             "3": "Deploy to production",
+            "4": {
+              "s": [
+                "○"
+              ]
+            },
             "5": {
               "0": "Critical"
             }
@@ -40,6 +45,11 @@
           {
             "1": "todo-7",
             "3": "Monitor performance",
+            "4": {
+              "s": [
+                "○"
+              ]
+            },
             "5": {
               "0": "Medium"
             }
