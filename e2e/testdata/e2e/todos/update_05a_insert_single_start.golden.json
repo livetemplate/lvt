@@ -13,6 +13,11 @@
           {
             "1": "todo-4",
             "3": "Setup development environment",
+            "4": {
+              "s": [
+                "○"
+              ]
+            },
             "5": {
               "0": "High"
             }

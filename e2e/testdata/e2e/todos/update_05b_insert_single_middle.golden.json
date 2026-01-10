@@ -13,6 +13,11 @@
         {
           "1": "todo-5",
           "3": "Configure CI/CD pipeline",
+          "4": {
+            "s": [
+              "○"
+            ]
+          },
           "5": {
             "0": "Medium"
           }
