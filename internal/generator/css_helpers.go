@@ -139,31 +139,10 @@ func CSSHelpers() template.FuncMap {
 			}
 		},
 
-		// Button classes
-		"buttonClass": func(framework string, variant string) string {
-			switch framework {
-			case "tailwind":
-				if variant == "primary" {
-					return "bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
-				} else if variant == "secondary" {
-					return "bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 disabled:opacity-50"
-				} else if variant == "danger" {
-					return "bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:opacity-50"
-				}
-				return "bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
-			case "none":
-				return ""
-			default:
-				if variant == "primary" {
-					return "bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
-				} else if variant == "secondary" {
-					return "bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 disabled:opacity-50"
-				} else if variant == "danger" {
-					return "bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:opacity-50"
-				}
-				return "bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
-			}
-		},
+		// NOTE: buttonClass is defined in resource.go (generateFile/appendToFile) because
+		// templates call it as buttonClass(framework, variant) but we need to extract variant
+		// from args[0] since Go templates pass positional args. The kit.Helpers.ButtonClass(variant)
+		// method handles the actual styling - see internal/kits/helpers_tailwind.go.
 
 		// Table classes
 		"tableClass": func(framework string) string {
