@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
@@ -16,6 +17,17 @@ import (
 
 	"github.com/chromedp/chromedp"
 )
+
+// isServerReachable checks if a server is reachable at the given URL
+func isServerReachable(url string) bool {
+	client := &http.Client{Timeout: 2 * time.Second}
+	resp, err := client.Get(url)
+	if err != nil {
+		return false
+	}
+	resp.Body.Close()
+	return resp.StatusCode < 500
+}
 
 // ScreenshotManifest contains the paths to captured screenshots
 type ScreenshotManifest struct {
@@ -47,6 +59,11 @@ var (
 func TestCaptureUIScreenshots(t *testing.T) {
 	// Parse flags
 	flag.Parse()
+
+	// Skip if server isn't reachable (this test is meant to be run manually with a target app)
+	if !isServerReachable(*baseURL) {
+		t.Skipf("Skipping: server at %s is not reachable (this test requires a running target app)", *baseURL)
+	}
 
 	// Create output directory
 	if err := os.MkdirAll(*outputDir, 0755); err != nil {
@@ -207,6 +224,11 @@ func TestCaptureUIScreenshots(t *testing.T) {
 // This is a more comprehensive test that seeds data first
 func TestCaptureResourceCRUD(t *testing.T) {
 	flag.Parse()
+
+	// Skip if server isn't reachable (this test is meant to be run manually with a target app)
+	if !isServerReachable(*baseURL) {
+		t.Skipf("Skipping: server at %s is not reachable (this test requires a running target app)", *baseURL)
+	}
 
 	if err := os.MkdirAll(*outputDir, 0755); err != nil {
 		t.Fatalf("Failed to create output directory: %v", err)
