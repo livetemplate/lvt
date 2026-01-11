@@ -733,7 +733,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 		if tableRowCount > 0 {
 			t.Logf("[Delete_Post] Step 12c: Refreshing page to ensure DB state is reflected...")
 			chromedp.Run(ctx,
-				chromedp.Navigate("http://localhost:8800/posts"),
+				chromedp.Navigate(testURL+"/posts"),
 				waitFor(`document.querySelector('[data-lvt-id]') !== null`, 10*time.Second),
 			)
 		}
