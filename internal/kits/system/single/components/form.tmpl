@@ -53,7 +53,10 @@
 {{/* Edit form for resource */}}
 {{define "editForm"}}
   {{if ne .EditingID ""}}
-  <h2[[if ne (subtitleClass .CSSFramework) ""]] class="[[subtitleClass .CSSFramework]]"[[end]]>Edit [[.ResourceName]]</h2>
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <h2[[if ne (subtitleClass .CSSFramework) ""]] class="[[subtitleClass .CSSFramework]]"[[end]] style="margin: 0;">Edit [[.ResourceName]]</h2>
+    <button type="button" lvt-modal-close="edit-modal" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;" aria-label="Close">&times;</button>
+  </div>
 
   {{if .lvt.HasError "_general"}}
   <div style="margin-bottom: 1rem; padding: 0.75rem; background-color: #fee; border: 1px solid #fcc; border-radius: 0.25rem; color: #c00;">
