@@ -288,10 +288,8 @@ func (c *[[.ResourceName]]Controller) Sort(state [[.ResourceName]]State, ctx *li
 		return state, err
 	}
 	state.SortBy = input.SortBy
-	// Reset infinite scroll when sorting
-	if state.PaginationMode == "infinite" || state.PaginationMode == "load-more" {
-		state.LoadedCount = state.PageSize
-	}
+	// Note: Don't reset LoadedCount when sorting - keep all loaded items visible
+	// Just re-sort the existing items for better UX
 
 	state, err := c.load[[.ResourceName]]s(state, dbCtx)
 	if err != nil {
