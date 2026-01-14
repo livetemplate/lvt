@@ -27,7 +27,13 @@ func GetClientLibraryJS() []byte {
 const (
 	dockerImage           = "chromedp/headless-shell:latest"
 	chromeContainerPrefix = "chrome-e2e-test-"
-	staleContainerGrace   = 1 * time.Minute // Reduced from 10 min for faster cleanup
+	// testContainerPrefix is used for app containers in integration tests.
+	// These containers are created by runDockerContainer in e2e tests.
+	// Unlike Chrome containers, they don't use --rm flag and can linger after crashes.
+	// No grace period is applied because test containers should be ephemeral and
+	// are only created/destroyed within a single test run.
+	testContainerPrefix = "lvt-test-"
+	staleContainerGrace = 1 * time.Minute // Reduced from 10 min for faster cleanup
 )
 
 func removeContainersByFilter(filter string, shouldRemove func(string) (bool, error)) ([]string, error) {
@@ -109,11 +115,6 @@ func CleanupChromeContainers() {
 		fmt.Fprintf(os.Stderr, "Cleaned up %d lingering Chrome container(s): %s\n", len(removed), strings.Join(removed, ", "))
 	}
 }
-
-const (
-	// testContainerPrefix is used for app containers in integration tests
-	testContainerPrefix = "lvt-test-"
-)
 
 // CleanupTestContainers removes any lingering test app containers (lvt-test-*).
 // These containers are created by runDockerContainer in e2e tests for integration testing.
