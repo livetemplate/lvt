@@ -110,6 +110,31 @@ func CleanupChromeContainers() {
 	}
 }
 
+const (
+	// testContainerPrefix is used for app containers in integration tests
+	testContainerPrefix = "lvt-test-"
+)
+
+// CleanupTestContainers removes any lingering test app containers (lvt-test-*).
+// These containers are created by runDockerContainer in e2e tests for integration testing.
+// Unlike Chrome containers which use --rm flag, these can linger if tests crash or are interrupted.
+func CleanupTestContainers() {
+	// Remove all containers matching the prefix, regardless of state
+	// We don't apply grace period for test containers as they should be ephemeral
+	if removed, err := removeContainersByFilter(testContainerPrefix, nil); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: failed to clean test containers: %v\n", err)
+	} else if len(removed) > 0 {
+		fmt.Fprintf(os.Stderr, "Cleaned up %d stale test container(s): %s\n", len(removed), strings.Join(removed, ", "))
+	}
+}
+
+// CleanupAllTestContainers removes both Chrome containers and test app containers.
+// This is a convenience function to run all cleanup operations before tests start.
+func CleanupAllTestContainers() {
+	CleanupChromeContainers()
+	CleanupTestContainers()
+}
+
 // GetFreePort asks the kernel for a free open port that is ready to use
 func GetFreePort() (port int, err error) {
 	var a *net.TCPAddr

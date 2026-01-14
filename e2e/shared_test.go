@@ -37,20 +37,20 @@ func TestMain(m *testing.M) {
 
 	go func() {
 		<-sigCh
-		log.Println("🛑 Interrupted - cleaning up Chrome containers...")
+		log.Println("🛑 Interrupted - cleaning up test containers...")
 		chromePoolMu.Lock()
 		if chromePool != nil {
 			chromePool.Cleanup()
 		}
 		chromePoolMu.Unlock()
-		cleanupChromeContainers()
+		cleanupAllTestContainers()
 		log.Println("✅ Cleanup complete")
 		os.Exit(1)
 	}()
 
-	// Cleanup any leftover containers from previous runs
+	// Cleanup any leftover containers from previous runs (Chrome + app containers)
 	// This is safe to run even if Docker is not available - it will just log a warning
-	cleanupChromeContainers()
+	cleanupAllTestContainers()
 
 	// Run tests
 	code := m.Run()
@@ -63,7 +63,7 @@ func TestMain(m *testing.M) {
 	chromePoolMu.Unlock()
 
 	// Final cleanup of any remaining containers
-	cleanupChromeContainers()
+	cleanupAllTestContainers()
 
 	os.Exit(code)
 }
