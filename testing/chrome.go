@@ -27,7 +27,13 @@ func GetClientLibraryJS() []byte {
 const (
 	dockerImage           = "chromedp/headless-shell:latest"
 	chromeContainerPrefix = "chrome-e2e-test-"
-	staleContainerGrace   = 1 * time.Minute // Reduced from 10 min for faster cleanup
+	// testContainerPrefix is used for app containers in integration tests.
+	// These containers are created by runDockerContainer in e2e tests.
+	// Unlike Chrome containers, they don't use --rm flag and can linger after crashes.
+	// No grace period is applied because test containers should be ephemeral and
+	// are only created/destroyed within a single test run.
+	testContainerPrefix = "lvt-test-"
+	staleContainerGrace = 1 * time.Minute // Reduced from 10 min for faster cleanup
 )
 
 func removeContainersByFilter(filter string, shouldRemove func(string) (bool, error)) ([]string, error) {
@@ -108,6 +114,26 @@ func CleanupChromeContainers() {
 	} else if len(removed) > 0 {
 		fmt.Fprintf(os.Stderr, "Cleaned up %d lingering Chrome container(s): %s\n", len(removed), strings.Join(removed, ", "))
 	}
+}
+
+// CleanupTestContainers removes any lingering test app containers (lvt-test-*).
+// These containers are created by runDockerContainer in e2e tests for integration testing.
+// Unlike Chrome containers which use --rm flag, these can linger if tests crash or are interrupted.
+func CleanupTestContainers() {
+	// Remove all containers matching the prefix, regardless of state
+	// We don't apply grace period for test containers as they should be ephemeral
+	if removed, err := removeContainersByFilter(testContainerPrefix, nil); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: failed to clean test containers: %v\n", err)
+	} else if len(removed) > 0 {
+		fmt.Fprintf(os.Stderr, "Cleaned up %d stale test container(s): %s\n", len(removed), strings.Join(removed, ", "))
+	}
+}
+
+// CleanupAllTestContainers removes both Chrome containers and test app containers.
+// This is a convenience function to run all cleanup operations before tests start.
+func CleanupAllTestContainers() {
+	CleanupChromeContainers()
+	CleanupTestContainers()
 }
 
 // GetFreePort asks the kernel for a free open port that is ready to use
