@@ -33,12 +33,12 @@
 [[- if ne (selectWrapperClass .CSSFramework) ""]]
             <div class="[[selectWrapperClass .CSSFramework]]">
 [[- end]]
-              <select[[if ne (selectClass .CSSFramework) ""]] class="[[selectClass .CSSFramework]]"[[end]] name="sort_by" lvt-change="sort">
+              <select[[if ne (selectClass .CSSFramework) ""]] class="[[selectClass .CSSFramework]]"[[end]] name="sort_by" lvt-change="sort" data-expected-value="{{.SortBy}}">
                 <option value="" {{if eq .SortBy ""}}selected{{end}}>Newest First</option>
 [[- range $i, $f := .Fields]]
 [[- if and (eq $i 0) (eq $f.GoType "string")]]
-                <option value="[[.Name]]_asc" {{if eq $.SortBy "[[.Name]]_asc"}}selected{{end}}>[[.Name | title]] (A-Z)</option>
-                <option value="[[.Name]]_desc" {{if eq $.SortBy "[[.Name]]_desc"}}selected{{end}}>[[.Name | title]] (Z-A)</option>
+                <option value="[[$f.Name]]_asc" {{if eq $.SortBy "[[$f.Name]]_asc"}}selected{{end}}>[[$f.Name | title]] (A-Z)</option>
+                <option value="[[$f.Name]]_desc" {{if eq $.SortBy "[[$f.Name]]_desc"}}selected{{end}}>[[$f.Name | title]] (Z-A)</option>
 [[- end]]
 [[- end]]
                 <option value="oldest_first" {{if eq .SortBy "oldest_first"}}selected{{end}}>Oldest First</option>
