@@ -33,12 +33,12 @@
 [[- if ne (selectWrapperClass .CSSFramework) ""]]
             <div class="[[selectWrapperClass .CSSFramework]]">
 [[- end]]
-              <select[[if ne (selectClass .CSSFramework) ""]] class="[[selectClass .CSSFramework]]"[[end]] name="sort_by" lvt-change="sort">
+              <select[[if ne (selectClass .CSSFramework) ""]] class="[[selectClass .CSSFramework]]"[[end]] name="sort_by" lvt-change="sort" data-expected-value="{{.SortBy}}">
                 <option value="" {{if eq .SortBy ""}}selected{{end}}>Newest First</option>
-[[- range .Fields]]
-[[- if eq .GoType "string"]]
-                <option value="[[.Name]]_asc" {{if eq .SortBy "[[.Name]]_asc"}}selected{{end}}>[[.Name | title]] (A-Z)</option>
-                <option value="[[.Name]]_desc" {{if eq .SortBy "[[.Name]]_desc"}}selected{{end}}>[[.Name | title]] (Z-A)</option>
+[[- range $i, $f := .Fields]]
+[[- if and (eq $i 0) (eq $f.GoType "string")]]
+                <option value="[[.Name]]_asc" {{if eq $.SortBy "[[.Name]]_asc"}}selected{{end}}>[[.Name | title]] (A-Z)</option>
+                <option value="[[.Name]]_desc" {{if eq $.SortBy "[[.Name]]_desc"}}selected{{end}}>[[.Name | title]] (Z-A)</option>
 [[- end]]
 [[- end]]
                 <option value="oldest_first" {{if eq .SortBy "oldest_first"}}selected{{end}}>Oldest First</option>
@@ -330,6 +330,25 @@
     {{else}}
     <script src="https://unpkg.com/@livetemplate/client@latest/dist/livetemplate-client.browser.js"></script>
     {{end}}
+
+    <!-- Fix for morphdom not properly syncing select values -->
+    <script>
+      (function() {
+        function syncSelectValues() {
+          document.querySelectorAll('select[data-expected-value]').forEach(function(select) {
+            var expected = select.getAttribute('data-expected-value');
+            if (select.value !== expected) {
+              select.value = expected;
+            }
+          });
+        }
+        syncSelectValues();
+        var observer = new MutationObserver(function(mutations) {
+          syncSelectValues();
+        });
+        observer.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['data-expected-value'] });
+      })();
+    </script>
 
     [[- if eq .PaginationMode "infinite"]]
     <script>

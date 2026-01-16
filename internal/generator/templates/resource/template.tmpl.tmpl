@@ -35,10 +35,10 @@
 [[- end]]
               <select[[if ne (selectClass .CSSFramework) ""]] class="[[selectClass .CSSFramework]]"[[end]] name="sort_by" lvt-change="sort">
                 <option value="" {{if eq .SortBy ""}}selected{{end}}>Newest First</option>
-[[- range .Fields]]
-[[- if eq .GoType "string"]]
-                <option value="[[.Name]]_asc" {{if eq .SortBy "[[.Name]]_asc"}}selected{{end}}>[[.Name | title]] (A-Z)</option>
-                <option value="[[.Name]]_desc" {{if eq .SortBy "[[.Name]]_desc"}}selected{{end}}>[[.Name | title]] (Z-A)</option>
+[[- range $i, $f := .Fields]]
+[[- if and (eq $i 0) (eq $f.GoType "string")]]
+                <option value="[[.Name]]_asc" {{if eq $.SortBy "[[.Name]]_asc"}}selected{{end}}>[[.Name | title]] (A-Z)</option>
+                <option value="[[.Name]]_desc" {{if eq $.SortBy "[[.Name]]_desc"}}selected{{end}}>[[.Name | title]] (Z-A)</option>
 [[- end]]
 [[- end]]
                 <option value="oldest_first" {{if eq .SortBy "oldest_first"}}selected{{end}}>Oldest First</option>
