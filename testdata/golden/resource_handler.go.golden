@@ -71,6 +71,9 @@ type UserState struct {
 	HasMore        bool                `json:"has_more"`        // Whether more items available
 	IsLoading      bool                `json:"is_loading"`      // Loading indicator
 	CSSFramework   string              `json:"-"`               // CSS framework for templates
+	// Sort reversion protection: morphdom can trigger spurious change events
+	PrevSortBy   string                `json:"prev_sort_by" lvt:"transient"`   // Previous sort value before last change
+	LastSortTime int64                 `json:"last_sort_time" lvt:"transient"` // Unix nano of last sort action
 }
 
 // Add handles the "add" action to create a new resource
@@ -271,11 +274,26 @@ func (c *UserController) Sort(state UserState, ctx *livetemplate.Context) (UserS
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
 		return state, err
 	}
-	state.SortBy = input.SortBy
-	// Reset infinite scroll when sorting
-	if state.PaginationMode == "infinite" || state.PaginationMode == "load-more" {
-		state.LoadedCount = state.PageSize
+
+	now := time.Now().UnixNano()
+
+	// Detect and ignore spurious morphdom-triggered reversions:
+	// If we receive a value that equals the previous value, and it's within 500ms of the last change,
+	// this is likely a spurious event from morphdom updating the select element
+	if state.LastSortTime > 0 {
+		elapsed := now - state.LastSortTime
+		elapsedMs := elapsed / 1_000_000
+		if input.SortBy == state.PrevSortBy && elapsedMs < 500 {
+			return state, nil
+		}
 	}
+
+	// Track previous value and update
+	state.PrevSortBy = state.SortBy
+	state.SortBy = input.SortBy
+	state.LastSortTime = now
+	// Note: Don't reset LoadedCount when sorting - keep all loaded items visible
+	// Just re-sort the existing items for better UX
 
 	state, err := c.loadUsers(state, dbCtx)
 	if err != nil {
