@@ -18,6 +18,34 @@
       {{else}}
       <script src="https://unpkg.com/@livetemplate/client@latest/dist/livetemplate-client.browser.js"></script>
       {{end}}
+
+      <!-- Fix for morphdom not properly syncing form element values -->
+      <script>
+        (function() {
+          function syncFormValues() {
+            // Sync select elements
+            document.querySelectorAll('select[data-expected-value]').forEach(function(select) {
+              var expected = select.getAttribute('data-expected-value');
+              if (select.value !== expected) {
+                select.value = expected;
+              }
+            });
+            // Sync input elements
+            document.querySelectorAll('input[data-expected-value]').forEach(function(input) {
+              var expected = input.getAttribute('data-expected-value');
+              if (input.value !== expected) {
+                input.value = expected;
+              }
+            });
+          }
+          syncFormValues();
+          var observer = new MutationObserver(function(mutations) {
+            syncFormValues();
+          });
+          observer.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['data-expected-value'] });
+        })();
+      </script>
+
       {{template "pageRouting" .}}
     {{end}}
   </body>
