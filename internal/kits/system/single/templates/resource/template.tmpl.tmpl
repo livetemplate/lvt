@@ -83,6 +83,7 @@
 [[- range .Fields]]
             <div[[if ne (fieldClass $.CSSFramework) ""]] class="[[fieldClass $.CSSFramework]]"[[end]]>
               <label[[if ne (labelClass $.CSSFramework) ""]] class="[[labelClass $.CSSFramework]]"[[end]]>[[.Name | title]]</label>
+              [[/* Use textarea for text/longtext types, input for regular strings */]]
 [[- if .IsTextarea]]
               <textarea[[if ne (inputClass $.CSSFramework) ""]] class="[[inputClass $.CSSFramework]]"[[end]] name="[[.Name]]" placeholder="Enter [[.Name]]" rows="5" required {{if .lvt.HasError "[[.Name]]"}}aria-invalid="true"{{end}}></textarea>
 [[- else if eq .GoType "string"]]
