@@ -15,11 +15,11 @@ Milestone 2: Validation Layer (Feedback Infrastructure)
      ↓
 Milestone 3: Telemetry & Evolution (Self-Improvement)
      ↓
-Milestone 4: Components Integration (Template Consolidation)
+Milestone 4: Components Integration (Monorepo - Template Consolidation)
      ↓
 Milestone 5: Style System (CSS Swappability)
      ↓
-Milestone 6: Cross-Repo Evolution (Unified Feedback Loop)
+Milestone 6: Components Evolution (Unified Feedback Loop - Single Repo)
 ```
 
 ---
@@ -626,29 +626,72 @@ Add CLI commands to interact with the evolution system.
 
 **Duration:** 2 weeks
 
-### Issue 4.1: Add Components Dependency
+### Issue 4.1: Move Components into lvt Monorepo
 
 **Priority:** High
-**Labels:** `components`, `dependencies`
+**Labels:** `components`, `architecture`, `monorepo`
 **Depends On:** Milestone 1 complete
 
 **Description:**
-Add the livetemplate/components library as a dependency and set up the foundation for using components in generated apps.
+Move the components library into lvt as a nested Go module. This enables atomic changes, faster iteration, and a single feedback loop for the evolution system while maintaining independent importability.
 
 **Tasks:**
-- [ ] Add `github.com/livetemplate/components` to go.mod
+- [ ] Use `git subtree add` to import existing components repo into `components/`
+- [ ] Create `components/go.mod` with module path `github.com/livetemplate/lvt/components`
+- [ ] Ensure components/go.mod only depends on livetemplate, NOT on lvt
+- [ ] Update lvt's go.mod to reference local components (for development)
+- [ ] Add CI workflow to verify components independence (no lvt imports)
 - [ ] Create helper functions for component imports in generated code
 - [ ] Update handler templates to support component state fields
 - [ ] Document component usage patterns
 
 **Acceptance Criteria:**
-- Components library is a dependency
+- Components live in `components/` directory with own go.mod
+- External apps can import `github.com/livetemplate/lvt/components/modal`
+- Components build and test independently (`cd components && go test ./...`)
+- CI fails if components import anything from lvt
 - Generated apps can import and use components
-- No breaking changes to existing generation
 
-**Files to Modify:**
-- `go.mod`
-- `internal/generator/templates/resource/handler.go.tmpl`
+**Files to Create/Modify:**
+- Create `components/go.mod`
+- Create `components/modal/`, `components/toast/`, etc. (from subtree)
+- Create `.github/workflows/components-independence.yml`
+- Modify `go.mod` (add replace directive for local dev)
+- Modify `internal/generator/templates/resource/handler.go.tmpl`
+
+**Technical Notes:**
+```bash
+# Import existing components
+git subtree add --prefix=components \
+    git@github.com:livetemplate/components.git main --squash
+
+# components/go.mod
+module github.com/livetemplate/lvt/components
+
+go 1.25
+
+require github.com/livetemplate/livetemplate v0.8.0
+# NO lvt dependency allowed here
+```
+
+```yaml
+# .github/workflows/components-independence.yml
+- name: Verify no lvt imports
+  run: |
+    cd components
+    if grep -r '"github.com/livetemplate/lvt"' --include="*.go" .; then
+      echo "ERROR: components must not import lvt"
+      exit 1
+    fi
+    if grep -r '"github.com/livetemplate/lvt/internal' --include="*.go" .; then
+      echo "ERROR: components must not import lvt internals"
+      exit 1
+    fi
+- name: Build standalone
+  run: cd components && go build ./...
+- name: Test standalone
+  run: cd components && go test ./...
+```
 
 ---
 
@@ -775,7 +818,7 @@ Automatically detect which components a generated app uses and only import/regis
 Define the style adapter interface that allows swapping CSS frameworks.
 
 **Tasks:**
-- [ ] Create `styles/` package in components repo (or lvt if components not ready)
+- [ ] Create `components/styles/` package in lvt monorepo
 - [ ] Define `StyleAdapter` interface
 - [ ] Define style structs: `ButtonStyles`, `ModalStyles`, `FormStyles`, etc.
 - [ ] Create adapter registration mechanism
@@ -786,9 +829,9 @@ Define the style adapter interface that allows swapping CSS frameworks.
 - All common UI elements have style definitions
 - Registration mechanism works
 
-**Files to Create (in components repo or lvt):**
+**Files to Create (in lvt monorepo):**
 ```
-styles/
+components/styles/
 ├── adapter.go         # Interface definition
 ├── types.go           # Style struct types
 ├── registry.go        # Adapter registration
@@ -820,7 +863,7 @@ Create the default Tailwind adapter with all required styles.
 
 **Files to Create:**
 ```
-styles/tailwind/
+components/styles/tailwind/
 ├── adapter.go
 └── adapter_test.go
 ```
@@ -849,7 +892,7 @@ Create an unstyled adapter that outputs semantic class names for custom CSS.
 
 **Files to Create:**
 ```
-styles/unstyled/
+components/styles/unstyled/
 ├── adapter.go
 ├── adapter_test.go
 └── scaffold.css.tmpl
@@ -903,11 +946,13 @@ Allow users to select style adapter at generation time and change it later.
 
 ---
 
-## Milestone 6: Cross-Repo Evolution
+## Milestone 6: Components Evolution
 
-**Goal:** Extend evolution system to improve components alongside lvt.
+**Goal:** Extend evolution system to improve components alongside lvt kits (all in one repo).
 
 **Duration:** 2 weeks
+
+**Note:** With the monorepo approach (components inside lvt), this milestone is simpler than originally planned. No cross-repo coordination needed - all fixes are in single PRs.
 
 ### Issue 6.1: Add Component Attribution to Telemetry
 
@@ -969,71 +1014,83 @@ toggle      │  534  │  99.2%  │ -
 
 ---
 
-### Issue 6.3: Implement Cross-Repo Fix Proposals
+### Issue 6.3: Implement Component-Aware Fix Proposals
 
 **Priority:** Medium
 **Labels:** `evolution`, `components`
 **Depends On:** 3.4, 6.1
 
 **Description:**
-Extend fix proposer to create fixes for the components repo when appropriate.
+Extend fix proposer to detect whether errors are in components or kit templates and generate appropriate fixes. With the monorepo, all fixes are in the same PR.
 
 **Tasks:**
-- [ ] Detect when error is in component vs lvt
-- [ ] Generate fix targeting components repo
-- [ ] Include component version information
-- [ ] Support creating linked PRs (component fix + lvt version bump)
+- [ ] Detect when error is in `components/` vs `internal/kits/`
+- [ ] Generate fix with correct file path within monorepo
+- [ ] For component bugs: propose fix in `components/modal/` etc.
+- [ ] For kit bugs using components: propose fix in `internal/kits/`
+- [ ] Single PR can include both component fix and kit update (atomic)
 
 **Acceptance Criteria:**
-- Component bugs get fixes proposed to components repo
-- Fixes include proper file paths for components repo
-- Can propose linked fixes across repos
+- Fix proposer correctly identifies component vs kit errors
+- Fixes target correct paths within lvt monorepo
+- Single PR can fix component and update kit usage together
 
 ---
 
-### Issue 6.4: Add Component Independence CI Check
+### Issue 6.4: Verify Component Independence in CI
 
 **Priority:** Medium
 **Labels:** `ci`, `components`
 **Depends On:** 4.1
 
 **Description:**
-Add CI check to components repo that verifies it doesn't depend on lvt.
+Ensure CI verifies that `components/` remains independently importable - it must not import anything from the parent lvt module. This is created in Issue 4.1 but should be enhanced here.
 
 **Tasks:**
-- [ ] Create GitHub Action for components repo
-- [ ] Check for lvt imports in any Go file
-- [ ] Verify components build without lvt
-- [ ] Verify components test without lvt
-- [ ] Fail PR if independence violated
+- [ ] Enhance the independence check from Issue 4.1
+- [ ] Add test that imports components from a separate test module
+- [ ] Verify components work without any lvt code
+- [ ] Add badge showing components independence status
+- [ ] Document the independence guarantee for external users
 
 **Acceptance Criteria:**
 - CI prevents lvt imports in components
-- Components remain standalone usable
-- Clear error message if violated
+- Separate test module can import and use components
+- Clear documentation for external users
+- Badge in README showing independence status
 
-**Files to Create (in components repo):**
+**Files to Modify:**
 ```yaml
-# .github/workflows/independence.yml
-name: Verify Independence
-
-on: [push, pull_request]
-
-jobs:
-  check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Check for lvt imports
-        run: |
-          if grep -r "github.com/livetemplate/lvt" --include="*.go" .; then
-            echo "ERROR: Components must not import lvt"
-            exit 1
-          fi
-      - name: Build standalone
-        run: go build ./...
-      - name: Test standalone
-        run: go test ./...
+# .github/workflows/ci.yml (add job)
+components-independence:
+  runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v4
+    - name: Check for lvt imports
+      run: |
+        cd components
+        if grep -r '"github.com/livetemplate/lvt"' --include="*.go" .; then
+          echo "ERROR: components must not import lvt"
+          exit 1
+        fi
+        if grep -r '"github.com/livetemplate/lvt/internal' --include="*.go" .; then
+          echo "ERROR: components must not import lvt internals"
+          exit 1
+        fi
+    - name: Build standalone
+      run: cd components && go build ./...
+    - name: Test standalone
+      run: cd components && go test ./...
+    - name: Test external import
+      run: |
+        mkdir -p /tmp/test-import
+        cd /tmp/test-import
+        go mod init test-import
+        echo 'package main
+        import "github.com/livetemplate/lvt/components/modal"
+        func main() { _ = modal.New("test") }' > main.go
+        go mod tidy
+        go build .
 ```
 
 ---
@@ -1047,7 +1104,7 @@ jobs:
 | 3. Telemetry & Evolution | 6 | 2 weeks | Self-improvement foundation |
 | 4. Components Integration | 5 | 2 weeks | Template drift eliminated |
 | 5. Style System | 5 | 2 weeks | CSS swappability |
-| 6. Cross-Repo Evolution | 4 | 2 weeks | Unified feedback loop |
+| 6. Components Evolution | 4 | 2 weeks | Unified feedback loop (monorepo) |
 
 **Total: 29 issues across 6 milestones**
 
@@ -1060,13 +1117,15 @@ Milestone 1 (Foundation)
     │        │
     │        └──▶ Milestone 3 (Evolution)
     │                 │
-    │                 └──▶ Milestone 6 (Cross-Repo)
+    │                 └──▶ Milestone 6 (Components Evolution)
     │
-    └──▶ Milestone 4 (Components)
+    └──▶ Milestone 4 (Components Monorepo)
              │
              └──▶ Milestone 5 (Styles)
                       │
-                      └──▶ Milestone 6 (Cross-Repo)
+                      └──▶ Milestone 6 (Components Evolution)
 ```
 
 Milestones 1-3 and 1-4-5 can proceed in parallel after Milestone 1 is complete.
+
+**Monorepo Benefit:** With components inside lvt, Milestone 6 is much simpler - no cross-repo coordination needed. All fixes are atomic within a single repository.
