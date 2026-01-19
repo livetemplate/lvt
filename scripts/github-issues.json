@@ -1,0 +1,272 @@
+{
+  "milestones": [
+    {
+      "title": "Milestone 1: Stop the Bleeding",
+      "description": "Fix known issues and add basic safeguards to prevent shipping broken code.",
+      "due_on": null
+    },
+    {
+      "title": "Milestone 2: Validation Layer",
+      "description": "Build infrastructure that validates generated code and provides feedback to the generation system.",
+      "due_on": null
+    },
+    {
+      "title": "Milestone 3: Telemetry & Evolution",
+      "description": "Capture generation events and build the foundation for self-improvement, including ability to propose fixes to upstream LiveTemplate ecosystem repos.",
+      "due_on": null
+    },
+    {
+      "title": "Milestone 4: Components Integration",
+      "description": "Integrate the components library to eliminate template drift.",
+      "due_on": null
+    },
+    {
+      "title": "Milestone 5: Style System",
+      "description": "Implement CSS swappability through style adapters.",
+      "due_on": null
+    },
+    {
+      "title": "Milestone 6: Components Evolution",
+      "description": "Extend evolution system to improve components alongside lvt kits (all in one repo).",
+      "due_on": null
+    }
+  ],
+  "issues": [
+    {
+      "id": "1.1",
+      "title": "Add Compilation Validation to E2E Tests",
+      "milestone": "Milestone 1: Stop the Bleeding",
+      "labels": ["testing", "quick-win", "priority:critical"],
+      "body": "## Description\n\nCurrently, E2E tests verify that files are generated but never check if the generated code compiles. This allows syntax errors and type mismatches to ship.\n\n## Tasks\n\n- [ ] Add `go build ./...` step after each resource generation in E2E tests\n- [ ] Add `go mod tidy` step before build (catches dependency issues)\n- [ ] Ensure build errors fail the test with clear error messages\n- [ ] Update all existing E2E tests to include compilation check\n\n## Acceptance Criteria\n\n- All E2E tests run `go build` on generated apps\n- A test that generates invalid Go code fails with compilation error\n- CI catches compilation issues before merge\n\n## Files to Modify\n\n- `e2e/resource_test.go`\n- `e2e/app_test.go`\n- `e2e/auth_test.go`\n- Create `e2e/helpers/validation.go` for shared validation logic\n\n## Technical Notes\n\n```go\n// Example validation helper\nfunc ValidateGeneratedApp(t *testing.T, appPath string) {\n    // Run go mod tidy\n    cmd := exec.Command(\"go\", \"mod\", \"tidy\")\n    cmd.Dir = appPath\n    if out, err := cmd.CombinedOutput(); err != nil {\n        t.Fatalf(\"go mod tidy failed: %s\\n%s\", err, out)\n    }\n\n    // Run go build\n    cmd = exec.Command(\"go\", \"build\", \"-o\", \"/dev/null\", \"./...\")\n    cmd.Dir = appPath\n    cmd.Env = append(os.Environ(), \"CGO_ENABLED=1\")\n    if out, err := cmd.CombinedOutput(); err != nil {\n        t.Fatalf(\"generated code does not compile: %s\\n%s\", err, out)\n    }\n}\n```"
+    },
+    {
+      "id": "1.2",
+      "title": "Remove SKIP_GO_MOD_TIDY from Agent Tests",
+      "milestone": "Milestone 1: Stop the Bleeding",
+      "labels": ["testing", "quick-win", "priority:high"],
+      "body": "## Description\n\nAgent tests set `SKIP_GO_MOD_TIDY=1` environment variable, which masks dependency resolution issues. This should be removed so tests catch real-world problems.\n\n## Tasks\n\n- [ ] Find all occurrences of `SKIP_GO_MOD_TIDY` in test code\n- [ ] Remove the environment variable setting\n- [ ] Fix any tests that fail due to dependency issues (these are real bugs)\n- [ ] Document why this was removed (prevent re-introduction)\n\n## Acceptance Criteria\n\n- No `SKIP_GO_MOD_TIDY` in codebase\n- All agent tests pass with `go mod tidy` running\n- Any dependency issues discovered are fixed\n\n## Files to Modify\n\n- `agenttest/harness.go`\n- Any other files setting this env var"
+    },
+    {
+      "id": "1.3",
+      "title": "Fix EditingID Type Inconsistency",
+      "milestone": "Milestone 1: Stop the Bleeding",
+      "labels": ["bug", "templates", "quick-win", "priority:high"],
+      "body": "## Description\n\nThe `EditingID` field is compared as integer in some templates and string in others, causing type errors.\n\n**Evidence from git history:**\n- Commit `5700a82`: \"single kit template bug\" - EditingID comparison issue\n\n## Tasks\n\n- [ ] Audit all templates for EditingID usage\n- [ ] Standardize on string type (empty string = no editing)\n- [ ] Update all comparisons: `{{if ne .EditingID 0}}` → `{{if ne .EditingID \"\"}}`\n- [ ] Update handler generation to use string type\n- [ ] Add test case that catches this regression\n\n## Acceptance Criteria\n\n- All kits use consistent EditingID type (string)\n- Generated handlers declare EditingID as string\n- Test exists that fails if types mismatch\n\n## Files to Modify\n\n- `internal/kits/system/multi/templates/resource/template.tmpl.tmpl`\n- `internal/kits/system/single/templates/resource/template.tmpl.tmpl`\n- `internal/generator/templates/resource/handler.go.tmpl`"
+    },
+    {
+      "id": "1.4",
+      "title": "Add Template Parse Validation to Generation",
+      "milestone": "Milestone 1: Stop the Bleeding",
+      "labels": ["validation", "generator", "priority:high"],
+      "body": "## Description\n\nAfter generating template files, validate they parse correctly before reporting success. Currently, template syntax errors are only discovered at runtime.\n\n## Tasks\n\n- [ ] Create template validation function in generator package\n- [ ] Call validation after writing each `.tmpl` file\n- [ ] Return clear error if template doesn't parse\n- [ ] Include line number and context in error message\n\n## Acceptance Criteria\n\n- Invalid template syntax causes generation to fail\n- Error message includes file path, line number, and syntax issue\n- User can immediately see what's wrong\n\n## Files to Create/Modify\n\n- Create `internal/generator/validate.go`\n- Modify `internal/generator/resource.go` to call validation\n- Modify `internal/generator/view.go` to call validation\n\n## Technical Notes\n\n```go\nfunc ValidateTemplate(path string) error {\n    content, err := os.ReadFile(path)\n    if err != nil {\n        return err\n    }\n\n    _, err = template.New(filepath.Base(path)).Parse(string(content))\n    if err != nil {\n        return fmt.Errorf(\"template %s: %w\", path, err)\n    }\n    return nil\n}\n```"
+    },
+    {
+      "id": "1.5",
+      "title": "Ensure All Kits Have Feature Parity",
+      "milestone": "Milestone 1: Stop the Bleeding",
+      "labels": ["templates", "kits", "priority:medium"],
+      "depends_on": ["1.3"],
+      "body": "## Description\n\nDifferent kits have different features. The single kit is missing delete functionality that exists in multi kit. This causes confusion and inconsistent behavior.\n\n**Depends on:** #1.3\n\n## Tasks\n\n- [ ] Audit all three kits (multi, single, simple) for feature differences\n- [ ] Document which features each kit should have\n- [ ] Add missing delete button to single kit edit modal\n- [ ] Ensure cancel button works consistently across all kits\n- [ ] Add tests that verify feature parity\n\n## Acceptance Criteria\n\n- Single kit has delete functionality in edit modal\n- All kits have consistent button behavior\n- Feature matrix documented in kit README\n\n## Files to Modify\n\n- `internal/kits/system/single/templates/resource/template.tmpl.tmpl`\n- Create `internal/kits/README.md` with feature matrix"
+    },
+    {
+      "id": "2.1",
+      "title": "Create Validation Engine Package",
+      "milestone": "Milestone 2: Validation Layer",
+      "labels": ["infrastructure", "validation", "priority:critical"],
+      "depends_on": ["milestone:1"],
+      "body": "## Description\n\nCreate a dedicated package for validating generated applications. This will be used by both the generator and the evolution system.\n\n**Depends on:** Milestone 1 complete\n\n## Tasks\n\n- [ ] Create `internal/validation/` package\n- [ ] Implement `ValidationEngine` struct with configurable checks\n- [ ] Implement `GoModValidation` - checks go.mod is valid\n- [ ] Implement `CompilationValidation` - runs go build\n- [ ] Implement `TemplateValidation` - parses all .tmpl files\n- [ ] Implement `MigrationValidation` - validates SQL syntax\n- [ ] Create `ValidationResult` type with structured errors\n- [ ] Add timeout support for long-running validations\n\n## Acceptance Criteria\n\n- `validation.Validate(appPath)` returns comprehensive result\n- Each validation type can be run independently\n- Results include specific file/line information for errors\n- Validation respects configurable timeout\n\n## Files to Create\n\n```\ninternal/validation/\n├── validation.go      # Main engine and types\n├── go_mod.go          # go.mod validation\n├── compilation.go     # go build validation\n├── templates.go       # template parse validation\n├── migrations.go      # SQL validation\n└── validation_test.go # Tests\n```\n\n## Technical Notes\n\n```go\ntype ValidationEngine struct {\n    Timeout time.Duration\n}\n\ntype ValidationResult struct {\n    Passed     bool\n    Checks     map[string]CheckResult\n    Duration   time.Duration\n}\n\ntype CheckResult struct {\n    Name     string\n    Passed   bool\n    Errors   []ValidationError\n    Warnings []string\n}\n\ntype ValidationError struct {\n    File    string\n    Line    int\n    Column  int\n    Message string\n    Context string // surrounding code\n}\n```"
+    },
+    {
+      "id": "2.2",
+      "title": "Integrate Validation into Generator",
+      "milestone": "Milestone 2: Validation Layer",
+      "labels": ["generator", "validation", "priority:critical"],
+      "depends_on": ["2.1"],
+      "body": "## Description\n\nCall the validation engine after generation and before reporting success. This ensures users get immediate feedback when something is wrong.\n\n**Depends on:** #2.1\n\n## Tasks\n\n- [ ] Add validation call at end of `GenerateResource`\n- [ ] Add validation call at end of `GenerateView`\n- [ ] Add validation call at end of `GenerateAuth`\n- [ ] Make validation configurable (can be disabled for speed)\n- [ ] Include validation results in command output\n- [ ] Return non-zero exit code if validation fails\n\n## Acceptance Criteria\n\n- `lvt gen resource` validates after generation\n- Validation errors are clearly displayed\n- User can skip validation with `--skip-validation` flag\n- Exit code is non-zero when validation fails\n\n## Files to Modify\n\n- `internal/generator/resource.go`\n- `internal/generator/view.go`\n- `internal/generator/auth.go`\n- `commands/gen.go` (add flag)"
+    },
+    {
+      "id": "2.3",
+      "title": "Add Validation to MCP Tools",
+      "milestone": "Milestone 2: Validation Layer",
+      "labels": ["mcp", "validation", "priority:high"],
+      "depends_on": ["2.1"],
+      "body": "## Description\n\nMCP tools should return validation results so LLMs know immediately if generation succeeded or failed. This is critical for the evolution feedback loop.\n\n**Depends on:** #2.1\n\n## Tasks\n\n- [ ] Update `lvt_gen_resource` tool to include validation in response\n- [ ] Update `lvt_gen_view` tool to include validation in response\n- [ ] Update `lvt_gen_auth` tool to include validation in response\n- [ ] Format validation errors clearly in tool response\n- [ ] Include suggestions for common errors\n\n## Acceptance Criteria\n\n- MCP tool responses include validation status\n- Validation errors are formatted for LLM consumption\n- LLM can understand what failed and potentially fix it\n\n## Files to Modify\n\n- `commands/mcp_handlers.go` (or equivalent MCP handler file)\n\n## Example Response Format\n\n```json\n{\n  \"success\": false,\n  \"validation\": {\n    \"compilation\": {\n      \"passed\": false,\n      \"errors\": [\n        {\n          \"file\": \"handlers/posts.go\",\n          \"line\": 45,\n          \"message\": \"undefined: models.Post\",\n          \"suggestion\": \"Run migrations or check model generation\"\n        }\n      ]\n    },\n    \"templates\": {\n      \"passed\": true\n    }\n  }\n}\n```"
+    },
+    {
+      "id": "2.4",
+      "title": "Create Runtime Validation (App Startup Test)",
+      "milestone": "Milestone 2: Validation Layer",
+      "labels": ["validation", "testing", "priority:medium"],
+      "depends_on": ["2.1"],
+      "body": "## Description\n\nBeyond compilation, verify the generated app can actually start. This catches runtime errors like missing environment variables or database connection issues.\n\n**Depends on:** #2.1\n\n## Tasks\n\n- [ ] Add `RuntimeValidation` to validation engine\n- [ ] Start the app in a subprocess\n- [ ] Wait for HTTP server to be ready (health check)\n- [ ] Verify basic routes respond\n- [ ] Gracefully shutdown after test\n- [ ] Timeout if app doesn't start within threshold\n\n## Acceptance Criteria\n\n- Validation can optionally test app startup\n- Startup failures are reported with error details\n- Test doesn't leave orphan processes\n- Works with SQLite (no external DB needed)\n\n## Files to Modify\n\n- Add `internal/validation/runtime.go`\n- Update `internal/validation/validation.go`"
+    },
+    {
+      "id": "3.1",
+      "title": "Create Telemetry Package",
+      "milestone": "Milestone 3: Telemetry & Evolution",
+      "labels": ["infrastructure", "evolution", "priority:critical"],
+      "depends_on": ["milestone:2"],
+      "body": "## Description\n\nCreate a package to capture and store generation events. This data drives the evolution system.\n\n**Depends on:** Milestone 2 complete\n\n## Tasks\n\n- [ ] Create `internal/telemetry/` package\n- [ ] Define `GenerationEvent` struct with all relevant fields\n- [ ] Create SQLite storage backend\n- [ ] Implement event capture with minimal overhead\n- [ ] Add privacy controls (can be disabled)\n- [ ] Create retention policy (auto-delete old events)\n\n## Acceptance Criteria\n\n- Every generation attempt is captured (when enabled)\n- Events include: command, inputs, kit, success/failure, errors, duration\n- Data stored in `~/.config/lvt/telemetry.db`\n- User can disable with `LVT_TELEMETRY=false`\n\n## Files to Create\n\n```\ninternal/telemetry/\n├── telemetry.go       # Main API\n├── events.go          # Event types\n├── store.go           # Storage interface\n├── sqlite.go          # SQLite implementation\n├── schema.sql         # Database schema\n└── telemetry_test.go\n```\n\n## Schema\n\n```sql\nCREATE TABLE generation_events (\n    id TEXT PRIMARY KEY,\n    timestamp DATETIME NOT NULL,\n    command TEXT NOT NULL,\n    inputs TEXT NOT NULL,  -- JSON\n    kit TEXT,\n    lvt_version TEXT,\n    success BOOLEAN NOT NULL,\n    validation_result TEXT,  -- JSON\n    errors TEXT,  -- JSON\n    duration_ms INTEGER,\n    files_generated TEXT  -- JSON\n);\n```"
+    },
+    {
+      "id": "3.2",
+      "title": "Integrate Telemetry into Generator",
+      "milestone": "Milestone 3: Telemetry & Evolution",
+      "labels": ["generator", "telemetry", "priority:high"],
+      "depends_on": ["3.1"],
+      "body": "## Description\n\nHook telemetry capture into the generation flow so every attempt is recorded.\n\n**Depends on:** #3.1\n\n## Tasks\n\n- [ ] Start capture at beginning of generation\n- [ ] Record all inputs and configuration\n- [ ] Record validation results\n- [ ] Record any errors with context\n- [ ] Finalize capture at end (success or failure)\n- [ ] Ensure capture doesn't slow down generation noticeably\n\n## Acceptance Criteria\n\n- All `lvt gen` commands record telemetry\n- Failed generations include error details\n- Capture adds <10ms overhead\n- Works correctly even if generation crashes\n\n## Files to Modify\n\n- `internal/generator/resource.go`\n- `internal/generator/view.go`\n- `internal/generator/auth.go`"
+    },
+    {
+      "id": "3.3",
+      "title": "Create Knowledge Base for Common Errors",
+      "milestone": "Milestone 3: Telemetry & Evolution",
+      "labels": ["evolution", "knowledge-base", "priority:high"],
+      "depends_on": ["3.1"],
+      "body": "## Description\n\nCreate a knowledge base that maps error patterns to known fixes. Patterns are stored in a **markdown file** for git tracking, easy reading, and LLM editability. This is the foundation for automated fix proposals.\n\n**Depends on:** #3.1\n\n## Tasks\n\n- [ ] Create `internal/evolution/knowledge/` package\n- [ ] Create `evolution/patterns.md` - the source of truth for all patterns\n- [ ] Define `Pattern` struct (matcher + fixes)\n- [ ] Implement markdown parser to load patterns from file\n- [ ] Implement pattern matching against errors\n- [ ] Seed with known patterns from git history:\n  - EditingID type mismatch\n  - Modal state persistence\n  - Form sync issues\n  - Session not cleared\n  - Import path errors\n- [ ] Add CLI command: `lvt evolution patterns` to list all patterns\n\n## Acceptance Criteria\n\n- Patterns stored in `evolution/patterns.md` (git-tracked)\n- At least 10 patterns seeded from known issues\n- Pattern matching is fast (<1ms per error)\n- Patterns include confidence scores\n- LLMs can propose pattern additions via PR to markdown file\n- `lvt evolution patterns` lists all patterns with stats\n\n## Files to Create\n\n```\nevolution/\n└── patterns.md            # Source of truth - git tracked\n\ninternal/evolution/knowledge/\n├── knowledge.go           # Knowledge base API\n├── parser.go              # Markdown parser for patterns.md\n├── patterns.go            # Pattern types\n├── matcher.go             # Pattern matching logic\n└── knowledge_test.go\n```\n\n## Benefits of Markdown Storage\n\n1. **Git tracked** - full history of pattern changes\n2. **Human readable** - easy to review and understand\n3. **LLM editable** - evolution system can propose pattern additions\n4. **PR reviewable** - pattern changes go through normal review\n5. **No recompile** - add patterns without rebuilding lvt\n\n**Note:** `evolution/patterns.md` already exists with 13 patterns seeded from git history."
+    },
+    {
+      "id": "3.4",
+      "title": "Create Fix Proposer",
+      "milestone": "Milestone 3: Telemetry & Evolution",
+      "labels": ["evolution", "priority:high"],
+      "depends_on": ["3.3"],
+      "body": "## Description\n\nCreate a component that analyzes generation failures and proposes fixes using the knowledge base.\n\n**Depends on:** #3.3\n\n## Tasks\n\n- [ ] Create `internal/evolution/proposer.go`\n- [ ] Implement `ProposeFixesFor(event GenerationEvent) []Fix`\n- [ ] Query knowledge base for matching patterns\n- [ ] Rank fixes by confidence\n- [ ] Include rationale in each proposed fix\n- [ ] Support multiple fixes for single error\n\n## Acceptance Criteria\n\n- Known error patterns get fix proposals\n- Fixes include file, change, and rationale\n- Multiple fixes can be proposed for one failure\n- Confidence scores help prioritize\n\n## Files to Create\n\n- `internal/evolution/proposer.go`\n- `internal/evolution/types.go` (Fix, Proposal types)"
+    },
+    {
+      "id": "3.5",
+      "title": "Create Fix Tester",
+      "milestone": "Milestone 3: Telemetry & Evolution",
+      "labels": ["evolution", "testing", "priority:medium"],
+      "depends_on": ["3.4", "2.1"],
+      "body": "## Description\n\nBefore applying a fix, test it in isolation to ensure it actually works.\n\n**Depends on:** #3.4, #2.1\n\n## Tasks\n\n- [ ] Create `internal/evolution/tester.go`\n- [ ] Implement isolated test environment (temp directory)\n- [ ] Apply proposed fix to templates\n- [ ] Re-run the failed generation\n- [ ] Validate the result\n- [ ] Clean up test environment\n- [ ] Report test results\n\n## Acceptance Criteria\n\n- Fixes are tested before application\n- Test uses same inputs as original failure\n- Test environment is isolated (no side effects)\n- Test results include validation details\n\n## Files to Create\n\n- `internal/evolution/tester.go`\n- `internal/evolution/tester_test.go`"
+    },
+    {
+      "id": "3.6",
+      "title": "Create Evolution CLI Commands",
+      "milestone": "Milestone 3: Telemetry & Evolution",
+      "labels": ["cli", "evolution", "priority:medium"],
+      "depends_on": ["3.1", "3.3", "3.4"],
+      "body": "## Description\n\nAdd CLI commands to interact with the evolution system.\n\n**Depends on:** #3.1, #3.3, #3.4\n\n## Tasks\n\n- [ ] Add `lvt evolution status` - show system status\n- [ ] Add `lvt evolution metrics` - show success rates\n- [ ] Add `lvt evolution failures` - list recent failures\n- [ ] Add `lvt evolution propose <event-id>` - propose fixes for failure\n- [ ] Add `lvt evolution apply <fix-id>` - apply a fix\n- [ ] Add `lvt evolution learn <pattern-file>` - add new pattern\n\n## Acceptance Criteria\n\n- All commands work and have help text\n- Status shows meaningful metrics\n- Failures are listed with enough context\n- Apply actually modifies templates\n\n## Files to Create/Modify\n\n- Create `commands/evolution.go`\n- Modify `main.go` to register commands"
+    },
+    {
+      "id": "3.7",
+      "title": "Add Upstream Library Evolution Support",
+      "milestone": "Milestone 3: Telemetry & Evolution",
+      "labels": ["evolution", "upstream", "priority:medium"],
+      "depends_on": ["3.2", "3.4", "3.5"],
+      "body": "## Description\n\nExtend the evolution system to propose fixes not just to lvt templates, but also to upstream LiveTemplate ecosystem repos. Some bugs originate in the core library or client code, and the evolution system should be able to track and propose fixes there.\n\n**Depends on:** #3.2, #3.4, #3.5\n\n**Evidence from git history:**\n- Multiple session-related fixes trace to livetemplate/livetemplate\n- morphdom sync issues trace to livetemplate/client\n- These patterns are documented in `evolution/patterns.md` under \"Upstream Patterns\"\n\n## Tasks\n\n- [ ] Add `UpstreamRepo` field parsing to pattern markdown parser\n- [ ] Create `internal/evolution/upstream.go` with upstream fix logic\n- [ ] Implement upstream repo cloning/updating for fix testing\n- [ ] Implement PR creation to upstream repos (requires GitHub token)\n- [ ] Add `lvt evolution upstream-status` command to track pending upstream PRs\n- [ ] Add tracking for when upstream fixes are merged and released\n- [ ] Auto-update go.mod when upstream releases include our fixes\n\n## Acceptance Criteria\n\n- Patterns with `UpstreamRepo` field are correctly parsed\n- Upstream fixes can be tested against local clone of upstream repo\n- PRs can be created to upstream repos with proper evidence\n- CLI shows status of pending upstream PRs\n- go.mod is updated when upstream fixes are released\n\n## Files to Create/Modify\n\n- Create `internal/evolution/upstream.go`\n- Modify `internal/evolution/knowledge/parser.go` to handle UpstreamRepo\n- Modify `commands/evolution.go` to add upstream commands\n\n## Technical Notes\n\n```go\n// Pattern with upstream repo field\npattern := &Pattern{\n    ID:           \"morphdom-select-sync\",\n    UpstreamRepo: \"github.com/livetemplate/client\",\n    Fix: Fix{\n        File: \"src/morphdom-config.js\",\n        // ...\n    },\n}\n\n// Upstream fix workflow\nproposer := evolution.NewUpstreamProposer(git, gh, knowledge)\nfix, _ := proposer.ProposeUpstreamFix(pattern, event)\npr, _ := proposer.CreateUpstreamPR(fix)\n// Track PR status and handle merge\n```"
+    },
+    {
+      "id": "4.1",
+      "title": "Move Components into lvt Monorepo",
+      "milestone": "Milestone 4: Components Integration",
+      "labels": ["components", "architecture", "monorepo", "priority:high"],
+      "depends_on": ["milestone:1"],
+      "body": "## Description\n\nMove the components library into lvt as a nested Go module. This enables atomic changes, faster iteration, and a single feedback loop for the evolution system while maintaining independent importability.\n\n**Depends on:** Milestone 1 complete\n\n## Tasks\n\n- [ ] Use `git subtree add` to import existing components repo into `components/`\n- [ ] Create `components/go.mod` with module path `github.com/livetemplate/lvt/components`\n- [ ] Ensure components/go.mod only depends on livetemplate, NOT on lvt\n- [ ] Update lvt's go.mod to reference local components (for development)\n- [ ] Add CI workflow to verify components independence (no lvt imports)\n- [ ] Create helper functions for component imports in generated code\n- [ ] Update handler templates to support component state fields\n- [ ] Document component usage patterns\n\n## Acceptance Criteria\n\n- Components live in `components/` directory with own go.mod\n- External apps can import `github.com/livetemplate/lvt/components/modal`\n- Components build and test independently (`cd components && go test ./...`)\n- CI fails if components import anything from lvt\n- Generated apps can import and use components\n\n## Files to Create/Modify\n\n- Create `components/go.mod`\n- Create `components/modal/`, `components/toast/`, etc. (from subtree)\n- Create `.github/workflows/components-independence.yml`\n- Modify `go.mod` (add replace directive for local dev)\n- Modify `internal/generator/templates/resource/handler.go.tmpl`\n\n## Technical Notes\n\n```bash\n# Import existing components\ngit subtree add --prefix=components \\\n    git@github.com:livetemplate/components.git main --squash\n\n# components/go.mod\nmodule github.com/livetemplate/lvt/components\n\ngo 1.25\n\nrequire github.com/livetemplate/livetemplate v0.8.0\n# NO lvt dependency allowed here\n```\n\n```yaml\n# .github/workflows/components-independence.yml\n- name: Verify no lvt imports\n  run: |\n    cd components\n    if grep -r '\"github.com/livetemplate/lvt\"' --include=\"*.go\" .; then\n      echo \"ERROR: components must not import lvt\"\n      exit 1\n    fi\n```"
+    },
+    {
+      "id": "4.2",
+      "title": "Integrate Modal Component",
+      "milestone": "Milestone 4: Components Integration",
+      "labels": ["components", "modal", "priority:high"],
+      "depends_on": ["4.1"],
+      "body": "## Description\n\nReplace kit modal templates with the modal component from the components library. This eliminates the most common source of bugs (40% of UI issues).\n\n**Depends on:** #4.1\n\n## Tasks\n\n- [ ] Update handler template to use `modal.ConfirmState` for delete confirmation\n- [ ] Update handler template to use `modal.State` for edit modal (if applicable)\n- [ ] Update template generation to use `{{template \"lvt:modal:confirm:v1\" .DeleteConfirm}}`\n- [ ] Register component templates in generated main.go\n- [ ] Update all three kits to use component\n- [ ] Remove old modal templates from kits\n\n## Acceptance Criteria\n\n- Generated apps use modal component\n- Delete confirmation works correctly\n- Edit modal works correctly (if using modal)\n- Old modal templates removed from kits\n\n## Files to Modify\n\n- `internal/generator/templates/resource/handler.go.tmpl`\n- `internal/generator/templates/app/main.go.tmpl`\n- `internal/kits/system/multi/templates/resource/template.tmpl.tmpl`\n- `internal/kits/system/single/templates/resource/template.tmpl.tmpl`"
+    },
+    {
+      "id": "4.3",
+      "title": "Integrate Toast Component",
+      "milestone": "Milestone 4: Components Integration",
+      "labels": ["components", "toast", "priority:medium"],
+      "depends_on": ["4.1"],
+      "body": "## Description\n\nAdd toast notifications to generated apps using the toast component. This provides standardized user feedback.\n\n**Depends on:** #4.1\n\n## Tasks\n\n- [ ] Add `toast.ContainerState` to generated handler state\n- [ ] Add toast container to layout template\n- [ ] Add success toasts after create/update/delete actions\n- [ ] Add error toasts on failures\n- [ ] Register toast templates in main.go\n\n## Acceptance Criteria\n\n- Generated apps show toast on CRUD operations\n- Toasts auto-dismiss after timeout\n- Toast position is configurable\n\n## Files to Modify\n\n- `internal/generator/templates/resource/handler.go.tmpl`\n- `internal/kits/system/*/templates/components/layout.tmpl`"
+    },
+    {
+      "id": "4.4",
+      "title": "Integrate Dropdown Component",
+      "milestone": "Milestone 4: Components Integration",
+      "labels": ["components", "dropdown", "priority:medium"],
+      "depends_on": ["4.1"],
+      "body": "## Description\n\nReplace select elements with dropdown component to fix morphdom sync issues (30% of form bugs).\n\n**Depends on:** #4.1\n\n## Tasks\n\n- [ ] Detect select fields in resource generation\n- [ ] Use dropdown component for select fields\n- [ ] Support both single and multi-select\n- [ ] Ensure value sync works with LiveTemplate updates\n\n## Acceptance Criteria\n\n- Select fields use dropdown component\n- Values persist correctly across updates\n- Searchable dropdown works for long lists\n\n## Files to Modify\n\n- `internal/generator/templates/resource/handler.go.tmpl`\n- `internal/generator/form.go` (form field generation)\n- `internal/kits/system/*/templates/components/form.tmpl`"
+    },
+    {
+      "id": "4.5",
+      "title": "Add Component Usage Detection",
+      "milestone": "Milestone 4: Components Integration",
+      "labels": ["components", "generator", "priority:low"],
+      "depends_on": ["4.2", "4.3", "4.4"],
+      "body": "## Description\n\nAutomatically detect which components a generated app uses and only import/register what's needed.\n\n**Depends on:** #4.2, #4.3, #4.4\n\n## Tasks\n\n- [ ] Analyze generated templates for component usage\n- [ ] Generate minimal import list\n- [ ] Generate minimal template registration\n- [ ] Avoid importing unused components\n\n## Acceptance Criteria\n\n- Only used components are imported\n- Generated go.mod only includes necessary dependencies\n- No dead code in generated apps"
+    },
+    {
+      "id": "5.1",
+      "title": "Create Style Adapter Interface",
+      "milestone": "Milestone 5: Style System",
+      "labels": ["styles", "architecture", "priority:high"],
+      "depends_on": ["milestone:4"],
+      "body": "## Description\n\nDefine the style adapter interface that allows swapping CSS frameworks.\n\n**Depends on:** Milestone 4 started\n\n## Tasks\n\n- [ ] Create `components/styles/` package in lvt monorepo\n- [ ] Define `StyleAdapter` interface\n- [ ] Define style structs: `ButtonStyles`, `ModalStyles`, `FormStyles`, etc.\n- [ ] Create adapter registration mechanism\n- [ ] Document how to create custom adapters\n\n## Acceptance Criteria\n\n- Interface is well-documented\n- All common UI elements have style definitions\n- Registration mechanism works\n\n## Files to Create (in lvt monorepo)\n\n```\ncomponents/styles/\n├── adapter.go         # Interface definition\n├── types.go           # Style struct types\n├── registry.go        # Adapter registration\n└── styles_test.go\n```"
+    },
+    {
+      "id": "5.2",
+      "title": "Implement Tailwind Adapter",
+      "milestone": "Milestone 5: Style System",
+      "labels": ["styles", "tailwind", "priority:high"],
+      "depends_on": ["5.1"],
+      "body": "## Description\n\nCreate the default Tailwind adapter with all required styles.\n\n**Depends on:** #5.1\n\n## Tasks\n\n- [ ] Implement all methods of StyleAdapter interface\n- [ ] Use Tailwind best practices for each component\n- [ ] Include responsive variants\n- [ ] Include dark mode support\n- [ ] Test with all components\n\n## Acceptance Criteria\n\n- All components render correctly with Tailwind\n- Responsive design works\n- Dark mode works (if enabled)\n\n## Files to Create\n\n```\ncomponents/styles/tailwind/\n├── adapter.go\n└── adapter_test.go\n```"
+    },
+    {
+      "id": "5.3",
+      "title": "Implement Unstyled Adapter",
+      "milestone": "Milestone 5: Style System",
+      "labels": ["styles", "unstyled", "priority:high"],
+      "depends_on": ["5.1"],
+      "body": "## Description\n\nCreate an unstyled adapter that outputs semantic class names for custom CSS.\n\n**Depends on:** #5.1\n\n## Tasks\n\n- [ ] Implement all methods with semantic class names\n- [ ] Follow BEM or similar naming convention\n- [ ] Document all class names\n- [ ] Create CSS scaffold generator\n\n## Acceptance Criteria\n\n- All components render with semantic classes\n- Class names are documented\n- `lvt styles scaffold` generates CSS template\n\n## Files to Create\n\n```\ncomponents/styles/unstyled/\n├── adapter.go\n├── adapter_test.go\n└── scaffold.css.tmpl\n```"
+    },
+    {
+      "id": "5.4",
+      "title": "Integrate Style Adapters into Templates",
+      "milestone": "Milestone 5: Style System",
+      "labels": ["styles", "templates", "priority:high"],
+      "depends_on": ["5.2", "5.3"],
+      "body": "## Description\n\nUpdate all component and kit templates to use style adapter references instead of hardcoded classes.\n\n**Depends on:** #5.2, #5.3\n\n## Tasks\n\n- [ ] Update component templates to use `{{.Styles.X.Y}}`\n- [ ] Update kit templates to use same pattern\n- [ ] Ensure styles are passed through template context\n- [ ] Test with both Tailwind and Unstyled adapters\n\n## Acceptance Criteria\n\n- No hardcoded CSS classes in templates\n- Same template works with any adapter\n- All components render correctly with both adapters"
+    },
+    {
+      "id": "5.5",
+      "title": "Add Style Selection to Generation",
+      "milestone": "Milestone 5: Style System",
+      "labels": ["styles", "cli", "priority:medium"],
+      "depends_on": ["5.4"],
+      "body": "## Description\n\nAllow users to select style adapter at generation time and change it later.\n\n**Depends on:** #5.4\n\n## Tasks\n\n- [ ] Add `--styles` flag to `lvt new`\n- [ ] Store style choice in `.lvtrc`\n- [ ] Add `lvt styles set <adapter>` command\n- [ ] Add `lvt styles eject` to dump adapter for customization\n- [ ] Add `lvt styles scaffold` to generate CSS template\n\n## Acceptance Criteria\n\n- Can choose style at generation: `lvt new myapp --styles=unstyled`\n- Can change style later: `lvt styles set tailwind`\n- Can eject for customization\n- Can generate CSS scaffold"
+    },
+    {
+      "id": "6.1",
+      "title": "Add Component Attribution to Telemetry",
+      "milestone": "Milestone 6: Components Evolution",
+      "labels": ["telemetry", "components", "evolution", "priority:high"],
+      "depends_on": ["3.1", "4.2"],
+      "body": "## Description\n\nExtend telemetry to track which components are involved in failures.\n\n**Depends on:** #3.1, #4.2\n\n## Tasks\n\n- [ ] Add `ComponentsUsed` field to GenerationEvent\n- [ ] Add `ComponentErrors` field for component-specific issues\n- [ ] Implement component attribution logic\n- [ ] Update storage schema\n\n## Acceptance Criteria\n\n- Telemetry records which components were used\n- Errors are attributed to specific components when possible\n- Can query failures by component"
+    },
+    {
+      "id": "6.2",
+      "title": "Create Component Health Dashboard",
+      "milestone": "Milestone 6: Components Evolution",
+      "labels": ["evolution", "components", "cli", "priority:medium"],
+      "depends_on": ["6.1"],
+      "body": "## Description\n\nAdd CLI command to show component health metrics.\n\n**Depends on:** #6.1\n\n## Tasks\n\n- [ ] Create `lvt evolution components` command\n- [ ] Show usage count per component\n- [ ] Show success rate per component\n- [ ] Show common errors per component\n- [ ] Highlight components needing attention\n\n## Acceptance Criteria\n\n- Can see which components are problematic\n- Data drives prioritization of fixes\n- Clear visualization of component health\n\n## Example Output\n\n```\nComponent Health (last 30 days)\n───────────────────────────────────────────────\nComponent   │ Usage │ Success │ Common Errors\n────────────┼───────┼─────────┼───────────────\nmodal       │  847  │  94.2%  │ State sync\ntoast       │  623  │  98.1%  │ -\ndropdown    │  412  │  87.3%  │ Selection\ntoggle      │  534  │  99.2%  │ -\n───────────────────────────────────────────────\n\n⚠️  dropdown needs attention (87.3% success rate)\n```"
+    },
+    {
+      "id": "6.3",
+      "title": "Implement Component-Aware Fix Proposals",
+      "milestone": "Milestone 6: Components Evolution",
+      "labels": ["evolution", "components", "priority:medium"],
+      "depends_on": ["3.4", "6.1"],
+      "body": "## Description\n\nExtend fix proposer to detect whether errors are in components or kit templates and generate appropriate fixes. With the monorepo, all fixes are in the same PR.\n\n**Depends on:** #3.4, #6.1\n\n## Tasks\n\n- [ ] Detect when error is in `components/` vs `internal/kits/`\n- [ ] Generate fix with correct file path within monorepo\n- [ ] For component bugs: propose fix in `components/modal/` etc.\n- [ ] For kit bugs using components: propose fix in `internal/kits/`\n- [ ] Single PR can include both component fix and kit update (atomic)\n\n## Acceptance Criteria\n\n- Fix proposer correctly identifies component vs kit errors\n- Fixes target correct paths within lvt monorepo\n- Single PR can fix component and update kit usage together"
+    },
+    {
+      "id": "6.4",
+      "title": "Verify Component Independence in CI",
+      "milestone": "Milestone 6: Components Evolution",
+      "labels": ["ci", "components", "priority:medium"],
+      "depends_on": ["4.1"],
+      "body": "## Description\n\nEnsure CI verifies that `components/` remains independently importable - it must not import anything from the parent lvt module. This is created in Issue 4.1 but should be enhanced here.\n\n**Depends on:** #4.1\n\n## Tasks\n\n- [ ] Enhance the independence check from Issue 4.1\n- [ ] Add test that imports components from a separate test module\n- [ ] Verify components work without any lvt code\n- [ ] Add badge showing components independence status\n- [ ] Document the independence guarantee for external users\n\n## Acceptance Criteria\n\n- CI prevents lvt imports in components\n- Separate test module can import and use components\n- Clear documentation for external users\n- Badge in README showing independence status\n\n## Files to Modify\n\n```yaml\n# .github/workflows/ci.yml (add job)\ncomponents-independence:\n  runs-on: ubuntu-latest\n  steps:\n    - uses: actions/checkout@v4\n    - name: Check for lvt imports\n      run: |\n        cd components\n        if grep -r '\"github.com/livetemplate/lvt\"' --include=\"*.go\" .; then\n          echo \"ERROR: components must not import lvt\"\n          exit 1\n        fi\n    - name: Build standalone\n      run: cd components && go build ./...\n    - name: Test standalone\n      run: cd components && go test ./...\n    - name: Test external import\n      run: |\n        mkdir -p /tmp/test-import\n        cd /tmp/test-import\n        go mod init test-import\n        echo 'package main\n        import \"github.com/livetemplate/lvt/components/modal\"\n        func main() { _ = modal.New(\"test\") }' > main.go\n        go mod tidy\n        go build .\n```"
+    }
+  ]
+}
