@@ -5,7 +5,7 @@
 ## The Bootstrap Problem
 
 ```
-Components need usage to mature → But they're too unstable to use → So they don't get usage → They stay unstable
+Components need usage to mature -> But they're too unstable to use -> So they don't get usage -> They stay unstable
 ```
 
 **Solution:** lvt becomes the forcing function. By making lvt depend on and exercise components, we create:
@@ -14,57 +14,314 @@ Components need usage to mature → But they're too unstable to use → So they 
 3. Evolution feedback loop
 4. Path to v1.0 stability
 
-## Integration Architecture
+---
 
-### Dependency Graph
+## Repository Strategy: Monorepo vs Multi-Repo
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                           USER / LLM                                     │
-└─────────────────────────────────────────────────────────────────────────┘
-                                   │
-                                   ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                              lvt CLI                                     │
-│  ┌─────────────────────────────────────────────────────────────────┐   │
-│  │                     Evolution System                             │   │
-│  │  - Telemetry capture                                             │   │
-│  │  - Fix proposal (for lvt AND components)                         │   │
-│  │  - Multi-repo PR creation                                        │   │
-│  └─────────────────────────────────────────────────────────────────┘   │
-│                                                                         │
-│  ┌───────────────────┐  ┌───────────────────┐  ┌───────────────────┐  │
-│  │   Kit: multi      │  │   Kit: single     │  │   Kit: simple     │  │
-│  │                   │  │                   │  │                   │  │
-│  │ Uses components:  │  │ Uses components:  │  │ Uses components:  │
-│  │ - modal           │  │ - modal           │  │ - (minimal)       │
-│  │ - toast           │  │ - toast           │  │                   │
-│  │ - dropdown        │  │ - toggle          │  │                   │
-│  │ - data-table      │  │                   │  │                   │
-│  └───────────────────┘  └───────────────────┘  └───────────────────┘  │
-└─────────────────────────────────────────────────────────────────────────┘
-                                   │
-                    ┌──────────────┴──────────────┐
-                    ▼                              ▼
-┌─────────────────────────────┐    ┌─────────────────────────────┐
-│   livetemplate/components   │    │    livetemplate/livetemplate │
-│                             │    │                              │
-│  - Remains independent      │    │  - Core framework            │
-│  - No lvt dependency        │    │  - Components depend on this │
-│  - Can be used standalone   │    │                              │
-└─────────────────────────────┘    └─────────────────────────────┘
-```
-
-### Key Principle: One-Way Dependency
+### Option A: Multi-Repo (Separate components repository)
 
 ```
-lvt → components → livetemplate
-
-components does NOT depend on lvt
-livetemplate does NOT depend on components or lvt
+github.com/livetemplate/lvt          # CLI + generator
+github.com/livetemplate/components   # Reusable components (separate repo)
+github.com/livetemplate/livetemplate # Core framework
 ```
 
-This ensures components remain independently usable.
+**Pros:**
+- Clear separation of concerns
+- Independent release cycles
+- Smaller repo size
+
+**Cons:**
+- Cross-repo PRs for related changes
+- Version coordination overhead
+- Slower feedback loop (fix -> release -> bump -> test)
+- Evolution system needs multi-repo support
+
+### Option B: Monorepo (Components inside lvt) - RECOMMENDED
+
+```
+github.com/livetemplate/lvt/
+├── go.mod                           # github.com/livetemplate/lvt
+├── main.go
+├── commands/
+├── internal/
+│   ├── generator/
+│   ├── kits/
+│   └── evolution/
+│
+├── components/                      # Nested module
+│   ├── go.mod                       # github.com/livetemplate/lvt/components
+│   ├── modal/
+│   │   ├── modal.go
+│   │   ├── options.go
+│   │   └── templates.go
+│   ├── toast/
+│   ├── dropdown/
+│   ├── toggle/
+│   └── styles/
+│       ├── adapter.go
+│       ├── tailwind/
+│       └── unstyled/
+│
+└── (livetemplate/livetemplate remains separate - core framework)
+```
+
+**Pros:**
+- Single repo for evolution system
+- Atomic commits (component fix + lvt update together)
+- Faster iteration cycle
+- Simpler CI/CD
+- One PR for related changes
+
+**Cons:**
+- Larger repo
+- Need to ensure components stay independently importable
+
+### Why Monorepo Works for Independence
+
+Go's module system allows nested modules with independent import paths:
+
+```go
+// External app (not using lvt) can import components directly:
+import "github.com/livetemplate/lvt/components/modal"
+
+// lvt internally imports the same path:
+import "github.com/livetemplate/lvt/components/modal"
+
+// Generated apps also use the same import:
+import "github.com/livetemplate/lvt/components/modal"
+```
+
+The nested `components/go.mod` makes it a separate module:
+
+```go
+// components/go.mod
+module github.com/livetemplate/lvt/components
+
+go 1.25
+
+require github.com/livetemplate/livetemplate v0.8.0
+// Note: NO dependency on github.com/livetemplate/lvt
+```
+
+### Migration Path from Existing Components Repo
+
+```bash
+# 1. Move components code into lvt
+git subtree add --prefix=components \
+    git@github.com:livetemplate/components.git main
+
+# 2. Update components/go.mod with new module path
+# Old: module github.com/livetemplate/components
+# New: module github.com/livetemplate/lvt/components
+
+# 3. Keep old repo as redirect (optional)
+# github.com/livetemplate/components becomes a stub:
+```
+
+```go
+// github.com/livetemplate/components (stub repo)
+// go.mod
+module github.com/livetemplate/components
+
+// Deprecation notice + redirect
+// All packages re-export from new location
+```
+
+```go
+// github.com/livetemplate/components/modal/modal.go (stub)
+package modal
+
+import lvtmodal "github.com/livetemplate/lvt/components/modal"
+
+// Re-export all types and functions
+type State = lvtmodal.State
+type ConfirmState = lvtmodal.ConfirmState
+var New = lvtmodal.New
+var NewConfirm = lvtmodal.NewConfirm
+// ... etc
+```
+
+This provides backward compatibility for any existing users while consolidating development.
+
+---
+
+## Integration Architecture (Monorepo Version)
+
+### Repository Structure
+
+```
++-------------------------------------------------------------------------+
+|                     github.com/livetemplate/lvt                          |
++-------------------------------------------------------------------------+
+|                                                                         |
+|  +-------------------------------------------------------------------+  |
+|  |                     Evolution System                               |  |
+|  |  - Telemetry capture                                               |  |
+|  |  - Fix proposal (single repo - much simpler!)                      |  |
+|  |  - All fixes in same PR                                            |  |
+|  +-------------------------------------------------------------------+  |
+|                                                                         |
+|  +-------------------------------------------------------------------+  |
+|  |                        components/                                 |  |
+|  |  +----------+ +----------+ +----------+ +----------+              |  |
+|  |  |  modal   | |  toast   | | dropdown | |  toggle  |  ...         |  |
+|  |  +----------+ +----------+ +----------+ +----------+              |  |
+|  |                                                                   |  |
+|  |  +------------------------------------------------------+         |  |
+|  |  |  styles/  (adapters: tailwind, bootstrap, etc)       |         |  |
+|  |  +------------------------------------------------------+         |  |
+|  |                                                                   |  |
+|  |  go.mod: github.com/livetemplate/lvt/components                   |  |
+|  |  (independent module - no lvt dependency)                         |  |
+|  +-------------------------------------------------------------------+  |
+|                                                                         |
+|  +-------------------+  +-------------------+  +-------------------+    |
+|  |   Kit: multi      |  |   Kit: single     |  |   Kit: simple     |    |
+|  |  Uses components  |  |  Uses components  |  |  Uses components  |    |
+|  +-------------------+  +-------------------+  +-------------------+    |
+|                                                                         |
++-------------------------------------------------------------------------+
+                                   |
+                                   v
+                    +-----------------------------+
+                    |  livetemplate/livetemplate  |
+                    |      (core framework)       |
+                    |    (remains separate)       |
+                    +-----------------------------+
+```
+
+### Key Principle: One-Way Dependency (Still Applies)
+
+```
+lvt (CLI) --> lvt/components --> livetemplate
+
+lvt/components does NOT depend on lvt (CLI code)
+livetemplate does NOT depend on lvt or lvt/components
+```
+
+This is enforced by the nested go.mod - components cannot import from parent.
+
+### Independence Verification (CI)
+
+```yaml
+# .github/workflows/components-independence.yml
+name: Verify Components Independence
+
+on:
+  push:
+    paths:
+      - 'components/**'
+  pull_request:
+    paths:
+      - 'components/**'
+
+jobs:
+  check-independence:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for lvt imports
+        run: |
+          cd components
+          # Should not import anything from parent lvt module
+          if grep -r '"github.com/livetemplate/lvt"' --include="*.go" .; then
+            echo "ERROR: components must not import lvt CLI"
+            exit 1
+          fi
+          if grep -r '"github.com/livetemplate/lvt/internal' --include="*.go" .; then
+            echo "ERROR: components must not import lvt internals"
+            exit 1
+          fi
+
+      - name: Build components standalone
+        run: |
+          cd components
+          go build ./...
+
+      - name: Test components standalone
+        run: |
+          cd components
+          go test ./...
+
+      - name: Verify go.mod independence
+        run: |
+          cd components
+          # go.mod should only depend on livetemplate, not lvt
+          if grep "github.com/livetemplate/lvt[^/]" go.mod; then
+            echo "ERROR: components/go.mod must not depend on lvt"
+            exit 1
+          fi
+```
+
+---
+
+## Benefits of Monorepo for Evolution System
+
+### Simplified Fix Pipeline
+
+**Multi-repo (complex):**
+```
+1. Detect bug in modal component
+2. Create PR in components repo
+3. Wait for components CI
+4. Merge components PR
+5. Release new components version
+6. Create PR in lvt to bump version
+7. Wait for lvt CI
+8. Merge lvt PR
+```
+
+**Monorepo (simple):**
+```
+1. Detect bug in modal component
+2. Create single PR fixing components/ and updating kits
+3. Wait for CI
+4. Merge
+```
+
+### Atomic Changes
+
+```go
+// Single commit can include:
+// - Fix in components/modal/modal.go
+// - Update in internal/kits/multi/templates/...
+// - New test in e2e/modal_test.go
+
+git commit -m "fix(modal): resolve state sync issue
+
+- Fixed state persistence in modal component
+- Updated multi kit template to use new API
+- Added regression test"
+```
+
+### Simpler Evolution System
+
+```go
+// Evolution system only needs to work with one repo
+type FixProposer struct {
+    repo *git.Repository  // Just one repo!
+}
+
+func (p *FixProposer) ProposeFix(err GenerationError) *Fix {
+    // Determine if fix is in components/ or internal/
+    if isComponentError(err) {
+        return &Fix{
+            File: "components/modal/modal.go",
+            // ...
+        }
+    }
+    return &Fix{
+        File: "internal/kits/multi/templates/...",
+        // ...
+    }
+}
+
+// No need for cross-repo coordination!
+```
+
+---
 
 ## Integration Levels
 
@@ -75,8 +332,8 @@ Generated apps import and use components directly:
 ```go
 // Generated main.go
 import (
-    "github.com/livetemplate/components/modal"
-    "github.com/livetemplate/components/toast"
+    "github.com/livetemplate/lvt/components/modal"
+    "github.com/livetemplate/lvt/components/toast"
     "github.com/livetemplate/livetemplate"
 )
 
@@ -168,276 +425,7 @@ func generateComponentRegistration(components []string) string {
 }
 ```
 
-## Evolution System Integration
-
-### Cross-Repo Telemetry
-
-When a generated app fails, capture which component was involved:
-
-```go
-type GenerationError struct {
-    Phase       string
-    File        string
-    Message     string
-
-    // NEW: Component attribution
-    Component   string  // e.g., "modal", "toast", ""
-    ComponentVersion string
-}
-
-func attributeErrorToComponent(err error, files []string) string {
-    // Analyze error and generated files to determine if a component caused it
-    for _, f := range files {
-        content := readFile(f)
-        if strings.Contains(content, "lvt:modal") && isModalRelated(err) {
-            return "modal"
-        }
-        // ... other components
-    }
-    return ""
-}
-```
-
-### Cross-Repo Fix Proposal
-
-When evolution system identifies a component bug:
-
-```go
-func (p *FixProposer) proposeComponentFix(err GenerationError) *CrossRepoFix {
-    if err.Component == "" {
-        return nil  // Not a component issue
-    }
-
-    return &CrossRepoFix{
-        PrimaryRepo: "livetemplate/components",
-        PrimaryFix: Fix{
-            File:    fmt.Sprintf("%s/templates.go", err.Component),
-            // ... fix details
-        },
-
-        // Also update lvt to use fixed version
-        SecondaryRepo: "livetemplate/lvt",
-        SecondaryFix: Fix{
-            File: "go.mod",
-            Find: fmt.Sprintf("github.com/livetemplate/components v%s", currentVersion),
-            Replace: fmt.Sprintf("github.com/livetemplate/components v%s", newVersion),
-        },
-
-        // Link the PRs
-        LinkedPRs: true,
-    }
-}
-```
-
-### Component Quality Dashboard
-
-Track component health through lvt usage:
-
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                     Component Health Dashboard                           │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                         │
-│  Component    │ Usage (30d) │ Success Rate │ Common Errors │ Status    │
-│  ─────────────┼─────────────┼──────────────┼───────────────┼────────── │
-│  modal        │    847      │    94.2%     │ State sync    │ ⚠️ Needs  │
-│  toast        │    623      │    98.1%     │ Position      │ ✅ Stable │
-│  dropdown     │    412      │    87.3%     │ Selection     │ 🔴 Broken │
-│  data-table   │    156      │    91.4%     │ Pagination    │ ⚠️ Needs  │
-│  toggle       │    534      │    99.2%     │ (none)        │ ✅ Stable │
-│                                                                         │
-│  Recommended actions:                                                   │
-│  1. Fix dropdown selection bug (3 PRs proposed)                        │
-│  2. Investigate modal state sync issue                                  │
-│                                                                         │
-└─────────────────────────────────────────────────────────────────────────┘
-```
-
-## Keeping Components Independent
-
-### Design Constraints
-
-1. **No lvt imports in components:**
-   ```go
-   // components/modal/modal.go
-   import (
-       "github.com/livetemplate/livetemplate"  // OK - core framework
-       // NO: "github.com/livetemplate/lvt/..."  // NEVER
-   )
-   ```
-
-2. **Components work without lvt:**
-   ```go
-   // Standalone usage (no lvt involved)
-   import "github.com/livetemplate/components/modal"
-
-   state := modal.NewConfirm("my-modal", modal.WithTitle("Hello"))
-   tmpl.RegisterComponentTemplates(modal.Templates())
-   ```
-
-3. **Components have own test suite:**
-   ```
-   components/
-   ├── modal/
-   │   ├── modal.go
-   │   ├── modal_test.go      # Unit tests
-   │   └── modal_e2e_test.go  # Standalone E2E tests
-   ```
-
-4. **Components have own examples:**
-   ```
-   components/
-   ├── examples/
-   │   ├── modal-basic/       # Works without lvt
-   │   ├── toast-positions/
-   │   └── full-app/          # Shows all components together
-   ```
-
-### Independence Verification
-
-Add CI check to components repo:
-
-```yaml
-# .github/workflows/independence.yml
-name: Verify Independence
-
-on: [push, pull_request]
-
-jobs:
-  no-lvt-dependency:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Check for lvt imports
-        run: |
-          if grep -r "github.com/livetemplate/lvt" --include="*.go" .; then
-            echo "ERROR: Components must not import lvt"
-            exit 1
-          fi
-
-      - name: Build without lvt
-        run: go build ./...
-
-      - name: Test without lvt
-        run: go test ./...
-```
-
-## Implementation Phases
-
-### Phase 1: Add Components Dependency (Week 1)
-
-```bash
-# In lvt repo
-go get github.com/livetemplate/components@latest
-```
-
-Update `go.mod`:
-```go
-require (
-    github.com/livetemplate/livetemplate v0.8.0
-    github.com/livetemplate/components v0.1.0  // NEW
-)
-```
-
-### Phase 2: Integrate Modal Component (Week 2)
-
-Replace kit modal templates with component usage:
-
-**Before (3 separate implementations):**
-```
-internal/kits/system/multi/templates/components/modal.tmpl
-internal/kits/system/single/templates/components/modal.tmpl
-internal/kits/system/simple/templates/components/modal.tmpl  (missing)
-```
-
-**After (single component):**
-```go
-// Generated handler.go
-import "github.com/livetemplate/components/modal"
-
-type State struct {
-    EditModal   *modal.State
-    DeleteModal *modal.ConfirmState
-}
-```
-
-```html
-<!-- Generated template.tmpl -->
-{{template "lvt:modal:default:v1" .EditModal}}
-{{template "lvt:modal:confirm:v1" .DeleteModal}}
-```
-
-### Phase 3: Integrate Toast Component (Week 3)
-
-Add standardized notifications to all generated apps:
-
-```go
-type State struct {
-    Toasts *toast.ContainerState
-}
-
-func (c *Controller) Create(ctx context.Context, s *State) *State {
-    // ... create logic ...
-    s.Toasts.Add(toast.Success("Item created successfully"))
-    return s
-}
-```
-
-### Phase 4: Evolution System for Components (Week 4)
-
-Extend telemetry to track component usage and failures:
-
-```go
-type GenerationEvent struct {
-    // ... existing fields ...
-
-    ComponentsUsed    []ComponentUsage
-    ComponentErrors   []ComponentError
-}
-
-type ComponentUsage struct {
-    Name    string  // "modal", "toast"
-    Version string  // "v1"
-    Count   int     // How many instances
-}
-
-type ComponentError struct {
-    Component string
-    Version   string
-    Error     string
-    Context   string
-}
-```
-
-### Phase 5: Cross-Repo Fix Pipeline (Week 5-6)
-
-```go
-type CrossRepoFixPipeline struct {
-    lvtRepo        *GitRepo
-    componentsRepo *GitRepo
-}
-
-func (p *CrossRepoFixPipeline) ProposeLinkedFixes(event *GenerationEvent) error {
-    // 1. Identify if issue is in components
-    componentIssues := filterComponentIssues(event.Errors)
-
-    for _, issue := range componentIssues {
-        // 2. Propose fix to components repo
-        componentFix := p.proposeComponentFix(issue)
-        componentPR := p.componentsRepo.CreatePR(componentFix)
-
-        // 3. Propose version bump to lvt repo
-        versionBump := p.proposeVersionBump(componentPR)
-        lvtPR := p.lvtRepo.CreatePR(versionBump)
-
-        // 4. Link the PRs
-        p.linkPRs(componentPR, lvtPR)
-    }
-
-    return nil
-}
-```
+---
 
 ## Component Adoption Priority
 
@@ -451,62 +439,7 @@ Based on git history analysis, prioritize components that address most common is
 | 4 | dropdown | Select synchronization (2+ fixes) | 30% of form bugs |
 | 5 | data-table | List rendering | 20% of display bugs |
 
-## Success Metrics
-
-### For lvt
-
-| Metric | Current | Target (3mo) | Target (6mo) |
-|--------|---------|--------------|--------------|
-| Generation success rate | ~75% | 90% | 95% |
-| Compilation success rate | Unknown | 95% | 99% |
-| Template files maintained | 15+ | 5 | 3 |
-
-### For Components
-
-| Metric | Current | Target (3mo) | Target (6mo) |
-|--------|---------|--------------|--------------|
-| Components at v1 | 0 | 5 | 15 |
-| Test coverage | Unknown | 80% | 95% |
-| lvt-driven bug fixes | 0 | 20 | 50 |
-| Standalone users | 1 (examples) | 10 | 50 |
-
-## Risk Mitigation
-
-### Risk: Component Breaking Change Breaks lvt
-
-**Mitigation:** Version pinning in templates
-
-```html
-{{template "lvt:modal:confirm:v1" .Modal}}  <!-- Pinned to v1 -->
-```
-
-When component releases v2, lvt continues using v1 until explicitly upgraded.
-
-### Risk: Components Become lvt-Specific
-
-**Mitigation:** Independence tests + standalone examples
-
-```yaml
-# Components CI must pass:
-- Build without lvt
-- Test without lvt
-- Example apps work without lvt
-```
-
-### Risk: Two Repos Slow Development
-
-**Mitigation:** Automated cross-repo tooling
-
-```bash
-# Single command to test change across both repos
-lvt dev test-with-components --component-branch=fix-modal-bug
-
-# Runs:
-# 1. Build components from branch
-# 2. Build lvt with local components
-# 3. Run full lvt test suite
-# 4. Report results
-```
+---
 
 ## CSS Styling Architecture
 
@@ -528,35 +461,35 @@ Currently, styling is tightly coupled:
 ### Proposed Architecture: Style Adapters
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         Style Adapter System                             │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                         │
-│  Component/Kit Template                                                 │
-│  ┌─────────────────────────────────────────────────────────────────┐   │
-│  │  <button class="{{styles.Button.Primary}}">Save</button>        │   │
-│  │  <div class="{{styles.Modal.Container}}">...</div>              │   │
-│  └─────────────────────────────────────────────────────────────────┘   │
-│                              │                                          │
-│                              ▼                                          │
-│  ┌─────────────────────────────────────────────────────────────────┐   │
-│  │                    Style Adapter Interface                       │   │
-│  │  type StyleAdapter interface {                                   │   │
-│  │      Button() ButtonStyles                                       │   │
-│  │      Modal() ModalStyles                                         │   │
-│  │      Form() FormStyles                                           │   │
-│  │      // ...                                                      │   │
-│  │  }                                                               │   │
-│  └─────────────────────────────────────────────────────────────────┘   │
-│                              │                                          │
-│          ┌───────────────────┼───────────────────┐                     │
-│          ▼                   ▼                   ▼                      │
-│  ┌───────────────┐  ┌───────────────┐  ┌───────────────┐              │
-│  │   Tailwind    │  │   Bootstrap   │  │   Unstyled    │              │
-│  │    Adapter    │  │    Adapter    │  │    Adapter    │              │
-│  └───────────────┘  └───────────────┘  └───────────────┘              │
-│                                                                         │
-└─────────────────────────────────────────────────────────────────────────┘
++-------------------------------------------------------------------------+
+|                         Style Adapter System                             |
++-------------------------------------------------------------------------+
+|                                                                         |
+|  Component/Kit Template                                                 |
+|  +-------------------------------------------------------------------+  |
+|  |  <button class="{{styles.Button.Primary}}">Save</button>          |  |
+|  |  <div class="{{styles.Modal.Container}}">...</div>                |  |
+|  +-------------------------------------------------------------------+  |
+|                              |                                          |
+|                              v                                          |
+|  +-------------------------------------------------------------------+  |
+|  |                    Style Adapter Interface                         |  |
+|  |  type StyleAdapter interface {                                     |  |
+|  |      Button() ButtonStyles                                         |  |
+|  |      Modal() ModalStyles                                           |  |
+|  |      Form() FormStyles                                             |  |
+|  |      // ...                                                        |  |
+|  |  }                                                                 |  |
+|  +-------------------------------------------------------------------+  |
+|                              |                                          |
+|          +-------------------+-------------------+                      |
+|          v                   v                   v                      |
+|  +---------------+  +---------------+  +---------------+               |
+|  |   Tailwind    |  |   Bootstrap   |  |   Unstyled    |               |
+|  |    Adapter    |  |    Adapter    |  |    Adapter    |               |
+|  +---------------+  +---------------+  +---------------+               |
+|                                                                         |
++-------------------------------------------------------------------------+
 ```
 
 ### Style Adapter Interface
@@ -740,7 +673,7 @@ Users can create custom adapters:
 // mystyles/adapter.go
 package mystyles
 
-import "github.com/livetemplate/components/styles"
+import "github.com/livetemplate/lvt/components/styles"
 
 type Adapter struct{}
 
@@ -804,11 +737,14 @@ Kits use the same style adapter system:
 
 ```
 1. Component Default Style
-        ↓
+        |
+        v
 2. Kit Style Override (optional)
-        ↓
+        |
+        v
 3. App Style Override (optional)
-        ↓
+        |
+        v
 4. Per-Instance Override (optional)
 ```
 
@@ -880,21 +816,30 @@ Evolution system can propose style adapter fixes:
 ```go
 func (p *FixProposer) proposeStyleFix(err StyleError) *Fix {
     return &Fix{
-        Repo:     "livetemplate/components",
-        File:     fmt.Sprintf("styles/%s/adapter.go", err.StyleAdapter),
+        File:     fmt.Sprintf("components/styles/%s/adapter.go", err.StyleAdapter),
         Section:  err.Property,
         // ... fix details
     }
 }
 ```
 
+---
+
 ## Conclusion
 
-Tight integration with components is the right path forward because:
+The **monorepo approach** (components inside lvt) is recommended because:
 
-1. **lvt needs stable components** - Current template drift proves we need single sources of truth
-2. **Components need real usage** - lvt provides thousands of generated apps as test cases
-3. **Evolution system can span both** - Unified feedback loop improves everything
-4. **Independence is maintainable** - One-way dependency + CI checks ensure components stay standalone
+1. **Single feedback loop** - Evolution system only needs to work with one repo
+2. **Atomic changes** - Component fix + kit update in same commit
+3. **Faster iteration** - No cross-repo version coordination
+4. **Independence maintained** - Nested go.mod ensures components stay standalone
+5. **Simpler CI/CD** - One pipeline tests everything together
 
-The key insight is that lvt becomes the **forcing function** for component maturity, while the evolution system provides the **feedback loop** that drives improvement in both.
+The key insight is that Go's module system allows us to have the best of both worlds: a single repo for development velocity, with independent importability for external users.
+
+Components remain usable by anyone via:
+```go
+import "github.com/livetemplate/lvt/components/modal"
+```
+
+And CI ensures they never depend on lvt internals, preserving their standalone nature.
