@@ -482,11 +482,13 @@ Hook telemetry capture into the generation flow so every attempt is recorded.
 **Depends On:** 3.1
 
 **Description:**
-Create a knowledge base that maps error patterns to known fixes. This is the foundation for automated fix proposals.
+Create a knowledge base that maps error patterns to known fixes. Patterns are stored in a **markdown file** for git tracking, easy reading, and LLM editability. This is the foundation for automated fix proposals.
 
 **Tasks:**
 - [ ] Create `internal/evolution/knowledge/` package
+- [ ] Create `evolution/patterns.md` - the source of truth for all patterns
 - [ ] Define `Pattern` struct (matcher + fixes)
+- [ ] Implement markdown parser to load patterns from file
 - [ ] Implement pattern matching against errors
 - [ ] Seed with known patterns from git history:
   - EditingID type mismatch
@@ -494,41 +496,114 @@ Create a knowledge base that maps error patterns to known fixes. This is the fou
   - Form sync issues
   - Session not cleared
   - Import path errors
-- [ ] Allow patterns to be loaded from file (extensible)
+- [ ] Add CLI command: `lvt evolution patterns` to list all patterns
 
 **Acceptance Criteria:**
+- Patterns stored in `evolution/patterns.md` (git-tracked)
 - At least 10 patterns seeded from known issues
 - Pattern matching is fast (<1ms per error)
 - Patterns include confidence scores
-- New patterns can be added without code changes
+- LLMs can propose pattern additions via PR to markdown file
+- `lvt evolution patterns` lists all patterns with stats
 
 **Files to Create:**
 ```
+evolution/
+└── patterns.md            # Source of truth - git tracked
+
 internal/evolution/knowledge/
-├── knowledge.go       # Knowledge base API
-├── patterns.go        # Pattern types
-├── builtin.go         # Built-in patterns
-├── matcher.go         # Pattern matching logic
+├── knowledge.go           # Knowledge base API
+├── parser.go              # Markdown parser for patterns.md
+├── patterns.go            # Pattern types
+├── matcher.go             # Pattern matching logic
 └── knowledge_test.go
 ```
 
-**Built-in Patterns to Include:**
-```go
-var BuiltinPatterns = []Pattern{
-    {
-        ID:         "editing-id-type",
-        Name:       "EditingID Type Mismatch",
-        ErrorRegex: `cannot convert .* to type int.*EditingID`,
-        Fix: Fix{
-            File:    "*/template.tmpl.tmpl",
-            Find:    `{{if ne .EditingID 0}}`,
-            Replace: `{{if ne .EditingID ""}}`,
-        },
-        Confidence: 0.95,
-    },
-    // ... more patterns
-}
+**Patterns Markdown Format (`evolution/patterns.md`):**
+```markdown
+# Evolution Patterns
+
+Known error patterns and their fixes. This file is the source of truth
+for the evolution system's knowledge base.
+
+## Pattern: editing-id-type
+
+**Name:** EditingID Type Mismatch
+**Confidence:** 0.95
+**Added:** 2026-01-15
+**Fix Count:** 0
+**Success Rate:** -
+
+### Description
+EditingID compared as integer but is string type in handler.
+
+### Error Pattern
+- **Phase:** compilation
+- **Message Regex:** `cannot convert .* to type int.*EditingID`
+- **Context Regex:** `EditingID`
+
+### Fix
+- **File:** `*/template.tmpl.tmpl`
+- **Find:** `{{if ne .EditingID 0}}`
+- **Replace:** `{{if ne .EditingID ""}}`
+
+---
+
+## Pattern: modal-state-persistence
+
+**Name:** Modal State Persists After Close
+**Confidence:** 0.90
+**Added:** 2026-01-15
+**Fix Count:** 0
+**Success Rate:** -
+
+### Description
+Modal editing state (IsAdding, EditingID) persists on page reload
+because fields are not marked as transient.
+
+### Error Pattern
+- **Phase:** runtime
+- **Message Regex:** `modal (open|visible) after (reload|refresh)`
+
+### Fix
+- **File:** `*/handler.go.tmpl`
+- **Find:** `EditingID string`
+- **Replace:** `EditingID string \`lvt:"transient"\``
+
+---
+
+## Pattern: form-sync-morphdom
+
+**Name:** Form Values Revert After Update
+**Confidence:** 0.88
+**Added:** 2026-01-15
+**Fix Count:** 0
+**Success Rate:** -
+
+### Description
+Select dropdown values revert to previous state after morphdom
+DOM patching because expected value not preserved.
+
+### Error Pattern
+- **Phase:** runtime
+- **Message Regex:** `(select|dropdown) value (reverted|reset|changed)`
+
+### Fix
+- **File:** `*/components/form.tmpl`
+- **Find:** `<select`
+- **Replace:** `<select data-expected-value="{{.Value}}"`
+
+---
+
+<!-- Add new patterns above this line -->
 ```
+
+**Benefits of Markdown Storage:**
+1. **Git tracked** - full history of pattern changes
+2. **Human readable** - easy to review and understand
+3. **LLM editable** - evolution system can propose pattern additions
+4. **PR reviewable** - pattern changes go through normal review
+5. **No recompile** - add patterns without rebuilding lvt
 
 ---
 

@@ -439,19 +439,135 @@ func (v *ValidationEngine) validateMigrations(appPath string) types.ValidationCh
 
 ## 4. Knowledge Base
 
-### 4.1 Pattern Definition
+**Key Design Decision:** Patterns are stored in a **markdown file** (`evolution/patterns.md`) rather than in code or a database. This enables:
+- Git tracking of pattern history
+- Easy reading by humans and LLMs
+- LLM-proposed pattern additions via PR
+- No recompilation needed to add patterns
+
+### 4.1 Patterns Markdown File
+
+```markdown
+<!-- evolution/patterns.md -->
+# Evolution Patterns
+
+Known error patterns and their fixes. This file is the source of truth
+for the evolution system's knowledge base.
+
+Format: Each pattern is an H2 section with structured subsections.
+
+---
+
+## Pattern: editing-id-type
+
+**Name:** EditingID Type Mismatch
+**Confidence:** 0.95
+**Added:** 2026-01-15
+**Fix Count:** 12
+**Success Rate:** 0.92
+
+### Description
+EditingID compared as integer but is string type in handler.
+This causes compilation errors when templates expect string comparison.
+
+### Error Pattern
+- **Phase:** compilation
+- **Message Regex:** `cannot convert .* to type int.*EditingID`
+- **Context Regex:** `EditingID`
+
+### Fix
+- **File:** `*/template.tmpl.tmpl`
+- **Find:** `{{if ne .EditingID 0}}`
+- **Replace:** `{{if ne .EditingID ""}}`
+- **Is Regex:** false
+
+---
+
+## Pattern: modal-state-persistence
+
+**Name:** Modal State Persists After Close
+**Confidence:** 0.90
+**Added:** 2026-01-15
+**Fix Count:** 8
+**Success Rate:** 0.88
+
+### Description
+Modal editing state (IsAdding, EditingID) persists on page reload
+because fields are not marked as transient.
+
+### Error Pattern
+- **Phase:** runtime
+- **Message Regex:** `modal (open|visible) after (reload|refresh)`
+- **Context Regex:** `(IsAdding|EditingID)`
+
+### Fix
+- **File:** `*/handler.go.tmpl`
+- **Find:** `EditingID string`
+- **Replace:** `EditingID string \`lvt:"transient"\``
+- **Is Regex:** false
+
+---
+
+## Pattern: form-sync-morphdom
+
+**Name:** Form Values Revert After Update
+**Confidence:** 0.88
+**Added:** 2026-01-15
+**Fix Count:** 5
+**Success Rate:** 0.80
+
+### Description
+Select dropdown values revert to previous state after morphdom
+DOM patching because expected value not preserved.
+
+### Error Pattern
+- **Phase:** runtime
+- **Message Regex:** `(select|dropdown) value (reverted|reset|changed)`
+
+### Fix
+- **File:** `*/components/form.tmpl`
+- **Find:** `<select name="{{.Name}}"`
+- **Replace:** `<select name="{{.Name}}" data-expected-value="{{.Value}}"`
+- **Is Regex:** false
+
+---
+
+## Pattern: session-not-cleared
+
+**Name:** Session State Not Cleared on Login
+**Confidence:** 0.88
+**Added:** 2026-01-15
+**Fix Count:** 4
+**Success Rate:** 0.75
+
+### Description
+LiveTemplate session persists stale state after auth changes,
+showing cached IsLoggedIn=false after successful login.
+
+### Error Pattern
+- **Phase:** runtime
+- **Message Regex:** `(IsLoggedIn|session).*(stale|persisted|cached|wrong)`
+
+### Fix
+- **File:** `*/auth/login.go.tmpl`
+- **Find:** `return nil`
+- **Replace:** `ctx.ClearSession()\n\treturn nil`
+- **Is Regex:** false
+
+---
+
+<!-- New patterns are added above this line -->
+<!-- The evolution system can propose new patterns via PR -->
+```
+
+### 4.2 Pattern Types
 
 ```go
-// internal/evolution/knowledge.go
+// internal/evolution/knowledge/types.go
 
-package evolution
+package knowledge
 
-import (
-    "regexp"
-    "strings"
-
-    "github.com/livetemplate/lvt/internal/evolution/types"
-)
+import "regexp"
 
 // Pattern represents a known error pattern and its fix
 type Pattern struct {
@@ -460,65 +576,238 @@ type Pattern struct {
     Description string
 
     // Matching
-    ErrorPhase  string           // Which phase this applies to
+    ErrorPhase  string           // "compilation", "runtime", "template"
     MessageRe   *regexp.Regexp   // Regex to match error message
     ContextRe   *regexp.Regexp   // Regex to match context
 
     // Fix
     Fixes       []FixTemplate
-    Confidence  float64  // How confident are we in this fix
+    Confidence  float64
 
-    // Metadata
-    FixCount    int      // How many times this fix has been applied
-    SuccessRate float64  // Success rate of this fix
+    // Metadata (updated by evolution system)
+    Added       string   // Date added
+    FixCount    int      // Times this fix was applied
+    SuccessRate float64  // Success rate of applications
 }
 
 // FixTemplate describes how to apply a fix
 type FixTemplate struct {
-    File        string  // Relative path or pattern (e.g., "*/template.tmpl.tmpl")
+    File        string  // Glob pattern (e.g., "*/template.tmpl.tmpl")
     FindPattern string  // What to find
     Replace     string  // What to replace with
     IsRegex     bool    // Is FindPattern a regex?
 }
+```
 
-// KnowledgeBase stores all known patterns
+### 4.3 Markdown Parser
+
+```go
+// internal/evolution/knowledge/parser.go
+
+package knowledge
+
+import (
+    "bufio"
+    "os"
+    "regexp"
+    "strings"
+)
+
+// ParsePatternsFile parses evolution/patterns.md
+func ParsePatternsFile(path string) ([]*Pattern, error) {
+    file, err := os.Open(path)
+    if err != nil {
+        return nil, err
+    }
+    defer file.Close()
+
+    var patterns []*Pattern
+    var current *Pattern
+    var section string
+
+    scanner := bufio.NewScanner(file)
+    for scanner.Scan() {
+        line := scanner.Text()
+
+        // New pattern starts with "## Pattern: "
+        if strings.HasPrefix(line, "## Pattern: ") {
+            if current != nil {
+                patterns = append(patterns, current)
+            }
+            current = &Pattern{
+                ID: strings.TrimPrefix(line, "## Pattern: "),
+            }
+            section = ""
+            continue
+        }
+
+        if current == nil {
+            continue
+        }
+
+        // Parse metadata fields
+        if strings.HasPrefix(line, "**Name:**") {
+            current.Name = strings.TrimSpace(strings.TrimPrefix(line, "**Name:**"))
+        } else if strings.HasPrefix(line, "**Confidence:**") {
+            fmt.Sscanf(line, "**Confidence:** %f", &current.Confidence)
+        } else if strings.HasPrefix(line, "**Added:**") {
+            current.Added = strings.TrimSpace(strings.TrimPrefix(line, "**Added:**"))
+        } else if strings.HasPrefix(line, "**Fix Count:**") {
+            fmt.Sscanf(line, "**Fix Count:** %d", &current.FixCount)
+        } else if strings.HasPrefix(line, "**Success Rate:**") {
+            fmt.Sscanf(line, "**Success Rate:** %f", &current.SuccessRate)
+        }
+
+        // Track which section we're in
+        if strings.HasPrefix(line, "### ") {
+            section = strings.TrimPrefix(line, "### ")
+            continue
+        }
+
+        // Parse section content
+        switch section {
+        case "Description":
+            if line != "" && !strings.HasPrefix(line, "#") {
+                current.Description += line + " "
+            }
+        case "Error Pattern":
+            parseErrorPattern(current, line)
+        case "Fix":
+            parseFix(current, line)
+        }
+    }
+
+    // Don't forget the last pattern
+    if current != nil {
+        patterns = append(patterns, current)
+    }
+
+    return patterns, scanner.Err()
+}
+
+func parseErrorPattern(p *Pattern, line string) {
+    if strings.HasPrefix(line, "- **Phase:**") {
+        p.ErrorPhase = extractValue(line)
+    } else if strings.HasPrefix(line, "- **Message Regex:**") {
+        val := extractValue(line)
+        p.MessageRe = regexp.MustCompile(strings.Trim(val, "`"))
+    } else if strings.HasPrefix(line, "- **Context Regex:**") {
+        val := extractValue(line)
+        p.ContextRe = regexp.MustCompile(strings.Trim(val, "`"))
+    }
+}
+
+func parseFix(p *Pattern, line string) {
+    // Initialize fix if needed
+    if len(p.Fixes) == 0 {
+        p.Fixes = []FixTemplate{{}}
+    }
+    fix := &p.Fixes[0]
+
+    if strings.HasPrefix(line, "- **File:**") {
+        fix.File = strings.Trim(extractValue(line), "`")
+    } else if strings.HasPrefix(line, "- **Find:**") {
+        fix.FindPattern = strings.Trim(extractValue(line), "`")
+    } else if strings.HasPrefix(line, "- **Replace:**") {
+        fix.Replace = strings.Trim(extractValue(line), "`")
+    } else if strings.HasPrefix(line, "- **Is Regex:**") {
+        fix.IsRegex = extractValue(line) == "true"
+    }
+}
+
+func extractValue(line string) string {
+    parts := strings.SplitN(line, ":**", 2)
+    if len(parts) == 2 {
+        return strings.TrimSpace(parts[1])
+    }
+    return ""
+}
+```
+
+### 4.4 Knowledge Base API
+
+```go
+// internal/evolution/knowledge/knowledge.go
+
+package knowledge
+
+import (
+    "os"
+    "path/filepath"
+    "sync"
+
+    "github.com/livetemplate/lvt/internal/evolution/types"
+)
+
 type KnowledgeBase struct {
-    patterns map[string]*Pattern
-    store    store.EventStore
+    patterns    map[string]*Pattern
+    patternsFile string
+    mu          sync.RWMutex
 }
 
 func NewKnowledgeBase() *KnowledgeBase {
     kb := &KnowledgeBase{
-        patterns: make(map[string]*Pattern),
-        store:    store.NewSQLiteStore(),
+        patterns:     make(map[string]*Pattern),
+        patternsFile: findPatternsFile(),
     }
-    kb.loadBuiltinPatterns()
-    kb.loadLearnedPatterns()
+    kb.Load()
     return kb
+}
+
+func findPatternsFile() string {
+    // Look for evolution/patterns.md in repo root
+    // or ~/.config/lvt/patterns.md for user patterns
+    candidates := []string{
+        "evolution/patterns.md",
+        filepath.Join(os.Getenv("HOME"), ".config/lvt/patterns.md"),
+    }
+    for _, c := range candidates {
+        if _, err := os.Stat(c); err == nil {
+            return c
+        }
+    }
+    return "evolution/patterns.md"
+}
+
+func (kb *KnowledgeBase) Load() error {
+    kb.mu.Lock()
+    defer kb.mu.Unlock()
+
+    patterns, err := ParsePatternsFile(kb.patternsFile)
+    if err != nil {
+        return err
+    }
+
+    kb.patterns = make(map[string]*Pattern)
+    for _, p := range patterns {
+        kb.patterns[p.ID] = p
+    }
+    return nil
 }
 
 // LookupFixes finds applicable fixes for an error
 func (kb *KnowledgeBase) LookupFixes(err types.GenerationError) []types.Fix {
-    var fixes []types.Fix
+    kb.mu.RLock()
+    defer kb.mu.RUnlock()
 
+    var fixes []types.Fix
     for _, pattern := range kb.patterns {
         if pattern.Matches(err) {
             for _, tmpl := range pattern.Fixes {
                 fix := types.Fix{
-                    ID:         generateFixID(),
-                    PatternID:  pattern.ID,
-                    TargetFile: tmpl.File,
+                    ID:          generateFixID(),
+                    PatternID:   pattern.ID,
+                    TargetFile:  tmpl.File,
                     FindPattern: tmpl.FindPattern,
-                    Replace:    tmpl.Replace,
-                    IsRegex:    tmpl.IsRegex,
-                    Confidence: pattern.Confidence,
-                    Rationale:  pattern.Description,
+                    Replace:     tmpl.Replace,
+                    IsRegex:     tmpl.IsRegex,
+                    Confidence:  pattern.Confidence,
+                    Rationale:   pattern.Description,
                 }
                 fixes = append(fixes, fix)
             }
         }
     }
-
     return fixes
 }
 
@@ -526,132 +815,84 @@ func (p *Pattern) Matches(err types.GenerationError) bool {
     if p.ErrorPhase != "" && p.ErrorPhase != err.Phase {
         return false
     }
-
     if p.MessageRe != nil && !p.MessageRe.MatchString(err.Message) {
         return false
     }
-
     if p.ContextRe != nil && !p.ContextRe.MatchString(err.Context) {
         return false
     }
-
     return true
 }
+
+// ListPatterns returns all patterns for display
+func (kb *KnowledgeBase) ListPatterns() []*Pattern {
+    kb.mu.RLock()
+    defer kb.mu.RUnlock()
+
+    patterns := make([]*Pattern, 0, len(kb.patterns))
+    for _, p := range kb.patterns {
+        patterns = append(patterns, p)
+    }
+    return patterns
+}
 ```
 
-### 4.2 Built-in Patterns
+### 4.5 Updating Pattern Stats
+
+When a fix is applied, update the pattern's stats in the markdown file:
 
 ```go
-// internal/evolution/knowledge_builtin.go
+// internal/evolution/knowledge/updater.go
 
-func (kb *KnowledgeBase) loadBuiltinPatterns() {
-    // Pattern 1: EditingID type mismatch
-    kb.AddPattern(&Pattern{
-        ID:          "editing-id-type",
-        Name:        "EditingID Type Mismatch",
-        Description: "EditingID compared as integer but is string type",
-        ErrorPhase:  "compilation",
-        MessageRe:   regexp.MustCompile(`cannot convert .* to type int`),
-        ContextRe:   regexp.MustCompile(`EditingID`),
-        Fixes: []FixTemplate{
-            {
-                File:        "*/templates/resource/template.tmpl.tmpl",
-                FindPattern: `{{if ne .EditingID 0}}`,
-                Replace:     `{{if ne .EditingID ""}}`,
-            },
-        },
-        Confidence: 0.95,
-    })
+func (kb *KnowledgeBase) RecordFixApplication(patternID string, success bool) error {
+    kb.mu.Lock()
+    defer kb.mu.Unlock()
 
-    // Pattern 2: Missing form sync script
-    kb.AddPattern(&Pattern{
-        ID:          "form-sync-missing",
-        Name:        "Missing Form Sync Script",
-        Description: "morphdom updates don't preserve form values",
-        ErrorPhase:  "runtime",
-        MessageRe:   regexp.MustCompile(`(select value reverted|input value reset)`),
-        Fixes: []FixTemplate{
-            {
-                File:        "*/components/layout.tmpl",
-                FindPattern: `</body>`,
-                Replace:     formSyncScript + "\n</body>",
-            },
-        },
-        Confidence: 0.90,
-    })
+    pattern, ok := kb.patterns[patternID]
+    if !ok {
+        return fmt.Errorf("pattern not found: %s", patternID)
+    }
 
-    // Pattern 3: Missing delete button
-    kb.AddPattern(&Pattern{
-        ID:          "delete-button-missing",
-        Name:        "Delete Button Missing from Edit Modal",
-        Description: "Single kit template missing delete functionality",
-        ErrorPhase:  "generation",
-        MessageRe:   regexp.MustCompile(`delete functionality not found`),
-        Fixes: []FixTemplate{
-            {
-                File:        "*/single/templates/resource/template.tmpl.tmpl",
-                FindPattern: `<button type="button" lvt-click="cancel_edit">Cancel</button>`,
-                Replace:     deleteButtonTemplate + `<button type="button" lvt-click="cancel_edit">Cancel</button>`,
-            },
-        },
-        Confidence: 0.85,
-    })
+    // Update stats
+    oldCount := pattern.FixCount
+    oldRate := pattern.SuccessRate
 
-    // Pattern 4: Session not cleared
-    kb.AddPattern(&Pattern{
-        ID:          "session-not-cleared",
-        Name:        "Session State Not Cleared on Login",
-        Description: "LiveTemplate session persists stale state after auth changes",
-        ErrorPhase:  "runtime",
-        MessageRe:   regexp.MustCompile(`(IsLoggedIn|session).*(stale|persisted|cached)`),
-        Fixes: []FixTemplate{
-            {
-                File:        "*/auth/login.go.tmpl",
-                FindPattern: `return nil`,
-                Replace:     "ctx.ClearSession()\nreturn nil",
-            },
-        },
-        Confidence: 0.88,
-    })
+    pattern.FixCount++
+    if oldCount == 0 {
+        if success {
+            pattern.SuccessRate = 1.0
+        } else {
+            pattern.SuccessRate = 0.0
+        }
+    } else {
+        // Weighted average
+        totalSuccess := oldRate * float64(oldCount)
+        if success {
+            totalSuccess++
+        }
+        pattern.SuccessRate = totalSuccess / float64(pattern.FixCount)
+    }
 
-    // Pattern 5: Import path incorrect
-    kb.AddPattern(&Pattern{
-        ID:          "hardcoded-import",
-        Name:        "Hardcoded Import Path",
-        Description: "Import uses hardcoded path instead of module name",
-        ErrorPhase:  "compilation",
-        MessageRe:   regexp.MustCompile(`cannot find package.*database/models`),
-        Fixes: []FixTemplate{
-            {
-                File:        "*/handler.go.tmpl",
-                FindPattern: `"/database/models"`,
-                Replace:     `"[[.ModuleName]]/database/models"`,
-                IsRegex:     false,
-            },
-        },
-        Confidence: 0.92,
-    })
+    // Update the markdown file
+    return kb.updatePatternsFile()
 }
 
-const formSyncScript = `<script>
-(function() {
-    function syncFormValues() {
-        document.querySelectorAll('select[data-expected-value]').forEach(function(select) {
-            var expected = select.getAttribute('data-expected-value');
-            if (select.value !== expected) {
-                select.value = expected;
-            }
-        });
-    }
-    syncFormValues();
-    var observer = new MutationObserver(function() { syncFormValues(); });
-    observer.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['data-expected-value'] });
-})();
-</script>`
-
-const deleteButtonTemplate = `<button type="button" lvt-click="delete" lvt-data-id="{{.EditingID}}" lvt-confirm="Are you sure you want to delete this?">Delete</button>
-`
+func (kb *KnowledgeBase) updatePatternsFile() error {
+    // Re-generate the patterns.md file with updated stats
+    // This keeps the file as source of truth
+    return WritePatternsFile(kb.patternsFile, kb.ListPatterns())
+}
 ```
+
+### 4.6 Benefits of Markdown Storage
+
+1. **Git Tracked** - Full history of pattern changes, who added what
+2. **Human Readable** - Easy to review and understand patterns
+3. **LLM Editable** - Evolution system can propose new patterns via PR
+4. **PR Reviewable** - Pattern additions go through normal code review
+5. **No Recompile** - Add patterns without rebuilding lvt binary
+6. **Portable** - Users can copy/share pattern files
+7. **Debuggable** - Easy to see why a fix was proposed
 
 ---
 
