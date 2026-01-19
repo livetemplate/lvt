@@ -59,26 +59,41 @@ This document specifies the technical design for a self-improving generation sys
 
 ```
 internal/
-├── evolution/
+├── validation/               # Separate validation package (Issue 2.1)
+│   ├── validation.go         # Main engine and types
+│   ├── go_mod.go             # go.mod validation
+│   ├── compilation.go        # Go build validation
+│   ├── templates.go          # Template parse validation
+│   ├── migrations.go         # Migration validation
+│   └── runtime.go            # Runtime validation (Issue 2.4)
+├── telemetry/                # Event capture (Issue 3.1)
+│   ├── telemetry.go          # Main API
+│   ├── events.go             # Event types
+│   ├── store.go              # Storage interface
+│   └── sqlite.go             # SQLite implementation
+├── evolution/                # Self-improvement system
 │   ├── evolution.go          # Main entry point
-│   ├── telemetry.go          # Event capture and storage
-│   ├── validator.go          # Generation validation
-│   ├── proposer.go           # Fix proposal logic
-│   ├── knowledge.go          # Pattern → Fix knowledge base
-│   ├── tester.go             # Fix testing in isolation
+│   ├── proposer.go           # Fix proposal logic (Issue 3.4)
+│   ├── tester.go             # Fix testing in isolation (Issue 3.5)
 │   ├── reviewer.go           # Review queue management
 │   ├── skill_metrics.go      # Skill effectiveness tracking
 │   ├── skill_improver.go     # Skill improvement proposals
 │   └── git_integration.go    # Git operations
-├── evolution/store/
-│   ├── store.go              # Event store interface
-│   ├── sqlite.go             # SQLite implementation
-│   └── schema.sql            # Database schema
-└── evolution/types/
-    ├── events.go             # Event type definitions
-    ├── fixes.go              # Fix type definitions
-    └── metrics.go            # Metrics type definitions
+├── evolution/knowledge/      # Pattern knowledge base (Issue 3.2)
+│   ├── knowledge.go          # Knowledge base API
+│   ├── parser.go             # Markdown parser for patterns.md
+│   ├── matcher.go            # Error-to-pattern matching
+│   └── types.go              # Pattern, Fix types
+└── evolution/store/          # Event persistence
+    ├── store.go              # Event store interface
+    ├── sqlite.go             # SQLite implementation
+    └── schema.sql            # Database schema
+
+evolution/
+└── patterns.md               # Source of truth - git tracked (see Section 4)
 ```
+
+> **Note:** This package structure aligns with IMPLEMENTATION_PLAN.md milestones 2 and 3.
 
 ---
 
@@ -1320,6 +1335,125 @@ Respond with:
     }
 
     return parseReviewDecision(response)
+}
+```
+
+### 7.3 Upstream Library Evolution
+
+The evolution system can propose fixes not just to lvt templates, but also to upstream repos in the LiveTemplate ecosystem:
+
+**Target Repositories:**
+- `github.com/livetemplate/livetemplate` - Core Go library (session, rendering, WebSocket)
+- `github.com/livetemplate/client` - Client-side JavaScript (morphdom config, reconnection)
+- `github.com/livetemplate/components` - Reusable UI components (to be merged into lvt)
+
+```go
+// internal/evolution/upstream.go
+
+package evolution
+
+type UpstreamFix struct {
+    Fix                            // Embed standard fix
+    UpstreamRepo    string         // Target repo
+    UpstreamBranch  string         // Branch to base PR on (usually "main")
+    RequiresRelease bool           // Whether fix needs upstream release to take effect
+    MinVersion      string         // If RequiresRelease, what version constraint to add
+}
+
+// UpstreamProposer creates PRs to upstream repos
+type UpstreamProposer struct {
+    git       *GitClient
+    gh        *GitHubClient
+    knowledge *Knowledge
+}
+
+func (p *UpstreamProposer) ProposeUpstreamFix(pattern *Pattern, event types.GenerationEvent) (*UpstreamFix, error) {
+    if pattern.UpstreamRepo == "" {
+        return nil, nil // Not an upstream pattern
+    }
+
+    fix := &UpstreamFix{
+        Fix: Fix{
+            PatternID:   pattern.ID,
+            TargetFile:  pattern.Fix.File,
+            FindPattern: pattern.Fix.Find,
+            Replace:     pattern.Fix.Replace,
+            IsRegex:     pattern.Fix.IsRegex,
+            Confidence:  pattern.Confidence,
+            Rationale:   fmt.Sprintf("Fix pattern %s: %s", pattern.ID, pattern.Name),
+        },
+        UpstreamRepo:    pattern.UpstreamRepo,
+        UpstreamBranch:  "main",
+        RequiresRelease: true,
+    }
+
+    return fix, nil
+}
+
+func (p *UpstreamProposer) CreateUpstreamPR(fix *UpstreamFix) (*PullRequest, error) {
+    // Clone or update upstream repo
+    repoPath, err := p.git.EnsureRepo(fix.UpstreamRepo)
+    if err != nil {
+        return nil, err
+    }
+
+    // Create branch
+    branchName := fmt.Sprintf("evolution/%s", fix.PatternID)
+    if err := p.git.CreateBranch(repoPath, branchName); err != nil {
+        return nil, err
+    }
+
+    // Apply fix
+    if err := applyFix(repoPath, &fix.Fix); err != nil {
+        return nil, err
+    }
+
+    // Run upstream tests
+    if err := p.runUpstreamTests(repoPath); err != nil {
+        return nil, fmt.Errorf("upstream tests failed: %w", err)
+    }
+
+    // Create PR
+    body := fmt.Sprintf(`## Auto-generated by lvt evolution system
+
+This fix was identified by the lvt code generator's evolution system.
+
+**Pattern**: %s
+**Confidence**: %.2f
+
+### Rationale
+%s
+
+### Evidence
+- Error message: %s
+- Context: %s
+
+---
+*This PR was created automatically. Please review carefully.*
+`, fix.PatternID, fix.Confidence, fix.Rationale,
+   fix.OriginalError, fix.ErrorContext)
+
+    return p.gh.CreatePR(fix.UpstreamRepo, branchName, fix.UpstreamBranch,
+        fmt.Sprintf("[evolution] %s", fix.PatternID), body)
+}
+```
+
+**Workflow for Upstream Fixes:**
+
+1. **Detection**: Pattern with `UpstreamRepo` field matches an error
+2. **Validation**: Fix is tested against a local clone of the upstream repo
+3. **PR Creation**: Automated PR is created with evidence and rationale
+4. **Tracking**: lvt tracks the PR status and updates pattern when merged
+5. **Version Bump**: After upstream release, lvt updates its go.mod dependency
+
+```go
+// After upstream fix is merged and released
+func (p *UpstreamProposer) HandleUpstreamMerge(fix *UpstreamFix, newVersion string) error {
+    // Update go.mod to require the new version
+    if fix.RequiresRelease {
+        return p.updateGoMod(fix.UpstreamRepo, newVersion)
+    }
+    return nil
 }
 ```
 

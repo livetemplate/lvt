@@ -388,9 +388,10 @@ Beyond compilation, verify the generated app can actually start. This catches ru
 
 ## Milestone 3: Telemetry & Evolution
 
-**Goal:** Capture generation events and build the foundation for self-improvement.
+**Goal:** Capture generation events and build the foundation for self-improvement, including ability to propose fixes to upstream LiveTemplate ecosystem repos.
 
 **Duration:** 2 weeks
+**Issues:** 7 (3.1-3.7)
 
 ### Issue 3.1: Create Telemetry Package
 
@@ -692,6 +693,62 @@ Add CLI commands to interact with the evolution system.
 **Files to Create/Modify:**
 - Create `commands/evolution.go`
 - Modify `main.go` to register commands
+
+---
+
+### Issue 3.7: Add Upstream Library Evolution Support
+
+**Priority:** Medium
+**Labels:** `evolution`, `upstream`
+**Depends On:** 3.2, 3.4, 3.5
+
+**Description:**
+Extend the evolution system to propose fixes not just to lvt templates, but also to upstream LiveTemplate ecosystem repos. Some bugs originate in the core library or client code, and the evolution system should be able to track and propose fixes there.
+
+**Evidence from git history:**
+- Multiple session-related fixes trace to livetemplate/livetemplate
+- morphdom sync issues trace to livetemplate/client
+- These patterns are documented in `evolution/patterns.md` under "Upstream Patterns"
+
+**Tasks:**
+- [ ] Add `UpstreamRepo` field parsing to pattern markdown parser
+- [ ] Create `internal/evolution/upstream.go` with upstream fix logic
+- [ ] Implement upstream repo cloning/updating for fix testing
+- [ ] Implement PR creation to upstream repos (requires GitHub token)
+- [ ] Add `lvt evolution upstream-status` command to track pending upstream PRs
+- [ ] Add tracking for when upstream fixes are merged and released
+- [ ] Auto-update go.mod when upstream releases include our fixes
+
+**Acceptance Criteria:**
+- Patterns with `UpstreamRepo` field are correctly parsed
+- Upstream fixes can be tested against local clone of upstream repo
+- PRs can be created to upstream repos with proper evidence
+- CLI shows status of pending upstream PRs
+- go.mod is updated when upstream fixes are released
+
+**Files to Create/Modify:**
+- Create `internal/evolution/upstream.go`
+- Modify `internal/evolution/knowledge/parser.go` to handle UpstreamRepo
+- Modify `commands/evolution.go` to add upstream commands
+
+**Technical Notes:**
+```go
+// Pattern with upstream repo field
+pattern := &Pattern{
+    ID:           "morphdom-select-sync",
+    UpstreamRepo: "github.com/livetemplate/client",
+    Fix: Fix{
+        File: "src/morphdom-config.js",
+        // ...
+    },
+}
+
+// Upstream fix workflow
+proposer := evolution.NewUpstreamProposer(git, gh, knowledge)
+fix, _ := proposer.ProposeUpstreamFix(pattern, event)
+pr, _ := proposer.CreateUpstreamPR(fix)
+// Track PR status and handle merge
+```
 
 ---
 

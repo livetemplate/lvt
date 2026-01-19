@@ -307,6 +307,103 @@ Evidence: Commit `3af9a87` excluded EditingItem from JSON serialization.
 
 ---
 
+## Upstream Patterns
+
+Patterns in this section target the upstream LiveTemplate ecosystem repos, not just lvt. When these patterns match, fixes are proposed as PRs to the appropriate upstream repository.
+
+**Upstream Repos:**
+- `github.com/livetemplate/livetemplate` - Core Go library
+- `github.com/livetemplate/client` - Client-side JavaScript (morphdom, WebSocket)
+- `github.com/livetemplate/components` - Reusable components (to be merged into lvt)
+
+---
+
+## Pattern: morphdom-select-sync
+
+**Name:** Morphdom Drops Select Values
+**Confidence:** 0.85
+**Added:** 2026-01-19
+**Fix Count:** 0
+**Success Rate:** -
+**Upstream Repo:** github.com/livetemplate/client
+
+### Description
+
+Morphdom DOM patching can drop `<select>` element values during updates because it compares DOM value (user selection) vs attribute value. Requires custom `onBeforeElUpdated` hook.
+
+Evidence: Multiple fixes in lvt (bd536bf) and client repo for form state preservation.
+
+### Error Pattern
+
+- **Phase:** runtime
+- **Message Regex:** `(select|dropdown).*(lost|dropped|reset|wrong).*(value|selection)`
+
+### Fix
+
+- **File:** `src/morphdom-config.js`
+- **Find:** `onBeforeElUpdated: function(fromEl, toEl)`
+- **Replace:** `onBeforeElUpdated: function(fromEl, toEl) { if (fromEl.tagName === 'SELECT') { toEl.value = fromEl.value; } }`
+- **Is Regex:** false
+
+---
+
+## Pattern: websocket-reconnect-state
+
+**Name:** WebSocket Reconnect Loses State
+**Confidence:** 0.80
+**Added:** 2026-01-19
+**Fix Count:** 0
+**Success Rate:** -
+**Upstream Repo:** github.com/livetemplate/client
+
+### Description
+
+When WebSocket reconnects after network interruption, client state can be lost because the server session was cleared. Client should request state resync on reconnect.
+
+### Error Pattern
+
+- **Phase:** runtime
+- **Message Regex:** `(reconnect|disconnect).*(state|data).*(lost|missing|stale)`
+
+### Fix
+
+- **File:** `src/websocket.js`
+- **Find:** `onReconnect: function()`
+- **Replace:** `onReconnect: function() { this.requestStateResync(); }`
+- **Is Regex:** false
+
+---
+
+## Pattern: session-marshal-cycle
+
+**Name:** Session Marshal/Unmarshal Loses Custom Types
+**Confidence:** 0.82
+**Added:** 2026-01-19
+**Fix Count:** 0
+**Success Rate:** -
+**Upstream Repo:** github.com/livetemplate/livetemplate
+
+### Description
+
+Custom struct types in session state may lose type information during gob encoding/decoding cycle, causing runtime panics when type-asserting session values.
+
+Evidence: Session clearing issues in commits 0589544, a55b2b5, fa25417.
+
+### Error Pattern
+
+- **Phase:** runtime
+- **Message Regex:** `(panic|interface conversion).*(session|state)`
+- **Context Regex:** `gob|marshal`
+
+### Fix
+
+- **File:** `session/session.go`
+- **Find:** `gob.Register(make(map[string]interface{}))`
+- **Replace:** `gob.Register(make(map[string]interface{}))\n\t// Register custom types used in session\n\tgob.Register(UserSession{})`
+- **Is Regex:** false
+
+---
+
 <!-- TEMPLATE FOR NEW PATTERNS
 
 Copy everything below to add a new pattern:
@@ -318,6 +415,7 @@ Copy everything below to add a new pattern:
 **Added:** YYYY-MM-DD
 **Fix Count:** 0
 **Success Rate:** -
+**Upstream Repo:** (optional) github.com/livetemplate/livetemplate | client | components
 
 ### Description
 
@@ -336,5 +434,13 @@ Include evidence (commit hash, issue number) if available.
 - **Find:** `exact text or regex to find`
 - **Replace:** `replacement text`
 - **Is Regex:** false | true
+
+### Fix 2 (optional)
+
+For fixes spanning multiple files or repos:
+- **File:** `another/file.ext`
+- **Find:** `text to find`
+- **Replace:** `replacement`
+- **Is Regex:** false
 
 -->

@@ -820,82 +820,36 @@ func (r *FixReviewer) autoApply(fix Fix) {
 
 **Skill Quality Metrics:**
 
+> **Note:** See [EVOLUTION_SYSTEM_SPEC.md](./EVOLUTION_SYSTEM_SPEC.md#8-skill-evolution-pipeline) for the full `SkillMetrics` type definition and implementation details.
+
+The evolution system tracks metrics for each skill to identify which need improvement:
+
 ```go
 // internal/evolution/skill_metrics.go
+// Simplified example - see EVOLUTION_SYSTEM_SPEC.md for full implementation
 
-type SkillMetrics struct {
-    SkillName       string
-    UsageCount      int
-    SuccessRate     float64  // Apps that compiled
-    RuntimeRate     float64  // Apps that ran
-    UserSatisfaction float64 // If feedback available
-    AverageSteps    float64  // Steps to complete task
-    DeviationRate   float64  // How often LLM deviated from skill
-}
-
-func ComputeSkillMetrics(skillName string, events []GenerationEvent) *SkillMetrics {
-    relevant := filterBySkill(events, skillName)
-
-    return &SkillMetrics{
-        SkillName:    skillName,
-        UsageCount:   len(relevant),
-        SuccessRate:  computeSuccessRate(relevant),
-        RuntimeRate:  computeRuntimeRate(relevant),
-        DeviationRate: computeDeviationRate(relevant),
-    }
-}
+metrics := evolution.ComputeSkillMetrics("add-resource", events)
+// metrics.SuccessRate       - Apps that compiled successfully
+// metrics.CompilationSuccessRate - Compilation success rate
+// metrics.AverageErrors     - Average errors per generation
+// metrics.CommonErrors      - Most frequent error patterns
 ```
 
 **Skill Improvement Proposer:**
 
+> **Note:** See [EVOLUTION_SYSTEM_SPEC.md](./EVOLUTION_SYSTEM_SPEC.md#82-skill-improvement-proposals) for the full `SkillImprover` implementation.
+
+The skill improver uses LLM analysis to propose changes when metrics indicate poor performance:
+
 ```go
 // internal/evolution/skill_improver.go
+// Simplified example - see EVOLUTION_SYSTEM_SPEC.md for full implementation
 
-type SkillImprover struct {
-    LLMClient *LLMClient
-}
-
-func (i *SkillImprover) ProposeImprovements(metrics *SkillMetrics, failures []GenerationEvent) []SkillChange {
-    if metrics.SuccessRate > 0.95 && metrics.DeviationRate < 0.05 {
-        // Skill is working well
-        return nil
-    }
-
-    prompt := fmt.Sprintf(`
-Analyze this skill's performance and propose improvements:
-
-Skill: %s
-Usage Count: %d
-Success Rate: %.2f
-Deviation Rate: %.2f
-
-Recent Failures:
-%s
-
-Current Skill Content:
-%s
-
-Propose specific changes to improve the skill's effectiveness.
-Focus on:
-1. Making instructions clearer
-2. Adding constraints to prevent deviations
-3. Adding error handling guidance
-4. Adding validation steps
-
-Output format:
-CHANGE 1:
-SECTION: <section name>
-OLD:
-<old content>
-NEW:
-<new content>
-RATIONALE: <why this helps>
-`, metrics.SkillName, metrics.UsageCount, metrics.SuccessRate,
-        metrics.DeviationRate, formatFailures(failures), getSkillContent(metrics.SkillName))
-
-    response := i.LLMClient.Generate(prompt)
-    return parseSkillChanges(response)
-}
+improver := evolution.NewSkillImprover(llmClient)
+changes := improver.ProposeImprovements(metrics, failures)
+// Returns []SkillChange with:
+// - SkillName, Section, Old/New content, Rationale
+// - Estimated impact on success rate
 ```
 
 ---
