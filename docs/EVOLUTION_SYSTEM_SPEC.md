@@ -1345,7 +1345,8 @@ The evolution system can propose fixes not just to lvt templates, but also to up
 **Target Repositories:**
 - `github.com/livetemplate/livetemplate` - Core Go library (session, rendering, WebSocket)
 - `github.com/livetemplate/client` - Client-side JavaScript (morphdom config, reconnection)
-- `github.com/livetemplate/components` - Reusable UI components (to be merged into lvt)
+
+> **Note on Components:** The components library lives inside lvt as a nested module at `github.com/livetemplate/lvt/components` (monorepo approach). Component fixes are handled directly in lvt PRs, not as upstream fixes. See [COMPONENTS_INTEGRATION_STRATEGY.md](./COMPONENTS_INTEGRATION_STRATEGY.md) for details.
 
 ```go
 // internal/evolution/upstream.go

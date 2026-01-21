@@ -314,7 +314,10 @@ Patterns in this section target the upstream LiveTemplate ecosystem repos, not j
 **Upstream Repos:**
 - `github.com/livetemplate/livetemplate` - Core Go library
 - `github.com/livetemplate/client` - Client-side JavaScript (morphdom, WebSocket)
-- `github.com/livetemplate/components` - Reusable components (to be merged into lvt)
+
+> **Note on Components:** The components library is a nested module inside lvt at
+> `github.com/livetemplate/lvt/components` (monorepo approach). Component fixes
+> are regular lvt patterns, not upstream patterns.
 
 ---
 
