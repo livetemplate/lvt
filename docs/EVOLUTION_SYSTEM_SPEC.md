@@ -31,7 +31,7 @@ This document specifies the technical design for a self-improving generation sys
 │           ▼                    ▼                    ▼                       │
 │  ┌─────────────────────────────────────────────────────────────┐           │
 │  │                      Event Store                             │           │
-│  │              (SQLite: ~/.config/lvt/evolution.db)            │           │
+│  │              (SQLite: $XDG_CONFIG_HOME/lvt/evolution.db)            │           │
 │  └─────────────────────────────────────────────────────────────┘           │
 │           │                    │                    │                       │
 │           ▼                    ▼                    ▼                       │
@@ -384,7 +384,8 @@ func (v *ValidationEngine) validateGoMod(appPath string) types.ValidationCheck {
 }
 
 func (v *ValidationEngine) validateCompilation(appPath string) types.ValidationCheck {
-    cmd := exec.Command("go", "build", "-o", "/dev/null", "./...")
+    // Use os.DevNull for cross-platform compatibility
+    cmd := exec.Command("go", "build", "-o", os.DevNull, "./...")
     cmd.Dir = appPath
     cmd.Env = append(os.Environ(), "CGO_ENABLED=1")
 
@@ -700,16 +701,25 @@ func ParsePatternsFile(path string) ([]*Pattern, error) {
     return patterns, scanner.Err()
 }
 
-func parseErrorPattern(p *Pattern, line string) {
+func parseErrorPattern(p *Pattern, line string) error {
     if strings.HasPrefix(line, "- **Phase:**") {
         p.ErrorPhase = extractValue(line)
     } else if strings.HasPrefix(line, "- **Message Regex:**") {
         val := extractValue(line)
-        p.MessageRe = regexp.MustCompile(strings.Trim(val, "`"))
+        re, err := regexp.Compile(strings.Trim(val, "`"))
+        if err != nil {
+            return fmt.Errorf("invalid message regex in pattern %s: %w", p.ID, err)
+        }
+        p.MessageRe = re
     } else if strings.HasPrefix(line, "- **Context Regex:**") {
         val := extractValue(line)
-        p.ContextRe = regexp.MustCompile(strings.Trim(val, "`"))
+        re, err := regexp.Compile(strings.Trim(val, "`"))
+        if err != nil {
+            return fmt.Errorf("invalid context regex in pattern %s: %w", p.ID, err)
+        }
+        p.ContextRe = re
     }
+    return nil
 }
 
 func parseFix(p *Pattern, line string) {
@@ -771,7 +781,7 @@ func NewKnowledgeBase() *KnowledgeBase {
 
 func findPatternsFile() string {
     // Look for evolution/patterns.md in repo root
-    // or ~/.config/lvt/patterns.md for user patterns
+    // or $XDG_CONFIG_HOME/lvt/patterns.md for user patterns
     candidates := []string{
         "evolution/patterns.md",
         filepath.Join(os.Getenv("HOME"), ".config/lvt/patterns.md"),
@@ -1122,7 +1132,10 @@ func (t *FixTester) applyFix(testDir string, fix types.Fix) error {
 
         var newContent string
         if fix.IsRegex {
-            re := regexp.MustCompile(fix.FindPattern)
+            re, err := regexp.Compile(fix.FindPattern)
+            if err != nil {
+                return fmt.Errorf("invalid fix regex pattern: %w", err)
+            }
             newContent = re.ReplaceAllString(string(content), fix.Replace)
         } else {
             newContent = strings.Replace(string(content), fix.FindPattern, fix.Replace, -1)
@@ -1199,7 +1212,7 @@ type FixReviewer struct {
 
 func NewFixReviewer(threshold float64) *FixReviewer {
     return &FixReviewer{
-        autoApplyThreshold: threshold,  // e.g., 0.90
+        autoApplyThreshold: threshold,  // Default: 0.95 (conservative for v1)
         queue:              NewReviewQueue(),
         git:                NewGitIntegration(),
     }
@@ -1837,7 +1850,7 @@ func EvolutionReview(args []string) {
 ### 11.1 Evolution Config
 
 ```yaml
-# ~/.config/lvt/evolution.yaml
+# $XDG_CONFIG_HOME/lvt/evolution.yaml
 
 enabled: true
 
@@ -1860,12 +1873,13 @@ fix_proposal:
   max_llm_calls_per_day: 100
 
 # Auto-apply settings
+# IMPORTANT: For v1, recommend enabled: false until system is proven
 auto_apply:
-  enabled: true
-  confidence_threshold: 0.90
+  enabled: false  # Start with human review only
+  confidence_threshold: 0.95  # Conservative threshold when enabled
   require_all_tests_pass: true
-  create_pr: true
-  auto_merge: false
+  create_pr: true  # Always create PR, never direct commit
+  auto_merge: false  # Require human approval to merge
 
 # Skill improvement settings
 skill_improvement:
@@ -1873,6 +1887,157 @@ skill_improvement:
   check_interval_hours: 24
   improvement_threshold: 0.85  # Below this success rate, propose improvements
 ```
+
+---
+
+## 12. Security Considerations
+
+### 12.1 Threat Model
+
+The evolution system introduces several security considerations:
+
+| Threat | Risk Level | Mitigation |
+|--------|------------|------------|
+| Malicious patterns in knowledge base | Medium | Pattern PRs require human review; patterns.md is git-tracked |
+| LLM-generated fixes introduce vulnerabilities | High | All fixes must pass validation; auto-apply disabled by default |
+| Telemetry data exposure | Medium | Local SQLite storage; no external transmission without consent |
+| Code injection via regex patterns | Medium | Validate regex patterns at parse time; sandbox fix testing |
+| Privilege escalation in fix application | Low | Fixes only modify template files; no system commands |
+
+### 12.2 Security Checklist
+
+Before enabling auto-apply or LLM-generated fixes:
+
+- [ ] **Pattern Review**: All patterns in `evolution/patterns.md` reviewed by security team
+- [ ] **Sandbox Testing**: Fix tester runs in isolated environment (temp directory, no network)
+- [ ] **Input Validation**: All user inputs and pattern regexes validated and bounded
+- [ ] **Output Sanitization**: Generated code scanned for common vulnerabilities (SQLi, XSS)
+- [ ] **Audit Logging**: All fix applications logged with before/after diffs
+- [ ] **Rollback Capability**: Every auto-applied fix can be reverted via git
+- [ ] **Rate Limiting**: LLM API calls rate-limited to prevent abuse/cost overrun
+- [ ] **Secrets Handling**: Telemetry excludes sensitive data (env vars, credentials)
+
+### 12.3 Recommended Security Posture by Phase
+
+| Phase | Auto-Apply | LLM Fixes | Human Review |
+|-------|------------|-----------|--------------|
+| v1.0 (Initial) | Disabled | Disabled | All fixes |
+| v1.1 (Validated) | High-confidence only (≥0.98) | Disabled | Medium/low confidence |
+| v2.0 (Mature) | ≥0.95 confidence | Enabled with review | Low confidence only |
+
+---
+
+## 13. Migration Strategy
+
+### 13.1 For Existing lvt Users
+
+Users with existing lvt-generated apps can adopt the evolution system gradually:
+
+**Phase 1: Opt-in Telemetry**
+```bash
+# Enable telemetry to start collecting data
+export LVT_TELEMETRY=true
+lvt gen resource ...
+```
+
+**Phase 2: Validation Only**
+```bash
+# Enable validation without evolution
+lvt gen resource --validate
+```
+
+**Phase 3: Evolution Monitoring**
+```bash
+# View evolution metrics without applying fixes
+lvt evolution status
+lvt evolution failures --last 30d
+```
+
+**Phase 4: Reviewed Fixes**
+```bash
+# Review and apply fixes manually
+lvt evolution propose <event-id>
+lvt evolution apply <fix-id> --dry-run
+lvt evolution apply <fix-id>
+```
+
+### 13.2 Breaking Changes
+
+The evolution system introduces no breaking changes to the lvt CLI. All new features are:
+- **Opt-in**: Telemetry disabled by default
+- **Additive**: New commands don't affect existing workflows
+- **Backward Compatible**: Generated apps unchanged unless fixes applied
+
+### 13.3 Rollback Procedure
+
+If a fix causes issues:
+
+```bash
+# View recent auto-applied fixes
+lvt evolution history --auto-applied
+
+# Revert a specific fix
+git revert <commit-hash>
+
+# Or restore from backup
+lvt evolution restore --before <fix-id>
+```
+
+---
+
+## 14. Success Metrics
+
+### 14.1 Baseline Metrics (Current State)
+
+Before implementing the evolution system, establish baselines:
+
+| Metric | Current (Estimated) | Target |
+|--------|---------------------|--------|
+| Generation success rate | ~60% | 95% |
+| Compilation success rate | ~75% | 99% |
+| Template parse success | ~85% | 100% |
+| Time to fix known issues | Days-weeks | Hours |
+| Pattern coverage | 0 patterns | 50+ patterns |
+
+### 14.2 Key Performance Indicators (KPIs)
+
+Track these metrics weekly:
+
+```sql
+-- Generation success rate (last 7 days)
+SELECT
+    COUNT(*) as total,
+    SUM(CASE WHEN success THEN 1 ELSE 0 END) as successful,
+    ROUND(100.0 * SUM(CASE WHEN success THEN 1 ELSE 0 END) / COUNT(*), 2) as success_rate
+FROM generation_events
+WHERE timestamp > datetime('now', '-7 days');
+
+-- Fix effectiveness
+SELECT
+    pattern_id,
+    COUNT(*) as fix_count,
+    SUM(CASE WHEN status = 'applied' THEN 1 ELSE 0 END) as applied,
+    ROUND(100.0 * SUM(CASE WHEN status = 'applied' THEN 1 ELSE 0 END) / COUNT(*), 2) as apply_rate
+FROM proposed_fixes
+GROUP BY pattern_id;
+```
+
+### 14.3 Success Criteria by Milestone
+
+| Milestone | Success Criteria |
+|-----------|------------------|
+| 1. Stop the Bleeding | All E2E tests include compilation check; 0 SKIP_GO_MOD_TIDY |
+| 2. Validation Layer | 100% of generations validated; <100ms validation overhead |
+| 3. Telemetry & Evolution | 10+ patterns with >80% fix rate; telemetry captures all failures |
+| 4. Components Integration | 0 template drift; modal/toast/dropdown working |
+| 5. Style System | Tailwind and unstyled adapters complete; style switching works |
+| 6. Components Evolution | Component health dashboard shows >95% success rate |
+
+### 14.4 Long-term Goals
+
+- **6 months**: 90% generation success rate, 50 patterns, auto-apply enabled
+- **12 months**: 95% success rate, 100 patterns, LLM fixes enabled with review
+- **18 months**: 98% success rate, pattern suggestions from community
 
 ---
 

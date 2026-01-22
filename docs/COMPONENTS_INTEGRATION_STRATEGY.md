@@ -98,7 +98,7 @@ The nested `components/go.mod` makes it a separate module:
 // components/go.mod
 module github.com/livetemplate/lvt/components
 
-go 1.25
+go 1.22
 
 require github.com/livetemplate/livetemplate v0.8.0
 // Note: NO dependency on github.com/livetemplate/lvt

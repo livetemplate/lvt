@@ -41,7 +41,7 @@ After extensive investigation of the lvt codebase, git history, testing infrastr
 ├─────────────────────────────────────────────────────────────────┤
 │  Template Sources (Cascade Priority)                            │
 │  1. Project (.lvt/kits/)                                        │
-│  2. User (~/.config/lvt/kits/)                                  │
+│  2. User ($XDG_CONFIG_HOME/lvt/kits/)                                  │
 │  3. System (embedded in binary)                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -335,7 +335,8 @@ func (v *GenerationValidator) Validate(appPath string) *ValidationResult {
 }
 
 func (v *GenerationValidator) compileApp(appPath string) error {
-    cmd := exec.Command("go", "build", "-o", "/dev/null", "./...")
+    // Use os.DevNull for cross-platform compatibility
+    cmd := exec.Command("go", "build", "-o", os.DevNull, "./...")
     cmd.Dir = appPath
     cmd.Env = append(os.Environ(), "CGO_ENABLED=1")
     return cmd.Run()
@@ -933,8 +934,8 @@ changes := improver.ProposeImprovements(metrics, failures)
 func TestResourceGeneration(t *testing.T) {
     // ... generation ...
 
-    // NEW: Verify compilation
-    cmd := exec.Command("go", "build", "-o", "/dev/null", "./...")
+    // NEW: Verify compilation (use os.DevNull for cross-platform)
+    cmd := exec.Command("go", "build", "-o", os.DevNull, "./...")
     cmd.Dir = appPath
     if err := cmd.Run(); err != nil {
         t.Fatalf("Generated code does not compile: %v", err)

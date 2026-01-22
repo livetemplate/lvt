@@ -66,8 +66,8 @@ func ValidateGeneratedApp(t *testing.T, appPath string) {
         t.Fatalf("go mod tidy failed: %s\n%s", err, out)
     }
 
-    // Run go build
-    cmd = exec.Command("go", "build", "-o", "/dev/null", "./...")
+    // Run go build (use os.DevNull for cross-platform compatibility)
+    cmd = exec.Command("go", "build", "-o", os.DevNull, "./...")
     cmd.Dir = appPath
     cmd.Env = append(os.Environ(), "CGO_ENABLED=1")
     if out, err := cmd.CombinedOutput(); err != nil {
@@ -413,7 +413,7 @@ Create a package to capture and store generation events. This data drives the ev
 **Acceptance Criteria:**
 - Every generation attempt is captured (when enabled)
 - Events include: command, inputs, kit, success/failure, errors, duration
-- Data stored in `~/.config/lvt/telemetry.db`
+- Data stored in `$XDG_CONFIG_HOME/lvt/telemetry.db` (use `os.UserConfigDir()` in Go)
 - User can disable with `LVT_TELEMETRY=false`
 
 **Files to Create:**
@@ -442,6 +442,13 @@ CREATE TABLE generation_events (
     duration_ms INTEGER,
     files_generated TEXT  -- JSON
 );
+
+-- Indexes for common queries
+CREATE INDEX idx_events_timestamp ON generation_events(timestamp);
+CREATE INDEX idx_events_success ON generation_events(success);
+CREATE INDEX idx_events_command ON generation_events(command);
+CREATE INDEX idx_events_kit ON generation_events(kit);
+CREATE INDEX idx_events_success_timestamp ON generation_events(success, timestamp);
 ```
 
 ---
@@ -800,7 +807,7 @@ git subtree add --prefix=components \
 # components/go.mod
 module github.com/livetemplate/lvt/components
 
-go 1.25
+go 1.22
 
 require github.com/livetemplate/livetemplate v0.8.0
 # NO lvt dependency allowed here
