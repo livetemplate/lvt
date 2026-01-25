@@ -103,45 +103,57 @@ fi
 echo ""
 
 # Create a mapping of issue IDs to GitHub issue numbers
-declare -A ISSUE_MAP
+# Using a temp file for bash 3.2 compatibility (macOS default)
+ISSUE_MAP_FILE=$(mktemp)
+trap "rm -f $ISSUE_MAP_FILE" EXIT
+
+# Helper to set mapping: set_issue_map <id> <github_num>
+set_issue_map() {
+    echo "$1=$2" >> "$ISSUE_MAP_FILE"
+}
+
+# Helper to get mapping: get_issue_map <id>
+get_issue_map() {
+    grep "^$1=" "$ISSUE_MAP_FILE" 2>/dev/null | cut -d= -f2 | tail -1
+}
 
 # Function to create labels if they don't exist
 create_labels() {
     echo -e "${BLUE}Creating labels...${NC}"
 
     local labels=(
-        "testing:E2E and unit testing:0E8A16"
-        "quick-win:Can be done quickly:FBCA04"
-        "priority:critical:Critical priority:B60205"
-        "priority:high:High priority:D93F0B"
-        "priority:medium:Medium priority:FBCA04"
-        "priority:low:Low priority:0E8A16"
-        "bug:Something isn't working:D73A4A"
-        "templates:Template-related changes:C5DEF5"
-        "validation:Code validation:1D76DB"
-        "generator:Code generator:5319E7"
-        "infrastructure:Infrastructure changes:006B75"
-        "mcp:MCP protocol related:0052CC"
-        "evolution:Self-improvement system:9B59B6"
-        "telemetry:Usage tracking:F9D0C4"
-        "knowledge-base:Pattern knowledge base:FEF2C0"
-        "cli:Command line interface:7057FF"
-        "upstream:Upstream library changes:BFDADC"
-        "components:UI components:C2E0C6"
-        "architecture:Architectural changes:E99695"
-        "monorepo:Monorepo structure:D4C5F9"
-        "modal:Modal component:EDEDED"
-        "toast:Toast component:EDEDED"
-        "dropdown:Dropdown component:EDEDED"
-        "styles:CSS/styling system:F9D0C4"
-        "tailwind:Tailwind CSS:38BDF8"
-        "unstyled:Unstyled/semantic CSS:EDEDED"
-        "ci:Continuous integration:0E8A16"
-        "kits:Kit templates:BFD4F2"
+        "testing|E2E and unit testing|0E8A16"
+        "quick-win|Can be done quickly|FBCA04"
+        "priority:critical|Critical priority|B60205"
+        "priority:high|High priority|D93F0B"
+        "priority:medium|Medium priority|FBCA04"
+        "priority:low|Low priority|0E8A16"
+        "bug|Something isn't working|D73A4A"
+        "templates|Template-related changes|C5DEF5"
+        "validation|Code validation|1D76DB"
+        "generator|Code generator|5319E7"
+        "infrastructure|Infrastructure changes|006B75"
+        "mcp|MCP protocol related|0052CC"
+        "evolution|Self-improvement system|9B59B6"
+        "telemetry|Usage tracking|F9D0C4"
+        "knowledge-base|Pattern knowledge base|FEF2C0"
+        "cli|Command line interface|7057FF"
+        "upstream|Upstream library changes|BFDADC"
+        "components|UI components|C2E0C6"
+        "architecture|Architectural changes|E99695"
+        "monorepo|Monorepo structure|D4C5F9"
+        "modal|Modal component|EDEDED"
+        "toast|Toast component|EDEDED"
+        "dropdown|Dropdown component|EDEDED"
+        "styles|CSS/styling system|F9D0C4"
+        "tailwind|Tailwind CSS|38BDF8"
+        "unstyled|Unstyled/semantic CSS|EDEDED"
+        "ci|Continuous integration|0E8A16"
+        "kits|Kit templates|BFD4F2"
     )
 
     for label_info in "${labels[@]}"; do
-        IFS=':' read -r name description color <<< "$label_info"
+        IFS='|' read -r name description color <<< "$label_info"
         if [[ "$DRY_RUN" == "true" ]]; then
             echo "  Would create label: $name"
         else
@@ -194,17 +206,18 @@ get_milestone_number() {
 
 # Function to create a single issue
 create_issue() {
-    local issue_json="$1"
+    local issue_index="$1"
 
+    # Query JSON file directly (avoids bash variable escaping issues)
     local id title milestone body
-    id=$(echo "$issue_json" | jq -r '.id')
-    title=$(echo "$issue_json" | jq -r '.title')
-    milestone=$(echo "$issue_json" | jq -r '.milestone')
-    body=$(echo "$issue_json" | jq -r '.body')
+    id=$(jq -r ".issues[$issue_index].id" "$JSON_FILE")
+    title=$(jq -r ".issues[$issue_index].title" "$JSON_FILE")
+    milestone=$(jq -r ".issues[$issue_index].milestone" "$JSON_FILE")
+    body=$(jq -r ".issues[$issue_index].body" "$JSON_FILE")
 
     # Get labels as comma-separated string
     local labels
-    labels=$(echo "$issue_json" | jq -r '.labels | join(",")')
+    labels=$(jq -r ".issues[$issue_index].labels | join(\",\")" "$JSON_FILE")
 
     # Build the title with issue ID prefix
     local full_title="[${id}] ${title}"
@@ -222,25 +235,8 @@ create_issue() {
 
     if [[ -n "$existing" ]]; then
         echo -e "  ${YELLOW}Issue exists:${NC} #${existing} - ${full_title}"
-        ISSUE_MAP["$id"]="$existing"
+        set_issue_map "$id" "$existing"
         return 0
-    fi
-
-    # Get milestone number
-    local milestone_num=""
-    if [[ -n "$milestone" && "$milestone" != "null" ]]; then
-        milestone_num=$(get_milestone_number "$milestone")
-    fi
-
-    # Create the issue
-    local create_cmd="gh issue create --repo \"$REPO\" --title \"$full_title\" --body \"\$body\""
-
-    if [[ -n "$labels" ]]; then
-        create_cmd+=" --label \"$labels\""
-    fi
-
-    if [[ -n "$milestone_num" ]]; then
-        create_cmd+=" --milestone \"$milestone_num\""
     fi
 
     # Use a temp file for the body to handle special characters
@@ -248,22 +244,39 @@ create_issue() {
     body_file=$(mktemp)
     echo "$body" > "$body_file"
 
+    # Build gh issue create command
+    local issue_url
+    if [[ -n "$milestone" && "$milestone" != "null" ]]; then
+        issue_url=$(gh issue create \
+            --repo "$REPO" \
+            --title "$full_title" \
+            --body-file "$body_file" \
+            ${labels:+--label "$labels"} \
+            --milestone "$milestone" \
+            2>&1)
+    else
+        issue_url=$(gh issue create \
+            --repo "$REPO" \
+            --title "$full_title" \
+            --body-file "$body_file" \
+            ${labels:+--label "$labels"} \
+            2>&1)
+    fi
+
     local issue_num
-    issue_num=$(gh issue create \
-        --repo "$REPO" \
-        --title "$full_title" \
-        --body-file "$body_file" \
-        ${labels:+--label "$labels"} \
-        ${milestone_num:+--milestone "$milestone_num"} \
-        2>&1 | grep -oE '[0-9]+$' || echo "")
+    issue_num=$(echo "$issue_url" | grep -oE '[0-9]+$' || echo "")
 
     rm -f "$body_file"
 
     if [[ -n "$issue_num" ]]; then
-        ISSUE_MAP["$id"]="$issue_num"
+        set_issue_map "$id" "$issue_num"
         echo -e "  ${GREEN}Created:${NC} #${issue_num} - ${full_title}"
     else
         echo -e "  ${RED}Failed to create:${NC} ${full_title}"
+        # Show error details if available
+        if [[ -n "$issue_url" && "$issue_url" != *"github.com"* ]]; then
+            echo -e "  ${RED}Error:${NC} $issue_url"
+        fi
         return 1
     fi
 
@@ -283,12 +296,10 @@ create_issues() {
     local failed=0
 
     for ((i=0; i<issue_count; i++)); do
-        local issue_json
-        issue_json=$(jq ".issues[$i]" "$JSON_FILE")
-
+        # Query JSON directly (avoid bash variable escaping issues)
         local id milestone_title
-        id=$(echo "$issue_json" | jq -r '.id')
-        milestone_title=$(echo "$issue_json" | jq -r '.milestone')
+        id=$(jq -r ".issues[$i].id" "$JSON_FILE")
+        milestone_title=$(jq -r ".issues[$i].milestone" "$JSON_FILE")
 
         # Filter by milestone if specified
         if [[ -n "$SPECIFIC_MILESTONE" ]]; then
@@ -299,7 +310,7 @@ create_issues() {
             fi
         fi
 
-        if create_issue "$issue_json"; then
+        if create_issue "$i"; then
             ((created++))
         else
             ((failed++))
@@ -326,16 +337,17 @@ update_dependencies() {
     issue_count=$(jq '.issues | length' "$JSON_FILE")
 
     for ((i=0; i<issue_count; i++)); do
-        local issue_json id depends_on
-        issue_json=$(jq ".issues[$i]" "$JSON_FILE")
-        id=$(echo "$issue_json" | jq -r '.id')
-        depends_on=$(echo "$issue_json" | jq -r '.depends_on // empty | @json')
+        # Query JSON directly (avoid bash variable escaping issues)
+        local id depends_on
+        id=$(jq -r ".issues[$i].id" "$JSON_FILE")
+        depends_on=$(jq -r ".issues[$i].depends_on // empty | @json" "$JSON_FILE")
 
-        if [[ -z "$depends_on" || "$depends_on" == "null" ]]; then
+        if [[ -z "$depends_on" || "$depends_on" == "null" || "$depends_on" == "[]" ]]; then
             continue
         fi
 
-        local issue_num="${ISSUE_MAP[$id]}"
+        local issue_num
+        issue_num=$(get_issue_map "$id")
         if [[ -z "$issue_num" ]]; then
             continue
         fi
@@ -343,13 +355,14 @@ update_dependencies() {
         # Build dependency links
         local dep_text="**Dependencies:**\n"
         local deps
-        deps=$(echo "$issue_json" | jq -r '.depends_on[]')
+        deps=$(jq -r ".issues[$i].depends_on[]" "$JSON_FILE")
 
         for dep in $deps; do
             if [[ "$dep" == milestone:* ]]; then
                 dep_text+="- Milestone ${dep#milestone:} complete\n"
             else
-                local dep_num="${ISSUE_MAP[$dep]}"
+                local dep_num
+                dep_num=$(get_issue_map "$dep")
                 if [[ -n "$dep_num" ]]; then
                     dep_text+="- #${dep_num}\n"
                 else
