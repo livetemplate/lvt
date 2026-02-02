@@ -2,7 +2,7 @@ module github.com/livetemplate/lvt
 
 go 1.25
 
-require github.com/livetemplate/livetemplate v0.8.0
+require github.com/livetemplate/livetemplate v0.8.2
 
 require (
 	github.com/brianvoe/gofakeit/v7 v7.8.2
