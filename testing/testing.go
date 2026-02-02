@@ -241,3 +241,64 @@ func (e *E2ETest) URL(path string) string {
 	}
 	return e.serverURL + path
 }
+
+// DockerChromeContext provides a Docker Chrome context for tests that manage their own server.
+// This is useful for tests that need custom server setup (e.g., testing specific template options).
+//
+// Usage:
+//
+//	chromeCtx, cleanup := e2etest.SetupDockerChrome(t, 60*time.Second)
+//	defer cleanup()
+//
+//	// Start your custom server on a free port
+//	port, _ := e2etest.GetFreePort()
+//	// ... start server ...
+//
+//	// Use GetChromeTestURL for Docker Chrome to access host
+//	url := e2etest.GetChromeTestURL(port)
+//	chromedp.Run(chromeCtx, chromedp.Navigate(url), ...)
+type DockerChromeContext struct {
+	Context    context.Context
+	Cancel     context.CancelFunc
+	ChromePort int
+	t          *testing.T
+}
+
+// SetupDockerChrome starts a Docker Chrome container and returns a chromedp context.
+// Call cleanup() when done to stop the container and cancel the context.
+func SetupDockerChrome(t *testing.T, timeout time.Duration) (*DockerChromeContext, func()) {
+	t.Helper()
+
+	chromePort, err := GetFreePort()
+	if err != nil {
+		t.Fatalf("Failed to allocate Chrome port: %v", err)
+	}
+
+	if err := StartDockerChrome(t, chromePort); err != nil {
+		t.Fatalf("Failed to start Docker Chrome: %v", err)
+	}
+
+	chromeURL := fmt.Sprintf("http://localhost:%d", chromePort)
+	allocCtx, allocCancel := chromedp.NewRemoteAllocator(context.Background(), chromeURL)
+
+	ctx, ctxCancel := chromedp.NewContext(allocCtx, chromedp.WithLogf(t.Logf))
+
+	// Apply timeout
+	ctx, timeoutCancel := context.WithTimeout(ctx, timeout)
+
+	dcc := &DockerChromeContext{
+		Context:    ctx,
+		Cancel:     timeoutCancel,
+		ChromePort: chromePort,
+		t:          t,
+	}
+
+	cleanup := func() {
+		timeoutCancel()
+		ctxCancel()
+		allocCancel()
+		StopDockerChrome(t, chromePort)
+	}
+
+	return dcc, cleanup
+}
