@@ -1207,10 +1207,12 @@ func TestLoadingIndicator(t *testing.T) {
 		}
 	})
 
+	// Use localhost for host-side HTTP fetch (host.docker.internal only works inside Docker)
+	localhostURL := fmt.Sprintf("http://localhost:%d", port)
 	// Use host.docker.internal for Docker Chrome to access host server
-	url := e2etest.GetChromeTestURL(port)
+	chromeURL := e2etest.GetChromeTestURL(port)
 
-	resp, err := http.Get(url)
+	resp, err := http.Get(localhostURL)
 	if err != nil {
 		t.Fatalf("Failed to fetch page: %v", err)
 	}
@@ -1229,7 +1231,7 @@ func TestLoadingIndicator(t *testing.T) {
 
 	var loadingAttrAfterJS bool
 	err = chromedp.Run(ctx,
-		chromedp.Navigate(url),
+		chromedp.Navigate(chromeURL),
 		e2etest.WaitFor(`
 			(() => {
 				const wrapper = document.querySelector('[data-lvt-id]');
