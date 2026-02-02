@@ -353,9 +353,12 @@ func ServeClientLibrary(w http.ResponseWriter, r *http.Request) {
 func WaitForServer(t *testing.T, serverURL string, timeout time.Duration) {
 	t.Helper()
 
+	// Use a client with per-request timeout to prevent indefinite blocking
+	client := &http.Client{Timeout: 2 * time.Second}
+
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
-		resp, err := http.Get(serverURL)
+		resp, err := client.Get(serverURL)
 		if err == nil {
 			resp.Body.Close()
 			t.Logf("✅ Server ready at %s", serverURL)

@@ -256,10 +256,9 @@ func (e *E2ETest) URL(path string) string {
 //
 //	// Use GetChromeTestURL for Docker Chrome to access host
 //	url := e2etest.GetChromeTestURL(port)
-//	chromedp.Run(chromeCtx, chromedp.Navigate(url), ...)
+//	chromedp.Run(chromeCtx.Context, chromedp.Navigate(url), ...)
 type DockerChromeContext struct {
 	Context    context.Context
-	Cancel     context.CancelFunc
 	ChromePort int
 	t          *testing.T
 }
@@ -288,7 +287,6 @@ func SetupDockerChrome(t *testing.T, timeout time.Duration) (*DockerChromeContex
 
 	dcc := &DockerChromeContext{
 		Context:    ctx,
-		Cancel:     timeoutCancel,
 		ChromePort: chromePort,
 		t:          t,
 	}
