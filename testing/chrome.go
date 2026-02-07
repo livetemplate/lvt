@@ -348,6 +348,27 @@ func ServeClientLibrary(w http.ResponseWriter, r *http.Request) {
 	w.Write(clientLibraryJS)
 }
 
+// WaitForServer polls an HTTP server until it responds or timeout is reached.
+// This is useful when starting a custom server in tests.
+func WaitForServer(t *testing.T, serverURL string, timeout time.Duration) {
+	t.Helper()
+
+	// Use a client with per-request timeout to prevent indefinite blocking
+	client := &http.Client{Timeout: 2 * time.Second}
+
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		resp, err := client.Get(serverURL)
+		if err == nil {
+			resp.Body.Close()
+			t.Logf("✅ Server ready at %s", serverURL)
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	t.Fatalf("Server at %s failed to become ready within %v", serverURL, timeout)
+}
+
 // WaitFor polls a JavaScript condition until it returns true or timeout is reached.
 // This is a generic condition-based wait utility that eliminates arbitrary sleeps.
 //

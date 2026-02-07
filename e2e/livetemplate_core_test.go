@@ -1170,7 +1170,10 @@ func TestLoadingIndicator(t *testing.T) {
 	mux.Handle("/", tmpl.Handle(controller, livetemplate.AsState(state)))
 	mux.HandleFunc("/client.js", e2etest.ServeClientLibrary)
 
-	port := 9001
+	port, err := e2etest.GetFreePort()
+	if err != nil {
+		t.Fatalf("Failed to get free port: %v", err)
+	}
 	server := &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: mux}
 
 	go func() {
@@ -1179,7 +1182,8 @@ func TestLoadingIndicator(t *testing.T) {
 		}
 	}()
 
-	time.Sleep(100 * time.Millisecond)
+	// Wait for server to be ready
+	e2etest.WaitForServer(t, fmt.Sprintf("http://localhost:%d", port), 10*time.Second)
 
 	defer func() {
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -1189,20 +1193,11 @@ func TestLoadingIndicator(t *testing.T) {
 		}
 	}()
 
-	opts := append(chromedp.DefaultExecAllocatorOptions[:],
-		chromedp.Flag("headless", true),
-		chromedp.Flag("disable-gpu", true),
-		chromedp.Flag("no-sandbox", true),
-	)
+	// Use Docker Chrome for reliable CI execution
+	chromeCtx, cleanup := e2etest.SetupDockerChrome(t, 30*time.Second)
+	defer cleanup()
 
-	allocCtx, cancel := chromedp.NewExecAllocator(context.Background(), opts...)
-	defer cancel()
-
-	ctx, cancel := chromedp.NewContext(allocCtx, chromedp.WithLogf(log.Printf))
-	defer cancel()
-
-	ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
+	ctx := chromeCtx.Context
 
 	chromedp.ListenTarget(ctx, func(ev interface{}) {
 		if ev, ok := ev.(*runtime.EventConsoleAPICalled); ok {
@@ -1212,9 +1207,12 @@ func TestLoadingIndicator(t *testing.T) {
 		}
 	})
 
-	url := fmt.Sprintf("http://localhost:%d", port)
+	// Use localhost for host-side HTTP fetch (host.docker.internal only works inside Docker)
+	localhostURL := fmt.Sprintf("http://localhost:%d", port)
+	// Use host.docker.internal for Docker Chrome to access host server
+	chromeURL := e2etest.GetChromeTestURL(port)
 
-	resp, err := http.Get(url)
+	resp, err := http.Get(localhostURL)
 	if err != nil {
 		t.Fatalf("Failed to fetch page: %v", err)
 	}
@@ -1233,7 +1231,7 @@ func TestLoadingIndicator(t *testing.T) {
 
 	var loadingAttrAfterJS bool
 	err = chromedp.Run(ctx,
-		chromedp.Navigate(url),
+		chromedp.Navigate(chromeURL),
 		e2etest.WaitFor(`
 			(() => {
 				const wrapper = document.querySelector('[data-lvt-id]');
@@ -1302,7 +1300,10 @@ func TestLoadingIndicatorDisabled(t *testing.T) {
 	mux.Handle("/", tmpl.Handle(controller, livetemplate.AsState(state)))
 	mux.HandleFunc("/client.js", e2etest.ServeClientLibrary)
 
-	port := 9002
+	port, err := e2etest.GetFreePort()
+	if err != nil {
+		t.Fatalf("Failed to get free port: %v", err)
+	}
 	server := &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: mux}
 
 	go func() {
@@ -1311,7 +1312,8 @@ func TestLoadingIndicatorDisabled(t *testing.T) {
 		}
 	}()
 
-	time.Sleep(100 * time.Millisecond)
+	// Wait for server to be ready
+	e2etest.WaitForServer(t, fmt.Sprintf("http://localhost:%d", port), 10*time.Second)
 
 	defer func() {
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -1321,28 +1323,20 @@ func TestLoadingIndicatorDisabled(t *testing.T) {
 		}
 	}()
 
-	opts := append(chromedp.DefaultExecAllocatorOptions[:],
-		chromedp.Flag("headless", true),
-		chromedp.Flag("disable-gpu", true),
-		chromedp.Flag("no-sandbox", true),
-	)
+	// Use Docker Chrome for reliable CI execution
+	chromeCtx, cleanup := e2etest.SetupDockerChrome(t, 30*time.Second)
+	defer cleanup()
 
-	allocCtx, cancel := chromedp.NewExecAllocator(context.Background(), opts...)
-	defer cancel()
+	ctx := chromeCtx.Context
 
-	ctx, cancel := chromedp.NewContext(allocCtx)
-	defer cancel()
-
-	ctx, cancel = context.WithTimeout(ctx, 15*time.Second)
-	defer cancel()
-
-	url := fmt.Sprintf("http://localhost:%d", port)
+	// Use host.docker.internal for Docker Chrome to access host server
+	url := e2etest.GetChromeTestURL(port)
 
 	var hasLoadingAttr bool
 	var loadingBarExists bool
 	var inputDisabled bool
 
-	err := chromedp.Run(ctx,
+	err = chromedp.Run(ctx,
 		chromedp.Navigate(url),
 		chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
 		chromedp.WaitVisible(`#test-input`, chromedp.ByID),
@@ -1427,7 +1421,10 @@ func TestFocusPreservation(t *testing.T) {
 	mux.Handle("/", tmpl.Handle(controller, livetemplate.AsState(state)))
 	mux.HandleFunc("/client.js", e2etest.ServeClientLibrary)
 
-	port := 9003
+	port, err := e2etest.GetFreePort()
+	if err != nil {
+		t.Fatalf("Failed to get free port: %v", err)
+	}
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
 		Handler: mux,
@@ -1439,30 +1436,22 @@ func TestFocusPreservation(t *testing.T) {
 		}
 	}()
 
-	time.Sleep(100 * time.Millisecond)
+	// Wait for server to be ready
+	e2etest.WaitForServer(t, fmt.Sprintf("http://localhost:%d", port), 10*time.Second)
 
 	defer func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		if err := server.Shutdown(ctx); err != nil {
+		if err := server.Shutdown(shutdownCtx); err != nil {
 			t.Logf("Server shutdown warning: %v", err)
 		}
 	}()
 
-	opts := append(chromedp.DefaultExecAllocatorOptions[:],
-		chromedp.Flag("headless", true),
-		chromedp.Flag("disable-gpu", true),
-		chromedp.Flag("no-sandbox", true),
-	)
+	// Use Docker Chrome for reliable CI execution
+	chromeCtx, cleanup := e2etest.SetupDockerChrome(t, 30*time.Second)
+	defer cleanup()
 
-	allocCtx, cancel := chromedp.NewExecAllocator(context.Background(), opts...)
-	defer cancel()
-
-	ctx, cancel := chromedp.NewContext(allocCtx, chromedp.WithLogf(log.Printf))
-	defer cancel()
-
-	ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
+	ctx := chromeCtx.Context
 
 	chromedp.ListenTarget(ctx, func(ev interface{}) {
 		if ev, ok := ev.(*runtime.EventConsoleAPICalled); ok {
@@ -1472,14 +1461,15 @@ func TestFocusPreservation(t *testing.T) {
 		}
 	})
 
-	url := fmt.Sprintf("http://localhost:%d", port)
+	// Use host.docker.internal for Docker Chrome to access host server
+	url := e2etest.GetChromeTestURL(port)
 
 	var inputValue string
 	var cursorPosition int
 	var counterValue string
 	var hasFocus bool
 
-	err := chromedp.Run(ctx,
+	err = chromedp.Run(ctx,
 		chromedp.Navigate(url),
 		chromedp.WaitVisible(`#username`, chromedp.ByID),
 		chromedp.WaitVisible(`#increment-btn`, chromedp.ByID),
@@ -1560,7 +1550,10 @@ func TestFocusPreservationMultipleInputs(t *testing.T) {
 	mux.Handle("/", tmpl.Handle(controller, livetemplate.AsState(state)))
 	mux.HandleFunc("/client.js", e2etest.ServeClientLibrary)
 
-	port := 9004
+	port, err := e2etest.GetFreePort()
+	if err != nil {
+		t.Fatalf("Failed to get free port: %v", err)
+	}
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
 		Handler: mux,
@@ -1572,30 +1565,22 @@ func TestFocusPreservationMultipleInputs(t *testing.T) {
 		}
 	}()
 
-	time.Sleep(100 * time.Millisecond)
+	// Wait for server to be ready
+	e2etest.WaitForServer(t, fmt.Sprintf("http://localhost:%d", port), 10*time.Second)
 
 	defer func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		if err := server.Shutdown(ctx); err != nil {
+		if err := server.Shutdown(shutdownCtx); err != nil {
 			t.Logf("Server shutdown warning: %v", err)
 		}
 	}()
 
-	opts := append(chromedp.DefaultExecAllocatorOptions[:],
-		chromedp.Flag("headless", true),
-		chromedp.Flag("disable-gpu", true),
-		chromedp.Flag("no-sandbox", true),
-	)
+	// Use Docker Chrome for reliable CI execution
+	chromeCtx, cleanup := e2etest.SetupDockerChrome(t, 30*time.Second)
+	defer cleanup()
 
-	allocCtx, cancel := chromedp.NewExecAllocator(context.Background(), opts...)
-	defer cancel()
-
-	ctx, cancel := chromedp.NewContext(allocCtx, chromedp.WithLogf(log.Printf))
-	defer cancel()
-
-	ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
+	ctx := chromeCtx.Context
 
 	chromedp.ListenTarget(ctx, func(ev interface{}) {
 		if ev, ok := ev.(*runtime.EventConsoleAPICalled); ok {
@@ -1605,12 +1590,13 @@ func TestFocusPreservationMultipleInputs(t *testing.T) {
 		}
 	})
 
-	url := fmt.Sprintf("http://localhost:%d", port)
+	// Use host.docker.internal for Docker Chrome to access host server
+	url := e2etest.GetChromeTestURL(port)
 
 	var textareaValue string
 	var textareaCursor int
 
-	err := chromedp.Run(ctx,
+	err = chromedp.Run(ctx,
 		chromedp.Navigate(url),
 		chromedp.WaitVisible(`#notes`, chromedp.ByID),
 		e2etest.WaitFor(`typeof window.liveTemplateClient !== 'undefined'`, 5*time.Second),
