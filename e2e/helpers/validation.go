@@ -1,6 +1,7 @@
 package helpers
 
 import (
+	"bufio"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -30,16 +31,21 @@ func ValidateCompilation(t *testing.T, appDir string) {
 
 	env := envWithGOWORKOff()
 
-	// Run sqlc generate if sqlc.yaml exists, since generated handlers
-	// depend on sqlc-generated query code.
+	// Run sqlc generate if sqlc.yaml exists and queries.sql has actual queries.
+	// Freshly created apps have an empty queries.sql (comments only) which
+	// causes sqlc to fail with "no queries contained in paths".
 	sqlcPath := filepath.Join(appDir, "database/sqlc.yaml")
 	if _, err := os.Stat(sqlcPath); err == nil {
-		t.Log("Running sqlc generate...")
-		sqlcCmd := exec.Command("go", "run", "github.com/sqlc-dev/sqlc/cmd/sqlc@latest", "generate", "-f", sqlcPath)
-		sqlcCmd.Dir = appDir
-		sqlcCmd.Env = env
-		if output, err := sqlcCmd.CombinedOutput(); err != nil {
-			t.Fatalf("sqlc generate failed in %s: %v\nOutput: %s", appDir, err, output)
+		if hasQueries(filepath.Join(appDir, "database/queries.sql")) {
+			t.Log("Running sqlc generate...")
+			sqlcCmd := exec.Command("go", "run", "github.com/sqlc-dev/sqlc/cmd/sqlc@latest", "generate", "-f", sqlcPath)
+			sqlcCmd.Dir = appDir
+			sqlcCmd.Env = env
+			if output, err := sqlcCmd.CombinedOutput(); err != nil {
+				t.Fatalf("sqlc generate failed in %s: %v\nOutput: %s", appDir, err, output)
+			}
+		} else {
+			t.Log("Skipping sqlc generate (no queries in queries.sql)")
 		}
 	}
 
@@ -62,4 +68,23 @@ func ValidateCompilation(t *testing.T, appDir string) {
 	}
 
 	t.Log("Compilation validation passed")
+}
+
+// hasQueries checks whether a queries.sql file contains at least one actual
+// SQL query (a non-empty, non-comment line).
+func hasQueries(path string) bool {
+	f, err := os.Open(path)
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line != "" && !strings.HasPrefix(line, "--") {
+			return true
+		}
+	}
+	return false
 }
