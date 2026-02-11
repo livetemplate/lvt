@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/livetemplate/lvt/e2e/helpers"
 )
 
 // TestResourceGen_ExplicitTypes tests generating a resource with explicit type declarations
@@ -60,6 +62,9 @@ func TestResourceGen_ExplicitTypes(t *testing.T) {
 		}
 	}
 
+	// Validate generated code compiles
+	helpers.ValidateCompilation(t, appDir)
+
 	t.Log("✅ Explicit types test passed")
 }
 
@@ -73,9 +78,11 @@ func TestResourceGen_TypeInference(t *testing.T) {
 	appDir := createTestApp(t, tmpDir, "testapp", nil)
 
 	// Generate resource with inferred types (no explicit :type)
+	// Note: avoid "created_at" as a user field since the schema template
+	// auto-generates it; use "published_at" to test _at suffix inference.
 	t.Log("Generating users resource with type inference...")
 	if err := runLvtCommand(t, appDir, "gen", "resource", "users",
-		"name", "email", "age", "active", "created_at"); err != nil {
+		"name", "email", "age", "active", "published_at"); err != nil {
 		t.Fatalf("Failed to generate users: %v", err)
 	}
 
@@ -87,13 +94,13 @@ func TestResourceGen_TypeInference(t *testing.T) {
 	}
 
 	schemaContent := string(schema)
-	// name -> string, email -> string, age -> int, active -> bool, created_at -> time
+	// name -> string, email -> string, age -> int, active -> bool, published_at -> time
 	expectedInSchema := []string{
-		"name TEXT",           // inferred from "name"
-		"email TEXT",          // inferred from "email"
-		"age INTEGER",         // inferred from "age"
-		"active BOOLEAN",      // inferred from "active"
-		"created_at DATETIME", // inferred from "created_at"
+		"name TEXT",             // inferred from "name"
+		"email TEXT",            // inferred from "email"
+		"age INTEGER",           // inferred from "age"
+		"active BOOLEAN",        // inferred from "active"
+		"published_at DATETIME", // inferred from "published_at"
 	}
 
 	for _, expected := range expectedInSchema {
@@ -101,6 +108,9 @@ func TestResourceGen_TypeInference(t *testing.T) {
 			t.Errorf("Schema missing inferred field: %s", expected)
 		}
 	}
+
+	// Validate generated code compiles
+	helpers.ValidateCompilation(t, appDir)
 
 	t.Log("✅ Type inference test passed")
 }
@@ -137,6 +147,9 @@ func TestResourceGen_ForeignKey(t *testing.T) {
 	if !strings.Contains(schemaContent, "FOREIGN KEY (author_id) REFERENCES authors(id)") {
 		t.Error("Schema missing foreign key constraint")
 	}
+
+	// Validate generated code compiles
+	helpers.ValidateCompilation(t, appDir)
 
 	t.Log("✅ Foreign key test passed")
 }
@@ -178,6 +191,9 @@ func TestResourceGen_PaginationInfinite(t *testing.T) {
 		t.Error("Template missing scroll-sentinel element")
 	}
 
+	// Validate generated code compiles
+	helpers.ValidateCompilation(t, appDir)
+
 	t.Log("✅ Infinite pagination test passed")
 }
 
@@ -207,6 +223,9 @@ func TestResourceGen_PaginationLoadMore(t *testing.T) {
 	if !strings.Contains(string(handler), `PaginationMode: "load-more"`) {
 		t.Error("Handler missing load-more pagination mode")
 	}
+
+	// Validate generated code compiles
+	helpers.ValidateCompilation(t, appDir)
 
 	t.Log("✅ Load-more pagination test passed")
 }
@@ -244,6 +263,9 @@ func TestResourceGen_PaginationPrevNext(t *testing.T) {
 		t.Error("Handler missing correct page size")
 	}
 
+	// Validate generated code compiles
+	helpers.ValidateCompilation(t, appDir)
+
 	t.Log("✅ Prev-next pagination test passed")
 }
 
@@ -273,6 +295,9 @@ func TestResourceGen_PaginationNumbers(t *testing.T) {
 	if !strings.Contains(string(handler), `PaginationMode: "numbers"`) {
 		t.Error("Handler missing numbers pagination mode")
 	}
+
+	// Validate generated code compiles
+	helpers.ValidateCompilation(t, appDir)
 
 	t.Log("✅ Numbers pagination test passed")
 }
@@ -307,6 +332,9 @@ func TestResourceGen_EditModeModal(t *testing.T) {
 	if !strings.Contains(tmplContent, `id="add-modal"`) && !strings.Contains(tmplContent, `id="edit-modal"`) {
 		t.Error("Template missing modal elements")
 	}
+
+	// Validate generated code compiles
+	helpers.ValidateCompilation(t, appDir)
 
 	t.Log("✅ Modal edit mode test passed")
 }
@@ -346,6 +374,9 @@ func TestResourceGen_EditModePage(t *testing.T) {
 	// Note: Both modal and page modes have the same template structure.
 	// The difference is in the handler routing logic (checked above)
 
+	// Validate generated code compiles
+	helpers.ValidateCompilation(t, appDir)
+
 	t.Log("✅ Page edit mode test passed")
 }
 
@@ -378,6 +409,9 @@ func TestResourceGen_TextareaFields(t *testing.T) {
 		t.Errorf("Expected at least 2 textarea elements, found %d", contentTextareaCount)
 	}
 
+	// Validate generated code compiles
+	helpers.ValidateCompilation(t, appDir)
+
 	t.Log("✅ Textarea fields test passed")
 }
 
@@ -391,6 +425,8 @@ func TestResourceGen_AllFieldTypes(t *testing.T) {
 	appDir := createTestApp(t, tmpDir, "testapp", nil)
 
 	// Generate resource with all field types
+	// Note: use "published_at" instead of "created_at" since the schema
+	// template auto-generates a created_at column.
 	t.Log("Generating records resource with all field types...")
 	if err := runLvtCommand(t, appDir, "gen", "resource", "records",
 		"name:string",
@@ -398,7 +434,7 @@ func TestResourceGen_AllFieldTypes(t *testing.T) {
 		"count:int",
 		"active:bool",
 		"price:float",
-		"created_at:time"); err != nil {
+		"published_at:time"); err != nil {
 		t.Fatalf("Failed to generate records: %v", err)
 	}
 
@@ -411,12 +447,12 @@ func TestResourceGen_AllFieldTypes(t *testing.T) {
 
 	schemaContent := string(schema)
 	expectedMappings := map[string]string{
-		"name":        "TEXT",
-		"description": "TEXT",
-		"count":       "INTEGER",
-		"active":      "BOOLEAN",
-		"price":       "REAL",
-		"created_at":  "DATETIME",
+		"name":         "TEXT",
+		"description":  "TEXT",
+		"count":        "INTEGER",
+		"active":       "BOOLEAN",
+		"price":        "REAL",
+		"published_at": "DATETIME",
 	}
 
 	for field, sqlType := range expectedMappings {
@@ -436,6 +472,9 @@ func TestResourceGen_AllFieldTypes(t *testing.T) {
 	if _, err := os.Stat(tmplPath); os.IsNotExist(err) {
 		t.Error("Template file not created")
 	}
+
+	// Validate generated code compiles
+	helpers.ValidateCompilation(t, appDir)
 
 	t.Log("✅ All field types test passed")
 }

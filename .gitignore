@@ -36,6 +36,7 @@ cmd/lvt/commands/internal/
 e2e/*/
 !e2e/*.go
 !e2e/testdata/
+!e2e/helpers/
 
 # Deployment test directories
 .test-deployments/

@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/livetemplate/lvt/e2e/helpers"
 )
 
 // TestTypeInference tests field type inference
@@ -20,7 +22,9 @@ func TestTypeInference(t *testing.T) {
 	}
 
 	// Generate resource with inferred types (no :type specified)
-	if err := runLvtCommand(t, appDir, "gen", "resource", "users", "name", "email", "age", "price", "published", "created_at"); err != nil {
+	// Note: avoid "created_at" as a user field since the schema template
+	// auto-generates it; use "published_at" to test _at suffix inference.
+	if err := runLvtCommand(t, appDir, "gen", "resource", "users", "name", "email", "age", "price", "published", "published_at"); err != nil {
 		t.Fatalf("Failed to generate resource with type inference: %v", err)
 	}
 
@@ -35,12 +39,12 @@ func TestTypeInference(t *testing.T) {
 
 	// Check inferred types
 	checks := map[string]string{
-		"name":       "TEXT",     // string
-		"email":      "TEXT",     // string
-		"age":        "INTEGER",  // int
-		"price":      "REAL",     // float
-		"published":  "INTEGER",  // bool
-		"created_at": "DATETIME", // time
+		"name":         "TEXT",     // string
+		"email":        "TEXT",     // string
+		"age":          "INTEGER",  // int
+		"price":        "REAL",     // float
+		"published":    "INTEGER",  // bool
+		"published_at": "DATETIME", // time
 	}
 
 	for field, expectedType := range checks {
@@ -48,6 +52,9 @@ func TestTypeInference(t *testing.T) {
 			t.Errorf("❌ Field '%s' not inferred as %s", field, expectedType)
 		}
 	}
+
+	// Validate generated code compiles
+	helpers.ValidateCompilation(t, appDir)
 
 	t.Log("✅ Type inference working correctly")
 }
