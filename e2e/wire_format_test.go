@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/chromedp/cdproto/network"
-	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
 	"github.com/livetemplate/livetemplate"
 	e2etest "github.com/livetemplate/lvt/testing"
@@ -181,26 +180,16 @@ func getReceivedMessagesWithTree(wsLogger *e2etest.WSMessageLogger) []e2etest.WS
 	return result
 }
 
-// waitForNewTreeMessage waits for a new received WS message with a "tree" field
-// after the given count of previously observed tree messages.
-func waitForNewTreeMessage(wsLogger *e2etest.WSMessageLogger, prevCount int, timeout time.Duration) (map[string]interface{}, error) {
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		msgs := getReceivedMessagesWithTree(wsLogger)
-		if len(msgs) > prevCount {
-			return msgs[prevCount].Parsed, nil
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	return nil, fmt.Errorf("timeout waiting for new tree message (had %d, still %d)", prevCount, len(getReceivedMessagesWithTree(wsLogger)))
-}
-
 // waitForActionResponse waits for a received WS message matching a specific action name.
-func waitForActionResponse(wsLogger *e2etest.WSMessageLogger, action string, timeout time.Duration) (map[string]interface{}, error) {
+// startFrom specifies the message index to start scanning from, so callers should
+// snapshot len(wsLogger.GetReceived()) BEFORE triggering the action to avoid matching
+// stale messages from previous actions.
+func waitForActionResponse(wsLogger *e2etest.WSMessageLogger, action string, startFrom int, timeout time.Duration) (map[string]interface{}, error) {
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
 		msgs := wsLogger.GetReceived()
-		for _, msg := range msgs {
+		for i := startFrom; i < len(msgs); i++ {
+			msg := msgs[i]
 			if msg.Parsed == nil {
 				continue
 			}
@@ -281,15 +270,6 @@ func TestWireFormat(t *testing.T) {
 	wsLogger.Start(ctx)
 	consoleLogger.Start(ctx)
 
-	// Listen for console errors
-	chromedp.ListenTarget(ctx, func(ev interface{}) {
-		if ev, ok := ev.(*runtime.EventConsoleAPICalled); ok {
-			for _, arg := range ev.Args {
-				log.Printf("Console: %s", string(arg.Value))
-			}
-		}
-	})
-
 	// Enable network domain to capture WebSocket frames
 	if err := chromedp.Run(ctx, network.Enable()); err != nil {
 		t.Fatalf("Failed to enable network domain: %v", err)
@@ -364,6 +344,7 @@ func TestWireFormat(t *testing.T) {
 
 	// --- Subtest 2: Update omits statics ---
 	t.Run("2_Update_Omits_Statics", func(t *testing.T) {
+		msgCount := len(wsLogger.GetReceived())
 		err := chromedp.Run(ctx,
 			chromedp.Click(`#btn-increment`, chromedp.ByID),
 			e2etest.WaitFor(`document.getElementById('count').textContent === '1'`, 5*time.Second),
@@ -372,7 +353,7 @@ func TestWireFormat(t *testing.T) {
 			t.Fatalf("Click/wait failed: %v", err)
 		}
 
-		msg, err := waitForActionResponse(wsLogger, "increment", 5*time.Second)
+		msg, err := waitForActionResponse(wsLogger, "increment", msgCount, 5*time.Second)
 		if err != nil {
 			t.Fatalf("No update message received: %v", err)
 		}
@@ -401,6 +382,7 @@ func TestWireFormat(t *testing.T) {
 
 	// --- Subtest 3: Range insert ---
 	t.Run("3_Range_Insert", func(t *testing.T) {
+		msgCount := len(wsLogger.GetReceived())
 		err := chromedp.Run(ctx,
 			chromedp.Click(`#btn-add`, chromedp.ByID),
 			e2etest.WaitFor(`document.querySelectorAll('.item').length === 4`, 5*time.Second),
@@ -409,7 +391,7 @@ func TestWireFormat(t *testing.T) {
 			t.Fatalf("Click/wait failed: %v", err)
 		}
 
-		msg, err := waitForActionResponse(wsLogger, "add_item", 5*time.Second)
+		msg, err := waitForActionResponse(wsLogger, "add_item", msgCount, 5*time.Second)
 		if err != nil {
 			t.Fatalf("No insert message received: %v", err)
 		}
@@ -452,6 +434,7 @@ func TestWireFormat(t *testing.T) {
 
 	// --- Subtest 4: Range remove ---
 	t.Run("4_Range_Remove", func(t *testing.T) {
+		msgCount := len(wsLogger.GetReceived())
 		err := chromedp.Run(ctx,
 			chromedp.Click(`#btn-remove`, chromedp.ByID),
 			e2etest.WaitFor(`document.querySelectorAll('.item').length === 3`, 5*time.Second),
@@ -460,7 +443,7 @@ func TestWireFormat(t *testing.T) {
 			t.Fatalf("Click/wait failed: %v", err)
 		}
 
-		msg, err := waitForActionResponse(wsLogger, "remove_item", 5*time.Second)
+		msg, err := waitForActionResponse(wsLogger, "remove_item", msgCount, 5*time.Second)
 		if err != nil {
 			t.Fatalf("No remove message received: %v", err)
 		}
@@ -503,6 +486,7 @@ func TestWireFormat(t *testing.T) {
 
 	// --- Subtest 5: Range update ---
 	t.Run("5_Range_Update", func(t *testing.T) {
+		msgCount := len(wsLogger.GetReceived())
 		err := chromedp.Run(ctx,
 			chromedp.Click(`#btn-update`, chromedp.ByID),
 			e2etest.WaitFor(`
@@ -516,7 +500,7 @@ func TestWireFormat(t *testing.T) {
 			t.Fatalf("Click/wait failed: %v", err)
 		}
 
-		msg, err := waitForActionResponse(wsLogger, "update_item", 5*time.Second)
+		msg, err := waitForActionResponse(wsLogger, "update_item", msgCount, 5*time.Second)
 		if err != nil {
 			t.Fatalf("No update message received: %v", err)
 		}
@@ -542,12 +526,19 @@ func TestWireFormat(t *testing.T) {
 		}
 
 		// Also check if the remove_item response contained the update
+		// (diff engine may batch operations). Search all historical messages
+		// since the remove_item response arrived before this subtest.
 		if !foundUpdate {
-			removeMsg, err := waitForActionResponse(wsLogger, "remove_item", 1*time.Second)
-			if err == nil {
-				if removeTree, ok := removeMsg["tree"]; ok {
-					removeOps := findRangeOps(removeTree)
-					for _, op := range removeOps {
+			for _, msg := range wsLogger.GetReceived() {
+				if msg.Parsed == nil {
+					continue
+				}
+				meta, _ := msg.Parsed["meta"].(map[string]interface{})
+				if meta == nil || meta["action"] != "remove_item" {
+					continue
+				}
+				if removeTree, ok := msg.Parsed["tree"]; ok {
+					for _, op := range findRangeOps(removeTree) {
 						if len(op) >= 2 {
 							if opStr, ok := op[0].(string); ok && opStr == "u" {
 								foundUpdate = true
@@ -581,6 +572,7 @@ func TestWireFormat(t *testing.T) {
 
 	// --- Subtest 6: Range reorder ---
 	t.Run("6_Range_Reorder", func(t *testing.T) {
+		msgCount := len(wsLogger.GetReceived())
 		err := chromedp.Run(ctx,
 			chromedp.Click(`#btn-reorder`, chromedp.ByID),
 			// After reorder: Delta, Gamma, Alpha Updated (reversed)
@@ -595,7 +587,7 @@ func TestWireFormat(t *testing.T) {
 			t.Fatalf("Click/wait failed: %v", err)
 		}
 
-		msg, err := waitForActionResponse(wsLogger, "reorder_items", 5*time.Second)
+		msg, err := waitForActionResponse(wsLogger, "reorder_items", msgCount, 5*time.Second)
 		if err != nil {
 			t.Fatalf("No reorder message received: %v", err)
 		}
@@ -654,6 +646,7 @@ func TestWireFormat(t *testing.T) {
 			t.Fatal("visible-section should exist before toggle")
 		}
 
+		msgCount := len(wsLogger.GetReceived())
 		err = chromedp.Run(ctx,
 			chromedp.Click(`#btn-toggle`, chromedp.ByID),
 			e2etest.WaitFor(`document.getElementById('visible-section') === null`, 5*time.Second),
@@ -662,7 +655,7 @@ func TestWireFormat(t *testing.T) {
 			t.Fatalf("Click/wait failed: %v", err)
 		}
 
-		msg, err := waitForActionResponse(wsLogger, "toggle", 5*time.Second)
+		msg, err := waitForActionResponse(wsLogger, "toggle", msgCount, 5*time.Second)
 		if err != nil {
 			t.Fatalf("No toggle message received: %v", err)
 		}
