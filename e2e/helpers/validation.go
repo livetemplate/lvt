@@ -22,12 +22,22 @@ func envWithGOWORKOff() []string {
 	return append(env, "GOWORK=off")
 }
 
+// ValidationOptions controls optional steps in ValidateCompilation.
+type ValidationOptions struct {
+	SkipGoModTidy bool // Skip go mod tidy (useful when the caller already ran it)
+}
+
 // ValidateCompilation runs sqlc generate (if applicable), go mod tidy, and
 // go build ./... in the given app directory. This ensures that generated code
 // actually compiles and catches syntax errors, type mismatches, and missing
 // dependencies before they reach production.
-func ValidateCompilation(t *testing.T, appDir string) {
+func ValidateCompilation(t *testing.T, appDir string, opts ...ValidationOptions) {
 	t.Helper()
+
+	var opt ValidationOptions
+	if len(opts) > 0 {
+		opt = opts[0]
+	}
 
 	env := envWithGOWORKOff()
 
@@ -50,12 +60,17 @@ func ValidateCompilation(t *testing.T, appDir string) {
 	}
 
 	// Run go mod tidy to catch dependency problems introduced by generated code.
-	t.Log("Running go mod tidy...")
-	tidyCmd := exec.Command("go", "mod", "tidy")
-	tidyCmd.Dir = appDir
-	tidyCmd.Env = env
-	if output, err := tidyCmd.CombinedOutput(); err != nil {
-		t.Fatalf("go mod tidy failed in %s: %v\nOutput: %s", appDir, err, output)
+	// Skip when the caller already ran it (e.g., createTestApp runs tidy after lvt new).
+	if opt.SkipGoModTidy {
+		t.Log("Skipping go mod tidy (already run by caller)")
+	} else {
+		t.Log("Running go mod tidy...")
+		tidyCmd := exec.Command("go", "mod", "tidy")
+		tidyCmd.Dir = appDir
+		tidyCmd.Env = env
+		if output, err := tidyCmd.CombinedOutput(); err != nil {
+			t.Fatalf("go mod tidy failed in %s: %v\nOutput: %s", appDir, err, output)
+		}
 	}
 
 	// Run go build ./... to validate that all generated code compiles.

@@ -44,7 +44,7 @@ func TestAppCreation_DefaultsMultiTailwind(t *testing.T) {
 	}
 
 	// Validate generated code compiles
-	helpers.ValidateCompilation(t, appDir)
+	helpers.ValidateCompilation(t, appDir, helpers.ValidationOptions{SkipGoModTidy: true})
 
 	t.Log("✅ App creation with defaults test passed")
 }
@@ -68,7 +68,7 @@ func TestAppCreation_CustomKitCSS(t *testing.T) {
 	}
 
 	// Validate generated code compiles
-	helpers.ValidateCompilation(t, appDir)
+	helpers.ValidateCompilation(t, appDir, helpers.ValidationOptions{SkipGoModTidy: true})
 
 	t.Log("✅ App creation with custom kit test passed")
 }
@@ -92,7 +92,7 @@ func TestAppCreation_SimpleKit(t *testing.T) {
 	}
 
 	// Validate generated code compiles
-	helpers.ValidateCompilation(t, appDir)
+	helpers.ValidateCompilation(t, appDir, helpers.ValidationOptions{SkipGoModTidy: true})
 
 	t.Log("✅ App creation with simple kit test passed")
 }
@@ -123,7 +123,7 @@ func TestAppCreation_CustomModule(t *testing.T) {
 	}
 
 	// Validate generated code compiles
-	helpers.ValidateCompilation(t, appDir)
+	helpers.ValidateCompilation(t, appDir, helpers.ValidationOptions{SkipGoModTidy: true})
 
 	t.Log("✅ Custom module name test passed")
 }
