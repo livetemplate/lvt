@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/livetemplate/lvt/e2e/helpers"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -57,6 +58,9 @@ func TestSeed_GenerateData(t *testing.T) {
 	} else {
 		t.Logf("✅ Successfully seeded %d products", count)
 	}
+
+	// Validate generated code compiles
+	helpers.ValidateCompilation(t, appDir)
 
 	t.Log("✅ Generate data test passed")
 }
@@ -125,6 +129,9 @@ func TestSeed_Cleanup(t *testing.T) {
 		t.Errorf("Expected 0 users after cleanup, got %d", countAfter)
 	}
 
+	// Validate generated code compiles
+	helpers.ValidateCompilation(t, appDir)
+
 	t.Log("✅ Cleanup test passed")
 }
 
@@ -181,6 +188,9 @@ func TestSeed_CleanupAndReseed(t *testing.T) {
 	} else {
 		t.Logf("✅ Successfully reseeded to %d tasks", count)
 	}
+
+	// Validate generated code compiles
+	helpers.ValidateCompilation(t, appDir)
 
 	t.Log("✅ Cleanup and reseed test passed")
 }

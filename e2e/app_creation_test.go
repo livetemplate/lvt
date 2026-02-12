@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/livetemplate/lvt/e2e/helpers"
 )
 
 // TestAppCreation_DefaultsMultiTailwind tests creating an app with default settings
@@ -41,6 +43,9 @@ func TestAppCreation_DefaultsMultiTailwind(t *testing.T) {
 		}
 	}
 
+	// Validate generated code compiles
+	helpers.ValidateCompilation(t, appDir, helpers.ValidationOptions{SkipGoModTidy: true})
+
 	t.Log("✅ App creation with defaults test passed")
 }
 
@@ -62,6 +67,9 @@ func TestAppCreation_CustomKitCSS(t *testing.T) {
 		t.Errorf("Expected kit=single, got kit=%s", kit)
 	}
 
+	// Validate generated code compiles
+	helpers.ValidateCompilation(t, appDir, helpers.ValidationOptions{SkipGoModTidy: true})
+
 	t.Log("✅ App creation with custom kit test passed")
 }
 
@@ -82,6 +90,9 @@ func TestAppCreation_SimpleKit(t *testing.T) {
 	if kit != "simple" {
 		t.Errorf("Expected kit=simple, got kit=%s", kit)
 	}
+
+	// Validate generated code compiles
+	helpers.ValidateCompilation(t, appDir, helpers.ValidationOptions{SkipGoModTidy: true})
 
 	t.Log("✅ App creation with simple kit test passed")
 }
@@ -110,6 +121,9 @@ func TestAppCreation_CustomModule(t *testing.T) {
 	if !contains(goModContent, expectedModule) {
 		t.Errorf("go.mod does not contain %q\nContent:\n%s", expectedModule, goModContent)
 	}
+
+	// Validate generated code compiles
+	helpers.ValidateCompilation(t, appDir, helpers.ValidationOptions{SkipGoModTidy: true})
 
 	t.Log("✅ Custom module name test passed")
 }

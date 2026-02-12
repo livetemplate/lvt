@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/livetemplate/lvt/e2e/helpers"
 )
 
 // TestMigration_Workflow tests the complete migration workflow
@@ -60,6 +62,9 @@ func TestMigration_Workflow(t *testing.T) {
 		t.Fatalf("Failed to run new migrations: %v", err)
 	}
 
+	// Validate generated code compiles after all resources are generated
+	helpers.ValidateCompilation(t, appDir)
+
 	t.Log("✅ Migration workflow test passed")
 }
 
@@ -104,6 +109,9 @@ func TestMigration_Rollback(t *testing.T) {
 	if err := runLvtCommand(t, appDir, "migration", "status"); err != nil {
 		t.Fatalf("Failed to check status: %v", err)
 	}
+
+	// Validate generated code compiles
+	helpers.ValidateCompilation(t, appDir)
 
 	t.Log("✅ Migration rollback test passed")
 }
