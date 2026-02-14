@@ -58,7 +58,7 @@ Each test verifies:
 
 Tests run in complete isolation:
 - Each test gets a fresh temp directory
-- Apps are created with `SKIP_GO_MOD_TIDY=1` for speed
+- Apps run `go mod tidy` during creation (same as real usage)
 - No shared state between tests
 - Automatic cleanup
 
@@ -178,7 +178,7 @@ go test -v -run TestMCPTool ./commands
 go test -v -run TestMCPTool_LvtNew ./commands
 
 # Run with short mode (skips long-running tests)
-SKIP_GO_MOD_TIDY=1 go test -short -run TestMCPTool ./commands
+go test -short -run TestMCPTool ./commands
 ```
 
 ### What MCP Tests Validate
@@ -194,7 +194,7 @@ Each tool test verifies:
 
 MCP tests use isolated environments:
 - Each test gets a fresh temp directory
-- Apps are created with `SKIP_GO_MOD_TIDY=1` for speed
+- Apps run `go mod tidy` during creation (same as real usage)
 - Tests clean up automatically
 - No shared state between tests
 

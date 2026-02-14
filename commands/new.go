@@ -84,35 +84,27 @@ func New(args []string) error {
 
 	fmt.Println()
 
-	// Skip go mod tidy when running under test to avoid "Test I/O incomplete" errors
-	// Tests handle go mod tidy separately with proper synchronization
-	if os.Getenv("SKIP_GO_MOD_TIDY") != "1" {
-		// Run go mod tidy to resolve and download dependencies
-		fmt.Println("Installing dependencies...")
-		cmd := exec.Command("go", "mod", "tidy")
-		cmd.Dir = appName
-		// Disable workspace mode to prevent background processes
-		cmd.Env = append(os.Environ(), "GOWORK=off")
+	// Run go mod tidy to resolve and download dependencies
+	fmt.Println("Installing dependencies...")
+	cmd := exec.Command("go", "mod", "tidy")
+	cmd.Dir = appName
+	// Disable workspace mode to prevent background processes
+	cmd.Env = append(os.Environ(), "GOWORK=off")
 
-		// Use CombinedOutput() instead of Run() to properly close pipes
-		// This prevents "Test I/O incomplete" errors when running under test frameworks
-		// Note: CombinedOutput captures stdout/stderr internally, so we don't set cmd.Stdout/Stderr
-		output, err := cmd.CombinedOutput()
-		if err != nil {
-			fmt.Printf("⚠️  Warning: failed to install dependencies: %v\n", err)
-			if len(output) > 0 {
-				fmt.Printf("   Output: %s\n", string(output))
-			}
-			fmt.Printf("   You can run it manually: cd %s && go mod tidy\n", appName)
-		} else {
-			// Print output if there was any (warnings, etc.)
-			if len(output) > 0 {
-				fmt.Print(string(output))
-			}
-			fmt.Println("✅ Dependencies installed!")
+	// Use CombinedOutput() to capture stdout/stderr and properly close pipes
+	// This prevents "Test I/O incomplete" errors when running under test frameworks
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Printf("⚠️  Warning: failed to install dependencies: %v\n", err)
+		if len(output) > 0 {
+			fmt.Printf("   Output: %s\n", string(output))
 		}
+		fmt.Printf("   You can run it manually: cd %s && go mod tidy\n", appName)
 	} else {
-		fmt.Println("⏭️  Skipping dependency installation (test mode)")
+		if len(output) > 0 {
+			fmt.Print(string(output))
+		}
+		fmt.Println("✅ Dependencies installed!")
 	}
 
 	fmt.Println()
