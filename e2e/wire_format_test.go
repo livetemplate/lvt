@@ -166,6 +166,30 @@ func findRangeOps(v interface{}) [][]interface{} {
 	return ops
 }
 
+// findMetadata recursively searches a tree for range metadata (any "m" key).
+func findMetadata(v interface{}) map[string]interface{} {
+	switch val := v.(type) {
+	case map[string]interface{}:
+		if m, ok := val["m"]; ok {
+			if mMap, ok := m.(map[string]interface{}); ok {
+				return mMap
+			}
+		}
+		for _, child := range val {
+			if found := findMetadata(child); found != nil {
+				return found
+			}
+		}
+	case []interface{}:
+		for _, child := range val {
+			if found := findMetadata(child); found != nil {
+				return found
+			}
+		}
+	}
+	return nil
+}
+
 // getReceivedMessagesWithTree returns all received WS messages that have a "tree" field.
 func getReceivedMessagesWithTree(wsLogger *e2etest.WSMessageLogger) []e2etest.WSMessage {
 	msgs := wsLogger.GetReceived()
@@ -684,5 +708,134 @@ func TestWireFormat(t *testing.T) {
 		}
 
 		t.Log("Conditional toggle correctly hides section")
+	})
+
+	// --- Subtest 8: Structure change resends statics ---
+	// NOTE: Depends on Subtest 7 leaving Visible=false.
+	t.Run("8_Structure_Change_Resends_Statics", func(t *testing.T) {
+		// After subtest 7, Visible is false (conditional hidden).
+		// Toggling back to true changes the tree structure: the conditional
+		// position goes from "" to a TreeNode with statics. The server detects
+		// a fingerprint mismatch and must resend statics for the new subtree.
+		msgCount := len(wsLogger.GetReceived())
+		err := chromedp.Run(ctx,
+			chromedp.Click(`#btn-toggle`, chromedp.ByID),
+			e2etest.WaitFor(`document.getElementById('visible-section') !== null`, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Click/wait failed: %v", err)
+		}
+
+		msg, err := waitForActionResponse(wsLogger, "toggle", msgCount, 5*time.Second)
+		if err != nil {
+			t.Fatalf("No toggle message received: %v", err)
+		}
+
+		tree, ok := msg["tree"]
+		if !ok {
+			t.Fatal("Message has no 'tree' field")
+		}
+
+		if !hasStaticsAnywhere(tree) {
+			prettyTree, _ := json.MarshalIndent(tree, "", "  ")
+			t.Fatalf("Structure change (conditional reappearing) should resend statics, got:\n%s", string(prettyTree))
+		}
+
+		var visibleAfter bool
+		err = chromedp.Run(ctx,
+			chromedp.Evaluate(`document.getElementById('visible-section') !== null`, &visibleAfter),
+		)
+		if err != nil {
+			t.Fatalf("DOM query failed: %v", err)
+		}
+		if !visibleAfter {
+			t.Error("visible-section should exist after toggling back to visible")
+		}
+
+		t.Log("Structure change correctly resends statics")
+	})
+
+	// --- Subtest 9: Range metadata idKey ---
+	t.Run("9_Range_Metadata_IDKey", func(t *testing.T) {
+		// The initial render tree must contain range metadata with idKey.
+		// Without idKey, the client cannot match items for differential
+		// operations (update, remove, reorder).
+		treeMsgs := getReceivedMessagesWithTree(wsLogger)
+		if len(treeMsgs) == 0 {
+			t.Fatal("No tree messages received")
+		}
+
+		initialMsg := treeMsgs[0]
+		tree, ok := initialMsg.Parsed["tree"]
+		if !ok {
+			t.Fatal("Initial message has no 'tree' field")
+		}
+
+		metadata := findMetadata(tree)
+		if metadata == nil {
+			prettyTree, _ := json.MarshalIndent(tree, "", "  ")
+			t.Fatalf("Initial render should contain range metadata ('m' key), got:\n%s", string(prettyTree))
+		}
+
+		idKey, ok := metadata["idKey"]
+		if !ok {
+			t.Fatalf("Range metadata should contain 'idKey', got: %v", metadata)
+		}
+
+		idKeyStr, ok := idKey.(string)
+		if !ok || idKeyStr == "" {
+			t.Fatalf("idKey should be a non-empty string, got: %v", idKey)
+		}
+
+		t.Logf("Range metadata found with idKey=%q", idKeyStr)
+	})
+
+	// --- Subtest 10: Envelope schema validation ---
+	t.Run("10_Envelope_Schema_Validation", func(t *testing.T) {
+		// Validate UpdateResponse envelope structure across all captured messages.
+		// Every message with a "tree" field must have a "meta" object with
+		// a boolean "success" field and optional string "action" / map "errors".
+		treeMsgs := getReceivedMessagesWithTree(wsLogger)
+		if len(treeMsgs) == 0 {
+			t.Fatal("No tree messages to validate")
+		}
+		if len(treeMsgs) < 8 {
+			t.Errorf("Expected at least 8 tree messages (initial + 7 actions), got %d", len(treeMsgs))
+		}
+
+		for i, msg := range treeMsgs {
+			meta, ok := msg.Parsed["meta"]
+			if !ok {
+				t.Errorf("Message %d: missing 'meta' field", i)
+				continue
+			}
+
+			metaMap, ok := meta.(map[string]interface{})
+			if !ok {
+				t.Errorf("Message %d: 'meta' is not a map, got %T", i, meta)
+				continue
+			}
+
+			success, ok := metaMap["success"]
+			if !ok {
+				t.Errorf("Message %d: meta missing 'success' field", i)
+			} else if _, ok := success.(bool); !ok {
+				t.Errorf("Message %d: meta.success is %T, want bool", i, success)
+			}
+
+			if action, ok := metaMap["action"]; ok {
+				if _, ok := action.(string); !ok {
+					t.Errorf("Message %d: meta.action is %T, want string", i, action)
+				}
+			}
+
+			if errors, ok := metaMap["errors"]; ok && errors != nil {
+				if _, ok := errors.(map[string]interface{}); !ok {
+					t.Errorf("Message %d: meta.errors is %T, want map or nil", i, errors)
+				}
+			}
+		}
+
+		t.Logf("Validated envelope schema for %d messages", len(treeMsgs))
 	})
 }
