@@ -60,19 +60,11 @@ func Setup(t *testing.T, opts *SetupOptions) *AgentTestEnv {
 		err = os.Chdir(tmpDir)
 		require.NoError(t, err)
 
-		// Create app with SKIP_GO_MOD_TIDY to avoid test I/O issues
-		os.Setenv("SKIP_GO_MOD_TIDY", "1")
-		defer os.Unsetenv("SKIP_GO_MOD_TIDY")
-
 		args := []string{opts.AppName, "--kit", opts.Kit}
 		err = commands.New(args)
 		require.NoError(t, err, "failed to create test app")
 
 		appDir = filepath.Join(tmpDir, opts.AppName)
-
-		// Run go mod tidy separately with proper synchronization
-		err = runGoModTidy(t, appDir)
-		require.NoError(t, err, "failed to run go mod tidy")
 
 		// Return to original directory
 		err = os.Chdir(originalDir)
@@ -293,12 +285,4 @@ func (e *AgentTestEnv) SimulateConversation(steps []ConversationStep) {
 type ConversationStep struct {
 	Prompt  string
 	Execute func(*AgentTestEnv)
-}
-
-// runGoModTidy runs go mod tidy in the specified directory
-func runGoModTidy(t *testing.T, dir string) error {
-	t.Helper()
-	// For now, we skip this as it's handled by SKIP_GO_MOD_TIDY flag
-	// and the test infrastructure
-	return nil
 }
