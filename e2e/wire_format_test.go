@@ -711,6 +711,7 @@ func TestWireFormat(t *testing.T) {
 	})
 
 	// --- Subtest 8: Structure change resends statics ---
+	// NOTE: Depends on Subtest 7 leaving Visible=false.
 	t.Run("8_Structure_Change_Resends_Statics", func(t *testing.T) {
 		// After subtest 7, Visible is false (conditional hidden).
 		// Toggling back to true changes the tree structure: the conditional
@@ -797,6 +798,9 @@ func TestWireFormat(t *testing.T) {
 		treeMsgs := getReceivedMessagesWithTree(wsLogger)
 		if len(treeMsgs) == 0 {
 			t.Fatal("No tree messages to validate")
+		}
+		if len(treeMsgs) < 8 {
+			t.Errorf("Expected at least 8 tree messages (initial + 7 actions), got %d", len(treeMsgs))
 		}
 
 		for i, msg := range treeMsgs {
