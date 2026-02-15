@@ -1,6 +1,13 @@
 name: Deployment Tests
 
 on:
+  # Run mock tests on PRs to validate deployment infrastructure
+  pull_request:
+    paths:
+      - 'internal/deploy/**'
+      - 'e2e/**'
+      - '.github/workflows/deployment-tests.yml'
+
   # Allow manual triggering
   workflow_dispatch:
     inputs:
