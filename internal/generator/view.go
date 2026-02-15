@@ -80,9 +80,13 @@ func GenerateView(basePath, moduleName, viewName string, kitName, cssFramework s
 		return fmt.Errorf("failed to generate handler: %w", err)
 	}
 
-	// Generate template
-	if err := generateFile(string(templateTmpl), data, filepath.Join(viewDir, viewNameLower+".tmpl"), kit); err != nil {
+	// Generate template and validate it parses correctly
+	tmplPath := filepath.Join(viewDir, viewNameLower+".tmpl")
+	if err := generateFile(string(templateTmpl), data, tmplPath, kit); err != nil {
 		return fmt.Errorf("failed to generate template: %w", err)
+	}
+	if err := ValidateTemplate(tmplPath); err != nil {
+		return err
 	}
 
 	// Generate consolidated test file (E2E + WebSocket)

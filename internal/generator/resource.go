@@ -175,9 +175,13 @@ func GenerateResource(basePath, moduleName, resourceName string, fields []parser
 		return fmt.Errorf("failed to generate handler: %w", err)
 	}
 
-	// Generate template
-	if err := generateFile(string(templateTmpl), data, filepath.Join(resourceDir, resourceNameLower+".tmpl"), kit); err != nil {
+	// Generate template and validate it parses correctly
+	tmplPath := filepath.Join(resourceDir, resourceNameLower+".tmpl")
+	if err := generateFile(string(templateTmpl), data, tmplPath, kit); err != nil {
 		return fmt.Errorf("failed to generate template: %w", err)
+	}
+	if err := ValidateTemplate(tmplPath); err != nil {
+		return err
 	}
 
 	// Generate migration file instead of appending to schema.sql
