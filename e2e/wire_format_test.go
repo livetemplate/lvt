@@ -166,7 +166,7 @@ func findRangeOps(v interface{}) [][]interface{} {
 	return ops
 }
 
-// findMetadata recursively searches a tree for range metadata ("m" key with "idKey").
+// findMetadata recursively searches a tree for range metadata (any "m" key).
 func findMetadata(v interface{}) map[string]interface{} {
 	switch val := v.(type) {
 	case map[string]interface{}:
