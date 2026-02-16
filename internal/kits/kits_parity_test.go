@@ -1,16 +1,15 @@
 package kits
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
 
-// TestKitFeatureParity verifies that multi and single kit monolithic templates
-// contain the same critical UI features. This catches regressions where a kit
-// template drifts from the expected feature set.
+// TestKitFeatureParity is a smoke test that ensures the multi and single kit
+// monolithic templates all include a shared set of critical UI features. This
+// catches regressions where a kit template loses a required feature.
 func TestKitFeatureParity(t *testing.T) {
-	templatePath := "system/%s/templates/resource/template.tmpl.tmpl"
-
 	kits := []string{"multi", "single"}
 
 	// Features that both CRUD kits must have in their monolithic template.
@@ -18,7 +17,7 @@ func TestKitFeatureParity(t *testing.T) {
 		name    string
 		pattern string
 	}{
-		{"delete button in edit modal", `lvt-click="delete"`},
+		{"delete button in edit modal", `lvt-data-id="{{.EditingID}}"`},
 		{"cancel edit button", `lvt-click="cancel_edit"`},
 		{"update form submission", `lvt-submit="update"`},
 		{"add form submission", `lvt-submit="add"`},
@@ -28,7 +27,7 @@ func TestKitFeatureParity(t *testing.T) {
 
 	for _, kit := range kits {
 		t.Run(kit, func(t *testing.T) {
-			path := strings.Replace(templatePath, "%s", kit, 1)
+			path := fmt.Sprintf("system/%s/templates/resource/template.tmpl.tmpl", kit)
 			data, err := systemKits.ReadFile(path)
 			if err != nil {
 				t.Fatalf("Failed to read template for kit %q: %v", kit, err)
