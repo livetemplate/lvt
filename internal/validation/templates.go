@@ -103,6 +103,9 @@ func (c *TemplateCheck) validateFile(path, appPath string, result *validator.Val
 }
 
 // extractLineNumber pulls the line number from a template parse error.
+// Note: a parallel implementation exists in internal/generator/validate.go.
+// These are kept separate to avoid coupling the validation engine to the
+// generator package; consolidation into a shared package is a follow-up.
 func extractLineNumber(err error) int {
 	m := tmplLinePattern.FindStringSubmatch(err.Error())
 	if len(m) < 2 {

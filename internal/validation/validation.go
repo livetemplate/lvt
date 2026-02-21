@@ -63,8 +63,10 @@ func DefaultEngine() *Engine {
 	)
 }
 
-// Run executes every registered check sequentially. It respects context
-// cancellation between checks so a timeout or cancellation stops early.
+// Run executes every registered check sequentially and merges their results.
+// Checks run independently even if earlier ones report errors, so the caller
+// gets a complete picture of all issues. It respects context cancellation
+// between checks so a timeout or cancellation stops early.
 func (e *Engine) Run(ctx context.Context, appPath string) *validator.ValidationResult {
 	if e.timeout > 0 {
 		var cancel context.CancelFunc
