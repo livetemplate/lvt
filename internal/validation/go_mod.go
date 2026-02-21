@@ -2,6 +2,8 @@ package validation
 
 import (
 	"context"
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -20,7 +22,7 @@ func (c *GoModCheck) Run(_ context.Context, appPath string) *validator.Validatio
 
 	data, err := os.ReadFile(goModPath)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, fs.ErrNotExist) {
 			result.AddError("go.mod not found", "go.mod", 0)
 		} else {
 			result.AddError("failed to read go.mod: "+err.Error(), "go.mod", 0)

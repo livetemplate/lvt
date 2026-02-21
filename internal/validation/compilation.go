@@ -116,6 +116,7 @@ func hasQueries(path string) bool {
 			return true
 		}
 	}
+	// If scanner hit an I/O error, conservatively return false.
 	return false
 }
 

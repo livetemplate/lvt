@@ -26,7 +26,7 @@ func (c *TemplateCheck) Run(ctx context.Context, appPath string) *validator.Vali
 	result := validator.NewValidationResult()
 	var found bool
 
-	_ = filepath.WalkDir(appPath, func(path string, d fs.DirEntry, err error) error {
+	walkErr := filepath.WalkDir(appPath, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
 		}
@@ -47,6 +47,10 @@ func (c *TemplateCheck) Run(ctx context.Context, appPath string) *validator.Vali
 		c.validateFile(path, appPath, result)
 		return nil
 	})
+
+	if walkErr != nil {
+		result.AddWarning("template walk incomplete: "+walkErr.Error(), appPath, 0)
+	}
 
 	if !found {
 		result.AddInfo("no .tmpl files found", "", 0)

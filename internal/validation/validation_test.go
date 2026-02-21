@@ -27,7 +27,7 @@ func TestEngine_SelectiveChecks(t *testing.T) {
 	}
 }
 
-func TestEngine_Timeout(t *testing.T) {
+func TestEngine_CancelledContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // immediately cancelled — no sleep needed
 

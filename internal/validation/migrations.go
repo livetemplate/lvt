@@ -3,7 +3,9 @@ package validation
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -27,7 +29,7 @@ func (c *MigrationCheck) Run(ctx context.Context, appPath string) *validator.Val
 
 	entries, err := os.ReadDir(migrationsDir)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, fs.ErrNotExist) {
 			result.AddInfo("no database/migrations directory found", "", 0)
 			return result
 		}
@@ -113,6 +115,8 @@ type statement struct {
 // parseUpStatements extracts SQL statements from the -- +goose Up section,
 // handling StatementBegin/End blocks and semicolon-delimited statements.
 func parseUpStatements(content string) ([]statement, bool) {
+	// Normalize CRLF to LF so raw lines don't carry trailing \r into SQL.
+	content = strings.ReplaceAll(content, "\r\n", "\n")
 	lines := strings.Split(content, "\n")
 
 	var (
