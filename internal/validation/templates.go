@@ -1,0 +1,119 @@
+package validation
+
+import (
+	"context"
+	"fmt"
+	"html/template"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strconv"
+	"strings"
+
+	"github.com/livetemplate/lvt/internal/validator"
+)
+
+// tmplLinePattern matches template parse errors like "template: name:5:" or "template: name:5:22:".
+var tmplLinePattern = regexp.MustCompile(`template:.*?:(\d+)`)
+
+// TemplateCheck validates all .tmpl files in an app directory.
+type TemplateCheck struct{}
+
+func (c *TemplateCheck) Name() string { return "templates" }
+
+func (c *TemplateCheck) Run(_ context.Context, appPath string) *validator.ValidationResult {
+	result := validator.NewValidationResult()
+	var found bool
+
+	_ = filepath.Walk(appPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() {
+			return nil
+		}
+		if !strings.HasSuffix(path, ".tmpl") {
+			return nil
+		}
+		found = true
+		c.validateFile(path, appPath, result)
+		return nil
+	})
+
+	if !found {
+		result.AddInfo("no .tmpl files found", "", 0)
+	}
+
+	return result
+}
+
+func (c *TemplateCheck) validateFile(path, appPath string, result *validator.ValidationResult) {
+	relPath, _ := filepath.Rel(appPath, path)
+	if relPath == "" {
+		relPath = path
+	}
+
+	content, err := os.ReadFile(path)
+	if err != nil {
+		result.AddError("failed to read template: "+err.Error(), relPath, 0)
+		return
+	}
+
+	src := string(content)
+
+	// Structural check: mismatched delimiters.
+	if opens, closes := strings.Count(src, "{{"), strings.Count(src, "}}"); opens != closes {
+		result.AddWarning(
+			fmt.Sprintf("mismatched delimiters: %d opening {{ vs %d closing }}", opens, closes),
+			relPath, 0,
+		)
+	}
+
+	// Parse check.
+	_, parseErr := template.New(filepath.Base(path)).Parse(src)
+	if parseErr != nil {
+		lineNum := extractLineNumber(parseErr)
+		issue := validator.ValidationIssue{
+			Level:   validator.LevelError,
+			Message: parseErr.Error(),
+			File:    relPath,
+			Line:    lineNum,
+		}
+		if lineNum > 0 {
+			issue.Hint = sourceContext(src, lineNum, 2)
+		}
+		result.Valid = false
+		result.Issues = append(result.Issues, issue)
+	}
+}
+
+// extractLineNumber pulls the line number from a template parse error.
+func extractLineNumber(err error) int {
+	m := tmplLinePattern.FindStringSubmatch(err.Error())
+	if len(m) < 2 {
+		return 0
+	}
+	n, convErr := strconv.Atoi(m[1])
+	if convErr != nil {
+		return 0
+	}
+	return n
+}
+
+// sourceContext returns lines around lineNum with an arrow on the target line.
+func sourceContext(content string, lineNum, surrounding int) string {
+	lines := strings.Split(content, "\n")
+	if lineNum < 1 || lineNum > len(lines) {
+		return ""
+	}
+
+	start := max(lineNum-surrounding-1, 0)
+	end := min(lineNum+surrounding, len(lines))
+
+	var b strings.Builder
+	for i := start; i < end; i++ {
+		marker := "  "
+		if i+1 == lineNum {
+			marker = "→ "
+		}
+		fmt.Fprintf(&b, "  %s%4d | %s\n", marker, i+1, lines[i])
+	}
+	return strings.TrimRight(b.String(), "\n")
+}
