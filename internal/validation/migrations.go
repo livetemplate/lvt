@@ -157,7 +157,9 @@ func parseUpStatements(content string) ([]statement, bool, bool) {
 			break
 		}
 		if strings.HasPrefix(trimmed, "-- +goose StatementBegin") {
-			inStatementBlock = true
+			if inUp {
+				inStatementBlock = true
+			}
 			continue
 		}
 		if strings.HasPrefix(trimmed, "-- +goose StatementEnd") {

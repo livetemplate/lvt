@@ -3,6 +3,7 @@ package validation
 import (
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -495,12 +496,14 @@ func TestCompilationCheck_SqlcOptIn(t *testing.T) {
 	c := &CompilationCheck{RunSqlc: true}
 	result := c.Run(context.Background(), dir)
 
-	// If sqlc is not in PATH, expect a warning about it being missing.
-	// If sqlc is installed, it will attempt to generate and likely fail
-	// on the minimal config, producing an error. Either way, RunSqlc
-	// path is exercised.
-	if len(result.Issues) == 0 {
-		t.Error("expected at least one issue from RunSqlc path")
+	if _, err := exec.LookPath("sqlc"); err != nil {
+		// sqlc not installed — should warn about missing binary.
+		assertHasWarning(t, result, "sqlc not found")
+	} else {
+		// sqlc installed — minimal config should produce an error.
+		if result.ErrorCount() == 0 {
+			t.Error("expected sqlc generate to fail on minimal config")
+		}
 	}
 }
 
