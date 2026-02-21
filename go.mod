@@ -1,6 +1,6 @@
 module github.com/livetemplate/lvt
 
-go 1.25
+go 1.26.0
 
 require github.com/livetemplate/livetemplate v0.8.2
 
