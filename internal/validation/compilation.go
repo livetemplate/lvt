@@ -95,8 +95,9 @@ func (c *CompilationCheck) runSqlc(ctx context.Context, appPath string, env []st
 
 // envWithGOWORKOff returns the current env with GOWORK=off.
 func envWithGOWORKOff() []string {
-	var env []string
-	for _, e := range os.Environ() {
+	environ := os.Environ()
+	env := make([]string, 0, len(environ)+1)
+	for _, e := range environ {
 		if !strings.HasPrefix(e, "GOWORK=") {
 			env = append(env, e)
 		}

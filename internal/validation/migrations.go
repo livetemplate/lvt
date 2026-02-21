@@ -194,6 +194,9 @@ func parseUpStatements(content string) ([]statement, bool, bool) {
 
 		// Strip trailing inline comments for semicolon detection, e.g.:
 		//   INSERT INTO t VALUES (1); -- seed data
+		// Note: this heuristic can misfire if " --" appears inside a SQL
+		// string literal, but that's rare in migration files and a proper
+		// fix would require a SQL tokenizer.
 		sqlLine := trimmed
 		if idx := strings.Index(trimmed, " --"); idx != -1 {
 			sqlLine = strings.TrimSpace(trimmed[:idx])
