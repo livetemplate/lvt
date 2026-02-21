@@ -58,6 +58,12 @@ func (c *TemplateCheck) Run(ctx context.Context, appPath string) *validator.Vali
 		result.AddWarning("template walk incomplete: "+walkErr.Error(), appPath, 0)
 	}
 
+	// If the context was cancelled during the walk, record it so the
+	// caller knows the result is partial.
+	if ctx.Err() != nil {
+		result.AddError("validation cancelled: "+ctx.Err().Error(), "", 0)
+	}
+
 	if !found {
 		result.AddInfo("no .tmpl files found", "", 0)
 	}

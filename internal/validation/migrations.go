@@ -214,8 +214,10 @@ func parseUpStatements(content string) ([]statement, bool, bool) {
 		}
 	}
 
-	// Flush remaining (no Down section encountered).
-	if inUp && current.Len() > 0 {
+	// Flush remaining (no Down section encountered). Skip if inside an
+	// unclosed StatementBegin block — the partial SQL would produce a
+	// spurious execution error alongside the structural warning.
+	if inUp && current.Len() > 0 && !inStatementBlock {
 		stmts = append(stmts, statement{sql: current.String(), line: currentLine})
 	}
 
