@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/livetemplate/lvt/internal/validator"
 )
@@ -19,7 +18,7 @@ func TestEngine_SelectiveChecks(t *testing.T) {
 	dir := t.TempDir()
 
 	// Engine with only the GoModCheck — no templates or migrations needed.
-	writeFile(t, dir, "go.mod", "module example.com/test\n\ngo 1.21\n\nrequire (\n\tgithub.com/foo/bar v1.0.0\n)\n")
+	writeFile(t, dir, "go.mod", "module example.com/test\n\ngo 1.21\n")
 	e := NewEngine(WithCheck(&GoModCheck{}))
 	result := e.Run(context.Background(), dir)
 
@@ -29,10 +28,8 @@ func TestEngine_SelectiveChecks(t *testing.T) {
 }
 
 func TestEngine_Timeout(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Nanosecond)
-	defer cancel()
-	// Let the timeout expire.
-	time.Sleep(2 * time.Millisecond)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // immediately cancelled — no sleep needed
 
 	e := NewEngine(WithCheck(&GoModCheck{}))
 	result := e.Run(ctx, t.TempDir())
@@ -79,6 +76,18 @@ func TestGoModCheck_Valid(t *testing.T) {
 	}
 	if len(result.Issues) != 0 {
 		t.Errorf("expected no issues, got %d", len(result.Issues))
+	}
+}
+
+func TestGoModCheck_ValidNoRequires(t *testing.T) {
+	dir := t.TempDir()
+	// stdlib-only app — valid with no require directives.
+	writeFile(t, dir, "go.mod", "module example.com/test\n\ngo 1.21\n")
+
+	result := (&GoModCheck{}).Run(context.Background(), dir)
+
+	if !result.Valid {
+		t.Errorf("expected valid for stdlib-only app, got: %s", result.Format())
 	}
 }
 
@@ -129,18 +138,6 @@ func TestGoModCheck_MissingGoVersion(t *testing.T) {
 		t.Errorf("expected valid (warning only), got: %s", result.Format())
 	}
 	assertHasWarning(t, result, "no go version")
-}
-
-func TestGoModCheck_NoRequires(t *testing.T) {
-	dir := t.TempDir()
-	writeFile(t, dir, "go.mod", "module example.com/test\n\ngo 1.21\n")
-
-	result := (&GoModCheck{}).Run(context.Background(), dir)
-
-	if !result.Valid {
-		t.Errorf("expected valid (warning only), got: %s", result.Format())
-	}
-	assertHasWarning(t, result, "no require")
 }
 
 // ---------------------------------------------------------------------------
@@ -216,6 +213,22 @@ func TestTemplateCheck_MismatchedDelimiters(t *testing.T) {
 	assertHasWarning(t, result, "mismatched delimiters")
 }
 
+func TestTemplateCheck_SkipsHiddenAndVendorDirs(t *testing.T) {
+	dir := t.TempDir()
+	// Valid template in the app.
+	writeFile(t, dir, "views/index.tmpl", `<h1>{{.Title}}</h1>`)
+	// Invalid template in .git — should be skipped.
+	writeFile(t, dir, ".git/hooks/bad.tmpl", `<h1>{{.Title}</h1>`)
+	// Invalid template in vendor — should be skipped.
+	writeFile(t, dir, "vendor/lib/bad.tmpl", `<h1>{{.Title}</h1>`)
+
+	result := (&TemplateCheck{}).Run(context.Background(), dir)
+
+	if !result.Valid {
+		t.Errorf("expected valid (hidden/vendor dirs skipped), got: %s", result.Format())
+	}
+}
+
 // ---------------------------------------------------------------------------
 // MigrationCheck tests
 // ---------------------------------------------------------------------------
@@ -255,10 +268,8 @@ DROP TABLE IF EXISTS users;
 
 	result := (&MigrationCheck{}).Run(context.Background(), dir)
 
-	if result.Valid {
-		t.Error("expected invalid for bad SQL")
-	}
-	assertHasError(t, result, "SQL error")
+	// Invalid SQL is a warning (SQLite dialect may differ from target DB).
+	assertHasWarning(t, result, "SQL error")
 }
 
 func TestMigrationCheck_NoMigrations(t *testing.T) {
@@ -362,7 +373,7 @@ func TestCompilationCheck_ValidProject(t *testing.T) {
 	writeFile(t, dir, "go.mod", "module example.com/testapp\n\ngo 1.21\n")
 	writeFile(t, dir, "main.go", "package main\n\nfunc main() {}\n")
 
-	c := &CompilationCheck{SkipSqlc: true}
+	c := &CompilationCheck{}
 	result := c.Run(context.Background(), dir)
 
 	if !result.Valid {
@@ -379,7 +390,7 @@ func TestCompilationCheck_InvalidCode(t *testing.T) {
 	writeFile(t, dir, "go.mod", "module example.com/testapp\n\ngo 1.21\n")
 	writeFile(t, dir, "main.go", "package main\n\nfunc main() {\n\tundefined()\n}\n")
 
-	c := &CompilationCheck{SkipSqlc: true}
+	c := &CompilationCheck{}
 	result := c.Run(context.Background(), dir)
 
 	if result.Valid {
@@ -398,7 +409,7 @@ func TestCompilationCheck_InvalidCode(t *testing.T) {
 	}
 }
 
-func TestCompilationCheck_SkipOptions(t *testing.T) {
+func TestCompilationCheck_OptInTidy(t *testing.T) {
 	if testing.Short() {
 		t.Skip("compilation check runs external commands")
 	}
@@ -407,11 +418,11 @@ func TestCompilationCheck_SkipOptions(t *testing.T) {
 	writeFile(t, dir, "go.mod", "module example.com/testapp\n\ngo 1.21\n")
 	writeFile(t, dir, "main.go", "package main\n\nfunc main() {}\n")
 
-	c := &CompilationCheck{SkipGoModTidy: true, SkipSqlc: true}
+	c := &CompilationCheck{RunGoModTidy: true}
 	result := c.Run(context.Background(), dir)
 
 	if !result.Valid {
-		t.Errorf("expected valid with skip options, got: %s", result.Format())
+		t.Errorf("expected valid with tidy opt-in, got: %s", result.Format())
 	}
 }
 
@@ -426,8 +437,8 @@ func TestValidate_FullApp(t *testing.T) {
 
 	dir := t.TempDir()
 
-	// go.mod
-	writeFile(t, dir, "go.mod", "module example.com/fullapp\n\ngo 1.21\n\nrequire (\n\tgithub.com/foo/bar v1.0.0\n)\n")
+	// Self-contained go.mod (no external dependencies).
+	writeFile(t, dir, "go.mod", "module example.com/fullapp\n\ngo 1.21\n")
 
 	// main.go
 	writeFile(t, dir, "main.go", "package main\n\nfunc main() {}\n")
@@ -446,15 +457,8 @@ CREATE TABLE items (
 DROP TABLE IF EXISTS items;
 `)
 
-	// Run default engine (all checks). Compilation will fail because
-	// the go.mod requires a non-existent module, so use a custom engine
-	// that skips compilation for this fixture.
-	e := NewEngine(
-		WithCheck(&GoModCheck{}),
-		WithCheck(&TemplateCheck{}),
-		WithCheck(&MigrationCheck{}),
-	)
-	result := e.Run(context.Background(), dir)
+	// Run with all default checks (including compilation).
+	result := Validate(context.Background(), dir)
 
 	if !result.Valid {
 		t.Errorf("expected valid full app, got: %s", result.Format())

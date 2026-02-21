@@ -42,9 +42,5 @@ func (c *GoModCheck) Run(_ context.Context, appPath string) *validator.Validatio
 		result.AddWarning("go.mod has no go version directive", "go.mod", 0)
 	}
 
-	if len(f.Require) == 0 {
-		result.AddWarning("go.mod has no require directives", "go.mod", 0)
-	}
-
 	return result
 }

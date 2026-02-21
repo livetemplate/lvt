@@ -14,9 +14,12 @@ import (
 )
 
 // MigrationCheck validates SQL migration files against an in-memory SQLite DB.
+// Because apps may target PostgreSQL, SQL execution errors are reported as
+// warnings (they may be false positives for non-SQLite dialects). Structural
+// issues (missing files, missing goose directives) are always reported.
 type MigrationCheck struct{}
 
-func (c *MigrationCheck) Name() string { return "migrations" }
+func (c *MigrationCheck) Name() string { return "migrations (sqlite)" }
 
 func (c *MigrationCheck) Run(ctx context.Context, appPath string) *validator.ValidationResult {
 	result := validator.NewValidationResult()
@@ -91,8 +94,10 @@ func (c *MigrationCheck) validateMigration(ctx context.Context, db *sql.DB, dir,
 		}
 		_, execErr := db.ExecContext(ctx, s)
 		if execErr != nil {
-			result.AddError(
-				fmt.Sprintf("SQL error: %s", execErr.Error()),
+			// Warn rather than error: the target DB may be PostgreSQL,
+			// so SQLite-specific failures could be false positives.
+			result.AddWarning(
+				fmt.Sprintf("SQL error (sqlite): %s", execErr.Error()),
 				relPath, stmt.line,
 			)
 		}

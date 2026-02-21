@@ -16,10 +16,17 @@ import (
 // compilerErrorPattern matches Go compiler errors like "file.go:10:5: message".
 var compilerErrorPattern = regexp.MustCompile(`^(.+?\.go):(\d+):\d+:\s+(.+)$`)
 
-// CompilationCheck runs sqlc generate, go mod tidy, and go build on an app.
+// CompilationCheck runs sqlc generate (optional), go mod tidy (opt-in), and
+// go build on an app directory. By default only go build runs; set
+// RunGoModTidy or RunSqlc to true to enable those steps.
 type CompilationCheck struct {
-	SkipGoModTidy bool
-	SkipSqlc      bool
+	// RunGoModTidy runs go mod tidy before building. Off by default because
+	// it mutates go.mod/go.sum in the target directory.
+	RunGoModTidy bool
+	// RunSqlc runs sqlc generate before building (if sqlc.yaml exists and
+	// queries.sql has content). Off by default because it requires a locally
+	// installed sqlc binary.
+	RunSqlc bool
 }
 
 func (c *CompilationCheck) Name() string { return "compilation" }
@@ -28,13 +35,13 @@ func (c *CompilationCheck) Run(ctx context.Context, appPath string) *validator.V
 	result := validator.NewValidationResult()
 	env := envWithGOWORKOff()
 
-	// sqlc generate (if applicable)
-	if !c.SkipSqlc {
+	// sqlc generate (opt-in)
+	if c.RunSqlc {
 		c.runSqlc(ctx, appPath, env, result)
 	}
 
-	// go mod tidy
-	if !c.SkipGoModTidy {
+	// go mod tidy (opt-in — mutates go.mod/go.sum)
+	if c.RunGoModTidy {
 		tidyCmd := exec.CommandContext(ctx, "go", "mod", "tidy")
 		tidyCmd.Dir = appPath
 		tidyCmd.Env = env
@@ -60,15 +67,22 @@ func (c *CompilationCheck) Run(ctx context.Context, appPath string) *validator.V
 }
 
 func (c *CompilationCheck) runSqlc(ctx context.Context, appPath string, env []string, result *validator.ValidationResult) {
-	sqlcPath := filepath.Join(appPath, "database/sqlc.yaml")
-	if _, err := os.Stat(sqlcPath); err != nil {
+	sqlcCfg := filepath.Join(appPath, "database/sqlc.yaml")
+	if _, err := os.Stat(sqlcCfg); err != nil {
 		return // no sqlc config — nothing to do
 	}
 	if !hasQueries(filepath.Join(appPath, "database/queries.sql")) {
 		return // no actual queries
 	}
 
-	cmd := exec.CommandContext(ctx, "go", "run", "github.com/sqlc-dev/sqlc/cmd/sqlc@latest", "generate", "-f", sqlcPath)
+	// Prefer a locally installed sqlc binary.
+	sqlcBin, err := exec.LookPath("sqlc")
+	if err != nil {
+		result.AddInfo("sqlc not found in PATH, skipping sqlc generate", "database/sqlc.yaml", 0)
+		return
+	}
+
+	cmd := exec.CommandContext(ctx, sqlcBin, "generate", "-f", sqlcCfg)
 	cmd.Dir = appPath
 	cmd.Env = env
 	if output, err := cmd.CombinedOutput(); err != nil {

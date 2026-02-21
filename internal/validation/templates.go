@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"html/template"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -21,13 +22,23 @@ type TemplateCheck struct{}
 
 func (c *TemplateCheck) Name() string { return "templates" }
 
-func (c *TemplateCheck) Run(_ context.Context, appPath string) *validator.ValidationResult {
+func (c *TemplateCheck) Run(ctx context.Context, appPath string) *validator.ValidationResult {
 	result := validator.NewValidationResult()
 	var found bool
 
-	_ = filepath.Walk(appPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil || info.IsDir() {
+	_ = filepath.WalkDir(appPath, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
 			return nil
+		}
+		if d.IsDir() {
+			name := d.Name()
+			if strings.HasPrefix(name, ".") || name == "vendor" || name == "node_modules" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if ctx.Err() != nil {
+			return filepath.SkipAll
 		}
 		if !strings.HasSuffix(path, ".tmpl") {
 			return nil
@@ -111,7 +122,7 @@ func sourceContext(content string, lineNum, surrounding int) string {
 	for i := start; i < end; i++ {
 		marker := "  "
 		if i+1 == lineNum {
-			marker = "→ "
+			marker = "> "
 		}
 		fmt.Fprintf(&b, "  %s%4d | %s\n", marker, i+1, lines[i])
 	}
