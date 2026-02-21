@@ -17,7 +17,8 @@ import (
 // tmplLinePattern matches template parse errors like "template: name:5:" or "template: name:5:22:".
 var tmplLinePattern = regexp.MustCompile(`template:.*?:(\d+)`)
 
-// TemplateCheck validates all .tmpl files in an app directory.
+// TemplateCheck validates all .tmpl files in an app directory using
+// html/template (matching the existing generator/validate.go convention).
 type TemplateCheck struct{}
 
 func (c *TemplateCheck) Name() string { return "templates" }

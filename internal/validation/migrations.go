@@ -79,10 +79,14 @@ func (c *MigrationCheck) validateMigration(ctx context.Context, db *sql.DB, dir,
 	}
 
 	content := string(data)
-	stmts, hasGooseUp := parseUpStatements(content)
+	stmts, hasGooseUp, unclosedBlock := parseUpStatements(content)
 
 	if !hasGooseUp {
 		result.AddWarning("missing -- +goose Up directive", relPath, 0)
+	}
+
+	if unclosedBlock {
+		result.AddWarning("unclosed -- +goose StatementBegin block (missing StatementEnd)", relPath, 0)
 	}
 
 	if len(stmts) == 0 {
@@ -114,7 +118,7 @@ type statement struct {
 
 // parseUpStatements extracts SQL statements from the -- +goose Up section,
 // handling StatementBegin/End blocks and semicolon-delimited statements.
-func parseUpStatements(content string) ([]statement, bool) {
+func parseUpStatements(content string) ([]statement, bool, bool) {
 	// Normalize CRLF to LF so raw lines don't carry trailing \r into SQL.
 	content = strings.ReplaceAll(content, "\r\n", "\n")
 	lines := strings.Split(content, "\n")
@@ -201,5 +205,5 @@ func parseUpStatements(content string) ([]statement, bool) {
 		stmts = append(stmts, statement{sql: current.String(), line: currentLine})
 	}
 
-	return stmts, hasGooseUp
+	return stmts, hasGooseUp, inStatementBlock
 }

@@ -400,6 +400,21 @@ DROP TABLE IF EXISTS events;
 	}
 }
 
+func TestMigrationCheck_UnclosedStatementBegin(t *testing.T) {
+	dir := t.TempDir()
+	migration := `-- +goose Up
+-- +goose StatementBegin
+CREATE TABLE orphan (
+    id INTEGER PRIMARY KEY
+);
+`
+	writeFile(t, dir, "database/migrations/001_orphan.sql", migration)
+
+	result := (&MigrationCheck{}).Run(context.Background(), dir)
+
+	assertHasWarning(t, result, "unclosed -- +goose StatementBegin")
+}
+
 // ---------------------------------------------------------------------------
 // CompilationCheck tests
 // ---------------------------------------------------------------------------
@@ -516,7 +531,7 @@ CREATE TABLE foo (id INTEGER PRIMARY KEY);
 -- +goose Down
 DROP TABLE foo;
 `
-	stmts, hasGooseUp := parseUpStatements(content)
+	stmts, hasGooseUp, _ := parseUpStatements(content)
 	if !hasGooseUp {
 		t.Error("expected hasGooseUp to be true")
 	}
@@ -540,7 +555,7 @@ CREATE TABLE bar (
 -- +goose Down
 DROP TABLE bar;
 `
-	stmts, hasGooseUp := parseUpStatements(content)
+	stmts, hasGooseUp, _ := parseUpStatements(content)
 	if !hasGooseUp {
 		t.Error("expected hasGooseUp to be true")
 	}
@@ -549,10 +564,23 @@ DROP TABLE bar;
 	}
 }
 
+func TestParseUpStatements_UnclosedStatementBlock(t *testing.T) {
+	content := `-- +goose Up
+-- +goose StatementBegin
+CREATE TABLE orphan (
+    id INTEGER PRIMARY KEY
+);
+`
+	_, _, unclosed := parseUpStatements(content)
+	if !unclosed {
+		t.Error("expected unclosedBlock to be true for missing StatementEnd")
+	}
+}
+
 func TestParseUpStatements_NoGooseDirective(t *testing.T) {
 	content := `CREATE TABLE raw (id INTEGER PRIMARY KEY);
 `
-	stmts, hasGooseUp := parseUpStatements(content)
+	stmts, hasGooseUp, _ := parseUpStatements(content)
 	if hasGooseUp {
 		t.Error("expected hasGooseUp to be false")
 	}
