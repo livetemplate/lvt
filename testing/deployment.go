@@ -545,7 +545,7 @@ func (dt *DeploymentTest) ensureDockerfile() error {
 	// Create a minimal Dockerfile for testing
 	// Supports both simple kit (main.go in root) and multi kit (main.go in cmd/<appname>/)
 	dockerfile := `# Build stage
-FROM golang:1.25-alpine AS builder
+FROM golang:1.26-alpine AS builder
 
 WORKDIR /app
 

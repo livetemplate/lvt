@@ -1,5 +1,5 @@
 # Base image with all common dependencies for lvt-generated apps
-FROM golang:1.25-alpine AS base
+FROM golang:1.26-alpine AS base
 
 # Install build dependencies for CGO (SQLite)
 RUN apk add --no-cache gcc musl-dev sqlite-dev

@@ -123,7 +123,7 @@ func setupSharedResources() error {
 			"-v", fmt.Sprintf("%s:/app", appDir),
 			"-w", "/app",
 			"-e", "GOWORK=off",
-			"golang:1.25",
+			"golang:1.26",
 			"sh", "-c", "go mod tidy && go mod vendor")
 
 		dockerOutput, err := dockerCmd.CombinedOutput()
@@ -139,7 +139,7 @@ func setupSharedResources() error {
 			"-v", fmt.Sprintf("%s:/app", appDir),
 			"-w", "/app",
 			"-e", "GOWORK=off",
-			"golang:1.25",
+			"golang:1.26",
 			"go", "run", "github.com/sqlc-dev/sqlc/cmd/sqlc@latest", "generate", "-f", "database/sqlc.yaml")
 
 		sqlcOutput, err := sqlcDockerCmd.CombinedOutput()
