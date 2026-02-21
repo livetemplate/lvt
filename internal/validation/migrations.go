@@ -8,7 +8,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/livetemplate/lvt/internal/validator"
@@ -37,14 +36,13 @@ func (c *MigrationCheck) Run(ctx context.Context, appPath string) *validator.Val
 		return result
 	}
 
-	// Collect .sql files sorted by name (goose ordering).
+	// Collect .sql files (os.ReadDir returns entries sorted by name).
 	var files []string
 	for _, e := range entries {
 		if !e.IsDir() && strings.HasSuffix(e.Name(), ".sql") {
 			files = append(files, e.Name())
 		}
 	}
-	sort.Strings(files)
 
 	if len(files) == 0 {
 		result.AddInfo("no .sql migration files found", "database/migrations", 0)

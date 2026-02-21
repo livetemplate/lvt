@@ -82,8 +82,8 @@ func (s *stubCheck) Run(ctx context.Context, _ string) *validator.ValidationResu
 func TestEngine_WithTimeout(t *testing.T) {
 	// Engine timeout should cancel a slow check.
 	e := NewEngine(
-		WithTimeout(10*time.Millisecond),
-		WithCheck(&stubCheck{delay: 100 * time.Millisecond}),
+		WithTimeout(50*time.Millisecond),
+		WithCheck(&stubCheck{delay: 500 * time.Millisecond}),
 	)
 	result := e.Run(context.Background(), t.TempDir())
 

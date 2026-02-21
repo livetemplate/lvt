@@ -38,6 +38,9 @@ func (c *CompilationCheck) Run(ctx context.Context, appPath string) *validator.V
 	// sqlc generate (opt-in)
 	if c.RunSqlc {
 		c.runSqlc(ctx, appPath, env, result)
+		if result.HasErrors() {
+			return result // sqlc failure means build results would be unreliable
+		}
 	}
 
 	// go mod tidy (opt-in — mutates go.mod/go.sum)
@@ -75,7 +78,7 @@ func (c *CompilationCheck) runSqlc(ctx context.Context, appPath string, env []st
 		return // no actual queries
 	}
 
-	// Prefer a locally installed sqlc binary.
+	// Require a locally installed sqlc binary; skip if not found.
 	sqlcBin, err := exec.LookPath("sqlc")
 	if err != nil {
 		result.AddInfo("sqlc not found in PATH, skipping sqlc generate", "database/sqlc.yaml", 0)

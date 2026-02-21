@@ -29,6 +29,11 @@ func (c *TemplateCheck) Run(ctx context.Context, appPath string) *validator.Vali
 
 	walkErr := filepath.WalkDir(appPath, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
+			relPath, _ := filepath.Rel(appPath, path)
+			if relPath == "" {
+				relPath = path
+			}
+			result.AddWarning("skipping "+relPath+": "+err.Error(), relPath, 0)
 			return nil
 		}
 		if d.IsDir() {
