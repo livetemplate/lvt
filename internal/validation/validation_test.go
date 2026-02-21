@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/livetemplate/lvt/internal/validator"
 )
@@ -31,11 +32,12 @@ func TestEngine_CancelledContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // immediately cancelled — no sleep needed
 
-	e := NewEngine(WithCheck(&GoModCheck{}))
+	// Multiple checks: cancellation should stop after first check boundary.
+	e := NewEngine(WithCheck(&GoModCheck{}), WithCheck(&TemplateCheck{}))
 	result := e.Run(ctx, t.TempDir())
 
 	if result.Valid {
-		t.Error("expected invalid result due to timeout")
+		t.Error("expected invalid result due to cancellation")
 	}
 
 	var found bool
@@ -47,17 +49,55 @@ func TestEngine_CancelledContext(t *testing.T) {
 	if !found {
 		t.Error("expected a cancellation error issue")
 	}
+
+	// Should record exactly one cancellation error, not one per check.
+	cancelCount := 0
+	for _, issue := range result.Issues {
+		if issue.Level == validator.LevelError && strings.Contains(issue.Message, "cancelled") {
+			cancelCount++
+		}
+	}
+	if cancelCount != 1 {
+		t.Errorf("expected 1 cancellation error, got %d", cancelCount)
+	}
 }
 
-func TestEngine_ContextCancellation(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel() // immediately cancelled
+// stubCheck is a test check that sleeps, used to exercise WithTimeout.
+type stubCheck struct {
+	delay time.Duration
+}
 
-	e := NewEngine(WithCheck(&GoModCheck{}), WithCheck(&TemplateCheck{}))
-	result := e.Run(ctx, t.TempDir())
+func (s *stubCheck) Name() string { return "stub" }
+func (s *stubCheck) Run(ctx context.Context, _ string) *validator.ValidationResult {
+	result := validator.NewValidationResult()
+	select {
+	case <-time.After(s.delay):
+		// completed normally
+	case <-ctx.Done():
+		result.AddError("check cancelled: "+ctx.Err().Error(), "", 0)
+	}
+	return result
+}
+
+func TestEngine_WithTimeout(t *testing.T) {
+	// Engine timeout should cancel a slow check.
+	e := NewEngine(
+		WithTimeout(10*time.Millisecond),
+		WithCheck(&stubCheck{delay: 5 * time.Second}),
+	)
+	result := e.Run(context.Background(), t.TempDir())
 
 	if result.Valid {
-		t.Error("expected invalid result due to cancellation")
+		t.Error("expected invalid result due to timeout")
+	}
+	var found bool
+	for _, issue := range result.Issues {
+		if strings.Contains(issue.Message, "cancelled") || strings.Contains(issue.Message, "deadline") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected timeout/cancel error, got: %+v", result.Issues)
 	}
 }
 
@@ -203,13 +243,13 @@ func TestTemplateCheck_NoTemplates(t *testing.T) {
 
 func TestTemplateCheck_MismatchedDelimiters(t *testing.T) {
 	dir := t.TempDir()
-	// Extra opening {{ without close — html/template may or may not error,
-	// but we should get a structural warning.
-	writeFile(t, dir, "views/warn.tmpl", `<h1>{{ .Title }}</h1><p>{{ unclosed</p>`)
+	// Template that parses fine but has extra }} in plain text content
+	// (e.g. from inline JS or CSS). Parse succeeds, delimiter count differs.
+	writeFile(t, dir, "views/warn.tmpl", `<h1>{{.Title}}</h1><script>if(x){y={}}}</script>`)
 
 	result := (&TemplateCheck{}).Run(context.Background(), dir)
 
-	// We expect at least a warning about mismatched delimiters.
+	// Parse succeeds, so the structural delimiter check runs and warns.
 	assertHasWarning(t, result, "mismatched delimiters")
 }
 

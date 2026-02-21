@@ -164,17 +164,19 @@ func parseUpStatements(content string) ([]statement, bool) {
 			continue
 		}
 
-		// Skip comments.
-		if strings.HasPrefix(trimmed, "--") {
-			continue
-		}
-
+		// Inside StatementBegin blocks, include comments to preserve
+		// accurate line numbers for error reporting.
 		if inStatementBlock {
 			if current.Len() == 0 && trimmed != "" {
 				currentLine = i + 1
 			}
 			current.WriteString(line)
 			current.WriteString("\n")
+			continue
+		}
+
+		// Skip comments in semicolon-delimited mode.
+		if strings.HasPrefix(trimmed, "--") {
 			continue
 		}
 

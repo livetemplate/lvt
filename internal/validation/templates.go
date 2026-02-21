@@ -73,29 +73,26 @@ func (c *TemplateCheck) validateFile(path, appPath string, result *validator.Val
 
 	src := string(content)
 
-	// Structural check: mismatched delimiters.
+	// Parse check.
+	_, parseErr := template.New(filepath.Base(path)).Parse(src)
+	if parseErr != nil {
+		lineNum := extractLineNumber(parseErr)
+		hint := ""
+		if lineNum > 0 {
+			hint = sourceContext(src, lineNum, 2)
+		}
+		result.AddErrorWithHint(parseErr.Error(), relPath, lineNum, hint)
+		return
+	}
+
+	// Structural check: mismatched delimiters. Only warn when the parser
+	// succeeded — if the parser found them balanced, the count mismatch
+	// is likely harmless (e.g. {{ in string literals or comments).
 	if opens, closes := strings.Count(src, "{{"), strings.Count(src, "}}"); opens != closes {
 		result.AddWarning(
 			fmt.Sprintf("mismatched delimiters: %d opening {{ vs %d closing }}", opens, closes),
 			relPath, 0,
 		)
-	}
-
-	// Parse check.
-	_, parseErr := template.New(filepath.Base(path)).Parse(src)
-	if parseErr != nil {
-		lineNum := extractLineNumber(parseErr)
-		issue := validator.ValidationIssue{
-			Level:   validator.LevelError,
-			Message: parseErr.Error(),
-			File:    relPath,
-			Line:    lineNum,
-		}
-		if lineNum > 0 {
-			issue.Hint = sourceContext(src, lineNum, 2)
-		}
-		result.Valid = false
-		result.Issues = append(result.Issues, issue)
 	}
 }
 
