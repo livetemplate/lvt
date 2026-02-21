@@ -566,6 +566,32 @@ DROP TABLE foo;
 	}
 }
 
+func TestParseUpStatements_MultipleStatements(t *testing.T) {
+	content := `-- +goose Up
+CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT);
+CREATE TABLE posts (id INTEGER PRIMARY KEY, user_id INTEGER);
+CREATE TABLE comments (id INTEGER PRIMARY KEY, post_id INTEGER);
+
+-- +goose Down
+DROP TABLE comments;
+DROP TABLE posts;
+DROP TABLE users;
+`
+	stmts, hasGooseUp, _ := parseUpStatements(content)
+	if !hasGooseUp {
+		t.Error("expected hasGooseUp to be true")
+	}
+	if len(stmts) != 3 {
+		t.Fatalf("expected 3 statements, got %d", len(stmts))
+	}
+	if !strings.Contains(stmts[0].sql, "users") {
+		t.Errorf("expected first statement to contain 'users', got: %s", stmts[0].sql)
+	}
+	if !strings.Contains(stmts[2].sql, "comments") {
+		t.Errorf("expected third statement to contain 'comments', got: %s", stmts[2].sql)
+	}
+}
+
 func TestParseUpStatements_StatementBlock(t *testing.T) {
 	content := `-- +goose Up
 -- +goose StatementBegin

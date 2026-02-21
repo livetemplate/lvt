@@ -146,9 +146,10 @@ func parseUpStatements(content string) ([]statement, bool, bool) {
 			continue
 		}
 		if strings.HasPrefix(trimmed, "-- +goose Down") {
-			// Stop at the Down section.
-			if inUp {
-				// Flush any accumulated statement.
+			// Stop at the Down section. Only flush if we're not inside
+			// an unclosed StatementBegin block; that case is already
+			// flagged via the unclosedBlock return value.
+			if inUp && !inStatementBlock {
 				if current.Len() > 0 {
 					stmts = append(stmts, statement{sql: current.String(), line: currentLine})
 				}
