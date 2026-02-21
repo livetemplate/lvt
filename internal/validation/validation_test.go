@@ -481,6 +481,29 @@ func TestCompilationCheck_OptInTidy(t *testing.T) {
 	}
 }
 
+func TestCompilationCheck_SqlcOptIn(t *testing.T) {
+	if testing.Short() {
+		t.Skip("compilation check runs external commands")
+	}
+
+	dir := t.TempDir()
+	writeFile(t, dir, "go.mod", "module example.com/testapp\n\ngo 1.21\n")
+	writeFile(t, dir, "main.go", "package main\n\nfunc main() {}\n")
+	writeFile(t, dir, "database/sqlc.yaml", "version: '2'\n")
+	writeFile(t, dir, "database/queries.sql", "SELECT 1;")
+
+	c := &CompilationCheck{RunSqlc: true}
+	result := c.Run(context.Background(), dir)
+
+	// If sqlc is not in PATH, expect a warning about it being missing.
+	// If sqlc is installed, it will attempt to generate and likely fail
+	// on the minimal config, producing an error. Either way, RunSqlc
+	// path is exercised.
+	if len(result.Issues) == 0 {
+		t.Error("expected at least one issue from RunSqlc path")
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Integration: Validate() convenience function
 // ---------------------------------------------------------------------------

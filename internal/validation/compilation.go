@@ -132,7 +132,8 @@ func parseCompilerErrors(output string, result *validator.ValidationResult) {
 		line = strings.TrimSpace(line)
 		if m := compilerErrorPattern.FindStringSubmatch(line); m != nil {
 			lineNum, _ := strconv.Atoi(m[2])
-			result.AddError(m[3], m[1], lineNum)
+			file := strings.TrimPrefix(m[1], "./")
+			result.AddError(m[3], file, lineNum)
 		}
 	}
 }
