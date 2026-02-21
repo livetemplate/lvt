@@ -83,7 +83,7 @@ func TestEngine_WithTimeout(t *testing.T) {
 	// Engine timeout should cancel a slow check.
 	e := NewEngine(
 		WithTimeout(10*time.Millisecond),
-		WithCheck(&stubCheck{delay: 5 * time.Second}),
+		WithCheck(&stubCheck{delay: 100 * time.Millisecond}),
 	)
 	result := e.Run(context.Background(), t.TempDir())
 
@@ -574,6 +574,20 @@ CREATE TABLE orphan (
 	_, _, unclosed := parseUpStatements(content)
 	if !unclosed {
 		t.Error("expected unclosedBlock to be true for missing StatementEnd")
+	}
+}
+
+func TestParseUpStatements_TrailingComment(t *testing.T) {
+	content := `-- +goose Up
+INSERT INTO settings (key, value) VALUES ('debug', 'false'); -- seed data
+CREATE TABLE foo (id INTEGER PRIMARY KEY); -- another table
+
+-- +goose Down
+DELETE FROM settings;
+`
+	stmts, _, _ := parseUpStatements(content)
+	if len(stmts) != 2 {
+		t.Fatalf("expected 2 statements, got %d", len(stmts))
 	}
 }
 

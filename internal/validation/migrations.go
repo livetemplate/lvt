@@ -194,7 +194,13 @@ func parseUpStatements(content string) ([]statement, bool, bool) {
 		current.WriteString(line)
 		current.WriteString("\n")
 
-		if strings.HasSuffix(trimmed, ";") {
+		// Strip trailing inline comments for semicolon detection, e.g.:
+		//   INSERT INTO t VALUES (1); -- seed data
+		sqlLine := trimmed
+		if idx := strings.Index(trimmed, " --"); idx != -1 {
+			sqlLine = strings.TrimSpace(trimmed[:idx])
+		}
+		if strings.HasSuffix(sqlLine, ";") {
 			stmts = append(stmts, statement{sql: current.String(), line: currentLine})
 			current.Reset()
 		}
