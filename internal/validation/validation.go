@@ -83,11 +83,9 @@ func (e *Engine) Run(ctx context.Context, appPath string) *validator.ValidationR
 	return result
 }
 
-// Validate is a convenience function that runs all default checks: go.mod
-// structure, template syntax, SQL migrations (in-memory SQLite), and
-// compilation (go build ./...). The compilation step may be slow if
-// dependencies are not cached. Use NewEngine with selective checks for
-// latency-sensitive call sites.
+// Validate runs all default checks including compilation (go build ./...).
+// This may be slow if dependencies are not cached. Use NewEngine with
+// selective checks for latency-sensitive call sites (e.g. file watchers).
 func Validate(ctx context.Context, appPath string) *validator.ValidationResult {
 	return DefaultEngine().Run(ctx, appPath)
 }

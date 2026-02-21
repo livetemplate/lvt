@@ -57,6 +57,12 @@ func (c *MigrationCheck) Run(ctx context.Context, appPath string) *validator.Val
 	}
 	defer db.Close()
 
+	// Enable FK constraint checking so out-of-order migrations that
+	// reference tables from later migrations produce warnings.
+	if _, err := db.Exec("PRAGMA foreign_keys = ON"); err != nil {
+		result.AddWarning("failed to enable FK constraints: "+err.Error(), "", 0)
+	}
+
 	for _, name := range files {
 		if ctx.Err() != nil {
 			result.AddError("validation cancelled: "+ctx.Err().Error(), "", 0)

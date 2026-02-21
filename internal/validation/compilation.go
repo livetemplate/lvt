@@ -14,6 +14,8 @@ import (
 )
 
 // compilerErrorPattern matches Go compiler errors like "file.go:10:5: message".
+// This requires the file:line:col format. Diagnostics that omit the column
+// (e.g. linker messages) fall through to the raw-output fallback intentionally.
 var compilerErrorPattern = regexp.MustCompile(`^(.+?\.go):(\d+):\d+:\s+(.+)$`)
 
 // CompilationCheck runs sqlc generate (optional), go mod tidy (opt-in), and
@@ -81,7 +83,7 @@ func (c *CompilationCheck) runSqlc(ctx context.Context, appPath string, env []st
 	// Require a locally installed sqlc binary; skip if not found.
 	sqlcBin, err := exec.LookPath("sqlc")
 	if err != nil {
-		result.AddInfo("sqlc not found in PATH, skipping sqlc generate", "database/sqlc.yaml", 0)
+		result.AddWarning("sqlc not found in PATH, skipping sqlc generate", "database/sqlc.yaml", 0)
 		return
 	}
 
