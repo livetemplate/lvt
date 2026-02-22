@@ -251,11 +251,8 @@ func GenView(args []string) error {
 		return nil
 	}
 
-	if len(args) < 1 {
-		return fmt.Errorf("view name required")
-	}
-
-	// Parse --skip-validation flag
+	// Parse --skip-validation flag before checking positional args,
+	// otherwise `lvt gen view --skip-validation` panics on args[0].
 	skipValidation := false
 	var filteredArgs []string
 	for _, arg := range args {
@@ -266,6 +263,11 @@ func GenView(args []string) error {
 		}
 	}
 	args = filteredArgs
+	_ = skipValidation // used later
+
+	if len(args) < 1 {
+		return fmt.Errorf("view name required")
+	}
 
 	// Get current directory for project config
 	basePath, err := os.Getwd()
@@ -349,11 +351,8 @@ func GenSchema(args []string) error {
 		return nil
 	}
 
-	if len(args) < 1 {
-		return fmt.Errorf("table name required")
-	}
-
-	// Parse --skip-validation flag
+	// Parse --skip-validation flag before checking positional args,
+	// otherwise `lvt gen schema --skip-validation` panics on args[0].
 	skipValidation := false
 	var filteredArgs []string
 	for _, arg := range args {
@@ -364,6 +363,11 @@ func GenSchema(args []string) error {
 		}
 	}
 	args = filteredArgs
+	_ = skipValidation // used later
+
+	if len(args) < 1 {
+		return fmt.Errorf("table name required")
+	}
 
 	// Get current directory for project config
 	basePath, err := os.Getwd()

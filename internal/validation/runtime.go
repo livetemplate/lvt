@@ -113,9 +113,14 @@ func (c *RuntimeCheck) Run(ctx context.Context, appPath string) *validator.Valid
 		procConsumed = true
 	}
 	if !ready {
-		msg := fmt.Sprintf("runtime check: app did not start within %s", timeout)
-		if earlyExit {
+		var msg string
+		switch {
+		case ctx.Err() != nil:
+			msg = "runtime check: cancelled: " + ctx.Err().Error()
+		case earlyExit:
 			msg = "runtime check: app exited before becoming ready"
+		default:
+			msg = fmt.Sprintf("runtime check: app did not start within %s", timeout)
 		}
 		if output := trimOutput(appOut.Bytes()); output != "" {
 			msg += "\nOutput: " + output
