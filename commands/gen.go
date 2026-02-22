@@ -460,6 +460,9 @@ func GenSchema(args []string) error {
 // runPostGenValidation runs structural validation (go.mod, templates, migrations)
 // after code generation. It skips compilation because the app may not compile until
 // sqlc generate is run. Prints the formatted result and returns an error if found.
+//
+// TODO: accept context.Context so Ctrl+C propagates to validation.
+// Structural checks are fast today so context.Background() is acceptable.
 func runPostGenValidation(basePath string) error {
 	fmt.Println("Running validation...")
 	result := validation.ValidatePostGen(context.Background(), basePath)

@@ -33,6 +33,13 @@ func (c *RuntimeCheck) Name() string { return "runtime" }
 func (c *RuntimeCheck) Run(ctx context.Context, appPath string) *validator.ValidationResult {
 	result := validator.NewValidationResult()
 
+	// Early exit if context is already cancelled — avoids a confusing
+	// "build failed: " message when the build never actually ran.
+	if ctx.Err() != nil {
+		result.AddError("runtime check: cancelled: "+ctx.Err().Error(), "", 0)
+		return result
+	}
+
 	timeout := c.StartupTimeout
 	if timeout == 0 {
 		timeout = 15 * time.Second

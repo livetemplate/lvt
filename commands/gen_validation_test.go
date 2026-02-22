@@ -83,6 +83,28 @@ func TestGenView_WithValidation(t *testing.T) {
 	}
 }
 
+// TestGenSchema_WithValidation verifies that structural validation runs after schema generation.
+func TestGenSchema_WithValidation(t *testing.T) {
+	tmpDir, cleanup := setupMCPTestDir(t)
+	defer cleanup()
+
+	err := New([]string{"testapp"})
+	if err != nil {
+		t.Fatalf("Failed to create test app: %v", err)
+	}
+
+	appDir := filepath.Join(tmpDir, "testapp")
+	if err := os.Chdir(appDir); err != nil {
+		t.Fatalf("Failed to change to app dir: %v", err)
+	}
+
+	// Gen schema without --skip-validation — validation should pass
+	err = Gen([]string{"schema", "orders", "total:float", "status:string"})
+	if err != nil {
+		t.Errorf("GenSchema with validation failed: %v", err)
+	}
+}
+
 // TestValidationOutput_JSONMarshal verifies ValidationOutput serializes correctly.
 func TestValidationOutput_JSONMarshal(t *testing.T) {
 	vo := &ValidationOutput{
