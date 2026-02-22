@@ -10,6 +10,7 @@ import (
 
 	"github.com/livetemplate/lvt/internal/config"
 	"github.com/livetemplate/lvt/internal/generator"
+	"github.com/livetemplate/lvt/internal/telemetry"
 )
 
 type AuthFlags struct {
@@ -97,9 +98,21 @@ func Auth(args []string) error {
 		EnableCSRF:          !flags.NoCSRF,
 	}
 
+	// Start telemetry capture
+	collector, _ := telemetry.NewCollector()
+	if collector != nil {
+		defer collector.Close()
+	}
+	capture := startCapture(collector, "gen auth", map[string]any{
+		"struct_name": structName,
+		"table_name":  tableName,
+	})
+
 	// Generate auth files
 	fmt.Println("Generating authentication system...")
 	if err := generator.GenerateAuth(wd, genConfig); err != nil {
+		capture.RecordError(telemetry.GenerationError{Phase: "generation", Message: err.Error()})
+		capture.Complete(false, "")
 		return fmt.Errorf("failed to generate auth: %w", err)
 	}
 
@@ -121,9 +134,11 @@ func Auth(args []string) error {
 	// resource-protection prompts below depend on a healthy app state.
 	if !skipValidation {
 		if err := runPostGenValidation(wd); err != nil {
+			capture.Complete(false, validationResultJSON(wd, false))
 			return err
 		}
 	}
+	capture.Complete(true, validationResultJSON(wd, skipValidation))
 
 	// Check for existing resources to protect
 	resources, err := generator.ReadResources(wd)

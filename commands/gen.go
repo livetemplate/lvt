@@ -3,6 +3,7 @@ package commands
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"github.com/livetemplate/lvt/internal/generator"
 	"github.com/livetemplate/lvt/internal/kits"
 	"github.com/livetemplate/lvt/internal/parser"
+	"github.com/livetemplate/lvt/internal/telemetry"
 	"github.com/livetemplate/lvt/internal/validation"
 )
 
@@ -191,6 +193,20 @@ func GenResource(args []string) error {
 		return fmt.Errorf("failed to get module name: %w (are you in a Go project?)", err)
 	}
 
+	// Start telemetry capture
+	collector, _ := telemetry.NewCollector()
+	if collector != nil {
+		defer collector.Close()
+	}
+	capture := startCapture(collector, "gen resource", map[string]any{
+		"resource_name":   resourceName,
+		"fields":          fieldArgs,
+		"kit":             kit,
+		"pagination_mode": paginationMode,
+		"edit_mode":       editMode,
+	})
+	capture.SetKit(kit)
+
 	fmt.Printf("Generating CRUD resource: %s\n", resourceName)
 	fmt.Printf("Kit: %s\n", kit)
 	fmt.Printf("CSS Framework: %s\n", cssFramework)
@@ -206,6 +222,8 @@ func GenResource(args []string) error {
 	fmt.Println()
 
 	if err := generator.GenerateResource(basePath, moduleName, resourceName, fields, kit, cssFramework, paginationMode, pageSize, editMode); err != nil {
+		capture.RecordError(telemetry.GenerationError{Phase: "generation", Message: err.Error()})
+		capture.Complete(false, "")
 		return err
 	}
 
@@ -214,6 +232,7 @@ func GenResource(args []string) error {
 	if !skipValidation {
 		validationErr = runPostGenValidation(basePath)
 	}
+	capture.Complete(validationErr == nil, validationResultJSON(basePath, skipValidation))
 
 	resourceNameLower := strings.ToLower(resourceName)
 
@@ -303,11 +322,24 @@ func GenView(args []string) error {
 		return fmt.Errorf("failed to get module name: %w (are you in a Go project?)", err)
 	}
 
+	// Start telemetry capture
+	collector, _ := telemetry.NewCollector()
+	if collector != nil {
+		defer collector.Close()
+	}
+	capture := startCapture(collector, "gen view", map[string]any{
+		"view_name": viewName,
+		"kit":       kit,
+	})
+	capture.SetKit(kit)
+
 	fmt.Printf("Generating view-only handler: %s\n", viewName)
 	fmt.Printf("Kit: %s\n", kit)
 	fmt.Printf("CSS Framework: %s\n", cssFramework)
 
 	if err := generator.GenerateView(basePath, moduleName, viewName, kit, cssFramework); err != nil {
+		capture.RecordError(telemetry.GenerationError{Phase: "generation", Message: err.Error()})
+		capture.Complete(false, "")
 		return err
 	}
 
@@ -316,6 +348,7 @@ func GenView(args []string) error {
 	if !skipValidation {
 		validationErr = runPostGenValidation(basePath)
 	}
+	capture.Complete(validationErr == nil, validationResultJSON(basePath, skipValidation))
 
 	viewNameLower := strings.ToLower(viewName)
 
@@ -414,6 +447,18 @@ func GenSchema(args []string) error {
 		return fmt.Errorf("failed to get module name: %w (are you in a Go project?)", err)
 	}
 
+	// Start telemetry capture
+	collector, _ := telemetry.NewCollector()
+	if collector != nil {
+		defer collector.Close()
+	}
+	capture := startCapture(collector, "gen schema", map[string]any{
+		"table_name": tableName,
+		"fields":     args[1:],
+		"kit":        kit,
+	})
+	capture.SetKit(kit)
+
 	fmt.Printf("Generating database schema: %s\n", tableName)
 	fmt.Printf("Kit: %s\n", kit)
 	fmt.Printf("Fields: ")
@@ -426,6 +471,8 @@ func GenSchema(args []string) error {
 	fmt.Println()
 
 	if err := generator.GenerateSchema(basePath, moduleName, tableName, fields, kit, cssFramework); err != nil {
+		capture.RecordError(telemetry.GenerationError{Phase: "generation", Message: err.Error()})
+		capture.Complete(false, "")
 		return err
 	}
 
@@ -434,6 +481,7 @@ func GenSchema(args []string) error {
 	if !skipValidation {
 		validationErr = runPostGenValidation(basePath)
 	}
+	capture.Complete(validationErr == nil, validationResultJSON(basePath, skipValidation))
 
 	tableNameLower := strings.ToLower(tableName)
 
@@ -597,6 +645,29 @@ func inferTypeForDirectMode(fieldName string) string {
 
 	// Default to string
 	return "string"
+}
+
+// startCapture begins a telemetry capture for the given command.
+// Returns a noop capture if the collector is nil (telemetry disabled).
+func startCapture(c *telemetry.Collector, cmd string, inputs map[string]any) *telemetry.Capture {
+	if c == nil {
+		return telemetry.NoopCapture()
+	}
+	return c.StartCapture(cmd, inputs)
+}
+
+// validationResultJSON returns the validation result as JSON for telemetry.
+// Returns empty string on any error or when validation was skipped.
+func validationResultJSON(basePath string, skipped bool) string {
+	if skipped {
+		return ""
+	}
+	result := validation.ValidatePostGen(context.Background(), basePath)
+	b, err := json.Marshal(result)
+	if err != nil {
+		return ""
+	}
+	return string(b)
 }
 
 func getModuleName() (string, error) {
