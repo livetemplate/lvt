@@ -280,6 +280,35 @@ func printComponentEjectTemplateHelp() {
 	fmt.Println("Run 'lvt component list' to see available templates.")
 }
 
+func printValidateHelp() {
+	fmt.Println("lvt validate - Validate a LiveTemplate app directory")
+	fmt.Println()
+	fmt.Println("Usage: lvt validate [<app-path>] [--fast]")
+	fmt.Println()
+	fmt.Println("Arguments:")
+	fmt.Println("  <app-path>    Path to the app directory (default: current directory)")
+	fmt.Println()
+	fmt.Println("Options:")
+	fmt.Println("  --fast        Skip compilation check (faster, suitable for file watchers)")
+	fmt.Println()
+	fmt.Println("Checks run:")
+	fmt.Println("  go.mod        Validates module path and go version directive")
+	fmt.Println("  templates     Parses all .tmpl files for syntax errors")
+	fmt.Println("  migrations    Executes SQL migrations against an in-memory SQLite DB")
+	fmt.Println("  compilation   Runs 'go build ./...' (skipped with --fast)")
+	fmt.Println()
+	fmt.Println("Exit codes:")
+	fmt.Println("  0   All checks passed")
+	fmt.Println("  1   One or more errors found")
+	fmt.Println()
+	fmt.Println("Examples:")
+	fmt.Println("  lvt validate")
+	fmt.Println("  lvt validate ./myapp")
+	fmt.Println("  lvt validate --fast")
+	fmt.Println()
+	fmt.Println("Run 'lvt --help' for full documentation.")
+}
+
 func printNewComponentHelp() {
 	fmt.Println("lvt new component - Scaffold a new component")
 	fmt.Println()

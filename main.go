@@ -66,6 +66,8 @@ func main() {
 		err = commands.Component(args)
 	case "auth":
 		err = commands.AuthManage(args)
+	case "validate":
+		err = commands.Validate(args)
 	case "version", "--version", "-v":
 		printVersion()
 		return
@@ -159,6 +161,7 @@ func printUsage() {
 	fmt.Println("  lvt mcp-server [--help|--setup|--list-tools]  Start MCP server or show setup guide")
 	fmt.Println("  lvt component <command>                       Manage UI components (list, eject)")
 	fmt.Println("  lvt auth <command>                            Manage auth users (confirm, list)")
+	fmt.Println("  lvt validate [<app-path>] [--fast]            Validate app (go.mod, templates, migrations, build)")
 	fmt.Println("  lvt version                                   Show version information")
 	fmt.Println()
 	fmt.Println("Generate Subcommands:")
