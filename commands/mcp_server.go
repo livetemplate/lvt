@@ -99,6 +99,7 @@ type ValidationOutput struct {
 
 // runMCPValidation runs structural validation (post-gen) and converts to MCP output.
 // Uses PostGen engine since generated code may not compile until sqlc generate is run.
+// For full compilation checks, use validation.Validate() directly.
 func runMCPValidation(ctx context.Context, appPath string) *ValidationOutput {
 	result := validation.ValidatePostGen(ctx, appPath)
 	return validationResultToOutput(result)

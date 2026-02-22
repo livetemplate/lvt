@@ -263,7 +263,6 @@ func GenView(args []string) error {
 		}
 	}
 	args = filteredArgs
-	_ = skipValidation // used later
 
 	if len(args) < 1 {
 		return fmt.Errorf("view name required")
@@ -363,7 +362,6 @@ func GenSchema(args []string) error {
 		}
 	}
 	args = filteredArgs
-	_ = skipValidation // used later
 
 	if len(args) < 1 {
 		return fmt.Errorf("table name required")
