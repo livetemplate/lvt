@@ -66,8 +66,8 @@ func TestAuthCommand_Integration(t *testing.T) {
 		}
 	}()
 
-	// Run auth command
-	err = Auth([]string{})
+	// Run auth command (skip validation — temp dir has no go.mod)
+	err = Auth([]string{"--skip-validation"})
 	if err != nil {
 		t.Fatalf("auth command failed: %v", err)
 	}
@@ -205,8 +205,8 @@ func TestAuthCommand_CustomNames(t *testing.T) {
 				}
 			}()
 
-			// Run auth command with custom names
-			err = Auth(tt.args)
+			// Run auth command with custom names (skip validation — temp dir has no go.mod)
+			err = Auth(append(tt.args, "--skip-validation"))
 			if err != nil {
 				t.Fatalf("auth command failed: %v", err)
 			}

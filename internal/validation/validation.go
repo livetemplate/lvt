@@ -85,9 +85,43 @@ func (e *Engine) Run(ctx context.Context, appPath string) *validator.ValidationR
 	return result
 }
 
+// PostGenEngine returns an engine suited for post-generation validation.
+// It checks structural aspects (go.mod, templates, migrations) but skips
+// compilation because the app may not compile until sqlc generate is run.
+func PostGenEngine() *Engine {
+	return NewEngine(
+		WithCheck(&GoModCheck{}),
+		WithCheck(&TemplateCheck{}),
+		WithCheck(&MigrationCheck{}),
+	)
+}
+
+// ValidatePostGen runs structural checks (no compilation) after code generation.
+// Use this right after lvt gen commands where the app may not yet compile.
+func ValidatePostGen(ctx context.Context, appPath string) *validator.ValidationResult {
+	return PostGenEngine().Run(ctx, appPath)
+}
+
+// FullEngine returns an engine with all default checks plus RuntimeCheck.
+// RuntimeCheck is expensive (builds binary, starts subprocess, probes HTTP)
+// so it is not included in DefaultEngine.
+func FullEngine() *Engine {
+	e := DefaultEngine()
+	// WithCheck returns an Option (func(*Engine)); call it directly
+	// to extend an existing engine rather than listing all checks again.
+	WithCheck(&RuntimeCheck{})(e)
+	return e
+}
+
 // Validate runs all default checks including compilation (go build ./...).
 // This may be slow if dependencies are not cached. Use NewEngine with
 // selective checks for latency-sensitive call sites (e.g. file watchers).
 func Validate(ctx context.Context, appPath string) *validator.ValidationResult {
 	return DefaultEngine().Run(ctx, appPath)
+}
+
+// ValidateFull runs all checks including the runtime startup check.
+// This is the most thorough validation and is the most expensive.
+func ValidateFull(ctx context.Context, appPath string) *validator.ValidationResult {
+	return FullEngine().Run(ctx, appPath)
 }

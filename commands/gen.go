@@ -2,6 +2,7 @@ package commands
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"github.com/livetemplate/lvt/internal/generator"
 	"github.com/livetemplate/lvt/internal/kits"
 	"github.com/livetemplate/lvt/internal/parser"
+	"github.com/livetemplate/lvt/internal/validation"
 )
 
 func Gen(args []string) error {
@@ -127,6 +129,7 @@ func GenResource(args []string) error {
 	paginationMode := "infinite" // default
 	pageSize := 20               // default
 	editMode := "modal"          // default
+	skipValidation := false
 	var filteredArgs []string
 	for i := 0; i < len(args); i++ {
 		if args[i] == "--pagination" && i+1 < len(args) {
@@ -140,6 +143,8 @@ func GenResource(args []string) error {
 		} else if args[i] == "--edit-mode" && i+1 < len(args) {
 			editMode = args[i+1]
 			i++ // skip next arg
+		} else if args[i] == "--skip-validation" {
+			skipValidation = true
 		} else {
 			filteredArgs = append(filteredArgs, args[i])
 		}
@@ -204,10 +209,21 @@ func GenResource(args []string) error {
 		return err
 	}
 
+	// Post-generation validation (run before printing success banner)
+	var validationErr error
+	if !skipValidation {
+		validationErr = runPostGenValidation(basePath)
+	}
+
 	resourceNameLower := strings.ToLower(resourceName)
 
-	fmt.Println()
-	fmt.Println("✅ Resource generated successfully!")
+	if validationErr != nil {
+		fmt.Println()
+		fmt.Println("⚠️  Resource generated, but validation found issues.")
+	} else {
+		fmt.Println()
+		fmt.Println("✅ Resource generated successfully!")
+	}
 	fmt.Println()
 	fmt.Println("Files created:")
 	fmt.Printf("  app/%s/%s.go\n", resourceNameLower, resourceNameLower)
@@ -226,7 +242,7 @@ func GenResource(args []string) error {
 	fmt.Println("  2. Run your app")
 	fmt.Println()
 
-	return nil
+	return validationErr
 }
 
 func GenView(args []string) error {
@@ -234,6 +250,19 @@ func GenView(args []string) error {
 	if ShowHelpIfRequested(args, printGenViewHelp) {
 		return nil
 	}
+
+	// Parse --skip-validation flag before checking positional args,
+	// otherwise `lvt gen view --skip-validation` panics on args[0].
+	skipValidation := false
+	var filteredArgs []string
+	for _, arg := range args {
+		if arg == "--skip-validation" {
+			skipValidation = true
+		} else {
+			filteredArgs = append(filteredArgs, arg)
+		}
+	}
+	args = filteredArgs
 
 	if len(args) < 1 {
 		return fmt.Errorf("view name required")
@@ -282,10 +311,21 @@ func GenView(args []string) error {
 		return err
 	}
 
+	// Post-generation validation (run before printing success banner)
+	var validationErr error
+	if !skipValidation {
+		validationErr = runPostGenValidation(basePath)
+	}
+
 	viewNameLower := strings.ToLower(viewName)
 
-	fmt.Println()
-	fmt.Println("✅ View generated successfully!")
+	if validationErr != nil {
+		fmt.Println()
+		fmt.Println("⚠️  View generated, but validation found issues.")
+	} else {
+		fmt.Println()
+		fmt.Println("✅ View generated successfully!")
+	}
 	fmt.Println()
 	fmt.Println("Files created:")
 	fmt.Printf("  app/%s/%s.go\n", viewNameLower, viewNameLower)
@@ -301,7 +341,7 @@ func GenView(args []string) error {
 	fmt.Println("  3. Run your app")
 	fmt.Println()
 
-	return nil
+	return validationErr
 }
 
 func GenSchema(args []string) error {
@@ -309,6 +349,19 @@ func GenSchema(args []string) error {
 	if ShowHelpIfRequested(args, printGenSchemaHelp) {
 		return nil
 	}
+
+	// Parse --skip-validation flag before checking positional args,
+	// otherwise `lvt gen schema --skip-validation` panics on args[0].
+	skipValidation := false
+	var filteredArgs []string
+	for _, arg := range args {
+		if arg == "--skip-validation" {
+			skipValidation = true
+		} else {
+			filteredArgs = append(filteredArgs, arg)
+		}
+	}
+	args = filteredArgs
 
 	if len(args) < 1 {
 		return fmt.Errorf("table name required")
@@ -376,10 +429,21 @@ func GenSchema(args []string) error {
 		return err
 	}
 
+	// Post-generation validation (run before printing success banner)
+	var validationErr error
+	if !skipValidation {
+		validationErr = runPostGenValidation(basePath)
+	}
+
 	tableNameLower := strings.ToLower(tableName)
 
-	fmt.Println()
-	fmt.Println("✅ Schema generated successfully!")
+	if validationErr != nil {
+		fmt.Println()
+		fmt.Println("⚠️  Schema generated, but validation found issues.")
+	} else {
+		fmt.Println()
+		fmt.Println("✅ Schema generated successfully!")
+	}
 	fmt.Println()
 	fmt.Println("Files created/updated:")
 	fmt.Println("  database/migrations/<timestamp>_create_" + tableNameLower + ".sql")
@@ -392,6 +456,22 @@ func GenSchema(args []string) error {
 	fmt.Println("  2. Use generated types in your handlers")
 	fmt.Println()
 
+	return validationErr
+}
+
+// runPostGenValidation runs structural validation (go.mod, templates, migrations)
+// after code generation. It skips compilation because the app may not compile until
+// sqlc generate is run. Prints the formatted result and returns an error if found.
+//
+// TODO: accept context.Context so Ctrl+C propagates to validation.
+// Structural checks are fast today so context.Background() is acceptable.
+func runPostGenValidation(basePath string) error {
+	fmt.Println("Running validation...")
+	result := validation.ValidatePostGen(context.Background(), basePath)
+	fmt.Print(result.Format())
+	if result.HasErrors() {
+		return fmt.Errorf("validation failed with %d error(s)", result.ErrorCount())
+	}
 	return nil
 }
 

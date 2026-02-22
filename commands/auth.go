@@ -23,6 +23,7 @@ type AuthFlags struct {
 
 func Auth(args []string) error {
 	flags := &AuthFlags{}
+	skipValidation := false
 	var structName, tableName string
 	var positionalArgs []string
 
@@ -41,6 +42,8 @@ func Auth(args []string) error {
 			flags.NoSessionsUI = true
 		case "--no-csrf":
 			flags.NoCSRF = true
+		case "--skip-validation":
+			skipValidation = true
 		default:
 			if !startsWithDash(arg) {
 				positionalArgs = append(positionalArgs, arg)
@@ -111,6 +114,16 @@ func Auth(args []string) error {
 	fmt.Println("\n📦 Dependencies added:")
 	fmt.Println("  - github.com/livetemplate/lvt/pkg/password (bcrypt utilities)")
 	fmt.Println("  - github.com/livetemplate/lvt/pkg/email    (email sender interface)")
+
+	// Post-generation validation (before interactive prompts).
+	// Unlike gen.go which defers the error to show the full file listing,
+	// auth returns immediately on validation failure because the interactive
+	// resource-protection prompts below depend on a healthy app state.
+	if !skipValidation {
+		if err := runPostGenValidation(wd); err != nil {
+			return err
+		}
+	}
 
 	// Check for existing resources to protect
 	resources, err := generator.ReadResources(wd)
