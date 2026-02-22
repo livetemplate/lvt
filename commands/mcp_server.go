@@ -547,10 +547,13 @@ type GenSchemaInput struct {
 	Fields map[string]string `json:"fields" jsonschema:"Field definitions as name:type pairs"`
 }
 
-// GenSchemaOutput defines output for gen schema
+// GenSchemaOutput defines output for gen schema.
+// Success reflects whether file generation succeeded, not validation.
+// Check Validation.Valid for structural health.
 type GenSchemaOutput struct {
-	Success bool   `json:"success"`
-	Message string `json:"message"`
+	Success    bool              `json:"success"`
+	Message    string            `json:"message"`
+	Validation *ValidationOutput `json:"validation,omitempty"`
 }
 
 func registerGenSchemaTools(server *mcp.Server) {
@@ -567,7 +570,8 @@ func registerGenSchemaTools(server *mcp.Server) {
 			}, nil
 		}
 
-		args := []string{"schema", input.Table}
+		// Pass --skip-validation to avoid double-validation (MCP runs it explicitly).
+		args := []string{"schema", input.Table, "--skip-validation"}
 		for field, typ := range input.Fields {
 			args = append(args, fmt.Sprintf("%s:%s", field, typ))
 		}
@@ -579,9 +583,25 @@ func registerGenSchemaTools(server *mcp.Server) {
 			}, nil
 		}
 
+		// Run validation explicitly for structured results
+		wd, err := os.Getwd()
+		if err != nil {
+			return nil, GenSchemaOutput{
+				Success: false,
+				Message: fmt.Sprintf("Failed to determine working directory for validation: %v", err),
+			}, nil
+		}
+		validationResult := runMCPValidation(ctx, wd)
+
+		msg := fmt.Sprintf("Successfully generated schema for %s", input.Table)
+		if !validationResult.Valid {
+			msg = fmt.Sprintf("Generated schema for %s, but validation found issues", input.Table)
+		}
+
 		return nil, GenSchemaOutput{
-			Success: true,
-			Message: fmt.Sprintf("Successfully generated schema for %s", input.Table),
+			Success:    true,
+			Message:    msg,
+			Validation: validationResult,
 		}, nil
 	})
 }

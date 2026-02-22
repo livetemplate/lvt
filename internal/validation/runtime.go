@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/livetemplate/lvt/internal/validator"
@@ -193,7 +194,7 @@ func waitForReadyOrExit(ctx context.Context, baseURL string, timeout time.Durati
 // trimOutput trims and shortens build output for error messages.
 // Uses rune-aware slicing to avoid splitting multi-byte UTF-8 characters.
 func trimOutput(output []byte) string {
-	s := string(output)
+	s := strings.TrimSpace(string(output))
 	runes := []rune(s)
 	if len(runes) > 500 {
 		s = string(runes[:500]) + "..."
