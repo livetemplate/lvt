@@ -48,6 +48,18 @@ func (r *ValidationResult) AddError(message string, file string, line int) {
 	})
 }
 
+// AddErrorWithHint adds an error-level issue with a hint for context.
+func (r *ValidationResult) AddErrorWithHint(message, file string, line int, hint string) {
+	r.Valid = false
+	r.Issues = append(r.Issues, ValidationIssue{
+		Level:   LevelError,
+		Message: message,
+		File:    file,
+		Line:    line,
+		Hint:    hint,
+	})
+}
+
 // AddWarning adds a warning-level issue
 func (r *ValidationResult) AddWarning(message string, file string, line int) {
 	r.Issues = append(r.Issues, ValidationIssue{
