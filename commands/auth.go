@@ -115,7 +115,10 @@ func Auth(args []string) error {
 	fmt.Println("  - github.com/livetemplate/lvt/pkg/password (bcrypt utilities)")
 	fmt.Println("  - github.com/livetemplate/lvt/pkg/email    (email sender interface)")
 
-	// Post-generation validation (before interactive prompts)
+	// Post-generation validation (before interactive prompts).
+	// Unlike gen.go which defers the error to show the full file listing,
+	// auth returns immediately on validation failure because the interactive
+	// resource-protection prompts below depend on a healthy app state.
 	if !skipValidation {
 		if err := runPostGenValidation(wd); err != nil {
 			return err

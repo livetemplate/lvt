@@ -85,17 +85,26 @@ func (c *RuntimeCheck) Run(ctx context.Context, appPath string) *validator.Valid
 	procDone := make(chan error, 1)
 	go func() { procDone <- cmd.Wait() }()
 
+	// Track whether procDone was already consumed (by waitForReadyOrExit
+	// detecting early exit). Without this, the deferred cleanup would
+	// deadlock trying to receive from an already-drained channel.
+	procConsumed := false
+
 	// Ensure process cleanup — kill + wait to avoid zombies.
 	defer func() {
 		appCancel()
 		_ = cmd.Process.Kill()
-		// Wait for the goroutine to finish.
-		<-procDone
+		if !procConsumed {
+			<-procDone
+		}
 	}()
 
 	// 4. Wait for the app to be ready, or detect early process exit.
 	baseURL := fmt.Sprintf("http://localhost:%d", port)
 	ready, earlyExit := waitForReadyOrExit(ctx, baseURL, timeout, procDone)
+	if earlyExit {
+		procConsumed = true
+	}
 	if !ready {
 		msg := fmt.Sprintf("runtime check: app did not start within %s", timeout)
 		if earlyExit {
