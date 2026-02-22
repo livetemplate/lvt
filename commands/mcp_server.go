@@ -9,6 +9,8 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/livetemplate/lvt/internal/validation"
+	"github.com/livetemplate/lvt/internal/validator"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"golang.org/x/term"
 )
@@ -76,6 +78,49 @@ func MCPServer(args []string) error {
 	}
 
 	return nil
+}
+
+// ValidationIssueOutput is a single validation issue in MCP responses.
+type ValidationIssueOutput struct {
+	Level      string `json:"level"`
+	File       string `json:"file,omitempty"`
+	Line       int    `json:"line,omitempty"`
+	Message    string `json:"message"`
+	Suggestion string `json:"suggestion,omitempty"`
+}
+
+// ValidationOutput is the structured validation result for MCP responses.
+type ValidationOutput struct {
+	Valid      bool                    `json:"valid"`
+	ErrorCount int                    `json:"error_count"`
+	WarnCount  int                    `json:"warning_count"`
+	Issues     []ValidationIssueOutput `json:"issues,omitempty"`
+}
+
+// runMCPValidation runs structural validation (post-gen) and converts to MCP output.
+// Uses PostGen engine since generated code may not compile until sqlc generate is run.
+func runMCPValidation(appPath string) *ValidationOutput {
+	result := validation.ValidatePostGen(context.Background(), appPath)
+	return validationResultToOutput(result)
+}
+
+// validationResultToOutput converts a validator.ValidationResult to MCP output.
+func validationResultToOutput(result *validator.ValidationResult) *ValidationOutput {
+	out := &ValidationOutput{
+		Valid:      result.Valid,
+		ErrorCount: result.ErrorCount(),
+		WarnCount:  result.WarningCount(),
+	}
+	for _, issue := range result.Issues {
+		out.Issues = append(out.Issues, ValidationIssueOutput{
+			Level:      string(issue.Level),
+			File:       issue.File,
+			Line:       issue.Line,
+			Message:    issue.Message,
+			Suggestion: issue.Hint,
+		})
+	}
+	return out
 }
 
 // NewAppInput defines the input schema for lvt new
@@ -154,9 +199,10 @@ type GenResourceInput struct {
 
 // GenResourceOutput defines the output schema
 type GenResourceOutput struct {
-	Success bool     `json:"success"`
-	Message string   `json:"message"`
-	Files   []string `json:"files,omitempty" jsonschema:"List of generated files"`
+	Success    bool              `json:"success"`
+	Message    string            `json:"message"`
+	Files      []string          `json:"files,omitempty" jsonschema:"List of generated files"`
+	Validation *ValidationOutput `json:"validation,omitempty"`
 }
 
 func registerGenResourceTool(server *mcp.Server) {
@@ -181,7 +227,8 @@ func registerGenResourceTool(server *mcp.Server) {
 		}
 
 		// Build command arguments: lvt gen resource <name> <field:type>...
-		args := []string{"resource", input.Name}
+		// Pass --skip-validation to avoid double-validation (MCP runs it explicitly).
+		args := []string{"resource", input.Name, "--skip-validation"}
 		for field, typ := range input.Fields {
 			args = append(args, fmt.Sprintf("%s:%s", field, typ))
 		}
@@ -194,6 +241,10 @@ func registerGenResourceTool(server *mcp.Server) {
 			}, nil
 		}
 
+		// Run validation explicitly for structured results
+		wd, _ := os.Getwd()
+		validationResult := runMCPValidation(wd)
+
 		// List generated files
 		files := []string{
 			fmt.Sprintf("app/%s/%s.go", input.Name, input.Name),
@@ -203,9 +254,10 @@ func registerGenResourceTool(server *mcp.Server) {
 		}
 
 		return nil, GenResourceOutput{
-			Success: true,
-			Message: fmt.Sprintf("Successfully generated %s resource with %d fields", input.Name, len(input.Fields)),
-			Files:   files,
+			Success:    validationResult.Valid,
+			Message:    fmt.Sprintf("Successfully generated %s resource with %d fields", input.Name, len(input.Fields)),
+			Files:      files,
+			Validation: validationResult,
 		}, nil
 	}
 
@@ -219,9 +271,10 @@ type GenViewInput struct {
 
 // GenViewOutput defines the output schema
 type GenViewOutput struct {
-	Success bool     `json:"success"`
-	Message string   `json:"message"`
-	Files   []string `json:"files,omitempty"`
+	Success    bool              `json:"success"`
+	Message    string            `json:"message"`
+	Files      []string          `json:"files,omitempty"`
+	Validation *ValidationOutput `json:"validation,omitempty"`
 }
 
 func registerGenViewTool(server *mcp.Server) {
@@ -238,8 +291,8 @@ func registerGenViewTool(server *mcp.Server) {
 			}, nil
 		}
 
-		// Execute Gen command
-		args := []string{"view", input.Name}
+		// Execute Gen command with --skip-validation (MCP runs it explicitly)
+		args := []string{"view", input.Name, "--skip-validation"}
 		if err := Gen(args); err != nil {
 			return nil, GenViewOutput{
 				Success: false,
@@ -247,15 +300,20 @@ func registerGenViewTool(server *mcp.Server) {
 			}, nil
 		}
 
+		// Run validation explicitly for structured results
+		wd, _ := os.Getwd()
+		validationResult := runMCPValidation(wd)
+
 		files := []string{
 			fmt.Sprintf("app/%s/%s.go", input.Name, input.Name),
 			fmt.Sprintf("app/%s/%s.tmpl", input.Name, input.Name),
 		}
 
 		return nil, GenViewOutput{
-			Success: true,
-			Message: fmt.Sprintf("Successfully generated %s view", input.Name),
-			Files:   files,
+			Success:    validationResult.Valid,
+			Message:    fmt.Sprintf("Successfully generated %s view", input.Name),
+			Files:      files,
+			Validation: validationResult,
 		}, nil
 	}
 
@@ -270,8 +328,9 @@ type GenAuthInput struct {
 
 // GenAuthOutput defines the output schema
 type GenAuthOutput struct {
-	Success bool   `json:"success"`
-	Message string `json:"message"`
+	Success    bool              `json:"success"`
+	Message    string            `json:"message"`
+	Validation *ValidationOutput `json:"validation,omitempty"`
 }
 
 func registerGenAuthTool(server *mcp.Server) {
@@ -281,7 +340,8 @@ func registerGenAuthTool(server *mcp.Server) {
 	}
 
 	handler := func(ctx context.Context, req *mcp.CallToolRequest, input GenAuthInput) (*mcp.CallToolResult, GenAuthOutput, error) {
-		args := []string{"auth"}
+		// Pass --skip-validation to avoid double-validation (MCP runs it explicitly)
+		args := []string{"auth", "--skip-validation"}
 
 		if input.StructName != "" {
 			args = append(args, input.StructName)
@@ -297,9 +357,14 @@ func registerGenAuthTool(server *mcp.Server) {
 			}, nil
 		}
 
+		// Run validation explicitly for structured results
+		wd, _ := os.Getwd()
+		validationResult := runMCPValidation(wd)
+
 		return nil, GenAuthOutput{
-			Success: true,
-			Message: "Successfully generated authentication system",
+			Success:    validationResult.Valid,
+			Message:    "Successfully generated authentication system",
+			Validation: validationResult,
 		}, nil
 	}
 

@@ -2,6 +2,7 @@ package commands
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"github.com/livetemplate/lvt/internal/generator"
 	"github.com/livetemplate/lvt/internal/kits"
 	"github.com/livetemplate/lvt/internal/parser"
+	"github.com/livetemplate/lvt/internal/validation"
 )
 
 func Gen(args []string) error {
@@ -127,6 +129,7 @@ func GenResource(args []string) error {
 	paginationMode := "infinite" // default
 	pageSize := 20               // default
 	editMode := "modal"          // default
+	skipValidation := false
 	var filteredArgs []string
 	for i := 0; i < len(args); i++ {
 		if args[i] == "--pagination" && i+1 < len(args) {
@@ -140,6 +143,8 @@ func GenResource(args []string) error {
 		} else if args[i] == "--edit-mode" && i+1 < len(args) {
 			editMode = args[i+1]
 			i++ // skip next arg
+		} else if args[i] == "--skip-validation" {
+			skipValidation = true
 		} else {
 			filteredArgs = append(filteredArgs, args[i])
 		}
@@ -226,6 +231,11 @@ func GenResource(args []string) error {
 	fmt.Println("  2. Run your app")
 	fmt.Println()
 
+	// Post-generation validation
+	if !skipValidation {
+		return runPostGenValidation(basePath)
+	}
+
 	return nil
 }
 
@@ -238,6 +248,18 @@ func GenView(args []string) error {
 	if len(args) < 1 {
 		return fmt.Errorf("view name required")
 	}
+
+	// Parse --skip-validation flag
+	skipValidation := false
+	var filteredArgs []string
+	for _, arg := range args {
+		if arg == "--skip-validation" {
+			skipValidation = true
+		} else {
+			filteredArgs = append(filteredArgs, arg)
+		}
+	}
+	args = filteredArgs
 
 	// Get current directory for project config
 	basePath, err := os.Getwd()
@@ -301,6 +323,11 @@ func GenView(args []string) error {
 	fmt.Println("  3. Run your app")
 	fmt.Println()
 
+	// Post-generation validation
+	if !skipValidation {
+		return runPostGenValidation(basePath)
+	}
+
 	return nil
 }
 
@@ -313,6 +340,18 @@ func GenSchema(args []string) error {
 	if len(args) < 1 {
 		return fmt.Errorf("table name required")
 	}
+
+	// Parse --skip-validation flag
+	skipValidation := false
+	var filteredArgs []string
+	for _, arg := range args {
+		if arg == "--skip-validation" {
+			skipValidation = true
+		} else {
+			filteredArgs = append(filteredArgs, arg)
+		}
+	}
+	args = filteredArgs
 
 	// Get current directory for project config
 	basePath, err := os.Getwd()
@@ -392,6 +431,24 @@ func GenSchema(args []string) error {
 	fmt.Println("  2. Use generated types in your handlers")
 	fmt.Println()
 
+	// Post-generation validation
+	if !skipValidation {
+		return runPostGenValidation(basePath)
+	}
+
+	return nil
+}
+
+// runPostGenValidation runs structural validation (go.mod, templates, migrations)
+// after code generation. It skips compilation because the app may not compile until
+// sqlc generate is run. Prints the formatted result and returns an error if found.
+func runPostGenValidation(basePath string) error {
+	fmt.Println("Running validation...")
+	result := validation.ValidatePostGen(context.Background(), basePath)
+	fmt.Print(result.Format())
+	if result.HasErrors() {
+		return fmt.Errorf("validation failed with %d error(s)", result.ErrorCount())
+	}
 	return nil
 }
 

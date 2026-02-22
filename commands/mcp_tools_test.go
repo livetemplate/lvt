@@ -155,7 +155,7 @@ func TestMCPTool_LvtGenResource(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			args := []string{"resource", tt.input.Name}
+			args := []string{"resource", tt.input.Name, "--skip-validation"}
 			for field, typ := range tt.input.Fields {
 				args = append(args, fmt.Sprintf("%s:%s", field, typ))
 			}
@@ -218,7 +218,7 @@ func TestMCPTool_LvtGenView(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			args := []string{"view", tt.input.Name}
+			args := []string{"view", tt.input.Name, "--skip-validation"}
 
 			err := Gen(args)
 			if tt.expectError && err == nil {
@@ -282,9 +282,9 @@ func TestMCPTool_LvtGenAuth(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var args []string
 			if tt.input.StructName != "" {
-				args = append(args, "auth", tt.input.StructName)
+				args = append(args, "auth", "--skip-validation", tt.input.StructName)
 			} else {
-				args = append(args, "auth")
+				args = append(args, "auth", "--skip-validation")
 			}
 			if tt.input.TableName != "" {
 				args = append(args, tt.input.TableName)
@@ -345,7 +345,7 @@ func TestMCPTool_LvtGenSchema(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			args := []string{"schema", tt.input.Table}
+			args := []string{"schema", tt.input.Table, "--skip-validation"}
 			for field, typ := range tt.input.Fields {
 				args = append(args, fmt.Sprintf("%s:%s", field, typ))
 			}
@@ -390,7 +390,7 @@ func TestMCPTool_Migrations(t *testing.T) {
 	}
 
 	// Generate a resource first (creates migrations)
-	err = Gen([]string{"resource", "items", "name:string"})
+	err = Gen([]string{"resource", "items", "name:string", "--skip-validation"})
 	if err != nil {
 		t.Fatalf("Failed to generate resource: %v", err)
 	}
@@ -442,7 +442,7 @@ func TestMCPTool_Seed(t *testing.T) {
 	}
 
 	// Generate a resource
-	err = Gen([]string{"resource", "items", "name:string"})
+	err = Gen([]string{"resource", "items", "name:string", "--skip-validation"})
 	if err != nil {
 		t.Fatalf("Failed to generate resource: %v", err)
 	}
@@ -518,7 +518,7 @@ func TestMCPTool_ResourceInspect(t *testing.T) {
 	}
 
 	// Generate a resource
-	err = Gen([]string{"resource", "items", "name:string"})
+	err = Gen([]string{"resource", "items", "name:string", "--skip-validation"})
 	if err != nil {
 		t.Fatalf("Failed to generate resource: %v", err)
 	}
