@@ -64,11 +64,16 @@ jobs:
           go test -v ./e2e -run TestDockerDeployment -timeout=10m
 
       - name: Run Fly.io Deployment Tests
-        if: ${{ github.event.inputs.run_fly_tests == 'true' && secrets.FLY_API_TOKEN != '' }}
+        if: ${{ github.event.inputs.run_fly_tests == 'true' }}
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
           RUN_FLY_DEPLOYMENT_TESTS: 'true'
         run: |
+          if [ -z "$FLY_API_TOKEN" ]; then
+            echo "FLY_API_TOKEN not set, skipping Fly.io tests"
+            exit 0
+          fi
+
           # Install flyctl
           curl -L https://fly.io/install.sh | sh
           export FLYCTL_INSTALL="/home/runner/.fly"
