@@ -91,10 +91,10 @@ type ValidationIssueOutput struct {
 
 // ValidationOutput is the structured validation result for MCP responses.
 type ValidationOutput struct {
-	Valid      bool                    `json:"valid"`
-	ErrorCount int                     `json:"error_count"`
-	WarnCount  int                     `json:"warning_count"`
-	Issues     []ValidationIssueOutput `json:"issues,omitempty"`
+	Valid        bool                    `json:"valid"`
+	ErrorCount   int                     `json:"error_count"`
+	WarningCount int                     `json:"warning_count"`
+	Issues       []ValidationIssueOutput `json:"issues,omitempty"`
 }
 
 // runMCPValidation runs structural validation (post-gen) and converts to MCP output.
@@ -107,9 +107,9 @@ func runMCPValidation(ctx context.Context, appPath string) *ValidationOutput {
 // validationResultToOutput converts a validator.ValidationResult to MCP output.
 func validationResultToOutput(result *validator.ValidationResult) *ValidationOutput {
 	out := &ValidationOutput{
-		Valid:      result.Valid,
-		ErrorCount: result.ErrorCount(),
-		WarnCount:  result.WarningCount(),
+		Valid:        result.Valid,
+		ErrorCount:   result.ErrorCount(),
+		WarningCount: result.WarningCount(),
 	}
 	for _, issue := range result.Issues {
 		out.Issues = append(out.Issues, ValidationIssueOutput{
@@ -197,7 +197,9 @@ type GenResourceInput struct {
 	Fields map[string]string `json:"fields" jsonschema:"Field definitions as name:type pairs"`
 }
 
-// GenResourceOutput defines the output schema
+// GenResourceOutput defines the output schema.
+// Success reflects whether file generation succeeded, not validation.
+// Check Validation.Valid for structural health.
 type GenResourceOutput struct {
 	Success    bool              `json:"success"`
 	Message    string            `json:"message"`
@@ -280,7 +282,9 @@ type GenViewInput struct {
 	Name string `json:"name" jsonschema:"View name (e.g. 'dashboard' or 'counter')"`
 }
 
-// GenViewOutput defines the output schema
+// GenViewOutput defines the output schema.
+// Success reflects whether file generation succeeded, not validation.
+// Check Validation.Valid for structural health.
 type GenViewOutput struct {
 	Success    bool              `json:"success"`
 	Message    string            `json:"message"`
@@ -348,7 +352,9 @@ type GenAuthInput struct {
 	TableName  string `json:"table_name,omitempty" jsonschema:"Database table name (default: users)"`
 }
 
-// GenAuthOutput defines the output schema
+// GenAuthOutput defines the output schema.
+// Success reflects whether file generation succeeded, not validation.
+// Check Validation.Valid for structural health.
 type GenAuthOutput struct {
 	Success    bool              `json:"success"`
 	Message    string            `json:"message"`

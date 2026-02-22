@@ -107,7 +107,7 @@ func ValidatePostGen(ctx context.Context, appPath string) *validator.ValidationR
 // so it is not included in DefaultEngine.
 func FullEngine() *Engine {
 	e := DefaultEngine()
-	e.checks = append(e.checks, &RuntimeCheck{})
+	WithCheck(&RuntimeCheck{})(e)
 	return e
 }
 

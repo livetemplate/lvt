@@ -179,10 +179,12 @@ func waitForReadyOrExit(ctx context.Context, baseURL string, timeout time.Durati
 }
 
 // trimOutput trims and shortens build output for error messages.
+// Uses rune-aware slicing to avoid splitting multi-byte UTF-8 characters.
 func trimOutput(output []byte) string {
 	s := string(output)
-	if len(s) > 500 {
-		s = s[:500] + "..."
+	runes := []rune(s)
+	if len(runes) > 500 {
+		s = string(runes[:500]) + "..."
 	}
 	return s
 }

@@ -86,9 +86,9 @@ func TestGenView_WithValidation(t *testing.T) {
 // TestValidationOutput_JSONMarshal verifies ValidationOutput serializes correctly.
 func TestValidationOutput_JSONMarshal(t *testing.T) {
 	vo := &ValidationOutput{
-		Valid:      false,
-		ErrorCount: 2,
-		WarnCount:  1,
+		Valid:        false,
+		ErrorCount:   2,
+		WarningCount: 1,
 		Issues: []ValidationIssueOutput{
 			{Level: "error", File: "main.go", Line: 10, Message: "undefined: foo"},
 			{Level: "error", File: "main.go", Line: 20, Message: "undefined: bar"},
@@ -113,8 +113,8 @@ func TestValidationOutput_JSONMarshal(t *testing.T) {
 	if decoded.ErrorCount != 2 {
 		t.Errorf("expected ErrorCount=2, got %d", decoded.ErrorCount)
 	}
-	if decoded.WarnCount != 1 {
-		t.Errorf("expected WarnCount=1, got %d", decoded.WarnCount)
+	if decoded.WarningCount != 1 {
+		t.Errorf("expected WarningCount=1, got %d", decoded.WarningCount)
 	}
 	if len(decoded.Issues) != 3 {
 		t.Errorf("expected 3 issues, got %d", len(decoded.Issues))
