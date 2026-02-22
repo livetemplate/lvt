@@ -209,10 +209,21 @@ func GenResource(args []string) error {
 		return err
 	}
 
+	// Post-generation validation (run before printing success banner)
+	var validationErr error
+	if !skipValidation {
+		validationErr = runPostGenValidation(basePath)
+	}
+
 	resourceNameLower := strings.ToLower(resourceName)
 
-	fmt.Println()
-	fmt.Println("✅ Resource generated successfully!")
+	if validationErr != nil {
+		fmt.Println()
+		fmt.Println("⚠️  Resource generated, but validation found issues.")
+	} else {
+		fmt.Println()
+		fmt.Println("✅ Resource generated successfully!")
+	}
 	fmt.Println()
 	fmt.Println("Files created:")
 	fmt.Printf("  app/%s/%s.go\n", resourceNameLower, resourceNameLower)
@@ -231,12 +242,7 @@ func GenResource(args []string) error {
 	fmt.Println("  2. Run your app")
 	fmt.Println()
 
-	// Post-generation validation
-	if !skipValidation {
-		return runPostGenValidation(basePath)
-	}
-
-	return nil
+	return validationErr
 }
 
 func GenView(args []string) error {
@@ -304,10 +310,21 @@ func GenView(args []string) error {
 		return err
 	}
 
+	// Post-generation validation (run before printing success banner)
+	var validationErr error
+	if !skipValidation {
+		validationErr = runPostGenValidation(basePath)
+	}
+
 	viewNameLower := strings.ToLower(viewName)
 
-	fmt.Println()
-	fmt.Println("✅ View generated successfully!")
+	if validationErr != nil {
+		fmt.Println()
+		fmt.Println("⚠️  View generated, but validation found issues.")
+	} else {
+		fmt.Println()
+		fmt.Println("✅ View generated successfully!")
+	}
 	fmt.Println()
 	fmt.Println("Files created:")
 	fmt.Printf("  app/%s/%s.go\n", viewNameLower, viewNameLower)
@@ -323,12 +340,7 @@ func GenView(args []string) error {
 	fmt.Println("  3. Run your app")
 	fmt.Println()
 
-	// Post-generation validation
-	if !skipValidation {
-		return runPostGenValidation(basePath)
-	}
-
-	return nil
+	return validationErr
 }
 
 func GenSchema(args []string) error {
@@ -415,10 +427,21 @@ func GenSchema(args []string) error {
 		return err
 	}
 
+	// Post-generation validation (run before printing success banner)
+	var validationErr error
+	if !skipValidation {
+		validationErr = runPostGenValidation(basePath)
+	}
+
 	tableNameLower := strings.ToLower(tableName)
 
-	fmt.Println()
-	fmt.Println("✅ Schema generated successfully!")
+	if validationErr != nil {
+		fmt.Println()
+		fmt.Println("⚠️  Schema generated, but validation found issues.")
+	} else {
+		fmt.Println()
+		fmt.Println("✅ Schema generated successfully!")
+	}
 	fmt.Println()
 	fmt.Println("Files created/updated:")
 	fmt.Println("  database/migrations/<timestamp>_create_" + tableNameLower + ".sql")
@@ -431,12 +454,7 @@ func GenSchema(args []string) error {
 	fmt.Println("  2. Use generated types in your handlers")
 	fmt.Println()
 
-	// Post-generation validation
-	if !skipValidation {
-		return runPostGenValidation(basePath)
-	}
-
-	return nil
+	return validationErr
 }
 
 // runPostGenValidation runs structural validation (go.mod, templates, migrations)

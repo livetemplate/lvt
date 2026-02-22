@@ -92,15 +92,15 @@ type ValidationIssueOutput struct {
 // ValidationOutput is the structured validation result for MCP responses.
 type ValidationOutput struct {
 	Valid      bool                    `json:"valid"`
-	ErrorCount int                    `json:"error_count"`
-	WarnCount  int                    `json:"warning_count"`
+	ErrorCount int                     `json:"error_count"`
+	WarnCount  int                     `json:"warning_count"`
 	Issues     []ValidationIssueOutput `json:"issues,omitempty"`
 }
 
 // runMCPValidation runs structural validation (post-gen) and converts to MCP output.
 // Uses PostGen engine since generated code may not compile until sqlc generate is run.
-func runMCPValidation(appPath string) *ValidationOutput {
-	result := validation.ValidatePostGen(context.Background(), appPath)
+func runMCPValidation(ctx context.Context, appPath string) *ValidationOutput {
+	result := validation.ValidatePostGen(ctx, appPath)
 	return validationResultToOutput(result)
 }
 
@@ -242,8 +242,14 @@ func registerGenResourceTool(server *mcp.Server) {
 		}
 
 		// Run validation explicitly for structured results
-		wd, _ := os.Getwd()
-		validationResult := runMCPValidation(wd)
+		wd, err := os.Getwd()
+		if err != nil {
+			return nil, GenResourceOutput{
+				Success: false,
+				Message: fmt.Sprintf("Failed to determine working directory for validation: %v", err),
+			}, nil
+		}
+		validationResult := runMCPValidation(ctx, wd)
 
 		// List generated files
 		files := []string{
@@ -253,9 +259,14 @@ func registerGenResourceTool(server *mcp.Server) {
 			fmt.Sprintf("app/%s/%s_ws_test.go", input.Name, input.Name),
 		}
 
+		msg := fmt.Sprintf("Successfully generated %s resource with %d fields", input.Name, len(input.Fields))
+		if !validationResult.Valid {
+			msg = fmt.Sprintf("Generated %s resource, but validation found issues", input.Name)
+		}
+
 		return nil, GenResourceOutput{
-			Success:    validationResult.Valid,
-			Message:    fmt.Sprintf("Successfully generated %s resource with %d fields", input.Name, len(input.Fields)),
+			Success:    true,
+			Message:    msg,
 			Files:      files,
 			Validation: validationResult,
 		}, nil
@@ -301,17 +312,28 @@ func registerGenViewTool(server *mcp.Server) {
 		}
 
 		// Run validation explicitly for structured results
-		wd, _ := os.Getwd()
-		validationResult := runMCPValidation(wd)
+		wd, err := os.Getwd()
+		if err != nil {
+			return nil, GenViewOutput{
+				Success: false,
+				Message: fmt.Sprintf("Failed to determine working directory for validation: %v", err),
+			}, nil
+		}
+		validationResult := runMCPValidation(ctx, wd)
 
 		files := []string{
 			fmt.Sprintf("app/%s/%s.go", input.Name, input.Name),
 			fmt.Sprintf("app/%s/%s.tmpl", input.Name, input.Name),
 		}
 
+		msg := fmt.Sprintf("Successfully generated %s view", input.Name)
+		if !validationResult.Valid {
+			msg = fmt.Sprintf("Generated %s view, but validation found issues", input.Name)
+		}
+
 		return nil, GenViewOutput{
-			Success:    validationResult.Valid,
-			Message:    fmt.Sprintf("Successfully generated %s view", input.Name),
+			Success:    true,
+			Message:    msg,
 			Files:      files,
 			Validation: validationResult,
 		}, nil
@@ -358,12 +380,23 @@ func registerGenAuthTool(server *mcp.Server) {
 		}
 
 		// Run validation explicitly for structured results
-		wd, _ := os.Getwd()
-		validationResult := runMCPValidation(wd)
+		wd, err := os.Getwd()
+		if err != nil {
+			return nil, GenAuthOutput{
+				Success: false,
+				Message: fmt.Sprintf("Failed to determine working directory for validation: %v", err),
+			}, nil
+		}
+		validationResult := runMCPValidation(ctx, wd)
+
+		msg := "Successfully generated authentication system"
+		if !validationResult.Valid {
+			msg = "Generated authentication system, but validation found issues"
+		}
 
 		return nil, GenAuthOutput{
-			Success:    validationResult.Valid,
-			Message:    "Successfully generated authentication system",
+			Success:    true,
+			Message:    msg,
 			Validation: validationResult,
 		}, nil
 	}

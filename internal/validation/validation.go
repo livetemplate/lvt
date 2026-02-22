@@ -106,13 +106,9 @@ func ValidatePostGen(ctx context.Context, appPath string) *validator.ValidationR
 // RuntimeCheck is expensive (builds binary, starts subprocess, probes HTTP)
 // so it is not included in DefaultEngine.
 func FullEngine() *Engine {
-	return NewEngine(
-		WithCheck(&GoModCheck{}),
-		WithCheck(&TemplateCheck{}),
-		WithCheck(&MigrationCheck{}),
-		WithCheck(&CompilationCheck{}),
-		WithCheck(&RuntimeCheck{}),
-	)
+	e := DefaultEngine()
+	e.checks = append(e.checks, &RuntimeCheck{})
+	return e
 }
 
 // Validate runs all default checks including compilation (go build ./...).

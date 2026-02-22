@@ -1,19 +1,20 @@
 package commands
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 )
 
-// TestGenResource_WithValidation verifies that validation runs after generation
-// in a fully valid app (with go.mod + main.go so compilation succeeds).
+// TestGenResource_WithValidation verifies that structural validation (go.mod,
+// templates, migrations) runs after generation in a fully valid app.
 func TestGenResource_WithValidation(t *testing.T) {
 	tmpDir, cleanup := setupMCPTestDir(t)
 	defer cleanup()
 
-	// Create a full app so validation (including compilation) passes
+	// Create a full app so structural validation passes
 	err := New([]string{"testapp"})
 	if err != nil {
 		t.Fatalf("Failed to create test app: %v", err)
@@ -60,7 +61,7 @@ func TestGenResource_SkipValidation(t *testing.T) {
 	}
 }
 
-// TestGenView_WithValidation verifies that validation runs after view generation.
+// TestGenView_WithValidation verifies that structural validation runs after view generation.
 func TestGenView_WithValidation(t *testing.T) {
 	tmpDir, cleanup := setupMCPTestDir(t)
 	defer cleanup()
@@ -106,7 +107,7 @@ func TestValidationOutput_JSONMarshal(t *testing.T) {
 		t.Fatalf("Failed to unmarshal ValidationOutput: %v", err)
 	}
 
-	if decoded.Valid != false {
+	if decoded.Valid {
 		t.Error("expected Valid=false")
 	}
 	if decoded.ErrorCount != 2 {
@@ -143,7 +144,7 @@ func TestMCPGenResource_IncludesValidation(t *testing.T) {
 	}
 
 	// Run MCP validation
-	result := runMCPValidation(appDir)
+	result := runMCPValidation(context.Background(), appDir)
 	if result == nil {
 		t.Fatal("expected non-nil validation result")
 	}
@@ -156,9 +157,10 @@ func TestMCPGenResource_IncludesValidation(t *testing.T) {
 		t.Errorf("expected 0 errors, got %d", result.ErrorCount)
 	}
 
-	// Verify it can be placed into GenResourceOutput
+	// Verify it can be placed into GenResourceOutput.
+	// Success reflects generation success (always true here), not validation state.
 	output := GenResourceOutput{
-		Success:    result.Valid,
+		Success:    true,
 		Message:    "test",
 		Validation: result,
 	}

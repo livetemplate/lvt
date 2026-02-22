@@ -1,6 +1,7 @@
 package validation
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net"
@@ -63,33 +64,47 @@ func (c *RuntimeCheck) Run(ctx context.Context, appPath string) *validator.Valid
 		}
 	}
 
-	// 3. Start the binary
+	// 3. Start the binary, capturing stdout/stderr for diagnostics.
 	appCtx, appCancel := context.WithCancel(ctx)
 	defer appCancel()
 
+	var appOut bytes.Buffer
 	cmd := exec.CommandContext(appCtx, binaryPath)
 	cmd.Dir = appPath
 	cmd.Env = append(envWithGOWORKOff(), fmt.Sprintf("PORT=%d", port))
-	cmd.Stdout = nil
-	cmd.Stderr = nil
+	cmd.Stdout = &appOut
+	cmd.Stderr = &appOut
 
 	if err := cmd.Start(); err != nil {
 		result.AddError(fmt.Sprintf("runtime check: failed to start app: %v", err), "", 0)
 		return result
 	}
 
+	// Monitor for early exit so we can report the real error instead
+	// of waiting until the full startup timeout.
+	procDone := make(chan error, 1)
+	go func() { procDone <- cmd.Wait() }()
+
 	// Ensure process cleanup — kill + wait to avoid zombies.
 	defer func() {
 		appCancel()
-		// Process may already be gone; ignore errors.
 		_ = cmd.Process.Kill()
-		_ = cmd.Wait()
+		// Wait for the goroutine to finish.
+		<-procDone
 	}()
 
-	// 4. Wait for the app to be ready
+	// 4. Wait for the app to be ready, or detect early process exit.
 	baseURL := fmt.Sprintf("http://localhost:%d", port)
-	if !waitForReady(ctx, baseURL, timeout) {
-		result.AddError(fmt.Sprintf("runtime check: app did not start within %s", timeout), "", 0)
+	ready, earlyExit := waitForReadyOrExit(ctx, baseURL, timeout, procDone)
+	if !ready {
+		msg := fmt.Sprintf("runtime check: app did not start within %s", timeout)
+		if earlyExit {
+			msg = "runtime check: app exited before becoming ready"
+		}
+		if output := trimOutput(appOut.Bytes()); output != "" {
+			msg += "\nOutput: " + output
+		}
+		result.AddError(msg, "", 0)
 		return result
 	}
 
@@ -115,6 +130,9 @@ func (c *RuntimeCheck) Run(ctx context.Context, appPath string) *validator.Valid
 }
 
 // getFreePort asks the OS for an available TCP port.
+// Note: there is an inherent TOCTOU race between closing the listener and
+// the subprocess binding the port. In practice this is rare, but it can
+// cause flaky failures in heavily parallel CI environments.
 func getFreePort() (int, error) {
 	listener, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
@@ -125,23 +143,30 @@ func getFreePort() (int, error) {
 	return port, nil
 }
 
-// waitForReady polls the base URL until it gets a response or times out.
-func waitForReady(ctx context.Context, baseURL string, timeout time.Duration) bool {
+// waitForReadyOrExit polls the base URL until it gets a response, the process
+// exits early, or the timeout elapses. Returns (ready, earlyExit).
+func waitForReadyOrExit(ctx context.Context, baseURL string, timeout time.Duration, procDone <-chan error) (ready bool, earlyExit bool) {
 	deadline := time.Now().Add(timeout)
 	client := &http.Client{Timeout: 1 * time.Second}
 
 	for time.Now().Before(deadline) {
 		if ctx.Err() != nil {
-			return false
+			return false, false
+		}
+		// Check if process has exited.
+		select {
+		case <-procDone:
+			return false, true
+		default:
 		}
 		resp, err := client.Get(baseURL)
 		if err == nil {
 			resp.Body.Close()
-			return true
+			return true, false
 		}
 		time.Sleep(200 * time.Millisecond)
 	}
-	return false
+	return false, false
 }
 
 // trimOutput trims and shortens build output for error messages.
