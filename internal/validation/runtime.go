@@ -93,27 +93,36 @@ func (c *RuntimeCheck) Run(ctx context.Context, appPath string) *validator.Valid
 	procDone := make(chan error, 1)
 	go func() { procDone <- cmd.Wait() }()
 
-	// Track whether procDone was already consumed (by waitForReadyOrExit
-	// detecting early exit). Without this, the deferred cleanup would
-	// deadlock trying to receive from an already-drained channel.
-	procConsumed := false
-
-	// Ensure process cleanup — kill + wait to avoid zombies.
-	defer func() {
+	// stopProcess kills the subprocess and waits for cmd.Wait() to finish.
+	// This must be called before reading appOut because os/exec spawns an
+	// internal goroutine that copies subprocess pipes into appOut; that
+	// goroutine only stops when cmd.Wait() returns.
+	procStopped := false
+	stopProcess := func() {
+		if procStopped {
+			return
+		}
+		procStopped = true
 		appCancel()
 		_ = cmd.Process.Kill()
-		if !procConsumed {
-			<-procDone
-		}
-	}()
+		<-procDone
+	}
+	defer stopProcess()
 
 	// 4. Wait for the app to be ready, or detect early process exit.
 	baseURL := fmt.Sprintf("http://localhost:%d", port)
 	ready, earlyExit := waitForReadyOrExit(ctx, baseURL, timeout, procDone)
-	if earlyExit {
-		procConsumed = true
-	}
 	if !ready {
+		// Stop process before reading appOut to avoid data race with
+		// the os/exec pipe copier goroutine.
+		if !earlyExit {
+			stopProcess()
+		} else {
+			// Process already exited and cmd.Wait() already returned
+			// (consumed by waitForReadyOrExit), so pipes are closed.
+			procStopped = true
+		}
+
 		var msg string
 		switch {
 		case ctx.Err() != nil:
