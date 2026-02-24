@@ -90,15 +90,8 @@ func applyFix(dir string, fix Fix) (bool, error) {
 				return nil
 			}
 			if !info.IsDir() {
-				rel, relErr := filepath.Rel(dir, path)
-				if relErr != nil {
-					return nil
-				}
-				matched, _ := filepath.Match(fix.TargetFile, rel)
-				if !matched {
-					// Also try matching just the filename for simple patterns
-					matched, _ = filepath.Match(suffix, info.Name())
-				}
+				// Match against the filename (suffix after "*/")
+				matched, _ := filepath.Match(suffix, info.Name())
 				if matched {
 					matches = append(matches, path)
 				}

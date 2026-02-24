@@ -195,11 +195,9 @@ func GenResource(args []string) error {
 	}
 
 	// Start telemetry capture
-	collector, _ := telemetry.NewCollector()
-	if collector != nil {
-		defer collector.Close()
-	}
-	capture := startCapture(collector, "gen resource", map[string]any{
+	collector := telemetry.NewCollector()
+	defer collector.Close()
+	capture := collector.StartCapture("gen resource", map[string]any{
 		"resource_name":   resourceName,
 		"fields":          fieldArgs,
 		"kit":             kit,
@@ -331,11 +329,9 @@ func GenView(args []string) error {
 	}
 
 	// Start telemetry capture
-	collector, _ := telemetry.NewCollector()
-	if collector != nil {
-		defer collector.Close()
-	}
-	capture := startCapture(collector, "gen view", map[string]any{
+	collector := telemetry.NewCollector()
+	defer collector.Close()
+	capture := collector.StartCapture("gen view", map[string]any{
 		"view_name": viewName,
 		"kit":       kit,
 	})
@@ -463,11 +459,9 @@ func GenSchema(args []string) error {
 	}
 
 	// Start telemetry capture
-	collector, _ := telemetry.NewCollector()
-	if collector != nil {
-		defer collector.Close()
-	}
-	capture := startCapture(collector, "gen schema", map[string]any{
+	collector := telemetry.NewCollector()
+	defer collector.Close()
+	capture := collector.StartCapture("gen schema", map[string]any{
 		"table_name": tableName,
 		"fields":     args[1:],
 		"kit":        kit,
@@ -665,15 +659,6 @@ func inferTypeForDirectMode(fieldName string) string {
 
 	// Default to string
 	return "string"
-}
-
-// startCapture begins a telemetry capture for the given command.
-// Returns a noop capture if the collector is nil (telemetry disabled).
-func startCapture(c *telemetry.Collector, cmd string, inputs map[string]any) *telemetry.Capture {
-	if c == nil {
-		return telemetry.NoopCapture()
-	}
-	return c.StartCapture(cmd, inputs)
 }
 
 // marshalValidationResult serialises a validation result to JSON for telemetry.

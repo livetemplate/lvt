@@ -55,15 +55,12 @@ func printEvolutionHelp() {
 	fmt.Println("  failures [--last N]             List recent failed events")
 	fmt.Println("  patterns                        List all known patterns from knowledge base")
 	fmt.Println("  propose <event-id>              Propose fixes for a specific event")
-	fmt.Println("  apply <fix-id> [--dry-run]      Apply a proposed fix")
+	fmt.Println("  apply <fix-id> [--dry-run]      Apply a proposed fix [coming soon]")
 	fmt.Println("  upstream-status                 Show upstream pattern status")
 }
 
 func evolutionStatus(args []string) error {
-	collector, err := telemetry.NewCollector()
-	if err != nil {
-		return fmt.Errorf("open telemetry: %w", err)
-	}
+	collector := telemetry.NewCollector()
 	defer collector.Close()
 
 	if !collector.IsEnabled() {
@@ -106,10 +103,7 @@ func evolutionStatus(args []string) error {
 }
 
 func evolutionMetrics(args []string) error {
-	collector, err := telemetry.NewCollector()
-	if err != nil {
-		return fmt.Errorf("open telemetry: %w", err)
-	}
+	collector := telemetry.NewCollector()
 	defer collector.Close()
 
 	if !collector.IsEnabled() {
@@ -186,10 +180,7 @@ func evolutionFailures(args []string) error {
 		}
 	}
 
-	collector, err := telemetry.NewCollector()
-	if err != nil {
-		return fmt.Errorf("open telemetry: %w", err)
-	}
+	collector := telemetry.NewCollector()
 	defer collector.Close()
 
 	if !collector.IsEnabled() {
@@ -266,10 +257,7 @@ func evolutionPropose(args []string) error {
 	}
 	eventID := args[0]
 
-	collector, err := telemetry.NewCollector()
-	if err != nil {
-		return fmt.Errorf("open telemetry: %w", err)
-	}
+	collector := telemetry.NewCollector()
 	defer collector.Close()
 
 	if !collector.IsEnabled() {

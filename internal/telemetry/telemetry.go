@@ -26,30 +26,30 @@ type Collector struct {
 	enabled bool
 }
 
-// NewCollector opens the telemetry store. Returns a disabled collector if
-// telemetry is off or the store cannot be opened (never returns an error to
-// callers — telemetry must not break generation).
-func NewCollector() (*Collector, error) {
+// NewCollector opens the telemetry store. Returns a disabled (but valid)
+// collector if telemetry is off or the store cannot be opened.
+// The returned pointer is always non-nil — telemetry must not break generation.
+func NewCollector() *Collector {
 	if !Enabled() {
-		return &Collector{enabled: false}, nil
+		return &Collector{enabled: false}
 	}
 
 	configDir, err := config.GetConfigDir()
 	if err != nil {
-		return &Collector{enabled: false}, nil
+		return &Collector{enabled: false}
 	}
 
 	if err := os.MkdirAll(configDir, 0755); err != nil {
-		return &Collector{enabled: false}, nil
+		return &Collector{enabled: false}
 	}
 
 	dbPath := filepath.Join(configDir, "telemetry.db")
 	store, err := OpenSQLite(dbPath)
 	if err != nil {
-		return &Collector{enabled: false}, nil
+		return &Collector{enabled: false}
 	}
 
-	return &Collector{store: store, enabled: true}, nil
+	return &Collector{store: store, enabled: true}
 }
 
 // NewCollectorWithStore creates a collector with a custom store (for testing).

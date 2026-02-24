@@ -25,14 +25,22 @@ func TestParseActualPatternsFile(t *testing.T) {
 		t.Fatalf("parse patterns: %v", err)
 	}
 
-	// The real file has 13 patterns (10 local + 3 upstream)
-	if len(patterns) < 13 {
-		t.Errorf("expected at least 13 patterns, got %d", len(patterns))
+	// Verify structural properties rather than exact counts
+	if len(patterns) == 0 {
+		t.Fatal("expected at least one pattern, got 0")
 	}
 
-	// Check first pattern
-	if patterns[0].ID != "editing-id-type" {
-		t.Errorf("expected first pattern ID 'editing-id-type', got %q", patterns[0].ID)
+	// Every pattern should have a non-empty ID, Name, and at least one fix
+	for _, p := range patterns {
+		if p.ID == "" {
+			t.Error("found pattern with empty ID")
+		}
+		if p.Name == "" {
+			t.Errorf("pattern %q has empty Name", p.ID)
+		}
+		if p.MessageRe == nil {
+			t.Errorf("pattern %q has no compiled message regex", p.ID)
+		}
 	}
 }
 

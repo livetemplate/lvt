@@ -99,11 +99,9 @@ func Auth(args []string) error {
 	}
 
 	// Start telemetry capture
-	collector, _ := telemetry.NewCollector()
-	if collector != nil {
-		defer collector.Close()
-	}
-	capture := startCapture(collector, "gen auth", map[string]any{
+	collector := telemetry.NewCollector()
+	defer collector.Close()
+	capture := collector.StartCapture("gen auth", map[string]any{
 		"struct_name": structName,
 		"table_name":  tableName,
 	})
