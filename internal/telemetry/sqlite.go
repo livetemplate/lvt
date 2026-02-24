@@ -99,7 +99,8 @@ func (s *SQLiteStore) List(ctx context.Context, opts ListOptions) ([]*Generation
 	}
 	query += " ORDER BY timestamp DESC"
 	if opts.Limit > 0 {
-		query += fmt.Sprintf(" LIMIT %d", opts.Limit)
+		query += " LIMIT ?"
+		args = append(args, opts.Limit)
 	}
 
 	rows, err := s.db.QueryContext(ctx, query, args...)
@@ -162,20 +163,29 @@ func scanInto(sc scanner) (*GenerationEvent, error) {
 		return nil, err
 	}
 
-	e.Timestamp, _ = time.Parse(time.RFC3339, ts)
+	e.Timestamp, err = time.Parse(time.RFC3339, ts)
+	if err != nil {
+		return nil, fmt.Errorf("parse timestamp %q: %w", ts, err)
+	}
 	e.Kit = kit.String
 	e.LvtVersion = lvtVersion.String
 	e.ValidationJSON = validationJSON.String
 	e.DurationMs = durationMs.Int64
 
 	if inputsJSON != "" {
-		_ = json.Unmarshal([]byte(inputsJSON), &e.Inputs)
+		if err := json.Unmarshal([]byte(inputsJSON), &e.Inputs); err != nil {
+			return nil, fmt.Errorf("unmarshal inputs: %w", err)
+		}
 	}
 	if errorsJSON != "" && errorsJSON != "null" {
-		_ = json.Unmarshal([]byte(errorsJSON), &e.Errors)
+		if err := json.Unmarshal([]byte(errorsJSON), &e.Errors); err != nil {
+			return nil, fmt.Errorf("unmarshal errors: %w", err)
+		}
 	}
 	if filesJSON != "" && filesJSON != "null" {
-		_ = json.Unmarshal([]byte(filesJSON), &e.FilesGenerated)
+		if err := json.Unmarshal([]byte(filesJSON), &e.FilesGenerated); err != nil {
+			return nil, fmt.Errorf("unmarshal files: %w", err)
+		}
 	}
 
 	return &e, nil

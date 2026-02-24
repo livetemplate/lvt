@@ -37,10 +37,11 @@ func TestEvolution_Status(t *testing.T) {
 }
 
 func TestEvolution_Patterns(t *testing.T) {
-	// This test requires the patterns.md file to be findable
+	// This test requires the patterns.md file to be findable.
+	// Skip if not in the repo (e.g. CI without full checkout).
 	err := Evolution([]string{"patterns"})
 	if err != nil {
-		t.Logf("patterns command failed (expected if patterns.md not accessible): %v", err)
+		t.Skipf("patterns command failed (patterns.md not accessible): %v", err)
 	}
 }
 
@@ -85,5 +86,12 @@ func TestEvolution_Apply_NoArgs(t *testing.T) {
 	err := Evolution([]string{"apply"})
 	if err == nil {
 		t.Error("expected error for apply without fix-id")
+	}
+}
+
+func TestEvolution_Apply_ReturnsNotImplemented(t *testing.T) {
+	err := Evolution([]string{"apply", "some-fix-id"})
+	if err == nil {
+		t.Error("expected error for apply (not yet implemented)")
 	}
 }

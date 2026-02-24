@@ -14,6 +14,7 @@ import (
 	"github.com/livetemplate/lvt/internal/parser"
 	"github.com/livetemplate/lvt/internal/telemetry"
 	"github.com/livetemplate/lvt/internal/validation"
+	"github.com/livetemplate/lvt/internal/validator"
 )
 
 func Gen(args []string) error {
@@ -229,10 +230,17 @@ func GenResource(args []string) error {
 
 	// Post-generation validation (run before printing success banner)
 	var validationErr error
+	var validationResult *validator.ValidationResult
 	if !skipValidation {
-		validationErr = runPostGenValidation(basePath)
+		validationResult, validationErr = runPostGenValidation(basePath)
 	}
-	capture.Complete(validationErr == nil, validationResultJSON(basePath, skipValidation))
+	if validationErr != nil {
+		capture.RecordError(telemetry.GenerationError{
+			Phase:   "validation",
+			Message: validationErr.Error(),
+		})
+	}
+	capture.Complete(validationErr == nil, marshalValidationResult(validationResult))
 
 	resourceNameLower := strings.ToLower(resourceName)
 
@@ -345,10 +353,17 @@ func GenView(args []string) error {
 
 	// Post-generation validation (run before printing success banner)
 	var validationErr error
+	var validationResult *validator.ValidationResult
 	if !skipValidation {
-		validationErr = runPostGenValidation(basePath)
+		validationResult, validationErr = runPostGenValidation(basePath)
 	}
-	capture.Complete(validationErr == nil, validationResultJSON(basePath, skipValidation))
+	if validationErr != nil {
+		capture.RecordError(telemetry.GenerationError{
+			Phase:   "validation",
+			Message: validationErr.Error(),
+		})
+	}
+	capture.Complete(validationErr == nil, marshalValidationResult(validationResult))
 
 	viewNameLower := strings.ToLower(viewName)
 
@@ -478,10 +493,17 @@ func GenSchema(args []string) error {
 
 	// Post-generation validation (run before printing success banner)
 	var validationErr error
+	var validationResult *validator.ValidationResult
 	if !skipValidation {
-		validationErr = runPostGenValidation(basePath)
+		validationResult, validationErr = runPostGenValidation(basePath)
 	}
-	capture.Complete(validationErr == nil, validationResultJSON(basePath, skipValidation))
+	if validationErr != nil {
+		capture.RecordError(telemetry.GenerationError{
+			Phase:   "validation",
+			Message: validationErr.Error(),
+		})
+	}
+	capture.Complete(validationErr == nil, marshalValidationResult(validationResult))
 
 	tableNameLower := strings.ToLower(tableName)
 
@@ -509,18 +531,16 @@ func GenSchema(args []string) error {
 
 // runPostGenValidation runs structural validation (go.mod, templates, migrations)
 // after code generation. It skips compilation because the app may not compile until
-// sqlc generate is run. Prints the formatted result and returns an error if found.
-//
-// TODO: accept context.Context so Ctrl+C propagates to validation.
-// Structural checks are fast today so context.Background() is acceptable.
-func runPostGenValidation(basePath string) error {
+// sqlc generate is run. Prints the formatted result and returns both the result
+// (for telemetry) and an error if validation found issues.
+func runPostGenValidation(basePath string) (*validator.ValidationResult, error) {
 	fmt.Println("Running validation...")
 	result := validation.ValidatePostGen(context.Background(), basePath)
 	fmt.Print(result.Format())
 	if result.HasErrors() {
-		return fmt.Errorf("validation failed with %d error(s)", result.ErrorCount())
+		return result, fmt.Errorf("validation failed with %d error(s)", result.ErrorCount())
 	}
-	return nil
+	return result, nil
 }
 
 func parseFieldsWithInference(fieldArgs []string) ([]parser.Field, error) {
@@ -656,13 +676,12 @@ func startCapture(c *telemetry.Collector, cmd string, inputs map[string]any) *te
 	return c.StartCapture(cmd, inputs)
 }
 
-// validationResultJSON returns the validation result as JSON for telemetry.
-// Returns empty string on any error or when validation was skipped.
-func validationResultJSON(basePath string, skipped bool) string {
-	if skipped {
+// marshalValidationResult serialises a validation result to JSON for telemetry.
+// Returns empty string if the result is nil.
+func marshalValidationResult(result *validator.ValidationResult) string {
+	if result == nil {
 		return ""
 	}
-	result := validation.ValidatePostGen(context.Background(), basePath)
 	b, err := json.Marshal(result)
 	if err != nil {
 		return ""

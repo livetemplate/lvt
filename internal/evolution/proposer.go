@@ -36,7 +36,7 @@ func (p *Proposer) ProposeFor(event *telemetry.GenerationEvent) (*Proposal, erro
 		patterns := knowledge.MatchAll(p.kb.ListPatterns(), genErr)
 		for _, pat := range patterns {
 			for _, fix := range pat.Fixes {
-				key := pat.ID + ":" + fix.File
+				key := pat.ID + ":" + fix.File + ":" + fix.FindPattern + ":" + fix.Replace
 				if seen[key] {
 					continue
 				}

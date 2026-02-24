@@ -6,16 +6,18 @@ import (
 	"encoding/hex"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 	"time"
 
 	"github.com/livetemplate/lvt/internal/config"
 )
 
-// Enabled returns true unless LVT_TELEMETRY is set to "false" or "0".
+// Enabled returns true only when LVT_TELEMETRY is explicitly set to "true" or "1".
+// Telemetry is opt-in: it is disabled by default to respect user privacy.
 func Enabled() bool {
 	v := strings.ToLower(os.Getenv("LVT_TELEMETRY"))
-	return v != "false" && v != "0"
+	return v == "true" || v == "1"
 }
 
 // Collector tracks generation events. Safe to use even when disabled (noop).
@@ -83,10 +85,11 @@ func (c *Collector) StartCapture(command string, inputs map[string]any) *Capture
 	return &Capture{
 		store: c.store,
 		event: &GenerationEvent{
-			ID:        generateID(),
-			Timestamp: time.Now(),
-			Command:   command,
-			Inputs:    inputs,
+			ID:         generateID(),
+			Timestamp:  time.Now(),
+			Command:    command,
+			Inputs:     inputs,
+			LvtVersion: getLvtVersion(),
 		},
 	}
 }
@@ -103,10 +106,9 @@ func (c *Collector) RunRetention(ctx context.Context, retentionDays int) error {
 
 // Capture accumulates data for a single generation event.
 type Capture struct {
-	store   Store
-	event   *GenerationEvent
-	noop    bool
-	started time.Time
+	store Store
+	event *GenerationEvent
+	noop  bool
 }
 
 // NoopCapture returns a capture that silently discards all data.
@@ -166,4 +168,16 @@ func generateID() string {
 	b := make([]byte, 16)
 	_, _ = rand.Read(b)
 	return hex.EncodeToString(b)
+}
+
+// getLvtVersion returns the module version from build info, or "dev" if unavailable.
+func getLvtVersion() string {
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return "dev"
+	}
+	if info.Main.Version != "" && info.Main.Version != "(devel)" {
+		return info.Main.Version
+	}
+	return "dev"
 }

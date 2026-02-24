@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sync"
 
 	"github.com/livetemplate/lvt/internal/telemetry"
@@ -78,6 +77,15 @@ func (kb *KnowledgeBase) GetPattern(id string) (*Pattern, bool) {
 	return p, ok
 }
 
+// NewFromPatterns creates a KnowledgeBase from pre-built patterns (for testing).
+func NewFromPatterns(patterns []*Pattern) *KnowledgeBase {
+	byID := make(map[string]*Pattern, len(patterns))
+	for _, p := range patterns {
+		byID[p.ID] = p
+	}
+	return &KnowledgeBase{patterns: patterns, byID: byID}
+}
+
 // PatternCount returns the number of loaded patterns.
 func (kb *KnowledgeBase) PatternCount() int {
 	kb.mu.RLock()
@@ -105,12 +113,20 @@ func FindPatternsFile() (string, error) {
 		}
 	}
 
-	// 2. Current working directory
+	// 2. Current working directory and ancestors (walk up to find repo root)
 	cwd, err := os.Getwd()
 	if err == nil {
-		p := filepath.Join(cwd, "evolution", "patterns.md")
-		if _, err := os.Stat(p); err == nil {
-			return p, nil
+		dir := cwd
+		for {
+			p := filepath.Join(dir, "evolution", "patterns.md")
+			if _, err := os.Stat(p); err == nil {
+				return p, nil
+			}
+			parent := filepath.Dir(dir)
+			if parent == dir {
+				break
+			}
+			dir = parent
 		}
 	}
 
@@ -118,19 +134,6 @@ func FindPatternsFile() (string, error) {
 	home, err := os.UserHomeDir()
 	if err == nil {
 		p := filepath.Join(home, ".config", "lvt", "patterns.md")
-		if _, err := os.Stat(p); err == nil {
-			return p, nil
-		}
-	}
-
-	// 4. GOROOT-relative (for tests using runtime.GOROOT parent paths)
-	// Fallback: check relative to this source file (useful in tests)
-	_, thisFile, _, ok := runtime.Caller(0)
-	if ok {
-		// This file is internal/evolution/knowledge/knowledge.go
-		// patterns.md is at repo-root/evolution/patterns.md
-		repoRoot := filepath.Join(filepath.Dir(thisFile), "..", "..", "..")
-		p := filepath.Join(repoRoot, "evolution", "patterns.md")
 		if _, err := os.Stat(p); err == nil {
 			return p, nil
 		}

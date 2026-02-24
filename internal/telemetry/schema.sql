@@ -14,3 +14,4 @@ CREATE TABLE IF NOT EXISTS generation_events (
 CREATE INDEX IF NOT EXISTS idx_events_timestamp ON generation_events(timestamp);
 CREATE INDEX IF NOT EXISTS idx_events_success ON generation_events(success);
 CREATE INDEX IF NOT EXISTS idx_events_command ON generation_events(command);
+CREATE INDEX IF NOT EXISTS idx_events_kit ON generation_events(kit);

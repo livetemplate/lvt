@@ -82,7 +82,7 @@ func applyFix(dir string, fix Fix) (bool, error) {
 		return false, fmt.Errorf("glob %q: %w", fix.TargetFile, err)
 	}
 
-	// Also try recursive glob with ** prefix removed
+	// Also try recursive walk when the glob has a wildcard directory prefix (e.g. "*/handler.go.tmpl")
 	if len(matches) == 0 && strings.HasPrefix(fix.TargetFile, "*/") {
 		suffix := strings.TrimPrefix(fix.TargetFile, "*/")
 		err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
@@ -90,7 +90,15 @@ func applyFix(dir string, fix Fix) (bool, error) {
 				return nil
 			}
 			if !info.IsDir() {
-				matched, _ := filepath.Match(suffix, info.Name())
+				rel, relErr := filepath.Rel(dir, path)
+				if relErr != nil {
+					return nil
+				}
+				matched, _ := filepath.Match(fix.TargetFile, rel)
+				if !matched {
+					// Also try matching just the filename for simple patterns
+					matched, _ = filepath.Match(suffix, info.Name())
+				}
 				if matched {
 					matches = append(matches, path)
 				}

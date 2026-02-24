@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -87,16 +88,18 @@ func evolutionStatus(args []string) error {
 	}
 
 	failures := total - successes
-	rate := float64(0)
+	successRate := float64(0)
+	failRate := float64(0)
 	if total > 0 {
-		rate = float64(successes) / float64(total) * 100
+		successRate = float64(successes) / float64(total) * 100
+		failRate = float64(failures) / float64(total) * 100
 	}
 
 	fmt.Println("Evolution System Status")
 	fmt.Println("=======================")
 	fmt.Printf("Events (last 30 days): %d\n", total)
-	fmt.Printf("  Successes: %d (%.1f%%)\n", successes, rate)
-	fmt.Printf("  Failures:  %d (%.1f%%)\n", failures, 100-rate)
+	fmt.Printf("  Successes: %d (%.1f%%)\n", successes, successRate)
+	fmt.Printf("  Failures:  %d (%.1f%%)\n", failures, failRate)
 	fmt.Printf("Knowledge Base: %d patterns\n", patternCount)
 
 	return nil
@@ -146,7 +149,14 @@ func evolutionMetrics(args []string) error {
 	fmt.Printf("%-20s %8s %8s %8s %10s\n", "Command", "Total", "Success", "Rate", "Avg (ms)")
 	fmt.Println(strings.Repeat("-", 60))
 
-	for cmd, s := range byCommand {
+	cmds := make([]string, 0, len(byCommand))
+	for cmd := range byCommand {
+		cmds = append(cmds, cmd)
+	}
+	sort.Strings(cmds)
+
+	for _, cmd := range cmds {
+		s := byCommand[cmd]
 		rate := float64(0)
 		if s.total > 0 {
 			rate = float64(s.success) / float64(s.total) * 100
@@ -211,10 +221,7 @@ func evolutionFailures(args []string) error {
 	for _, e := range events {
 		errSummary := ""
 		if len(e.Errors) > 0 {
-			errSummary = e.Errors[0].Message
-			if len(errSummary) > 28 {
-				errSummary = errSummary[:28] + ".."
-			}
+			errSummary = truncate(e.Errors[0].Message, 30)
 		}
 		ts := e.Timestamp.Format("2006-01-02 15:04")
 		fmt.Printf("%-36s %-16s %-30s %s\n", e.ID, e.Command, errSummary, ts)
@@ -320,21 +327,7 @@ func evolutionApply(args []string) error {
 		return fmt.Errorf("usage: lvt evolution apply <fix-id> [--dry-run]")
 	}
 
-	_ = args[0] // fix-id reserved for future use
-	dryRun := false
-	for _, arg := range args[1:] {
-		if arg == "--dry-run" {
-			dryRun = true
-		}
-	}
-
-	if dryRun {
-		fmt.Println("Dry-run mode: showing what would change (no files modified)")
-	}
-
-	fmt.Println("Fix application is not yet fully implemented.")
-	fmt.Println("Use 'lvt evolution propose <event-id>' to see proposed fixes first.")
-	return nil
+	return fmt.Errorf("apply is not yet implemented; use 'lvt evolution propose <event-id>' to see proposed fixes")
 }
 
 func evolutionUpstreamStatus(args []string) error {
@@ -372,8 +365,9 @@ func evolutionUpstreamStatus(args []string) error {
 }
 
 func truncate(s string, maxLen int) string {
-	if len(s) <= maxLen {
+	runes := []rune(s)
+	if len(runes) <= maxLen {
 		return s
 	}
-	return s[:maxLen-2] + ".."
+	return string(runes[:maxLen-2]) + ".."
 }
