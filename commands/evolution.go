@@ -123,9 +123,9 @@ func evolutionMetrics(args []string) error {
 
 	// Aggregate by command
 	type stats struct {
-		total    int
-		success  int
-		totalMs  int64
+		total   int
+		success int
+		totalMs int64
 	}
 	byCommand := make(map[string]*stats)
 	for _, e := range events {
