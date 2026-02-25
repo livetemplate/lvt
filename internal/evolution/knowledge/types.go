@@ -27,7 +27,7 @@ type FixTemplate struct {
 	// File is a glob pattern for the target file, e.g. "*/handler.go.tmpl".
 	// Supported formats: exact filename, or "*/filename" to match in any subdirectory.
 	// Multi-level wildcards (e.g. "**/*.go") are not supported.
-	File string
+	File        string
 	FindPattern string
 	Replace     string
 	IsRegex     bool
