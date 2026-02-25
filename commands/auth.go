@@ -131,6 +131,9 @@ func Auth(args []string) error {
 	// auth returns immediately on validation failure because the interactive
 	// resource-protection prompts below depend on a healthy app state.
 	var validationResultJSON string
+	captureSuccess := true
+	defer func() { capture.Complete(captureSuccess, validationResultJSON) }()
+
 	if !skipValidation {
 		validationResult, validationErr := runPostGenValidation(wd)
 		validationResultJSON = marshalValidationResult(validationResult)
@@ -139,13 +142,10 @@ func Auth(args []string) error {
 				Phase:   "validation",
 				Message: validationErr.Error(),
 			})
-			capture.Complete(false, validationResultJSON)
+			captureSuccess = false
 			return validationErr
 		}
 	}
-	// Defer capture completion until after all post-gen work (resource protection, etc.)
-	// so the telemetry event reflects the full outcome.
-	defer capture.Complete(true, validationResultJSON)
 
 	// Check for existing resources to protect
 	resources, err := generator.ReadResources(wd)
