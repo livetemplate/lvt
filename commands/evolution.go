@@ -263,7 +263,8 @@ func evolutionPropose(args []string) error {
 	defer collector.Close()
 
 	if !collector.IsEnabled() {
-		return fmt.Errorf("telemetry is disabled (set LVT_TELEMETRY=true to enable)")
+		fmt.Println("Telemetry is disabled (set LVT_TELEMETRY=true to enable)")
+		return nil
 	}
 
 	ctx := context.Background()

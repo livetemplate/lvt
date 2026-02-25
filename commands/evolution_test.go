@@ -29,6 +29,7 @@ func TestEvolution_Status(t *testing.T) {
 	t.Setenv("LVT_TELEMETRY", "true")
 	// Use temp dir for config to avoid polluting real config
 	t.Setenv("HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", "") // ensure config isolation from host
 
 	err := Evolution([]string{"status"})
 	if err != nil {
@@ -48,6 +49,7 @@ func TestEvolution_Patterns(t *testing.T) {
 func TestEvolution_Failures(t *testing.T) {
 	t.Setenv("LVT_TELEMETRY", "true")
 	t.Setenv("HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", "") // ensure config isolation from host
 
 	err := Evolution([]string{"failures"})
 	if err != nil {
@@ -58,6 +60,7 @@ func TestEvolution_Failures(t *testing.T) {
 func TestEvolution_Failures_WithLastFlag(t *testing.T) {
 	t.Setenv("LVT_TELEMETRY", "true")
 	t.Setenv("HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", "") // ensure config isolation from host
 
 	err := Evolution([]string{"failures", "--last", "5"})
 	if err != nil {
@@ -68,6 +71,7 @@ func TestEvolution_Failures_WithLastFlag(t *testing.T) {
 func TestEvolution_Metrics(t *testing.T) {
 	t.Setenv("LVT_TELEMETRY", "true")
 	t.Setenv("HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", "") // ensure config isolation from host
 
 	err := Evolution([]string{"metrics"})
 	if err != nil {
