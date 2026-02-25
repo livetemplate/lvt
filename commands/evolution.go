@@ -61,7 +61,7 @@ func printEvolutionHelp() {
 	fmt.Println("  upstream-status                 Show upstream pattern status")
 }
 
-func evolutionStatus(args []string) error {
+func evolutionStatus(_ []string) error {
 	collector := telemetry.NewCollector()
 	defer collector.Close()
 
@@ -104,7 +104,7 @@ func evolutionStatus(args []string) error {
 	return nil
 }
 
-func evolutionMetrics(args []string) error {
+func evolutionMetrics(_ []string) error {
 	collector := telemetry.NewCollector()
 	defer collector.Close()
 
@@ -223,7 +223,7 @@ func evolutionFailures(args []string) error {
 	return nil
 }
 
-func evolutionPatterns(args []string) error {
+func evolutionPatterns(_ []string) error {
 	patternsFile, err := knowledge.FindPatternsFile()
 	if err != nil {
 		return fmt.Errorf("find patterns file: %w", err)
@@ -317,7 +317,7 @@ func evolutionApply(_ []string) error {
 	return fmt.Errorf("apply is not yet implemented; use 'lvt evolution propose <event-id>' to see proposed fixes")
 }
 
-func evolutionUpstreamStatus(args []string) error {
+func evolutionUpstreamStatus(_ []string) error {
 	patternsFile, err := knowledge.FindPatternsFile()
 	if err != nil {
 		return fmt.Errorf("find patterns file: %w", err)
