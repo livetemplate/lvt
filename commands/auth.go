@@ -10,6 +10,7 @@ import (
 
 	"github.com/livetemplate/lvt/internal/config"
 	"github.com/livetemplate/lvt/internal/generator"
+	"github.com/livetemplate/lvt/internal/telemetry"
 )
 
 type AuthFlags struct {
@@ -97,9 +98,19 @@ func Auth(args []string) error {
 		EnableCSRF:          !flags.NoCSRF,
 	}
 
+	// Start telemetry capture
+	collector := telemetry.NewCollector()
+	defer collector.Close()
+	capture := collector.StartCapture("gen auth", map[string]any{
+		"struct_name": structName,
+		"table_name":  tableName,
+	})
+
 	// Generate auth files
 	fmt.Println("Generating authentication system...")
 	if err := generator.GenerateAuth(wd, genConfig); err != nil {
+		capture.RecordError(telemetry.GenerationError{Phase: "generation", Message: err.Error()})
+		capture.Complete(false, "")
 		return fmt.Errorf("failed to generate auth: %w", err)
 	}
 
@@ -119,9 +130,17 @@ func Auth(args []string) error {
 	// Unlike gen.go which defers the error to show the full file listing,
 	// auth returns immediately on validation failure because the interactive
 	// resource-protection prompts below depend on a healthy app state.
+	var validationResultJSON string
 	if !skipValidation {
-		if err := runPostGenValidation(wd); err != nil {
-			return err
+		validationResult, validationErr := runPostGenValidation(wd)
+		validationResultJSON = marshalValidationResult(validationResult)
+		if validationErr != nil {
+			capture.RecordError(telemetry.GenerationError{
+				Phase:   "validation",
+				Message: validationErr.Error(),
+			})
+			capture.Complete(false, validationResultJSON)
+			return validationErr
 		}
 	}
 
@@ -214,6 +233,7 @@ func Auth(args []string) error {
 	fmt.Println("     go test ./app/auth -run TestAuthE2E -v")
 	fmt.Println("\n💡 Tip: Check app/auth/auth.go for complete usage examples!")
 
+	capture.Complete(true, validationResultJSON)
 	return nil
 }
 

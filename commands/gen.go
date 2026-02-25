@@ -3,6 +3,7 @@ package commands
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -11,7 +12,9 @@ import (
 	"github.com/livetemplate/lvt/internal/generator"
 	"github.com/livetemplate/lvt/internal/kits"
 	"github.com/livetemplate/lvt/internal/parser"
+	"github.com/livetemplate/lvt/internal/telemetry"
 	"github.com/livetemplate/lvt/internal/validation"
+	"github.com/livetemplate/lvt/internal/validator"
 )
 
 func Gen(args []string) error {
@@ -191,6 +194,18 @@ func GenResource(args []string) error {
 		return fmt.Errorf("failed to get module name: %w (are you in a Go project?)", err)
 	}
 
+	// Start telemetry capture
+	collector := telemetry.NewCollector()
+	defer collector.Close()
+	capture := collector.StartCapture("gen resource", map[string]any{
+		"resource_name":   resourceName,
+		"fields":          fieldArgs,
+		"kit":             kit,
+		"pagination_mode": paginationMode,
+		"edit_mode":       editMode,
+	})
+	capture.SetKit(kit) // also sets the dedicated Kit column for SQL queries; inputs has it for context
+
 	fmt.Printf("Generating CRUD resource: %s\n", resourceName)
 	fmt.Printf("Kit: %s\n", kit)
 	fmt.Printf("CSS Framework: %s\n", cssFramework)
@@ -206,14 +221,24 @@ func GenResource(args []string) error {
 	fmt.Println()
 
 	if err := generator.GenerateResource(basePath, moduleName, resourceName, fields, kit, cssFramework, paginationMode, pageSize, editMode); err != nil {
+		capture.RecordError(telemetry.GenerationError{Phase: "generation", Message: err.Error()})
+		capture.Complete(false, "")
 		return err
 	}
 
 	// Post-generation validation (run before printing success banner)
 	var validationErr error
+	var validationResult *validator.ValidationResult
 	if !skipValidation {
-		validationErr = runPostGenValidation(basePath)
+		validationResult, validationErr = runPostGenValidation(basePath)
 	}
+	if validationErr != nil {
+		capture.RecordError(telemetry.GenerationError{
+			Phase:   "validation",
+			Message: validationErr.Error(),
+		})
+	}
+	capture.Complete(validationErr == nil, marshalValidationResult(validationResult))
 
 	resourceNameLower := strings.ToLower(resourceName)
 
@@ -303,19 +328,38 @@ func GenView(args []string) error {
 		return fmt.Errorf("failed to get module name: %w (are you in a Go project?)", err)
 	}
 
+	// Start telemetry capture
+	collector := telemetry.NewCollector()
+	defer collector.Close()
+	capture := collector.StartCapture("gen view", map[string]any{
+		"view_name": viewName,
+		"kit":       kit,
+	})
+	capture.SetKit(kit) // also sets the dedicated Kit column for SQL queries; inputs has it for context
+
 	fmt.Printf("Generating view-only handler: %s\n", viewName)
 	fmt.Printf("Kit: %s\n", kit)
 	fmt.Printf("CSS Framework: %s\n", cssFramework)
 
 	if err := generator.GenerateView(basePath, moduleName, viewName, kit, cssFramework); err != nil {
+		capture.RecordError(telemetry.GenerationError{Phase: "generation", Message: err.Error()})
+		capture.Complete(false, "")
 		return err
 	}
 
 	// Post-generation validation (run before printing success banner)
 	var validationErr error
+	var validationResult *validator.ValidationResult
 	if !skipValidation {
-		validationErr = runPostGenValidation(basePath)
+		validationResult, validationErr = runPostGenValidation(basePath)
 	}
+	if validationErr != nil {
+		capture.RecordError(telemetry.GenerationError{
+			Phase:   "validation",
+			Message: validationErr.Error(),
+		})
+	}
+	capture.Complete(validationErr == nil, marshalValidationResult(validationResult))
 
 	viewNameLower := strings.ToLower(viewName)
 
@@ -414,6 +458,16 @@ func GenSchema(args []string) error {
 		return fmt.Errorf("failed to get module name: %w (are you in a Go project?)", err)
 	}
 
+	// Start telemetry capture
+	collector := telemetry.NewCollector()
+	defer collector.Close()
+	capture := collector.StartCapture("gen schema", map[string]any{
+		"table_name": tableName,
+		"fields":     args[1:],
+		"kit":        kit,
+	})
+	capture.SetKit(kit) // also sets the dedicated Kit column for SQL queries; inputs has it for context
+
 	fmt.Printf("Generating database schema: %s\n", tableName)
 	fmt.Printf("Kit: %s\n", kit)
 	fmt.Printf("Fields: ")
@@ -426,14 +480,24 @@ func GenSchema(args []string) error {
 	fmt.Println()
 
 	if err := generator.GenerateSchema(basePath, moduleName, tableName, fields, kit, cssFramework); err != nil {
+		capture.RecordError(telemetry.GenerationError{Phase: "generation", Message: err.Error()})
+		capture.Complete(false, "")
 		return err
 	}
 
 	// Post-generation validation (run before printing success banner)
 	var validationErr error
+	var validationResult *validator.ValidationResult
 	if !skipValidation {
-		validationErr = runPostGenValidation(basePath)
+		validationResult, validationErr = runPostGenValidation(basePath)
 	}
+	if validationErr != nil {
+		capture.RecordError(telemetry.GenerationError{
+			Phase:   "validation",
+			Message: validationErr.Error(),
+		})
+	}
+	capture.Complete(validationErr == nil, marshalValidationResult(validationResult))
 
 	tableNameLower := strings.ToLower(tableName)
 
@@ -461,18 +525,16 @@ func GenSchema(args []string) error {
 
 // runPostGenValidation runs structural validation (go.mod, templates, migrations)
 // after code generation. It skips compilation because the app may not compile until
-// sqlc generate is run. Prints the formatted result and returns an error if found.
-//
-// TODO: accept context.Context so Ctrl+C propagates to validation.
-// Structural checks are fast today so context.Background() is acceptable.
-func runPostGenValidation(basePath string) error {
+// sqlc generate is run. Prints the formatted result and returns both the result
+// (for telemetry) and an error if validation found issues.
+func runPostGenValidation(basePath string) (*validator.ValidationResult, error) {
 	fmt.Println("Running validation...")
 	result := validation.ValidatePostGen(context.Background(), basePath)
 	fmt.Print(result.Format())
 	if result.HasErrors() {
-		return fmt.Errorf("validation failed with %d error(s)", result.ErrorCount())
+		return result, fmt.Errorf("validation failed with %d error(s)", result.ErrorCount())
 	}
-	return nil
+	return result, nil
 }
 
 func parseFieldsWithInference(fieldArgs []string) ([]parser.Field, error) {
@@ -597,6 +659,19 @@ func inferTypeForDirectMode(fieldName string) string {
 
 	// Default to string
 	return "string"
+}
+
+// marshalValidationResult serialises a validation result to JSON for telemetry.
+// Returns empty string if the result is nil.
+func marshalValidationResult(result *validator.ValidationResult) string {
+	if result == nil {
+		return ""
+	}
+	b, err := json.Marshal(result)
+	if err != nil {
+		return ""
+	}
+	return string(b)
 }
 
 func getModuleName() (string, error) {
