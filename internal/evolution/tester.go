@@ -110,7 +110,7 @@ func applyFix(dir string, fix Fix) (bool, error) {
 	for _, path := range matches {
 		data, err := os.ReadFile(path)
 		if err != nil {
-			continue
+			return false, fmt.Errorf("read %s: %w", path, err)
 		}
 		content := string(data)
 

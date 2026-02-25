@@ -56,7 +56,7 @@ func (s *SQLiteStore) Save(ctx context.Context, event *GenerationEvent) error {
 	}
 
 	_, err = s.db.ExecContext(ctx,
-		`INSERT INTO generation_events (id, timestamp, command, inputs, kit, lvt_version, success, validation, errors, duration_ms, files_generated)
+		`INSERT OR IGNORE INTO generation_events (id, timestamp, command, inputs, kit, lvt_version, success, validation, errors, duration_ms, files_generated)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		event.ID,
 		event.Timestamp.UTC().Format(time.RFC3339),
