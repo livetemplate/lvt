@@ -108,6 +108,10 @@ func applyFix(dir string, fix Fix) (bool, error) {
 
 	applied := false
 	for _, path := range matches {
+		info, err := os.Stat(path)
+		if err != nil {
+			return false, fmt.Errorf("stat %s: %w", path, err)
+		}
 		data, err := os.ReadFile(path)
 		if err != nil {
 			return false, fmt.Errorf("read %s: %w", path, err)
@@ -126,7 +130,7 @@ func applyFix(dir string, fix Fix) (bool, error) {
 		}
 
 		if newContent != content {
-			if err := os.WriteFile(path, []byte(newContent), 0644); err != nil {
+			if err := os.WriteFile(path, []byte(newContent), info.Mode()); err != nil {
 				return false, fmt.Errorf("write %s: %w", path, err)
 			}
 			applied = true

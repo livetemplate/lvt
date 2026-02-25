@@ -55,6 +55,8 @@ func (s *SQLiteStore) Save(ctx context.Context, event *GenerationEvent) error {
 		return fmt.Errorf("marshal files: %w", err)
 	}
 
+	// OR IGNORE: IDs are 128-bit random so collisions are effectively impossible,
+	// but this avoids a hard error if one ever occurs.
 	_, err = s.db.ExecContext(ctx,
 		`INSERT OR IGNORE INTO generation_events (id, timestamp, command, inputs, kit, lvt_version, success, validation, errors, duration_ms, files_generated)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
