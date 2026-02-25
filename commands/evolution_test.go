@@ -82,16 +82,12 @@ func TestEvolution_Propose_NoArgs(t *testing.T) {
 	}
 }
 
-func TestEvolution_Apply_NoArgs(t *testing.T) {
-	err := Evolution([]string{"apply"})
-	if err == nil {
-		t.Error("expected error for apply without fix-id")
-	}
-}
-
-func TestEvolution_Apply_ReturnsNotImplemented(t *testing.T) {
-	err := Evolution([]string{"apply", "some-fix-id"})
-	if err == nil {
-		t.Error("expected error for apply (not yet implemented)")
+func TestEvolution_Apply_NotImplemented(t *testing.T) {
+	// apply is a stub — always returns not-implemented regardless of args.
+	for _, args := range [][]string{{"apply"}, {"apply", "some-fix-id"}} {
+		err := Evolution(args)
+		if err == nil {
+			t.Errorf("expected error for apply %v", args[1:])
+		}
 	}
 }

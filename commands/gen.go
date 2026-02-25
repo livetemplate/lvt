@@ -204,7 +204,7 @@ func GenResource(args []string) error {
 		"pagination_mode": paginationMode,
 		"edit_mode":       editMode,
 	})
-	capture.SetKit(kit)
+	capture.SetKit(kit) // also sets the dedicated Kit column for SQL queries; inputs has it for context
 
 	fmt.Printf("Generating CRUD resource: %s\n", resourceName)
 	fmt.Printf("Kit: %s\n", kit)
@@ -335,7 +335,7 @@ func GenView(args []string) error {
 		"view_name": viewName,
 		"kit":       kit,
 	})
-	capture.SetKit(kit)
+	capture.SetKit(kit) // also sets the dedicated Kit column for SQL queries; inputs has it for context
 
 	fmt.Printf("Generating view-only handler: %s\n", viewName)
 	fmt.Printf("Kit: %s\n", kit)
@@ -466,7 +466,7 @@ func GenSchema(args []string) error {
 		"fields":     args[1:],
 		"kit":        kit,
 	})
-	capture.SetKit(kit)
+	capture.SetKit(kit) // also sets the dedicated Kit column for SQL queries; inputs has it for context
 
 	fmt.Printf("Generating database schema: %s\n", tableName)
 	fmt.Printf("Kit: %s\n", kit)
