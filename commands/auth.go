@@ -131,9 +131,6 @@ func Auth(args []string) error {
 	// auth returns immediately on validation failure because the interactive
 	// resource-protection prompts below depend on a healthy app state.
 	var validationResultJSON string
-	captureSuccess := true
-	defer func() { capture.Complete(captureSuccess, validationResultJSON) }()
-
 	if !skipValidation {
 		validationResult, validationErr := runPostGenValidation(wd)
 		validationResultJSON = marshalValidationResult(validationResult)
@@ -142,7 +139,7 @@ func Auth(args []string) error {
 				Phase:   "validation",
 				Message: validationErr.Error(),
 			})
-			captureSuccess = false
+			capture.Complete(false, validationResultJSON)
 			return validationErr
 		}
 	}
@@ -236,6 +233,7 @@ func Auth(args []string) error {
 	fmt.Println("     go test ./app/auth -run TestAuthE2E -v")
 	fmt.Println("\n💡 Tip: Check app/auth/auth.go for complete usage examples!")
 
+	capture.Complete(true, validationResultJSON)
 	return nil
 }
 

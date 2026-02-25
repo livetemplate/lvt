@@ -24,7 +24,10 @@ type Pattern struct {
 
 // FixTemplate describes a find-and-replace operation on a file.
 type FixTemplate struct {
-	File        string // glob pattern, e.g. "*/handler.go.tmpl"
+	// File is a glob pattern for the target file, e.g. "*/handler.go.tmpl".
+	// Supported formats: exact filename, or "*/filename" to match in any subdirectory.
+	// Multi-level wildcards (e.g. "**/*.go") are not supported.
+	File string
 	FindPattern string
 	Replace     string
 	IsRegex     bool
