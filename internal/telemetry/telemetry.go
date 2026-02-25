@@ -133,6 +133,7 @@ func (cap *Capture) RecordError(err GenerationError) {
 }
 
 // RecordFileGenerated adds a generated file path.
+// TODO: not yet wired into gen.go/auth.go integration points.
 func (cap *Capture) RecordFileGenerated(path string) {
 	if cap.noop {
 		return

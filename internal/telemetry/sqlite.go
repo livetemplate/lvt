@@ -172,7 +172,7 @@ func scanInto(sc scanner) (*GenerationEvent, error) {
 	e.ValidationJSON = validationJSON.String
 	e.DurationMs = durationMs.Int64
 
-	if inputsJSON != "" {
+	if inputsJSON != "" && inputsJSON != "null" {
 		if err := json.Unmarshal([]byte(inputsJSON), &e.Inputs); err != nil {
 			return nil, fmt.Errorf("unmarshal inputs: %w", err)
 		}

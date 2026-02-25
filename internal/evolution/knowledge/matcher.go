@@ -19,9 +19,11 @@ func (p *Pattern) Match(err telemetry.GenerationError) bool {
 		return false
 	}
 
-	// Context regex must match if specified
+	// Context regex must match if specified.
+	// We also check err.Message as a fallback because some error reporters
+	// embed context identifiers (e.g. variable names) in the message itself
+	// rather than setting a separate Context field.
 	if p.ContextRe != nil {
-		// Check both the Context field and the Message for context matches
 		if !p.ContextRe.MatchString(err.Context) && !p.ContextRe.MatchString(err.Message) {
 			return false
 		}
