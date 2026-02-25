@@ -34,6 +34,7 @@ func (u *UpstreamProposer) ProposeUpstreamFix(pattern *knowledge.Pattern, err te
 		return nil
 	}
 
+	// TODO: v1 only uses the first fix. Multi-fix upstream proposals are not yet supported.
 	fix := pattern.Fixes[0]
 	return &UpstreamFix{
 		Fix: Fix{

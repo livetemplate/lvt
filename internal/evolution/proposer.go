@@ -32,8 +32,11 @@ func (p *Proposer) ProposeFor(event *telemetry.GenerationEvent) (*Proposal, erro
 	// Track seen pattern+file combos for deduplication
 	seen := make(map[string]bool)
 
+	// Snapshot the pattern list once (acquires read lock once, not per-error).
+	allPatterns := p.kb.ListPatterns()
+
 	for _, genErr := range event.Errors {
-		patterns := knowledge.MatchAll(p.kb.ListPatterns(), genErr)
+		patterns := knowledge.MatchAll(allPatterns, genErr)
 		for _, pat := range patterns {
 			for _, fix := range pat.Fixes {
 				key := pat.ID + ":" + fix.File + ":" + fix.FindPattern + ":" + fix.Replace

@@ -13,6 +13,8 @@ import (
 	"github.com/livetemplate/lvt/internal/telemetry"
 )
 
+const defaultLookbackDays = 30
+
 // Evolution is the main router for evolution system commands.
 func Evolution(args []string) error {
 	if len(args) == 0 {
@@ -69,7 +71,7 @@ func evolutionStatus(args []string) error {
 	}
 
 	ctx := context.Background()
-	since := time.Now().AddDate(0, 0, -30)
+	since := time.Now().AddDate(0, 0, -defaultLookbackDays)
 	total, successes, err := collector.Store().CountBySuccess(ctx, since)
 	if err != nil {
 		return fmt.Errorf("count events: %w", err)
@@ -94,7 +96,7 @@ func evolutionStatus(args []string) error {
 
 	fmt.Println("Evolution System Status")
 	fmt.Println("=======================")
-	fmt.Printf("Events (last 30 days): %d\n", total)
+	fmt.Printf("Events (last %d days): %d\n", defaultLookbackDays, total)
 	fmt.Printf("  Successes: %d (%.1f%%)\n", successes, successRate)
 	fmt.Printf("  Failures:  %d (%.1f%%)\n", failures, failRate)
 	fmt.Printf("Knowledge Base: %d patterns\n", patternCount)
@@ -112,7 +114,7 @@ func evolutionMetrics(args []string) error {
 	}
 
 	ctx := context.Background()
-	since := time.Now().AddDate(0, 0, -30)
+	since := time.Now().AddDate(0, 0, -defaultLookbackDays)
 	events, err := collector.Store().List(ctx, telemetry.ListOptions{Since: since})
 	if err != nil {
 		return fmt.Errorf("list events: %w", err)
@@ -138,7 +140,7 @@ func evolutionMetrics(args []string) error {
 		s.totalMs += e.DurationMs
 	}
 
-	fmt.Println("Per-Command Metrics (last 30 days)")
+	fmt.Printf("Per-Command Metrics (last %d days)\n", defaultLookbackDays)
 	fmt.Println("==================================")
 	fmt.Printf("%-20s %8s %8s %8s %10s\n", "Command", "Total", "Success", "Rate", "Avg (ms)")
 	fmt.Println(strings.Repeat("-", 60))
@@ -310,11 +312,7 @@ func evolutionPropose(args []string) error {
 	return nil
 }
 
-func evolutionApply(args []string) error {
-	if len(args) < 1 {
-		return fmt.Errorf("usage: lvt evolution apply <fix-id> [--dry-run]")
-	}
-
+func evolutionApply(_ []string) error {
 	return fmt.Errorf("apply is not yet implemented; use 'lvt evolution propose <event-id>' to see proposed fixes")
 }
 

@@ -50,15 +50,17 @@ func TestUpstreamProposer_NoUpstreamRepo(t *testing.T) {
 		ID:         "local-only",
 		Name:       "Local Pattern",
 		ErrorPhase: "compilation",
+		MessageRe:  regexp.MustCompile(`some error`),
 		Fixes: []knowledge.FixTemplate{
 			{File: "*/handler.go", FindPattern: "old", Replace: "new"},
 		},
+		// UpstreamRepo intentionally empty — ProposeUpstreamFix should return nil.
 	}
 
 	kb := knowledge.NewFromPatterns([]*knowledge.Pattern{pattern})
 	up := NewUpstreamProposer(kb)
 
-	err := telemetry.GenerationError{Phase: "compilation", Message: "error"}
+	err := telemetry.GenerationError{Phase: "compilation", Message: "some error"}
 	fix := up.ProposeUpstreamFix(pattern, err)
 	if fix != nil {
 		t.Error("expected nil fix for pattern without upstream repo")

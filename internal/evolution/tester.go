@@ -76,21 +76,17 @@ func (t *Tester) TestFix(ctx context.Context, fix Fix, sourceDir string) (*TestR
 // applyFix finds files matching the fix target glob and performs find/replace.
 // Returns true if at least one file was modified.
 func applyFix(dir string, fix Fix) (bool, error) {
-	// Find matching files
-	matches, err := filepath.Glob(filepath.Join(dir, fix.TargetFile))
-	if err != nil {
-		return false, fmt.Errorf("glob %q: %w", fix.TargetFile, err)
-	}
+	var matches []string
 
-	// Also try recursive walk when the glob has a wildcard directory prefix (e.g. "*/handler.go.tmpl")
-	if len(matches) == 0 && strings.HasPrefix(fix.TargetFile, "*/") {
-		suffix := strings.TrimPrefix(fix.TargetFile, "*/")
-		err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+	if suffix, ok := strings.CutPrefix(fix.TargetFile, "*/"); ok {
+		// "*/filename" — walk the tree and match against the base filename.
+		// filepath.Glob only matches one level deep for "*", so we go straight
+		// to Walk for consistent behaviour at any nesting depth.
+		err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				return nil
 			}
 			if !info.IsDir() {
-				// Match against the filename (suffix after "*/")
 				matched, _ := filepath.Match(suffix, info.Name())
 				if matched {
 					matches = append(matches, path)
@@ -100,6 +96,13 @@ func applyFix(dir string, fix Fix) (bool, error) {
 		})
 		if err != nil {
 			return false, err
+		}
+	} else {
+		// Exact path or simple glob — use filepath.Glob directly.
+		var err error
+		matches, err = filepath.Glob(filepath.Join(dir, fix.TargetFile))
+		if err != nil {
+			return false, fmt.Errorf("glob %q: %w", fix.TargetFile, err)
 		}
 	}
 
