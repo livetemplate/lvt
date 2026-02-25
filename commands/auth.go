@@ -130,20 +130,22 @@ func Auth(args []string) error {
 	// Unlike gen.go which defers the error to show the full file listing,
 	// auth returns immediately on validation failure because the interactive
 	// resource-protection prompts below depend on a healthy app state.
+	var validationResultJSON string
 	if !skipValidation {
 		validationResult, validationErr := runPostGenValidation(wd)
+		validationResultJSON = marshalValidationResult(validationResult)
 		if validationErr != nil {
 			capture.RecordError(telemetry.GenerationError{
 				Phase:   "validation",
 				Message: validationErr.Error(),
 			})
-			capture.Complete(false, marshalValidationResult(validationResult))
+			capture.Complete(false, validationResultJSON)
 			return validationErr
 		}
-		capture.Complete(true, marshalValidationResult(validationResult))
-	} else {
-		capture.Complete(true, "")
 	}
+	// Defer capture completion until after all post-gen work (resource protection, etc.)
+	// so the telemetry event reflects the full outcome.
+	defer capture.Complete(true, validationResultJSON)
 
 	// Check for existing resources to protect
 	resources, err := generator.ReadResources(wd)
