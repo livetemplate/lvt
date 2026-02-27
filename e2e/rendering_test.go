@@ -988,28 +988,18 @@ func TestRendering_Scroll_Directives(t *testing.T) {
 
 		// Scroll to bottom
 		chromedp.Click("#scroll-to-bottom"),
+		waitFor(`document.getElementById('scroll-container').scrollTop > 0`, 10*time.Second),
 		chromedp.ActionFunc(func(ctx context.Context) error {
-			time.Sleep(100 * time.Millisecond)
-
 			var scrollTop int
 			chromedp.Evaluate(`document.getElementById('scroll-container').scrollTop`, &scrollTop).Do(ctx)
-			if scrollTop == 0 {
-				return fmt.Errorf("scroll should have moved from 0")
-			}
 			t.Logf("Scrolled to position: %d", scrollTop)
 			return nil
 		}),
 
 		// Scroll back to top
 		chromedp.Click("#scroll-to-top"),
+		waitFor(`document.getElementById('scroll-container').scrollTop === 0`, 10*time.Second),
 		chromedp.ActionFunc(func(ctx context.Context) error {
-			time.Sleep(100 * time.Millisecond)
-
-			var scrollTop int
-			chromedp.Evaluate(`document.getElementById('scroll-container').scrollTop`, &scrollTop).Do(ctx)
-			if scrollTop != 0 {
-				return fmt.Errorf("scroll should be back to 0, got %d", scrollTop)
-			}
 			t.Log("Scrolled back to top")
 			return nil
 		}),
@@ -1355,8 +1345,8 @@ func TestRendering_InfiniteScroll(t *testing.T) {
 		// Scroll to trigger infinite scroll
 		chromedp.Evaluate(`document.getElementById('scroll-container').scrollTop = document.getElementById('scroll-container').scrollHeight`, nil),
 
-		// Wait for new items to load
-		waitFor(`document.querySelectorAll('.item').length > 5`, 3*time.Second),
+		// Wait for new items to load (generous timeout for CI Docker Chrome)
+		waitFor(`document.querySelectorAll('.item').length > 5`, 10*time.Second),
 
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			var count int
