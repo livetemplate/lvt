@@ -13,7 +13,7 @@ A comprehensive collection of reusable UI components for the [LiveTemplate](http
 ## Installation
 
 ```bash
-go get github.com/livetemplate/components
+go get github.com/livetemplate/lvt/components
 ```
 
 ## Quick Start
@@ -21,7 +21,7 @@ go get github.com/livetemplate/components
 ### 1. Register Templates (once in main.go)
 
 ```go
-import "github.com/livetemplate/components"
+import "github.com/livetemplate/lvt/components"
 
 tmpl := livetemplate.NewTemplates(
     livetemplate.WithComponentTemplates(components.All()),
@@ -32,7 +32,7 @@ tmpl := livetemplate.NewTemplates(
 ### 2. Use Components in Your Page
 
 ```go
-import "github.com/livetemplate/components/dropdown"
+import "github.com/livetemplate/lvt/components/dropdown"
 
 type State struct {
     CountrySelect *dropdown.Searchable
@@ -40,8 +40,8 @@ type State struct {
 
 // In init
 CountrySelect: dropdown.NewSearchable("country", countries,
-    dropdown.Placeholder("Select country"),
-    dropdown.Selected(user.CountryCode),
+    dropdown.WithPlaceholder("Select country"),
+    dropdown.WithSelected(user.CountryCode),
 )
 ```
 
@@ -132,10 +132,10 @@ Most customization can be achieved through functional options:
 
 ```go
 dropdown.NewSearchable("country", countries,
-    dropdown.Placeholder("Select country"),
-    dropdown.Selected("US"),
-    dropdown.MinSearchLength(2),
-    dropdown.DebounceMs(300),
+    dropdown.WithPlaceholder("Select country"),
+    dropdown.WithSelected("US"),
+    dropdown.WithMinChars(2),
+    dropdown.WithDebounce(300),
 )
 ```
 
@@ -215,7 +215,7 @@ components/rating/
 // rating.go
 package rating
 
-import "github.com/livetemplate/components/base"
+import "github.com/livetemplate/lvt/components/base"
 
 type Rating struct {
     base.Base

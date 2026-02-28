@@ -32,7 +32,7 @@ type UpdateInput struct {
 	Age int64 `json:"age" validate:"required"`
 }
 
-type DeleteInput struct {
+type IDInput struct {
 	ID string `json:"id" validate:"required"`
 }
 
@@ -116,7 +116,7 @@ func (c *UserController) Add(state UserState, ctx *livetemplate.Context) (UserSt
 func (c *UserController) Edit(state UserState, ctx *livetemplate.Context) (UserState, error) {
 	dbCtx := context.Background()
 
-	var input DeleteInput
+	var input IDInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
 		return state, err
 	}
@@ -187,7 +187,7 @@ func (c *UserController) CancelEdit(state UserState, _ *livetemplate.Context) (U
 func (c *UserController) View(state UserState, ctx *livetemplate.Context) (UserState, error) {
 	dbCtx := context.Background()
 
-	var input DeleteInput
+	var input IDInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
 		return state, err
 	}
@@ -220,13 +220,14 @@ func (c *UserController) Back(state UserState, _ *livetemplate.Context) (UserSta
 }
 // RequestDelete handles the "request_delete" action to show the delete confirmation modal
 func (c *UserController) RequestDelete(state UserState, ctx *livetemplate.Context) (UserState, error) {
-	var input DeleteInput
+	var input IDInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
 		return state, err
 	}
 
 	state.PendingDeleteID = input.ID
 	state.DeleteConfirm.Show()
+	state.LastUpdated = formatTime()
 	return state, nil
 }
 

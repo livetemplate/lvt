@@ -41,11 +41,18 @@ func NewTemplateSet(fs embed.FS, pattern, namespace string) *TemplateSet {
 //	        })
 //	}
 func WithFuncs(ts *TemplateSet, funcs template.FuncMap) *TemplateSet {
+	merged := make(template.FuncMap, len(ts.Funcs)+len(funcs))
+	for k, v := range ts.Funcs {
+		merged[k] = v
+	}
+	for k, v := range funcs {
+		merged[k] = v
+	}
 	return &TemplateSet{
 		FS:        ts.FS,
 		Pattern:   ts.Pattern,
 		Namespace: ts.Namespace,
-		Funcs:     funcs,
+		Funcs:     merged,
 	}
 }
 

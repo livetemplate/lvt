@@ -49,9 +49,15 @@ func ParseFields(args []string) ([]Field, error) {
 			if len(parts) < 3 || strings.TrimSpace(parts[2]) == "" {
 				return nil, fmt.Errorf("field '%s': select type requires options, e.g., 'status:select:active,inactive,pending'", name)
 			}
-			options := strings.Split(parts[2], ",")
-			for i := range options {
-				options[i] = strings.TrimSpace(options[i])
+			rawOptions := strings.Split(parts[2], ",")
+			var options []string
+			for _, o := range rawOptions {
+				if s := strings.TrimSpace(o); s != "" {
+					options = append(options, s)
+				}
+			}
+			if len(options) < 2 {
+				return nil, fmt.Errorf("field '%s': select requires at least 2 non-empty options", name)
 			}
 			fields = append(fields, Field{
 				Name:          name,

@@ -67,6 +67,26 @@ func TestParseFields(t *testing.T) {
 			input:   []string{"status:select:"},
 			wantErr: true,
 		},
+		{
+			name:  "select field with adjacent empty options filtered",
+			input: []string{"status:select:active,,inactive"},
+			want:  1, // empty options are filtered, 2 valid remain
+		},
+		{
+			name:  "select field with whitespace-only option filtered",
+			input: []string{"status:select:active, ,inactive"},
+			want:  1, // whitespace-only options are filtered, 2 valid remain
+		},
+		{
+			name:    "select field with single option after filtering",
+			input:   []string{"status:select:active"},
+			wantErr: true, // only 1 valid option, need at least 2
+		},
+		{
+			name:    "select field with all empty options",
+			input:   []string{"status:select:,,"},
+			wantErr: true, // 0 valid options
+		},
 	}
 
 	for _, tt := range tests {

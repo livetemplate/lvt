@@ -19,6 +19,7 @@
 package rating
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/livetemplate/lvt/components/base"
@@ -286,18 +287,24 @@ func (r *Rating) ColorClass() string {
 
 // EmptyColorClass returns CSS color classes for empty stars.
 func (r *Rating) EmptyColorClass() string {
-	return "text-gray-300"
+	switch r.EmptyColor {
+	case "red":
+		return "text-red-200"
+	case "blue":
+		return "text-blue-200"
+	case "green":
+		return "text-green-200"
+	case "yellow":
+		return "text-yellow-200"
+	default:
+		return "text-gray-300"
+	}
 }
 
 // Helper function
 func formatFloat(f float64, decimals int) string {
 	if decimals == 0 {
-		return string(rune('0' + int(f)))
+		return fmt.Sprintf("%.0f", f)
 	}
-	whole := int(f)
-	frac := int((f - float64(whole)) * 10)
-	if whole >= 10 {
-		return string(rune('0'+whole/10)) + string(rune('0'+whole%10)) + "." + string(rune('0'+frac))
-	}
-	return string(rune('0'+whole)) + "." + string(rune('0'+frac))
+	return fmt.Sprintf("%.1f", f)
 }

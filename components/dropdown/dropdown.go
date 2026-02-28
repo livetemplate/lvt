@@ -20,6 +20,9 @@
 package dropdown
 
 import (
+	"strconv"
+	"strings"
+
 	"github.com/livetemplate/lvt/components/base"
 )
 
@@ -157,7 +160,7 @@ func NewSearchable(id string, options []Item, opts ...Option) *Searchable {
 // Search filters options based on the query.
 func (s *Searchable) Search(query string) {
 	s.Query = query
-	s.Open = true
+	s.Open = len(query) >= s.MinChars
 
 	if len(query) < s.MinChars {
 		s.FilteredOptions = nil
@@ -165,9 +168,9 @@ func (s *Searchable) Search(query string) {
 	}
 
 	s.FilteredOptions = make([]Item, 0)
-	queryLower := toLower(query)
+	queryLower := strings.ToLower(query)
 	for _, opt := range s.Options {
-		if contains(toLower(opt.Label), queryLower) {
+		if strings.Contains(strings.ToLower(opt.Label), queryLower) {
 			s.FilteredOptions = append(s.FilteredOptions, opt)
 		}
 	}
@@ -295,49 +298,7 @@ func (m *Multi) DisplayText() string {
 	case 1:
 		return m.SelectedItems[0].Label
 	default:
-		return m.SelectedItems[0].Label + " + " + itoa(count-1) + " more"
+		return m.SelectedItems[0].Label + " + " + strconv.Itoa(count-1) + " more"
 	}
 }
 
-// Helper functions to avoid importing strings/strconv
-func toLower(s string) string {
-	b := make([]byte, len(s))
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-		if c >= 'A' && c <= 'Z' {
-			c += 'a' - 'A'
-		}
-		b[i] = c
-	}
-	return string(b)
-}
-
-func contains(s, substr string) bool {
-	if len(substr) == 0 {
-		return true
-	}
-	if len(substr) > len(s) {
-		return false
-	}
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
-}
-
-func itoa(n int) string {
-	if n == 0 {
-		return "0"
-	}
-	if n < 0 {
-		return "-" + itoa(-n)
-	}
-	var digits []byte
-	for n > 0 {
-		digits = append([]byte{byte('0' + n%10)}, digits...)
-		n /= 10
-	}
-	return string(digits)
-}

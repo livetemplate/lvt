@@ -6,6 +6,7 @@
   <div class="{{if .Disabled}}opacity-50{{end}}">
     <button
       type="button"
+      id="accordion-header-{{$.ID}}-{{.ID}}"
       class="flex items-center justify-between w-full px-4 py-4 text-left font-medium text-gray-900 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 {{if .Disabled}}cursor-not-allowed{{end}}"
       lvt-click="toggle_accordion_{{$.ID}}"
       lvt-data-item="{{.ID}}"

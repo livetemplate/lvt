@@ -45,8 +45,8 @@ package components
 
 import (
 	"github.com/livetemplate/lvt/components/accordion"
-	"github.com/livetemplate/lvt/components/breadcrumbs"
 	"github.com/livetemplate/lvt/components/autocomplete"
+	"github.com/livetemplate/lvt/components/breadcrumbs"
 	"github.com/livetemplate/lvt/components/base"
 	"github.com/livetemplate/lvt/components/datatable"
 	"github.com/livetemplate/lvt/components/datepicker"
@@ -80,8 +80,8 @@ import (
 func All() []*base.TemplateSet {
 	return []*base.TemplateSet{
 		accordion.Templates(),
-		breadcrumbs.Templates(),
 		autocomplete.Templates(),
+		breadcrumbs.Templates(),
 		datatable.Templates(),
 		datepicker.Templates(),
 		drawer.Templates(),

@@ -57,7 +57,7 @@ type UpdateInput struct {
 [[- end]]
 }
 
-type DeleteInput struct {
+type IDInput struct {
 	ID string `json:"id" validate:"required"`
 }
 
@@ -149,7 +149,7 @@ func (c *[[.ResourceName]]Controller) Add(state [[.ResourceName]]State, ctx *liv
 func (c *[[.ResourceName]]Controller) Edit(state [[.ResourceName]]State, ctx *livetemplate.Context) ([[.ResourceName]]State, error) {
 	dbCtx := context.Background()
 
-	var input DeleteInput
+	var input IDInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
 		return state, err
 	}
@@ -224,7 +224,7 @@ func (c *[[.ResourceName]]Controller) CancelEdit(state [[.ResourceName]]State, _
 func (c *[[.ResourceName]]Controller) View(state [[.ResourceName]]State, ctx *livetemplate.Context) ([[.ResourceName]]State, error) {
 	dbCtx := context.Background()
 
-	var input DeleteInput
+	var input IDInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
 		return state, err
 	}
@@ -257,11 +257,14 @@ func (c *[[.ResourceName]]Controller) Back(state [[.ResourceName]]State, _ *live
 }
 
 [[- if not .Components.UseModal]]
-// Delete handles the "delete" action to remove a resource
+// Delete handles the "delete" action to remove a resource.
+// NOTE: Currently unreachable because UseModal is always true. This branch is
+// preserved as a future escape hatch for headless/API resources that don't need
+// a confirmation modal.
 func (c *[[.ResourceName]]Controller) Delete(state [[.ResourceName]]State, ctx *livetemplate.Context) ([[.ResourceName]]State, error) {
 	dbCtx := context.Background()
 
-	var input DeleteInput
+	var input IDInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
 		return state, err
 	}
@@ -288,13 +291,14 @@ func (c *[[.ResourceName]]Controller) Delete(state [[.ResourceName]]State, ctx *
 [[- if .Components.UseModal]]
 // RequestDelete handles the "request_delete" action to show the delete confirmation modal
 func (c *[[.ResourceName]]Controller) RequestDelete(state [[.ResourceName]]State, ctx *livetemplate.Context) ([[.ResourceName]]State, error) {
-	var input DeleteInput
+	var input IDInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
 		return state, err
 	}
 
 	state.PendingDeleteID = input.ID
 	state.DeleteConfirm.Show()
+	state.LastUpdated = formatTime()
 	return state, nil
 }
 

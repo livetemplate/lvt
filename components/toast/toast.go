@@ -23,6 +23,8 @@
 package toast
 
 import (
+	"strconv"
+
 	"github.com/livetemplate/lvt/components/base"
 )
 
@@ -104,13 +106,11 @@ func (c *Container) Add(msg Message) {
 	// Generate ID if not provided
 	if msg.ID == "" {
 		c.Counter++
-		msg.ID = itoa(c.Counter)
+		msg.ID = strconv.Itoa(c.Counter)
 	}
 
-	// Default to dismissible
-	if !msg.Dismissible {
-		msg.Dismissible = true
-	}
+	// All toasts are dismissible by default
+	msg.Dismissible = true
 
 	c.Messages = append(c.Messages, msg)
 
@@ -221,18 +221,3 @@ func GetTypeIcon(t Type) string {
 	}
 }
 
-// Helper to convert int to string without importing strconv
-func itoa(n int) string {
-	if n == 0 {
-		return "0"
-	}
-	if n < 0 {
-		return "-" + itoa(-n)
-	}
-	var digits []byte
-	for n > 0 {
-		digits = append([]byte{byte('0' + n%10)}, digits...)
-		n /= 10
-	}
-	return string(digits)
-}
