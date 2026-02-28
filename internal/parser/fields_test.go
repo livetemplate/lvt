@@ -242,4 +242,3 @@ func TestFieldsToSQLColumns(t *testing.T) {
 		t.Error("expected 'age INTEGER NOT NULL' in SQL")
 	}
 }
-
