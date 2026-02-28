@@ -1,4 +1,6 @@
 {{define "content"}}
+  {{if .DeleteConfirm}}{{template "lvt:modal:confirm:v1" .DeleteConfirm}}{{end}}
+  {{if .Toasts}}{{template "lvt:toast:container:v1" .Toasts}}{{end}}
 [[- if eq .EditMode "page"]]
   {{if ne .EditingID ""}}
     <!-- Page mode: Detail view -->

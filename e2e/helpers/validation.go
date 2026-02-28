@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -59,6 +60,9 @@ func ValidateCompilation(t *testing.T, appDir string, opts ...ValidationOptions)
 		}
 	}
 
+	// Inject components module if not already present (components sub-module isn't published yet)
+	InjectComponentsForTest(t, appDir)
+
 	// Run go mod tidy to catch dependency problems introduced by generated code.
 	// Skip when the caller already ran it (e.g., createTestApp runs tidy after lvt new).
 	if opt.SkipGoModTidy {
@@ -83,6 +87,68 @@ func ValidateCompilation(t *testing.T, appDir string, opts ...ValidationOptions)
 	}
 
 	t.Log("Compilation validation passed")
+}
+
+// InjectComponentsForTest copies the components module into the test app directory
+// and adds require/replace directives so go mod tidy can resolve component imports.
+// This is needed because the components sub-module isn't published to the Go module proxy yet.
+func InjectComponentsForTest(t *testing.T, appDir string) {
+	t.Helper()
+
+	// Find project root (e2e/helpers/ is two levels deep from root)
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Log("⚠️  Could not determine project root for components injection")
+		return
+	}
+	projectRoot := filepath.Dir(filepath.Dir(filepath.Dir(filename)))
+	componentsSrc := filepath.Join(projectRoot, "components")
+
+	// Check if components source exists
+	if _, err := os.Stat(componentsSrc); os.IsNotExist(err) {
+		t.Logf("⏭️  Components directory not found at %s, skipping injection", componentsSrc)
+		return
+	}
+
+	// Skip if already injected
+	componentsDst := filepath.Join(appDir, "components")
+	if _, err := os.Stat(componentsDst); err == nil {
+		return // Already injected
+	}
+
+	// Copy components directory into app
+	cpCmd := exec.Command("cp", "-r", componentsSrc, componentsDst)
+	if output, err := cpCmd.CombinedOutput(); err != nil {
+		t.Logf("⚠️  Failed to copy components: %v\nOutput: %s", err, output)
+		return
+	}
+
+	// Add require and replace directives to app's go.mod
+	goModPath := filepath.Join(appDir, "go.mod")
+	goModContent, err := os.ReadFile(goModPath)
+	if err != nil {
+		t.Logf("⚠️  Failed to read go.mod for components injection: %v", err)
+		return
+	}
+
+	goModStr := string(goModContent)
+	modified := false
+
+	if !strings.Contains(goModStr, "github.com/livetemplate/lvt/components") {
+		goModStr += "\nrequire github.com/livetemplate/lvt/components v0.0.0\n"
+		goModStr += "\nreplace github.com/livetemplate/lvt/components => ./components\n"
+		modified = true
+	} else if !strings.Contains(goModStr, "replace github.com/livetemplate/lvt/components") {
+		goModStr += "\nreplace github.com/livetemplate/lvt/components => ./components\n"
+		modified = true
+	}
+
+	if modified {
+		if err := os.WriteFile(goModPath, []byte(goModStr), 0644); err != nil {
+			t.Logf("⚠️  Failed to update go.mod for components injection: %v", err)
+			return
+		}
+	}
 }
 
 // hasQueries checks whether a queries.sql file contains at least one actual
