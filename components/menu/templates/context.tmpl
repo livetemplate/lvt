@@ -1,0 +1,80 @@
+{{define "lvt:menu:context:v1"}}
+{{if .IsStyled}}
+{{/* Tailwind CSS styled version */}}
+{{if .Open}}
+<div
+  class="fixed z-50 w-56 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
+  style="left: {{.X}}px; top: {{.Y}}px;"
+  role="menu"
+  data-menu="{{.ID}}"
+  data-context="true"
+  lvt-click-away="close_{{.ID}}"
+>
+  <div class="py-1">
+    {{range $index, $item := .Items}}
+    {{if $item.IsDivider}}
+    <hr class="my-1 border-gray-200" />
+    {{else if $item.IsHeader}}
+    <div class="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+      {{$item.Label}}
+    </div>
+    {{else}}
+    <button
+      type="button"
+      class="flex items-center justify-between w-full px-4 py-2 text-sm text-left
+        {{if $item.Disabled}}text-gray-400 cursor-not-allowed{{else if $item.Active}}bg-gray-100 text-gray-900{{else}}text-gray-700 hover:bg-gray-100{{end}}"
+      role="menuitem"
+      {{if not $item.Disabled}}
+      lvt-click="select_{{$.ID}}"
+      lvt-data-item="{{$item.ID}}"
+      {{end}}
+      {{if $item.Disabled}}disabled aria-disabled="true"{{end}}
+    >
+      <span class="flex items-center gap-2">
+        {{if $item.HasIcon}}<span class="w-5 h-5">{{$item.Icon}}</span>{{end}}
+        <span>{{$item.Label}}</span>
+      </span>
+      {{if $item.HasShortcut}}
+      <span class="text-xs text-gray-400">{{$item.Shortcut}}</span>
+      {{end}}
+    </button>
+    {{end}}
+    {{end}}
+  </div>
+</div>
+{{end}}
+{{else}}
+{{/* Unstyled semantic HTML version */}}
+{{if .Open}}
+<div
+  data-menu="{{.ID}}"
+  data-context="true"
+  style="position: fixed; left: {{.X}}px; top: {{.Y}}px;"
+  lvt-click-away="close_{{.ID}}"
+>
+  <ul role="menu">
+    {{range $item := .Items}}
+    {{if $item.IsDivider}}
+    <li role="separator"><hr /></li>
+    {{else if $item.IsHeader}}
+    <li role="presentation"><strong>{{$item.Label}}</strong></li>
+    {{else}}
+    <li role="menuitem">
+      <button
+        type="button"
+        {{if not $item.Disabled}}
+        lvt-click="select_{{$.ID}}"
+        lvt-data-item="{{$item.ID}}"
+        {{end}}
+        {{if $item.Disabled}}disabled{{end}}
+      >
+        {{$item.Label}}
+      </button>
+    </li>
+    {{end}}
+    {{end}}
+  </ul>
+</div>
+{{end}}
+{{end}}
+{{end}}

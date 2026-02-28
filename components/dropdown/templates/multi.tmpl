@@ -1,0 +1,103 @@
+{{define "lvt:dropdown:multi:v1"}}
+{{if .IsStyled}}
+{{/* Tailwind CSS styled version */}}
+<div class="relative inline-block w-full" data-dropdown="{{.ID}}">
+  <button
+    type="button"
+    class="w-full px-4 py-2 text-left bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+    lvt-click="toggle_{{.ID}}"
+    {{if .Disabled}}disabled{{end}}
+    aria-haspopup="listbox"
+    aria-expanded="{{.Open}}"
+    aria-multiselectable="true"
+  >
+    <span class="block truncate">
+      {{.DisplayText}}
+    </span>
+    <span class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+      <svg class="w-5 h-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+      </svg>
+    </span>
+  </button>
+
+  {{if .Open}}
+  <div
+    class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto"
+    lvt-click-away="close_{{.ID}}"
+    lvt-focus-trap
+    role="listbox"
+    aria-multiselectable="true"
+  >
+    {{if .SelectedItems}}
+    <div class="px-4 py-2 border-b border-gray-200 flex justify-between items-center">
+      <span class="text-sm text-gray-600">{{len .SelectedItems}} selected</span>
+      <button
+        type="button"
+        class="text-sm text-blue-600 hover:text-blue-800"
+        lvt-click="clear_all_{{.ID}}"
+      >
+        Clear all
+      </button>
+    </div>
+    {{end}}
+    {{range .Options}}
+    <label
+      class="flex items-center px-4 py-2 cursor-pointer hover:bg-blue-50 {{if .Disabled}}opacity-50 cursor-not-allowed{{end}}"
+      role="option"
+      {{if .Disabled}}aria-disabled="true"{{end}}
+      {{if $.IsSelected .Value}}aria-selected="true"{{end}}
+    >
+      <input
+        type="checkbox"
+        class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+        {{if $.IsSelected .Value}}checked{{end}}
+        {{if .Disabled}}disabled{{end}}
+        lvt-change="toggle_item_{{$.ID}}"
+        lvt-data-value="{{.Value}}"
+      />
+      <span class="ml-3">{{.Label}}</span>
+    </label>
+    {{end}}
+  </div>
+  {{end}}
+</div>
+{{else}}
+{{/* Unstyled semantic HTML version */}}
+<div data-dropdown="{{.ID}}">
+  <button
+    type="button"
+    lvt-click="toggle_{{.ID}}"
+    {{if .Disabled}}disabled{{end}}
+    aria-haspopup="listbox"
+    aria-expanded="{{.Open}}"
+    aria-multiselectable="true"
+  >
+    {{.DisplayText}}
+  </button>
+
+  {{if .Open}}
+  <div lvt-click-away="close_{{.ID}}" lvt-focus-trap role="listbox" aria-multiselectable="true">
+    {{if .SelectedItems}}
+    <div>
+      <span>{{len .SelectedItems}} selected</span>
+      <button type="button" lvt-click="clear_all_{{.ID}}">Clear all</button>
+    </div>
+    {{end}}
+    {{range .Options}}
+    <label role="option" {{if .Disabled}}aria-disabled="true"{{end}}>
+      <input
+        type="checkbox"
+        {{if $.IsSelected .Value}}checked{{end}}
+        {{if .Disabled}}disabled{{end}}
+        lvt-change="toggle_item_{{$.ID}}"
+        lvt-data-value="{{.Value}}"
+      />
+      {{.Label}}
+    </label>
+    {{end}}
+  </div>
+  {{end}}
+</div>
+{{end}}
+{{end}}
