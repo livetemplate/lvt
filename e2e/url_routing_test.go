@@ -187,7 +187,6 @@ func TestPageModeURLRouting(t *testing.T) {
 		testCtx, timeoutCancel := context.WithTimeout(testCtx, getBrowserTimeout())
 		defer timeoutCancel()
 
-		var detailVisible bool
 		// First, get a resource ID from the anchor link href
 		var firstResourceHref string
 		err := chromedp.Run(testCtx,
