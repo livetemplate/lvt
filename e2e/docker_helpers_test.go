@@ -325,6 +325,9 @@ func buildAndRunNative(t *testing.T, appDir string, port int) *exec.Cmd {
 
 	t.Log("Step 6: Building app natively (fast path)...")
 
+	// Inject components module so native builds can resolve component imports
+	injectComponentsForTest(t, appDir)
+
 	// Write embedded client library (DevMode should already be enabled)
 	writeEmbeddedClientLibrary(t, appDir)
 

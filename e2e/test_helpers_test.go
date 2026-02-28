@@ -328,10 +328,31 @@ func injectComponentsForTest(t *testing.T, appDir string) {
 		t.Fatalf("Failed to read go.mod for components injection: %v", err)
 	}
 
-	if !strings.Contains(string(goModContent), "github.com/livetemplate/lvt/components") {
-		replaceDirective := "\nreplace github.com/livetemplate/lvt/components => ./components\n"
-		if err := os.WriteFile(goModPath, append(goModContent, []byte(replaceDirective)...), 0644); err != nil {
-			t.Fatalf("Failed to add components replace directive: %v", err)
+	goModStr := string(goModContent)
+	modified := false
+
+	// Add require if not present
+	if !strings.Contains(goModStr, "github.com/livetemplate/lvt/components") {
+		goModStr += "\nrequire github.com/livetemplate/lvt/components v0.0.0\n"
+		goModStr += "\nreplace github.com/livetemplate/lvt/components => ./components\n"
+		modified = true
+	} else if !strings.Contains(goModStr, "replace github.com/livetemplate/lvt/components") {
+		// Has require but no replace
+		goModStr += "\nreplace github.com/livetemplate/lvt/components => ./components\n"
+		modified = true
+	}
+
+	if modified {
+		if err := os.WriteFile(goModPath, []byte(goModStr), 0644); err != nil {
+			t.Fatalf("Failed to update go.mod for components injection: %v", err)
+		}
+
+		// Run go mod tidy to resolve dependency graph
+		tidyCmd := exec.Command("go", "mod", "tidy")
+		tidyCmd.Dir = appDir
+		tidyCmd.Env = append(os.Environ(), "GOWORK=off")
+		if output, err := tidyCmd.CombinedOutput(); err != nil {
+			t.Logf("⚠️  go mod tidy after components injection: %v\nOutput: %s", err, output)
 		}
 	}
 	t.Log("✅ Components module injected for test")
