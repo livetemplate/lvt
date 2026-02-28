@@ -631,12 +631,12 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 		t.Logf("[Delete_Post] Step 10: Edit click result: %+v", editResult)
 
 		// Step 11: Wait for edit modal to show the CORRECT post
-		// The delete button's lvt-data-id should match our target post
+		// The request_delete button's lvt-data-id should match our target post
 		t.Logf("[Delete_Post] Step 11: Waiting for edit modal with correct data (target: %s)...", targetDataKey)
 		err = chromedp.Run(ctx,
 			waitFor(fmt.Sprintf(`
 				(() => {
-					const deleteBtn = document.querySelector('button[lvt-click="delete"]');
+					const deleteBtn = document.querySelector('button[lvt-click="request_delete"]');
 					if (!deleteBtn) return false;
 					const btnDataId = deleteBtn.getAttribute('lvt-data-id');
 					return btnDataId === %q;
@@ -649,7 +649,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 			chromedp.Run(ctx,
 				chromedp.Evaluate(fmt.Sprintf(`
 					(() => {
-						const deleteBtn = document.querySelector('button[lvt-click="delete"]');
+						const deleteBtn = document.querySelector('button[lvt-click="request_delete"]');
 						const editForm = document.querySelector('form[lvt-submit="update"]');
 						const titleInput = editForm?.querySelector('input[name="title"]');
 						return {
@@ -672,7 +672,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 		chromedp.Run(ctx,
 			chromedp.Evaluate(fmt.Sprintf(`
 				(() => {
-					const deleteBtn = document.querySelector('button[lvt-click="delete"]');
+					const deleteBtn = document.querySelector('button[lvt-click="request_delete"]');
 					const editForm = document.querySelector('form[lvt-submit="update"]');
 					const titleInput = editForm?.querySelector('input[name="title"]');
 					return {
@@ -687,28 +687,24 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 		)
 		t.Logf("[Delete_Post] Step 11b: Edit modal state (verified): %+v", editModalState)
 
-		// Step 12: Click delete button via event delegation (like a real user)
-		// Override confirm to return true, then click the delete button
-		t.Logf("[Delete_Post] Step 12: Clicking delete button (target: %s)...", targetDataKey)
+		// Step 12: Click request_delete to open confirm modal, then click confirm_delete
+		t.Logf("[Delete_Post] Step 12: Clicking request_delete button (target: %s)...", targetDataKey)
 		var deleteResult map[string]interface{}
 		err = chromedp.Run(ctx,
-			// Override window.confirm to auto-accept the delete confirmation
-			chromedp.Evaluate(`window.confirm = () => true;`, nil),
-
-			// Click the delete button and verify it has the correct ID
+			// Click the request_delete button and verify it has the correct ID
 			chromedp.Evaluate(fmt.Sprintf(`
 				(() => {
-					const deleteButton = document.querySelector('button[lvt-click="delete"]');
+					const deleteButton = document.querySelector('button[lvt-click="request_delete"]');
 					if (!deleteButton) {
-						return { success: false, error: 'Delete button not found' };
+						return { success: false, error: 'request_delete button not found' };
 					}
 
 					const buttonId = deleteButton.getAttribute('lvt-data-id');
 					if (buttonId !== %q) {
-						return { success: false, error: 'Delete button has wrong ID: ' + buttonId };
+						return { success: false, error: 'request_delete button has wrong ID: ' + buttonId };
 					}
 
-					// Click the delete button (native click triggers event delegation)
+					// Click the request_delete button to open confirm modal
 					deleteButton.click();
 
 					return { success: true, buttonId: buttonId };
@@ -716,9 +712,36 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 			`, targetDataKey), &deleteResult),
 		)
 		if err != nil {
-			t.Fatalf("[Delete_Post] Step 12 failed (click delete): %v", err)
+			t.Fatalf("[Delete_Post] Step 12 failed (click request_delete): %v", err)
 		}
-		t.Logf("[Delete_Post] Step 12: Delete button clicked: %+v", deleteResult)
+		t.Logf("[Delete_Post] Step 12: request_delete button clicked: %+v", deleteResult)
+
+		// Step 12a: Wait for confirm modal and click confirm_delete
+		t.Log("[Delete_Post] Step 12a: Waiting for confirm modal...")
+		err = chromedp.Run(ctx,
+			waitFor(`document.querySelector('button[lvt-click="confirm_delete"]') !== null`, 5*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("[Delete_Post] Step 12a failed (confirm modal did not appear): %v", err)
+		}
+
+		var confirmResult map[string]interface{}
+		err = chromedp.Run(ctx,
+			chromedp.Evaluate(`
+				(() => {
+					const confirmButton = document.querySelector('button[lvt-click="confirm_delete"]');
+					if (!confirmButton) {
+						return { success: false, error: 'confirm_delete button not found' };
+					}
+					confirmButton.click();
+					return { success: true };
+				})()
+			`, &confirmResult),
+		)
+		if err != nil {
+			t.Fatalf("[Delete_Post] Step 12a failed (click confirm_delete): %v", err)
+		}
+		t.Logf("[Delete_Post] Step 12a: confirm_delete clicked: %+v", confirmResult)
 
 		// Step 12b: Wait for server response and check row count
 		time.Sleep(2 * time.Second)

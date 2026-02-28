@@ -312,39 +312,37 @@ func TestDeleteWithMultiplePosts(t *testing.T) {
 		}
 		t.Log("✅ Clicked edit button")
 
-		// Wait for edit modal and delete button
+		// Wait for edit modal and request_delete button
 		err = chromedp.Run(ctx,
-			waitFor(`document.querySelector('button[lvt-click="delete"]') !== null`, 5*time.Second),
+			waitFor(`document.querySelector('button[lvt-click="request_delete"]') !== null`, 5*time.Second),
 
-			// Check if delete button exists
+			// Check if request_delete button exists
 			chromedp.Evaluate(`
 				(() => {
-					const deleteBtn = document.querySelector('button[lvt-click="delete"]');
+					const deleteBtn = document.querySelector('button[lvt-click="request_delete"]');
 					if (deleteBtn) {
-						console.log('[DELETE TEST] Delete button found');
-						console.log('[DELETE TEST] Delete button data-id:', deleteBtn.getAttribute('lvt-data-id'));
-						console.log('[DELETE TEST] Delete button outerHTML:', deleteBtn.outerHTML.substring(0, 300));
+						console.log('[DELETE TEST] request_delete button found');
+						console.log('[DELETE TEST] request_delete button data-id:', deleteBtn.getAttribute('lvt-data-id'));
+						console.log('[DELETE TEST] request_delete button outerHTML:', deleteBtn.outerHTML.substring(0, 300));
 						return true;
 					}
-					console.log('[DELETE TEST] Delete button NOT found');
+					console.log('[DELETE TEST] request_delete button NOT found');
 					return false;
 				})()
 			`, &foundDeleteButton),
 		)
 		if err != nil || !foundDeleteButton {
-			t.Fatalf("Delete button not found: %v", err)
+			t.Fatalf("request_delete button not found: %v", err)
 		}
-		t.Log("✅ Delete button found")
+		t.Log("✅ request_delete button found")
 
-		// Override confirm and click delete
+		// Click request_delete to open confirm modal
 		err = chromedp.Run(ctx,
-			chromedp.Evaluate(`window.confirm = () => { console.log('[DELETE TEST] Confirm called'); return true; };`, nil),
-
 			chromedp.Evaluate(`
 				(() => {
-					const deleteButton = document.querySelector('button[lvt-click="delete"]');
+					const deleteButton = document.querySelector('button[lvt-click="request_delete"]');
 					if (deleteButton) {
-						console.log('[DELETE TEST] Clicking delete button...');
+						console.log('[DELETE TEST] Clicking request_delete button...');
 						deleteButton.click();
 						return true;
 					}
@@ -353,9 +351,30 @@ func TestDeleteWithMultiplePosts(t *testing.T) {
 			`, &clickedDelete),
 		)
 		if err != nil || !clickedDelete {
-			t.Fatalf("Failed to click delete button: %v", err)
+			t.Fatalf("Failed to click request_delete button: %v", err)
 		}
-		t.Log("✅ Clicked delete button")
+		t.Log("✅ Clicked request_delete button")
+
+		// Wait for confirm modal and click confirm_delete
+		err = chromedp.Run(ctx,
+			waitFor(`document.querySelector('button[lvt-click="confirm_delete"]') !== null`, 5*time.Second),
+			chromedp.Evaluate(`
+				(() => {
+					const confirmButton = document.querySelector('button[lvt-click="confirm_delete"]');
+					if (confirmButton) {
+						console.log('[DELETE TEST] Clicking confirm_delete button...');
+						confirmButton.click();
+						return true;
+					}
+					console.log('[DELETE TEST] confirm_delete button NOT found');
+					return false;
+				})()
+			`, nil),
+		)
+		if err != nil {
+			t.Fatalf("Failed to click confirm_delete button: %v", err)
+		}
+		t.Log("✅ Clicked confirm_delete button")
 
 		// Capture DOM state before waiting for deletion
 		var tableHTML string
