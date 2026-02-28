@@ -32,6 +32,8 @@ type AddInput struct {
 [[- range .Fields]]
 [[- if eq .GoType "bool"]]
 	[[.Name | camelCase]] [[.GoType]] `json:"[[.Name]]"`
+[[- else if .IsSelect]]
+	[[.Name | camelCase]] [[.GoType]] `json:"[[.Name]]" validate:"required"`
 [[- else if eq .GoType "string"]]
 	[[.Name | camelCase]] [[.GoType]] `json:"[[.Name]]" validate:"required,min=3"`
 [[- else]]
@@ -45,6 +47,8 @@ type UpdateInput struct {
 [[- range .Fields]]
 [[- if eq .GoType "bool"]]
 	[[.Name | camelCase]] [[.GoType]] `json:"[[.Name]]"`
+[[- else if .IsSelect]]
+	[[.Name | camelCase]] [[.GoType]] `json:"[[.Name]]" validate:"required"`
 [[- else if eq .GoType "string"]]
 	[[.Name | camelCase]] [[.GoType]] `json:"[[.Name]]" validate:"required,min=3"`
 [[- else]]
@@ -114,8 +118,6 @@ func (c *[[.ResourceName]]Controller) Add(state [[.ResourceName]]State, ctx *liv
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
 		return state, err
 	}
-
-	log.Printf("[lvt debug] add input: %+v", input)
 
 	now := time.Now()
 	id := fmt.Sprintf("[[.ResourceNameLower]]-%d", now.UnixNano())
@@ -262,6 +264,7 @@ func (c *[[.ResourceName]]Controller) Back(state [[.ResourceName]]State, _ *live
 	return state, nil
 }
 
+[[- if not .Components.UseModal]]
 // Delete handles the "delete" action to remove a resource
 func (c *[[.ResourceName]]Controller) Delete(state [[.ResourceName]]State, ctx *livetemplate.Context) ([[.ResourceName]]State, error) {
 	dbCtx := context.Background()
@@ -288,6 +291,7 @@ func (c *[[.ResourceName]]Controller) Delete(state [[.ResourceName]]State, ctx *
 	state.LastUpdated = formatTime()
 	return state, nil
 }
+[[- end]]
 
 [[- if .Components.UseModal]]
 // RequestDelete handles the "request_delete" action to show the delete confirmation modal

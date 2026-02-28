@@ -57,7 +57,7 @@
     client.send = function(message) {
       const action = message.action;
 
-      if (action === 'delete') {
+      if (action === 'confirm_delete') {
         // Call original send to perform the delete
         originalSend(message);
 

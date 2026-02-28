@@ -90,8 +90,6 @@ func (c *UserController) Add(state UserState, ctx *livetemplate.Context) (UserSt
 		return state, err
 	}
 
-	log.Printf("[lvt debug] add input: %+v", input)
-
 	now := time.Now()
 	id := fmt.Sprintf("user-%d", now.UnixNano())
 
@@ -217,33 +215,6 @@ func (c *UserController) View(state UserState, ctx *livetemplate.Context) (UserS
 func (c *UserController) Back(state UserState, _ *livetemplate.Context) (UserState, error) {
 	state.EditingID = ""
 	state.EditingUser = nil
-	state.LastUpdated = formatTime()
-	return state, nil
-}
-
-// Delete handles the "delete" action to remove a resource
-func (c *UserController) Delete(state UserState, ctx *livetemplate.Context) (UserState, error) {
-	dbCtx := context.Background()
-
-	var input DeleteInput
-	if err := ctx.BindAndValidate(&input, validate); err != nil {
-		return state, err
-	}
-
-	err := c.Queries.DeleteUser(dbCtx, input.ID)
-	if err != nil {
-		return state, fmt.Errorf("failed to delete user: %w", err)
-	}
-
-	// Clear editing state (for page mode)
-	state.EditingID = ""
-	state.EditingUser = nil
-
-	state, err = c.loadUsers(state, dbCtx)
-	if err != nil {
-		return state, err
-	}
-
 	state.LastUpdated = formatTime()
 	return state, nil
 }

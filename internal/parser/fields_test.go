@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -212,16 +213,16 @@ func TestFieldsToGoStruct(t *testing.T) {
 	result := FieldsToGoStruct(fields)
 
 	// Check for expected field declarations
-	if !contains(result, "Name string") {
+	if !strings.Contains(result, "Name string") {
 		t.Error("expected 'Name string' in struct")
 	}
-	if !contains(result, "Age int64") {
+	if !strings.Contains(result, "Age int64") {
 		t.Error("expected 'Age int64' in struct")
 	}
-	if !contains(result, "json:\"name\"") {
+	if !strings.Contains(result, "json:\"name\"") {
 		t.Error("expected json tag for name")
 	}
-	if !contains(result, "json:\"age\"") {
+	if !strings.Contains(result, "json:\"age\"") {
 		t.Error("expected json tag for age")
 	}
 }
@@ -234,24 +235,11 @@ func TestFieldsToSQLColumns(t *testing.T) {
 
 	result := FieldsToSQLColumns(fields)
 
-	if !contains(result, "name TEXT NOT NULL") {
+	if !strings.Contains(result, "name TEXT NOT NULL") {
 		t.Error("expected 'name TEXT NOT NULL' in SQL")
 	}
-	if !contains(result, "age INTEGER NOT NULL") {
+	if !strings.Contains(result, "age INTEGER NOT NULL") {
 		t.Error("expected 'age INTEGER NOT NULL' in SQL")
 	}
 }
 
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) &&
-		(containsHelper(s, substr)))
-}
-
-func containsHelper(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
-}

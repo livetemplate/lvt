@@ -72,8 +72,8 @@ type Container struct {
 	// MaxVisible limits how many toasts are shown at once (0 = unlimited)
 	MaxVisible int
 
-	// counter for generating unique IDs
-	counter int
+	// Counter for generating unique IDs
+	Counter int `json:"counter"`
 }
 
 // New creates a toast container.
@@ -103,8 +103,8 @@ func New(id string, opts ...ContainerOption) *Container {
 func (c *Container) Add(msg Message) {
 	// Generate ID if not provided
 	if msg.ID == "" {
-		c.counter++
-		msg.ID = itoa(c.counter)
+		c.Counter++
+		msg.ID = itoa(c.Counter)
 	}
 
 	// Default to dismissible
