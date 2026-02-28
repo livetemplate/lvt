@@ -137,6 +137,9 @@ func buildDockerImage(t *testing.T, appDir, imageName string) {
 	t.Helper()
 	t.Logf("Building Docker image: %s", imageName)
 
+	// Inject components module so Docker build can resolve component imports
+	injectComponentsForTest(t, appDir)
+
 	// Ensure base image exists
 	buildBaseImage(t)
 

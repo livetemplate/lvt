@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -291,6 +292,49 @@ func startServeInBackground(t *testing.T, workDir string, args ...string) (*Serv
 	})
 
 	return handle, nil
+}
+
+// injectComponentsForTest copies the components module into the test app directory
+// and adds a replace directive so go mod tidy can resolve component imports.
+// This is needed because the components sub-module isn't published to the Go module proxy yet.
+func injectComponentsForTest(t *testing.T, appDir string) {
+	t.Helper()
+
+	// Find project root (e2e tests live in <root>/e2e/)
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("Failed to get current file path for components injection")
+	}
+	projectRoot := filepath.Dir(filepath.Dir(filename))
+	componentsSrc := filepath.Join(projectRoot, "components")
+
+	// Check if components source exists
+	if _, err := os.Stat(componentsSrc); os.IsNotExist(err) {
+		t.Logf("⏭️  Components directory not found at %s, skipping injection", componentsSrc)
+		return
+	}
+
+	// Copy components directory into app
+	componentsDst := filepath.Join(appDir, "components")
+	cpCmd := exec.Command("cp", "-r", componentsSrc, componentsDst)
+	if output, err := cpCmd.CombinedOutput(); err != nil {
+		t.Fatalf("Failed to copy components: %v\nOutput: %s", err, output)
+	}
+
+	// Add replace directive to app's go.mod
+	goModPath := filepath.Join(appDir, "go.mod")
+	goModContent, err := os.ReadFile(goModPath)
+	if err != nil {
+		t.Fatalf("Failed to read go.mod for components injection: %v", err)
+	}
+
+	if !strings.Contains(string(goModContent), "github.com/livetemplate/lvt/components") {
+		replaceDirective := "\nreplace github.com/livetemplate/lvt/components => ./components\n"
+		if err := os.WriteFile(goModPath, append(goModContent, []byte(replaceDirective)...), 0644); err != nil {
+			t.Fatalf("Failed to add components replace directive: %v", err)
+		}
+	}
+	t.Log("✅ Components module injected for test")
 }
 
 // createTestApp creates a new test application and sets it up for testing
