@@ -21,7 +21,7 @@ package rating
 import (
 	"math"
 
-	"github.com/livetemplate/components/base"
+	"github.com/livetemplate/lvt/components/base"
 )
 
 // Rating is a star rating component.

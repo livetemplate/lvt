@@ -20,7 +20,7 @@
 package timeline
 
 import (
-	"github.com/livetemplate/components/base"
+	"github.com/livetemplate/lvt/components/base"
 )
 
 // Orientation defines timeline layout direction.

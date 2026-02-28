@@ -3,7 +3,7 @@ package rating
 import (
 	"embed"
 
-	"github.com/livetemplate/components/base"
+	"github.com/livetemplate/lvt/components/base"
 )
 
 // templateFS contains all rating template files embedded at compile time.
@@ -16,7 +16,7 @@ var templateFS embed.FS
 //
 // Example usage in main.go:
 //
-//	import "github.com/livetemplate/components/rating"
+//	import "github.com/livetemplate/lvt/components/rating"
 //
 //	tmpl, err := livetemplate.New("app",
 //	    livetemplate.WithComponentTemplates(rating.Templates()),

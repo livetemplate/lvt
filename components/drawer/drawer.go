@@ -18,7 +18,7 @@
 package drawer
 
 import (
-	"github.com/livetemplate/components/base"
+	"github.com/livetemplate/lvt/components/base"
 )
 
 // Position defines where the drawer slides from.

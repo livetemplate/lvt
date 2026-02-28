@@ -18,7 +18,7 @@
 package tooltip
 
 import (
-	"github.com/livetemplate/components/base"
+	"github.com/livetemplate/lvt/components/base"
 )
 
 // Position defines where the tooltip appears relative to trigger.

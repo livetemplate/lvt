@@ -1,0 +1,60 @@
+name: Components Independence
+
+on:
+  pull_request:
+    paths:
+      - 'components/**'
+    types: [opened, synchronize, reopened]
+
+jobs:
+  components-independence:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          cache: true
+
+      - name: Verify no bare lvt imports in components
+        run: |
+          # Components must not import from the parent lvt module (except lvt/components subpackages)
+          if grep -rn '"github.com/livetemplate/lvt"' components/ --include='*.go'; then
+            echo "ERROR: components/ must not import the bare lvt module"
+            exit 1
+          fi
+          if grep -rn '"github.com/livetemplate/lvt/internal' components/ --include='*.go'; then
+            echo "ERROR: components/ must not import lvt/internal packages"
+            exit 1
+          fi
+          if grep -rn '"github.com/livetemplate/lvt/commands' components/ --include='*.go'; then
+            echo "ERROR: components/ must not import lvt/commands packages"
+            exit 1
+          fi
+          echo "No forbidden imports found"
+
+      - name: Verify components go.mod independence
+        run: |
+          cd components
+          # go.mod should not require the parent lvt module
+          if grep -q 'github.com/livetemplate/lvt ' go.mod; then
+            echo "ERROR: components/go.mod must not depend on the parent lvt module"
+            exit 1
+          fi
+          echo "components/go.mod is independent"
+
+      - name: Build components independently
+        run: |
+          cd components
+          GOWORK=off go build ./...
+
+      - name: Test components independently
+        run: |
+          cd components
+          GOWORK=off go test ./...

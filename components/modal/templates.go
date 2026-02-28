@@ -3,7 +3,7 @@ package modal
 import (
 	"embed"
 
-	"github.com/livetemplate/components/base"
+	"github.com/livetemplate/lvt/components/base"
 )
 
 // templateFS contains all modal template files embedded at compile time.
@@ -16,7 +16,7 @@ var templateFS embed.FS
 //
 // Example usage in main.go:
 //
-//	import "github.com/livetemplate/components/modal"
+//	import "github.com/livetemplate/lvt/components/modal"
 //
 //	tmpl, err := livetemplate.New("app",
 //	    livetemplate.WithComponentTemplates(modal.Templates()),

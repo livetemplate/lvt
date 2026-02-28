@@ -19,7 +19,7 @@
 package toggle
 
 import (
-	"github.com/livetemplate/components/base"
+	"github.com/livetemplate/lvt/components/base"
 )
 
 // Size defines the toggle size.

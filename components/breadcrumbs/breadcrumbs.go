@@ -20,7 +20,7 @@
 package breadcrumbs
 
 import (
-	"github.com/livetemplate/components/base"
+	"github.com/livetemplate/lvt/components/base"
 )
 
 // Separator defines the visual separator between items.

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"html/template"
 
-	"github.com/livetemplate/components/base"
+	"github.com/livetemplate/lvt/components/base"
 )
 
 // templateFS contains all datatable template files embedded at compile time.
@@ -18,7 +18,7 @@ var templateFS embed.FS
 //
 // Example usage in main.go:
 //
-//	import "github.com/livetemplate/components/datatable"
+//	import "github.com/livetemplate/lvt/components/datatable"
 //
 //	tmpl, err := livetemplate.New("app",
 //	    livetemplate.WithComponentTemplates(datatable.Templates()),
@@ -27,8 +27,8 @@ var templateFS embed.FS
 // Available templates:
 //   - "lvt:datatable:default:v1" - Data table with sorting/pagination
 func Templates() *base.TemplateSet {
-	return base.NewTemplateSet(templateFS, "templates/*.tmpl", "datatable").
-		WithFuncs(template.FuncMap{
+	return base.WithFuncs(base.NewTemplateSet(templateFS, "templates/*.tmpl", "datatable"),
+		template.FuncMap{
 			// mod returns the remainder of a/b - used for zebra striping (alternating row colors)
 			"mod": func(a, b int) int {
 				return a % b

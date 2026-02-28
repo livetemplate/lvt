@@ -18,7 +18,7 @@
 package popover
 
 import (
-	"github.com/livetemplate/components/base"
+	"github.com/livetemplate/lvt/components/base"
 )
 
 // Position defines where the popover appears relative to trigger.

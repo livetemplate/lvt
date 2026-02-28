@@ -18,7 +18,7 @@
 package tagsinput
 
 import (
-	"github.com/livetemplate/components/base"
+	"github.com/livetemplate/lvt/components/base"
 )
 
 // Tag represents a single tag/chip.

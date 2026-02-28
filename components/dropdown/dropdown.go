@@ -20,7 +20,7 @@
 package dropdown
 
 import (
-	"github.com/livetemplate/components/base"
+	"github.com/livetemplate/lvt/components/base"
 )
 
 // Item represents a single option in the dropdown.

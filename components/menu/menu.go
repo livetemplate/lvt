@@ -24,7 +24,7 @@
 package menu
 
 import (
-	"github.com/livetemplate/components/base"
+	"github.com/livetemplate/lvt/components/base"
 )
 
 // ItemType defines the type of menu item.

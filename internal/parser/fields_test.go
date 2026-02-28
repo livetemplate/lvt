@@ -46,6 +46,26 @@ func TestParseFields(t *testing.T) {
 			input:   []string{"id:uuid"},
 			wantErr: true,
 		},
+		{
+			name:  "select field with options",
+			input: []string{"status:select:active,inactive,pending"},
+			want:  1,
+		},
+		{
+			name:  "mixed fields with select",
+			input: []string{"name:string", "status:select:open,closed", "priority:int"},
+			want:  3,
+		},
+		{
+			name:    "select field without options",
+			input:   []string{"status:select"},
+			wantErr: true,
+		},
+		{
+			name:    "select field with empty options",
+			input:   []string{"status:select:"},
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -65,6 +85,70 @@ func TestParseFields(t *testing.T) {
 				t.Errorf("got %d fields, want %d", len(fields), tt.want)
 			}
 		})
+	}
+}
+
+func TestParseFieldsSelectProperties(t *testing.T) {
+	fields, err := ParseFields([]string{"status:select:active,inactive,pending"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(fields) != 1 {
+		t.Fatalf("expected 1 field, got %d", len(fields))
+	}
+
+	f := fields[0]
+	if f.Name != "status" {
+		t.Errorf("expected name 'status', got %q", f.Name)
+	}
+	if f.GoType != "string" {
+		t.Errorf("expected GoType 'string', got %q", f.GoType)
+	}
+	if f.SQLType != "TEXT" {
+		t.Errorf("expected SQLType 'TEXT', got %q", f.SQLType)
+	}
+	if !f.IsSelect {
+		t.Error("expected IsSelect to be true")
+	}
+	if len(f.SelectOptions) != 3 {
+		t.Fatalf("expected 3 options, got %d", len(f.SelectOptions))
+	}
+	expected := []string{"active", "inactive", "pending"}
+	for i, opt := range f.SelectOptions {
+		if opt != expected[i] {
+			t.Errorf("option %d: expected %q, got %q", i, expected[i], opt)
+		}
+	}
+}
+
+func TestParseFieldsSelectWithOtherFields(t *testing.T) {
+	fields, err := ParseFields([]string{"name:string", "status:select:open,closed", "count:int"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(fields) != 3 {
+		t.Fatalf("expected 3 fields, got %d", len(fields))
+	}
+
+	// First field: normal string
+	if fields[0].IsSelect {
+		t.Error("field 'name' should not be IsSelect")
+	}
+
+	// Second field: select
+	if !fields[1].IsSelect {
+		t.Error("field 'status' should be IsSelect")
+	}
+	if len(fields[1].SelectOptions) != 2 {
+		t.Errorf("expected 2 options, got %d", len(fields[1].SelectOptions))
+	}
+
+	// Third field: normal int
+	if fields[2].IsSelect {
+		t.Error("field 'count' should not be IsSelect")
+	}
+	if fields[2].GoType != "int64" {
+		t.Errorf("expected GoType 'int64', got %q", fields[2].GoType)
 	}
 }
 

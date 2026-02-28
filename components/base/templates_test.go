@@ -32,7 +32,7 @@ func TestTemplateSet_WithFuncs(t *testing.T) {
 		"testFunc": func() string { return "test" },
 	}
 
-	ts2 := ts.WithFuncs(funcs)
+	ts2 := WithFuncs(ts, funcs)
 
 	// Original should be unchanged
 	if ts.Funcs != nil {

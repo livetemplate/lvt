@@ -3,7 +3,7 @@ package timepicker
 import (
 	"embed"
 
-	"github.com/livetemplate/components/base"
+	"github.com/livetemplate/lvt/components/base"
 )
 
 // templateFS contains all timepicker template files embedded at compile time.
@@ -16,7 +16,7 @@ var templateFS embed.FS
 //
 // Example usage in main.go:
 //
-//	import "github.com/livetemplate/components/timepicker"
+//	import "github.com/livetemplate/lvt/components/timepicker"
 //
 //	tmpl, err := livetemplate.New("app",
 //	    livetemplate.WithComponentTemplates(timepicker.Templates()),

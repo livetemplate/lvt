@@ -328,8 +328,8 @@ func TestGeneratedAppFullFlow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to read go.mod: %v", err)
 	}
-	// Add replace directive at the end
-	replaceDirective := fmt.Sprintf("\nreplace github.com/livetemplate/lvt => %s\n", origDir)
+	// Add replace directives at the end (both lvt and its components sub-module)
+	replaceDirective := fmt.Sprintf("\nreplace github.com/livetemplate/lvt => %s\nreplace github.com/livetemplate/lvt/components => %s/components\n", origDir, origDir)
 	if err := os.WriteFile(goModPath, append(goModContent, []byte(replaceDirective)...), 0644); err != nil {
 		t.Fatalf("Failed to update go.mod: %v", err)
 	}

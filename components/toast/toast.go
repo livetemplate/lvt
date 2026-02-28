@@ -23,7 +23,7 @@
 package toast
 
 import (
-	"github.com/livetemplate/components/base"
+	"github.com/livetemplate/lvt/components/base"
 )
 
 // Type represents the visual style/severity of a toast.

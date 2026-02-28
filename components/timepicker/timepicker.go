@@ -21,7 +21,7 @@ package timepicker
 import (
 	"fmt"
 
-	"github.com/livetemplate/components/base"
+	"github.com/livetemplate/lvt/components/base"
 )
 
 // TimePicker is a component for selecting time.

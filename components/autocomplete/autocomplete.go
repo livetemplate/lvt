@@ -24,7 +24,7 @@ package autocomplete
 import (
 	"strings"
 
-	"github.com/livetemplate/components/base"
+	"github.com/livetemplate/lvt/components/base"
 )
 
 // Suggestion represents an autocomplete suggestion.

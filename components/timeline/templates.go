@@ -3,7 +3,7 @@ package timeline
 import (
 	"embed"
 
-	"github.com/livetemplate/components/base"
+	"github.com/livetemplate/lvt/components/base"
 )
 
 //go:embed templates/*.tmpl

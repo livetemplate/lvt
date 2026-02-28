@@ -18,7 +18,7 @@
 package skeleton
 
 import (
-	"github.com/livetemplate/components/base"
+	"github.com/livetemplate/lvt/components/base"
 )
 
 // Shape defines the skeleton shape.

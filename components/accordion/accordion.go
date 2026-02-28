@@ -19,7 +19,7 @@
 package accordion
 
 import (
-	"github.com/livetemplate/components/base"
+	"github.com/livetemplate/lvt/components/base"
 )
 
 // Item represents a single accordion section.

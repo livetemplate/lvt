@@ -20,7 +20,7 @@ package progress
 import (
 	"fmt"
 
-	"github.com/livetemplate/components/base"
+	"github.com/livetemplate/lvt/components/base"
 )
 
 // Size defines the progress bar size.

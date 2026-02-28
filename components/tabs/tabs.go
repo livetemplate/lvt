@@ -26,7 +26,7 @@
 package tabs
 
 import (
-	"github.com/livetemplate/components/base"
+	"github.com/livetemplate/lvt/components/base"
 )
 
 // Tab represents a single tab item.

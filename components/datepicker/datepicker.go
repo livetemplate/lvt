@@ -21,7 +21,7 @@ package datepicker
 import (
 	"time"
 
-	"github.com/livetemplate/components/base"
+	"github.com/livetemplate/lvt/components/base"
 )
 
 // DatePicker is a component for selecting a single date.

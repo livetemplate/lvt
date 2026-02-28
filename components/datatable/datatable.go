@@ -25,7 +25,7 @@ package datatable
 import (
 	"encoding/json"
 
-	"github.com/livetemplate/components/base"
+	"github.com/livetemplate/lvt/components/base"
 )
 
 // SortDirection indicates the sort order.

@@ -7,7 +7,7 @@
 //
 // Register all component templates in your main.go:
 //
-//	import "github.com/livetemplate/components"
+//	import "github.com/livetemplate/lvt/components"
 //
 //	func main() {
 //	    tmpl := livetemplate.NewTemplates(
@@ -44,27 +44,27 @@
 package components
 
 import (
-	"github.com/livetemplate/components/accordion"
-	"github.com/livetemplate/components/breadcrumbs"
-	"github.com/livetemplate/components/autocomplete"
-	"github.com/livetemplate/components/base"
-	"github.com/livetemplate/components/datatable"
-	"github.com/livetemplate/components/datepicker"
-	"github.com/livetemplate/components/drawer"
-	"github.com/livetemplate/components/dropdown"
-	"github.com/livetemplate/components/menu"
-	"github.com/livetemplate/components/modal"
-	"github.com/livetemplate/components/popover"
-	"github.com/livetemplate/components/progress"
-	"github.com/livetemplate/components/rating"
-	"github.com/livetemplate/components/skeleton"
-	"github.com/livetemplate/components/tabs"
-	"github.com/livetemplate/components/tagsinput"
-	"github.com/livetemplate/components/timeline"
-	"github.com/livetemplate/components/timepicker"
-	"github.com/livetemplate/components/toast"
-	"github.com/livetemplate/components/toggle"
-	"github.com/livetemplate/components/tooltip"
+	"github.com/livetemplate/lvt/components/accordion"
+	"github.com/livetemplate/lvt/components/breadcrumbs"
+	"github.com/livetemplate/lvt/components/autocomplete"
+	"github.com/livetemplate/lvt/components/base"
+	"github.com/livetemplate/lvt/components/datatable"
+	"github.com/livetemplate/lvt/components/datepicker"
+	"github.com/livetemplate/lvt/components/drawer"
+	"github.com/livetemplate/lvt/components/dropdown"
+	"github.com/livetemplate/lvt/components/menu"
+	"github.com/livetemplate/lvt/components/modal"
+	"github.com/livetemplate/lvt/components/popover"
+	"github.com/livetemplate/lvt/components/progress"
+	"github.com/livetemplate/lvt/components/rating"
+	"github.com/livetemplate/lvt/components/skeleton"
+	"github.com/livetemplate/lvt/components/tabs"
+	"github.com/livetemplate/lvt/components/tagsinput"
+	"github.com/livetemplate/lvt/components/timeline"
+	"github.com/livetemplate/lvt/components/timepicker"
+	"github.com/livetemplate/lvt/components/toast"
+	"github.com/livetemplate/lvt/components/toggle"
+	"github.com/livetemplate/lvt/components/tooltip"
 )
 
 // All returns all component template sets for registration with LiveTemplate.

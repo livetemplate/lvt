@@ -20,7 +20,7 @@
 package modal
 
 import (
-	"github.com/livetemplate/components/base"
+	"github.com/livetemplate/lvt/components/base"
 )
 
 // Size defines the modal size.
