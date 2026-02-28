@@ -8,13 +8,12 @@
 // Example usage:
 //
 //	// In your controller/state
-//	Users: datatable.New[User]("users",
+//	Users: datatable.New("users",
 //	    datatable.WithColumns([]datatable.Column{
 //	        {ID: "name", Label: "Name", Sortable: true},
 //	        {ID: "email", Label: "Email", Sortable: true},
 //	        {ID: "role", Label: "Role"},
 //	    }),
-//	    datatable.WithData(users),
 //	    datatable.WithPageSize(10),
 //	)
 //
@@ -24,6 +23,7 @@ package datatable
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/livetemplate/lvt/components/base"
 )
@@ -483,7 +483,7 @@ func (dt *DataTable) PageInfo() string {
 		end = total
 	}
 
-	return "" // Would format "Showing 1-10 of 100" but keeping simple
+	return fmt.Sprintf("Showing %d-%d of %d", start, end, total)
 }
 
 // StartIndex returns the 1-based start index for current page.

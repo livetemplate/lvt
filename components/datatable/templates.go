@@ -2,7 +2,6 @@ package datatable
 
 import (
 	"embed"
-	"fmt"
 	"html/template"
 
 	"github.com/livetemplate/lvt/components/base"
@@ -121,7 +120,7 @@ func Templates() *base.TemplateSet {
 					return datatable.ID()
 				}
 				if m, ok := dt.(map[string]interface{}); ok {
-					if id, ok := m["Id"].(string); ok {
+					if id, ok := m["id"].(string); ok {
 						return id
 					}
 				}
@@ -311,10 +310,6 @@ func Templates() *base.TemplateSet {
 					return getMapString(m, "Align")
 				}
 				return ""
-			},
-			// Print for debugging
-			"debugType": func(v interface{}) string {
-				return fmt.Sprintf("%T", v)
 			},
 		})
 }

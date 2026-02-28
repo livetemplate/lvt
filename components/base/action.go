@@ -2,6 +2,7 @@ package base
 
 import (
 	"strconv"
+	"strings"
 )
 
 // ActionContext provides context for component action handlers.
@@ -79,8 +80,8 @@ func (ctx *ActionContext) DataFloat(key string) float64 {
 // Values "true", "1", "yes", "on" are considered true (case-insensitive).
 func (ctx *ActionContext) DataBool(key string) bool {
 	if v, ok := ctx.data[key]; ok {
-		switch v {
-		case "true", "1", "yes", "on", "True", "TRUE", "Yes", "YES", "On", "ON":
+		switch strings.ToLower(v) {
+		case "true", "1", "yes", "on":
 			return true
 		}
 	}

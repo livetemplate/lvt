@@ -109,9 +109,6 @@ func (c *Container) Add(msg Message) {
 		msg.ID = strconv.Itoa(c.Counter)
 	}
 
-	// All toasts are dismissible by default
-	msg.Dismissible = true
-
 	c.Messages = append(c.Messages, msg)
 
 	// Trim to MaxVisible if set
