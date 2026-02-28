@@ -183,9 +183,15 @@ func (t *Tabs) RemoveTab(tabID string) {
 	for i, tab := range t.Items {
 		if tab.ID == tabID {
 			t.Items = append(t.Items[:i], t.Items[i+1:]...)
-			// If we removed the active tab, activate the first available
-			if t.ActiveID == tabID && len(t.Items) > 0 {
-				t.SetActive(t.Items[0].ID)
+			// If we removed the active tab, activate the first non-disabled tab
+			if t.ActiveID == tabID {
+				t.ActiveID = ""
+				for _, remaining := range t.Items {
+					if !remaining.Disabled {
+						t.ActiveID = remaining.ID
+						break
+					}
+				}
 			}
 			return
 		}

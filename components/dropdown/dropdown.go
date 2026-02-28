@@ -133,11 +133,13 @@ type Searchable struct {
 }
 
 // NewSearchable creates a searchable dropdown.
+// Use WithSearchOptions to apply searchable-specific options like WithMinChars.
 //
 // Example:
 //
 //	d := dropdown.NewSearchable("country", countries,
 //	    dropdown.WithPlaceholder("Search countries..."),
+//	).WithSearchOptions(
 //	    dropdown.WithMinChars(2),
 //	)
 func NewSearchable(id string, options []Item, opts ...Option) *Searchable {
@@ -154,6 +156,14 @@ func NewSearchable(id string, options []Item, opts ...Option) *Searchable {
 		opt(&s.Dropdown)
 	}
 
+	return s
+}
+
+// WithSearchOptions applies searchable-specific options. Chainable.
+func (s *Searchable) WithSearchOptions(opts ...SearchableOption) *Searchable {
+	for _, opt := range opts {
+		opt(s)
+	}
 	return s
 }
 
@@ -203,11 +213,13 @@ type Multi struct {
 }
 
 // NewMulti creates a multi-select dropdown.
+// Use WithMultiOptions to apply multi-specific options like WithMaxSelections.
 //
 // Example:
 //
 //	d := dropdown.NewMulti("tags", tagOptions,
 //	    dropdown.WithPlaceholder("Select tags..."),
+//	).WithMultiOptions(
 //	    dropdown.WithMaxSelections(5),
 //	)
 func NewMulti(id string, options []Item, opts ...Option) *Multi {
@@ -224,6 +236,14 @@ func NewMulti(id string, options []Item, opts ...Option) *Multi {
 		opt(&m.Dropdown)
 	}
 
+	return m
+}
+
+// WithMultiOptions applies multi-specific options. Chainable.
+func (m *Multi) WithMultiOptions(opts ...MultiOption) *Multi {
+	for _, opt := range opts {
+		opt(m)
+	}
 	return m
 }
 
