@@ -1,0 +1,60 @@
+{{define "lvt:accordion:single:v1"}}
+{{if .IsStyled}}
+{{/* Tailwind CSS styled version - Single open mode */}}
+<div class="space-y-2" data-accordion="{{.ID}}" data-single-open="true">
+  {{range .Items}}
+  <div class="border border-gray-200 rounded-lg overflow-hidden {{if .Disabled}}opacity-50{{end}}">
+    <button
+      type="button"
+      class="flex items-center justify-between w-full px-4 py-3 text-left font-medium {{if $.IsOpen .ID}}bg-blue-50 text-blue-900{{else}}bg-gray-50 text-gray-900 hover:bg-gray-100{{end}} focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 {{if .Disabled}}cursor-not-allowed{{end}}"
+      lvt-click="toggle_accordion_{{$.ID}}"
+      lvt-data-item="{{.ID}}"
+      aria-expanded="{{$.IsOpen .ID}}"
+      aria-controls="accordion-content-{{$.ID}}-{{.ID}}"
+      {{if .Disabled}}disabled{{end}}
+    >
+      <span class="flex items-center">
+        {{if .Icon}}<span class="mr-3">{{.Icon}}</span>{{end}}
+        {{.Title}}
+      </span>
+      <svg
+        class="w-5 h-5 {{if $.IsOpen .ID}}text-blue-600 rotate-180{{else}}text-gray-500{{end}} transition-transform duration-200"
+        viewBox="0 0 20 20"
+        fill="currentColor"
+      >
+        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+      </svg>
+    </button>
+    {{if $.IsOpen .ID}}
+    <div
+      id="accordion-content-{{$.ID}}-{{.ID}}"
+      class="px-4 py-3 bg-white border-t border-gray-200 text-gray-600"
+      role="region"
+      aria-labelledby="accordion-header-{{$.ID}}-{{.ID}}"
+    >
+      {{.Content}}
+    </div>
+    {{end}}
+  </div>
+  {{end}}
+</div>
+{{else}}
+{{/* Unstyled semantic HTML version */}}
+<div data-accordion="{{.ID}}" data-single-open="true">
+  {{range .Items}}
+  <details {{if $.IsOpen .ID}}open{{end}} {{if .Disabled}}disabled{{end}}>
+    <summary
+      lvt-click="toggle_accordion_{{$.ID}}"
+      lvt-data-item="{{.ID}}"
+    >
+      {{if .Icon}}<span>{{.Icon}}</span>{{end}}
+      {{.Title}}
+    </summary>
+    <div>
+      {{.Content}}
+    </div>
+  </details>
+  {{end}}
+</div>
+{{end}}
+{{end}}

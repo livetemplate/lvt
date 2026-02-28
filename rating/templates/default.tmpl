@@ -1,0 +1,65 @@
+{{define "lvt:rating:default:v1"}}
+{{if .IsStyled}}
+{{/* Tailwind CSS styled version */}}
+<div class="inline-flex items-center gap-2" data-rating="{{.ID}}">
+  {{if .Label}}
+  <span class="text-sm text-gray-600">{{.Label}}</span>
+  {{end}}
+
+  <div
+    class="inline-flex {{.SizeClass}} {{if not .Readonly}}cursor-pointer{{end}}"
+    {{if not .Readonly}}lvt-mouseleave="leave_{{.ID}}"{{end}}
+  >
+    {{range $star := .Stars}}
+    <span
+      class="transition-colors {{if $.IsStarFull $star}}{{$.ColorClass}}{{else if $.IsStarHalf $star}}{{$.ColorClass}}{{else}}{{$.EmptyColorClass}}{{end}}"
+      {{if not $.Readonly}}
+      lvt-click="click_{{$.ID}}"
+      lvt-data-star="{{$star}}"
+      lvt-mouseover="hover_{{$.ID}}"
+      {{end}}
+    >
+      {{if $.IsStarHalf $star}}
+      <span class="relative">
+        <span class="absolute overflow-hidden" style="width: 50%">{{$.Character}}</span>
+        <span class="{{$.EmptyColorClass}}">{{$.Character}}</span>
+      </span>
+      {{else}}
+      {{$.Character}}
+      {{end}}
+    </span>
+    {{end}}
+  </div>
+
+  {{if .ShowValue}}
+  <span class="text-sm font-medium text-gray-700">{{.FormatValue}}</span>
+  {{end}}
+
+  {{if and .ShowCount (gt .Count 0)}}
+  <span class="text-sm text-gray-500">({{.Count}})</span>
+  {{end}}
+</div>
+{{else}}
+{{/* Unstyled semantic HTML version */}}
+<div data-rating="{{.ID}}">
+  {{if .Label}}<label>{{.Label}}</label>{{end}}
+
+  <span {{if not .Readonly}}lvt-mouseleave="leave_{{.ID}}"{{end}}>
+    {{range $star := .Stars}}
+    <span
+      {{if not $.Readonly}}
+      lvt-click="click_{{$.ID}}"
+      lvt-data-star="{{$star}}"
+      lvt-mouseover="hover_{{$.ID}}"
+      {{end}}
+    >
+      {{if $.IsStarFull $star}}★{{else if $.IsStarHalf $star}}☆{{else}}☆{{end}}
+    </span>
+    {{end}}
+  </span>
+
+  {{if .ShowValue}}<span>{{.FormatValue}}</span>{{end}}
+  {{if and .ShowCount (gt .Count 0)}}<span>({{.Count}})</span>{{end}}
+</div>
+{{end}}
+{{end}}

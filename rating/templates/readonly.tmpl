@@ -1,0 +1,47 @@
+{{define "lvt:rating:readonly:v1"}}
+{{if .IsStyled}}
+{{/* Tailwind CSS styled version - Optimized read-only display */}}
+<div class="inline-flex items-center gap-2" data-rating="{{.ID}}" data-readonly="true">
+  {{if .Label}}
+  <span class="text-sm text-gray-600">{{.Label}}</span>
+  {{end}}
+
+  <div class="inline-flex {{.SizeClass}}">
+    {{range $star := .Stars}}
+    <span class="{{if $.IsStarFull $star}}{{$.ColorClass}}{{else if $.IsStarHalf $star}}{{$.ColorClass}}{{else}}{{$.EmptyColorClass}}{{end}}">
+      {{if $.IsStarHalf $star}}
+      <span class="relative inline-block">
+        <span class="absolute overflow-hidden" style="width: 50%">{{$.Character}}</span>
+        <span class="{{$.EmptyColorClass}}">{{$.Character}}</span>
+      </span>
+      {{else}}
+      {{$.Character}}
+      {{end}}
+    </span>
+    {{end}}
+  </div>
+
+  {{if .ShowValue}}
+  <span class="text-sm font-medium text-gray-700">{{.FormatValue}}</span>
+  {{end}}
+
+  {{if and .ShowCount (gt .Count 0)}}
+  <span class="text-sm text-gray-500">({{.Count}} reviews)</span>
+  {{end}}
+</div>
+{{else}}
+{{/* Unstyled semantic HTML version */}}
+<div data-rating="{{.ID}}" data-readonly="true">
+  {{if .Label}}<label>{{.Label}}</label>{{end}}
+
+  <span aria-label="Rating: {{.FormatValueWithMax}}">
+    {{range $star := .Stars}}
+    <span>{{if $.IsStarFull $star}}★{{else if $.IsStarHalf $star}}☆{{else}}☆{{end}}</span>
+    {{end}}
+  </span>
+
+  {{if .ShowValue}}<span>{{.FormatValue}}</span>{{end}}
+  {{if and .ShowCount (gt .Count 0)}}<span>({{.Count}} reviews)</span>{{end}}
+</div>
+{{end}}
+{{end}}

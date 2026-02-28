@@ -1,0 +1,72 @@
+{{define "lvt:modal:default:v1"}}
+{{if .Open}}
+{{if .IsStyled}}
+{{/* Tailwind CSS styled version */}}
+<div class="fixed inset-0 z-50 overflow-y-auto" data-modal="{{.ID}}" role="dialog" aria-modal="true">
+  {{/* Overlay */}}
+  <div
+    class="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+    {{if .CloseOnOverlay}}lvt-click="hide_{{.ID}}"{{end}}
+    aria-hidden="true"
+  ></div>
+
+  {{/* Modal container */}}
+  <div class="flex min-h-full {{if .Centered}}items-center{{else}}items-start pt-16{{end}} justify-center p-4">
+    {{/* Modal panel */}}
+    <div
+      class="relative w-full {{.SizeClass}} bg-white rounded-lg shadow-xl transform transition-all"
+      {{if .CloseOnEscape}}lvt-keydown="hide_{{.ID}}" lvt-key="Escape"{{end}}
+    >
+      {{/* Header */}}
+      {{if .HasHeader}}
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+        {{if .HasTitle}}
+        <h3 class="text-lg font-semibold text-gray-900">{{.Title}}</h3>
+        {{else}}
+        <div></div>
+        {{end}}
+        {{if .ShowClose}}
+        <button
+          type="button"
+          class="p-2 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100"
+          lvt-click="hide_{{.ID}}"
+          aria-label="Close"
+        >
+          <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+          </svg>
+        </button>
+        {{end}}
+      </div>
+      {{end}}
+
+      {{/* Body */}}
+      <div class="px-6 py-4 {{if .Scrollable}}max-h-[60vh] overflow-y-auto{{end}}">
+        {{/* Content slot - rendered by parent template */}}
+      </div>
+
+      {{/* Footer - can be added via nested template */}}
+    </div>
+  </div>
+</div>
+{{else}}
+{{/* Unstyled semantic HTML version */}}
+<div data-modal="{{.ID}}" role="dialog" aria-modal="true">
+  <div class="overlay" {{if .CloseOnOverlay}}lvt-click="hide_{{.ID}}"{{end}}></div>
+  <div class="modal-content">
+    {{if .HasHeader}}
+    <header>
+      {{if .HasTitle}}<h3>{{.Title}}</h3>{{end}}
+      {{if .ShowClose}}
+      <button type="button" lvt-click="hide_{{.ID}}" aria-label="Close">&times;</button>
+      {{end}}
+    </header>
+    {{end}}
+    <div class="body">
+      {{/* Content slot */}}
+    </div>
+  </div>
+</div>
+{{end}}
+{{end}}
+{{end}}

@@ -1,0 +1,73 @@
+{{define "lvt:toggle:default:v1"}}
+{{if .IsStyled}}
+{{/* Tailwind CSS styled version */}}
+<label
+  class="inline-flex items-center gap-3 {{if .Disabled}}cursor-not-allowed opacity-60{{else}}cursor-pointer{{end}}"
+  data-toggle="{{.ID}}"
+>
+  {{if .IsLabelLeft}}
+  {{if .HasLabel}}
+  <span class="text-sm font-medium text-gray-700">{{.Label}}</span>
+  {{end}}
+  {{end}}
+
+  {{/* Hidden input for form submission */}}
+  <input
+    type="checkbox"
+    class="sr-only peer"
+    {{if .Name}}name="{{.Name}}"{{end}}
+    {{if .Checked}}checked{{end}}
+    {{if .Disabled}}disabled{{end}}
+    {{if .Required}}required{{end}}
+    value="{{.Value}}"
+    lvt-change="toggle_{{.ID}}"
+  />
+
+  {{/* Toggle track */}}
+  <div
+    class="relative {{.SizeClasses}} {{.TrackColorClass}} rounded-full transition-colors duration-200 ease-in-out"
+    lvt-click="toggle_{{.ID}}"
+    role="switch"
+    aria-checked="{{.Checked}}"
+  >
+    {{/* Toggle knob */}}
+    <div
+      class="absolute top-0.5 {{.KnobSizeClasses}} bg-white rounded-full shadow transform transition-transform duration-200 ease-in-out {{.KnobTranslateClass}}"
+    ></div>
+  </div>
+
+  {{if .IsLabelRight}}
+  {{if .HasLabel}}
+  <div>
+    <span class="text-sm font-medium text-gray-700">{{.Label}}</span>
+    {{if .HasDescription}}
+    <p class="text-sm text-gray-500">{{.Description}}</p>
+    {{end}}
+  </div>
+  {{end}}
+  {{end}}
+</label>
+{{else}}
+{{/* Unstyled semantic HTML version */}}
+<label data-toggle="{{.ID}}">
+  {{if .IsLabelLeft}}
+  {{if .HasLabel}}<span>{{.Label}}</span>{{end}}
+  {{end}}
+
+  <input
+    type="checkbox"
+    {{if .Name}}name="{{.Name}}"{{end}}
+    {{if .Checked}}checked{{end}}
+    {{if .Disabled}}disabled{{end}}
+    {{if .Required}}required{{end}}
+    value="{{.Value}}"
+    lvt-change="toggle_{{.ID}}"
+  />
+
+  {{if .IsLabelRight}}
+  {{if .HasLabel}}<span>{{.Label}}</span>{{end}}
+  {{if .HasDescription}}<small>{{.Description}}</small>{{end}}
+  {{end}}
+</label>
+{{end}}
+{{end}}

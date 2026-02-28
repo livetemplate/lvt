@@ -1,0 +1,13 @@
+{{define "lvt:datepicker:inline:v1"}}
+{{if .IsStyled}}
+{{/* Tailwind CSS styled version - Always visible calendar */}}
+<div class="inline-block bg-white border border-gray-200 rounded-lg p-4" data-datepicker="{{.ID}}">
+  {{template "lvt:datepicker:calendar" .}}
+</div>
+{{else}}
+{{/* Unstyled semantic HTML version */}}
+<div data-datepicker="{{.ID}}">
+  {{template "lvt:datepicker:calendar" .}}
+</div>
+{{end}}
+{{end}}

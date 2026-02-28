@@ -1,0 +1,44 @@
+{{define "lvt:tabs:pills:v1"}}
+{{if .IsStyled}}
+{{/* Tailwind CSS styled version */}}
+<div data-tabs="{{.ID}}">
+  <nav class="flex flex-wrap gap-2" role="tablist">
+    {{range .Items}}
+    <button
+      type="button"
+      class="px-4 py-2 text-sm font-medium rounded-full transition-colors {{if eq $.ActiveID .ID}}bg-blue-600 text-white{{else}}bg-gray-100 text-gray-700 hover:bg-gray-200{{end}} {{if .Disabled}}opacity-50 cursor-not-allowed{{end}}"
+      lvt-click="select_tab_{{$.ID}}"
+      lvt-data-tab="{{.ID}}"
+      role="tab"
+      aria-selected="{{if eq $.ActiveID .ID}}true{{else}}false{{end}}"
+      {{if .Disabled}}disabled aria-disabled="true"{{end}}
+    >
+      {{if .Icon}}<span class="mr-2">{{.Icon}}</span>{{end}}
+      {{.Label}}
+      {{if .Badge}}<span class="ml-2 px-1.5 py-0.5 text-xs rounded-full {{if eq $.ActiveID .ID}}bg-blue-500 text-white{{else}}bg-gray-200 text-gray-600{{end}}">{{.Badge}}</span>{{end}}
+    </button>
+    {{end}}
+  </nav>
+</div>
+{{else}}
+{{/* Unstyled semantic HTML version */}}
+<div data-tabs="{{.ID}}">
+  <nav role="tablist">
+    {{range .Items}}
+    <button
+      type="button"
+      lvt-click="select_tab_{{$.ID}}"
+      lvt-data-tab="{{.ID}}"
+      role="tab"
+      aria-selected="{{if eq $.ActiveID .ID}}true{{else}}false{{end}}"
+      {{if .Disabled}}disabled aria-disabled="true"{{end}}
+    >
+      {{if .Icon}}<span>{{.Icon}}</span>{{end}}
+      {{.Label}}
+      {{if .Badge}}<span>{{.Badge}}</span>{{end}}
+    </button>
+    {{end}}
+  </nav>
+</div>
+{{end}}
+{{end}}

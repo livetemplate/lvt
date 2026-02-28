@@ -1,0 +1,105 @@
+{{define "lvt:popover:default:v1"}}
+{{if .IsStyled}}
+{{/* Tailwind CSS styled version */}}
+<div class="relative inline-block" data-popover="{{.ID}}">
+  {{/* Trigger element wrapper */}}
+  <div
+    {{if .IsClickTrigger}}
+    lvt-click="toggle_{{.ID}}"
+    {{end}}
+    {{if .IsHoverTrigger}}
+    lvt-mouseenter="show_{{.ID}}"
+    lvt-mouseleave="hide_{{.ID}}"
+    {{end}}
+    {{if .IsFocusTrigger}}
+    lvt-focus="show_{{.ID}}"
+    lvt-blur="hide_{{.ID}}"
+    {{end}}
+  >
+    {{/* Slot for trigger content */}}
+  </div>
+
+  {{/* Popover content */}}
+  {{if .Open}}
+  <div
+    class="absolute z-50 bg-white rounded-lg shadow-lg border border-gray-200 {{.PositionClasses}}"
+    style="width: {{.Width}}"
+    role="dialog"
+    {{if .CloseOnClickAway}}lvt-click-away="hide_{{.ID}}"{{end}}
+  >
+    {{/* Header */}}
+    {{if .HasHeader}}
+    <div class="flex items-center justify-between px-4 py-2 border-b border-gray-100">
+      {{if .HasTitle}}
+      <h3 class="text-sm font-semibold text-gray-900">{{.Title}}</h3>
+      {{else}}
+      <div></div>
+      {{end}}
+      {{if .ShowClose}}
+      <button
+        type="button"
+        class="p-1 text-gray-400 hover:text-gray-600 rounded"
+        lvt-click="hide_{{.ID}}"
+        aria-label="Close"
+      >
+        <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+        </svg>
+      </button>
+      {{end}}
+    </div>
+    {{end}}
+
+    {{/* Body */}}
+    <div class="px-4 py-3 text-sm text-gray-600">
+      {{if .HasContent}}{{.Content}}{{end}}
+      {{/* Additional content slot */}}
+    </div>
+
+    {{/* Arrow */}}
+    {{if .Arrow}}
+    <div class="{{.ArrowClasses}}"></div>
+    {{end}}
+  </div>
+  {{end}}
+</div>
+{{else}}
+{{/* Unstyled semantic HTML version */}}
+<div data-popover="{{.ID}}">
+  <div
+    {{if .IsClickTrigger}}
+    lvt-click="toggle_{{.ID}}"
+    {{end}}
+    {{if .IsHoverTrigger}}
+    lvt-mouseenter="show_{{.ID}}"
+    lvt-mouseleave="hide_{{.ID}}"
+    {{end}}
+    {{if .IsFocusTrigger}}
+    lvt-focus="show_{{.ID}}"
+    lvt-blur="hide_{{.ID}}"
+    {{end}}
+  >
+    {{/* Trigger slot */}}
+  </div>
+
+  {{if .Open}}
+  <div
+    role="dialog"
+    {{if .CloseOnClickAway}}lvt-click-away="hide_{{.ID}}"{{end}}
+  >
+    {{if .HasHeader}}
+    <header>
+      {{if .HasTitle}}<h3>{{.Title}}</h3>{{end}}
+      {{if .ShowClose}}
+      <button type="button" lvt-click="hide_{{.ID}}" aria-label="Close">&times;</button>
+      {{end}}
+    </header>
+    {{end}}
+    <div class="content">
+      {{if .HasContent}}{{.Content}}{{end}}
+    </div>
+  </div>
+  {{end}}
+</div>
+{{end}}
+{{end}}

@@ -1,0 +1,47 @@
+{{define "lvt:progress:circular:v1"}}
+{{if .IsStyled}}
+{{/* Tailwind CSS styled version */}}
+<div class="relative inline-flex items-center justify-center" data-progress="{{.ID}}" role="progressbar" aria-valuenow="{{.Value}}" aria-valuemin="0" aria-valuemax="{{.Max}}">
+  <svg class="{{if .Indeterminate}}animate-spin{{end}}" width="{{.Size}}" height="{{.Size}}">
+    {{/* Background circle */}}
+    <circle
+      class="text-gray-200"
+      stroke="currentColor"
+      stroke-width="{{.StrokeWidth}}"
+      fill="none"
+      cx="{{.Center}}"
+      cy="{{.Center}}"
+      r="{{.Radius}}"
+    />
+    {{/* Progress circle */}}
+    <circle
+      class="{{.ColorClass}} transition-all duration-300"
+      stroke="currentColor"
+      stroke-width="{{.StrokeWidth}}"
+      stroke-linecap="round"
+      fill="none"
+      cx="{{.Center}}"
+      cy="{{.Center}}"
+      r="{{.Radius}}"
+      stroke-dasharray="{{.Circumference}}"
+      stroke-dashoffset="{{.DashOffset}}"
+      transform="rotate(-90 {{.Center}} {{.Center}})"
+    />
+  </svg>
+  {{if .ShowLabel}}
+  <span class="absolute text-sm font-medium text-gray-700">{{.DisplayLabel}}</span>
+  {{end}}
+</div>
+{{else}}
+{{/* Unstyled semantic HTML version */}}
+<div data-progress="{{.ID}}" class="circular-progress {{if .Indeterminate}}indeterminate{{end}}" role="progressbar" aria-valuenow="{{.Value}}" aria-valuemin="0" aria-valuemax="{{.Max}}">
+  <svg width="{{.Size}}" height="{{.Size}}">
+    <circle class="track" cx="{{.Center}}" cy="{{.Center}}" r="{{.Radius}}" stroke-width="{{.StrokeWidth}}" fill="none" />
+    <circle class="bar" cx="{{.Center}}" cy="{{.Center}}" r="{{.Radius}}" stroke-width="{{.StrokeWidth}}" fill="none" stroke-dasharray="{{.Circumference}}" stroke-dashoffset="{{.DashOffset}}" />
+  </svg>
+  {{if .ShowLabel}}
+  <span class="label">{{.DisplayLabel}}</span>
+  {{end}}
+</div>
+{{end}}
+{{end}}
