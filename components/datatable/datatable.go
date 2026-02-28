@@ -71,6 +71,14 @@ type Row struct {
 
 // DataTable is a table component with sorting, filtering, and pagination.
 // Use template "lvt:datatable:default:v1" to render.
+//
+// NOTE: DataTable implements MarshalJSON to include computed fields in JSON output.
+// If you embed *DataTable in your own struct, the promoted MarshalJSON will serialize
+// only DataTable fields. Wrap the embedding struct with its own MarshalJSON if needed.
+//
+// Client-side filtering is not yet implemented — FilterValue/FilterColumn are passed
+// through for server-side use but do not affect TotalRows, TotalPages, or pagination
+// counts. Modify Rows directly (via SetData) to reflect server-filtered results.
 type DataTable struct {
 	base.Base
 
@@ -260,8 +268,10 @@ func (dt *DataTable) HasPreviousPage() bool {
 }
 
 // GetFilteredRows returns rows after filtering (cached).
+// NOTE: Client-side filtering is not yet implemented. This method returns
+// all rows regardless of FilterValue. Use SetData to provide pre-filtered
+// rows from your server-side logic.
 func (dt *DataTable) GetFilteredRows() []Row {
-	// Simple implementation - in production this would be optimized
 	if dt.FilterValue == "" {
 		return dt.Rows
 	}
@@ -270,8 +280,8 @@ func (dt *DataTable) GetFilteredRows() []Row {
 		return dt.filteredRows
 	}
 
-	// Filter implementation would go here
-	// For now, return all rows (actual filtering done server-side)
+	// Client-side filtering not implemented — return all rows.
+	// Server-side handlers should call SetData() with filtered results.
 	dt.filteredRows = dt.Rows
 	return dt.filteredRows
 }
