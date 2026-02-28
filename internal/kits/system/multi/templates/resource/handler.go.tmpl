@@ -12,9 +12,6 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/livetemplate/livetemplate"
-[[- if .Components.UseDropdown]]
-	"github.com/livetemplate/lvt/components/dropdown"
-[[- end]]
 [[- if .Components.UseModal]]
 	"github.com/livetemplate/lvt/components/modal"
 [[- end]]
@@ -647,16 +644,13 @@ func Handler(queries *models.Queries) http.Handler {
 
 	baseTmpl := livetemplate.Must(livetemplate.New("[[.ResourceNameLower]]",
 		livetemplate.WithDevMode([[.DevMode]]),
-[[- if or .Components.UseModal .Components.UseToast .Components.UseDropdown]]
+[[- if or .Components.UseModal .Components.UseToast]]
 		livetemplate.WithComponentTemplates(
 [[- if .Components.UseModal]]
 			modal.Templates(),
 [[- end]]
 [[- if .Components.UseToast]]
 			toast.Templates(),
-[[- end]]
-[[- if .Components.UseDropdown]]
-			dropdown.Templates(),
 [[- end]]
 		),
 [[- end]]
