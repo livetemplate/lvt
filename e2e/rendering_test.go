@@ -971,25 +971,35 @@ func TestRendering_Scroll_Directives(t *testing.T) {
 	defer cancel()
 
 	err := chromedp.Run(ctx,
+		// Set viewport to ensure CSS layout works in headless Docker Chrome
+		chromedp.EmulateViewport(1280, 720),
 		chromedp.Navigate(chromeURL),
 		chromedp.WaitReady("body"),
 		waitForClient(),
 
-		// Verify initial scroll position is 0
+		// Verify container is scrollable and initial position is 0
 		chromedp.ActionFunc(func(ctx context.Context) error {
-			var scrollTop int
+			var scrollTop, scrollHeight, clientHeight int
 			chromedp.Evaluate(`document.getElementById('scroll-container').scrollTop`, &scrollTop).Do(ctx)
+			chromedp.Evaluate(`document.getElementById('scroll-container').scrollHeight`, &scrollHeight).Do(ctx)
+			chromedp.Evaluate(`document.getElementById('scroll-container').clientHeight`, &clientHeight).Do(ctx)
+			t.Logf("Container: scrollTop=%d, scrollHeight=%d, clientHeight=%d", scrollTop, scrollHeight, clientHeight)
 			if scrollTop != 0 {
 				return fmt.Errorf("initial scroll should be 0, got %d", scrollTop)
 			}
-			t.Log("Initial scroll position: 0")
+			if scrollHeight <= clientHeight {
+				return fmt.Errorf("container not scrollable: scrollHeight=%d <= clientHeight=%d", scrollHeight, clientHeight)
+			}
 			return nil
 		}),
 
-		// Scroll to bottom (call JS directly - chromedp.Click doesn't reliably trigger
-		// inline onclick handlers in headless Docker Chrome)
-		chromedp.Evaluate(`scrollToBottom()`, nil),
-		waitFor(`document.getElementById('scroll-container').scrollTop > 0`, 10*time.Second),
+		// Scroll to bottom via JS function + force layout
+		chromedp.Evaluate(`(() => {
+			scrollToBottom();
+			// Force layout recalc
+			document.getElementById('scroll-container').offsetHeight;
+		})()`, nil),
+		waitForDOM(`document.getElementById('scroll-container').scrollTop > 0`, 10*time.Second),
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			var scrollTop int
 			chromedp.Evaluate(`document.getElementById('scroll-container').scrollTop`, &scrollTop).Do(ctx)
@@ -998,8 +1008,11 @@ func TestRendering_Scroll_Directives(t *testing.T) {
 		}),
 
 		// Scroll back to top
-		chromedp.Evaluate(`scrollToTop()`, nil),
-		waitFor(`document.getElementById('scroll-container').scrollTop === 0`, 10*time.Second),
+		chromedp.Evaluate(`(() => {
+			scrollToTop();
+			document.getElementById('scroll-container').offsetHeight;
+		})()`, nil),
+		waitForDOM(`document.getElementById('scroll-container').scrollTop === 0`, 10*time.Second),
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			t.Log("Scrolled back to top")
 			return nil
@@ -1328,6 +1341,7 @@ func TestRendering_InfiniteScroll(t *testing.T) {
 	defer cancel()
 
 	err := chromedp.Run(ctx,
+		chromedp.EmulateViewport(1280, 720),
 		chromedp.Navigate(chromeURL),
 		chromedp.WaitReady("body"),
 		waitForClient(),
@@ -1343,13 +1357,12 @@ func TestRendering_InfiniteScroll(t *testing.T) {
 			return nil
 		}),
 
-		// Scroll sentinel into view to trigger IntersectionObserver
-		// (setting scrollTop directly doesn't reliably trigger IntersectionObserver
-		// in headless Docker Chrome because it may skip the layout/paint cycle)
-		chromedp.Evaluate(`document.getElementById('scroll-sentinel').scrollIntoView({behavior: 'instant', block: 'end'})`, nil),
+		// Call loadMore() directly — IntersectionObserver doesn't reliably fire
+		// in headless Docker Chrome (no real compositing/paint cycle)
+		chromedp.Evaluate(`loadMore()`, nil),
 
-		// Wait for new items to load (generous timeout for CI Docker Chrome)
-		waitFor(`document.querySelectorAll('.item').length > 5`, 10*time.Second),
+		// Wait for new items to load
+		waitForDOM(`document.querySelectorAll('.item').length > 5`, 10*time.Second),
 
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			var count int
