@@ -1,0 +1,38 @@
+{{define "lvt:progress:default:v1"}}
+{{if .IsStyled}}
+{{/* Tailwind CSS styled version */}}
+<div class="w-full" data-progress="{{.ID}}" role="progressbar" aria-valuenow="{{.Value}}" aria-valuemin="0" aria-valuemax="{{.Max}}">
+  {{if .ShowLabel}}
+  <div class="flex justify-between mb-1">
+    <span class="text-sm font-medium text-gray-700">{{if .Label}}{{.Label}}{{else}}Progress{{end}}</span>
+    <span class="text-sm font-medium text-gray-700">{{.PercentageStr}}</span>
+  </div>
+  {{end}}
+
+  <div class="w-full bg-gray-200 rounded-full {{.SizeClass}} overflow-hidden">
+    {{if .Indeterminate}}
+    <div class="{{.ColorClass}} {{.SizeClass}} rounded-full animate-indeterminate"></div>
+    {{else}}
+    <div
+      class="{{.ColorClass}} {{.SizeClass}} rounded-full transition-all duration-300 {{if .Striped}}bg-stripes{{end}} {{if .Animated}}animate-stripes{{end}}"
+      style="width: {{.Percentage}}%"
+    ></div>
+    {{end}}
+  </div>
+</div>
+{{else}}
+{{/* Unstyled semantic HTML version */}}
+<div data-progress="{{.ID}}" class="progress-container" role="progressbar" aria-valuenow="{{.Value}}" aria-valuemin="0" aria-valuemax="{{.Max}}">
+  {{if .ShowLabel}}
+  <div class="progress-header">
+    <span class="progress-title">{{if .Label}}{{.Label}}{{else}}Progress{{end}}</span>
+    <span class="progress-value">{{.PercentageStr}}</span>
+  </div>
+  {{end}}
+
+  <div class="progress-track">
+    <div class="progress-bar {{if .Indeterminate}}indeterminate{{end}}" style="width: {{.Percentage}}%"></div>
+  </div>
+</div>
+{{end}}
+{{end}}

@@ -1,5 +1,7 @@
 {{/* Single-page app component - no full HTML wrapper */}}
 {{define "content"}}
+  {{if .DeleteConfirm}}{{template "lvt:modal:confirm:v1" .DeleteConfirm}}{{end}}
+  {{if .Toasts}}{{template "lvt:toast:container:v1" .Toasts}}{{end}}
   <div>
     <!-- Add Form -->
     {{template "formBox" .}}

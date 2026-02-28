@@ -15,8 +15,10 @@ type Field struct {
 	SQLType         string
 	IsReference     bool
 	ReferencedTable string
-	OnDelete        string // CASCADE, SET NULL, RESTRICT, etc.
-	IsTextarea      bool   // true if field should render as textarea
+	OnDelete        string   // CASCADE, SET NULL, RESTRICT, etc.
+	IsTextarea      bool     // true if field should render as textarea
+	IsSelect        bool     // true if field should render as <select>
+	SelectOptions   []string // options for select fields
 }
 
 // ParseFields parses field definitions in the format "name:type name2:type2"
@@ -28,7 +30,7 @@ func ParseFields(args []string) ([]Field, error) {
 	var fields []Field
 	for _, arg := range args {
 		parts := strings.Split(arg, ":")
-		if len(parts) != 2 {
+		if len(parts) < 2 {
 			return nil, fmt.Errorf("invalid field format '%s', expected 'name:type'", arg)
 		}
 
@@ -42,8 +44,37 @@ func ParseFields(args []string) ([]Field, error) {
 			return nil, fmt.Errorf("field type cannot be empty for field '%s'", name)
 		}
 
+		// Handle select type: name:select:opt1,opt2,opt3
+		if strings.ToLower(typ) == "select" {
+			if len(parts) < 3 || strings.TrimSpace(parts[2]) == "" {
+				return nil, fmt.Errorf("field '%s': select type requires options, e.g., 'status:select:active,inactive,pending'", name)
+			}
+			rawOptions := strings.Split(parts[2], ",")
+			var options []string
+			for _, o := range rawOptions {
+				if s := strings.TrimSpace(o); s != "" {
+					options = append(options, s)
+				}
+			}
+			if len(options) < 2 {
+				return nil, fmt.Errorf("field '%s': select requires at least 2 non-empty options", name)
+			}
+			fields = append(fields, Field{
+				Name:          name,
+				Type:          "select",
+				GoType:        "string",
+				SQLType:       "TEXT",
+				IsSelect:      true,
+				SelectOptions: options,
+			})
+			continue
+		}
+
+		// Rejoin remaining parts for types that use colons (e.g., references:table:cascade)
+		fullType := strings.Join(parts[1:], ":")
+
 		// Validate type
-		goType, sqlType, isTextarea, err := MapType(typ)
+		goType, sqlType, isTextarea, err := MapType(fullType)
 		if err != nil {
 			return nil, fmt.Errorf("field '%s': %w", name, err)
 		}
@@ -51,15 +82,15 @@ func ParseFields(args []string) ([]Field, error) {
 		// Parse reference metadata if it's a reference type
 		field := Field{
 			Name:       name,
-			Type:       typ,
+			Type:       fullType,
 			GoType:     goType,
 			SQLType:    sqlType,
 			IsTextarea: isTextarea,
 		}
 
-		if strings.HasPrefix(strings.ToLower(typ), "references:") {
+		if strings.HasPrefix(strings.ToLower(fullType), "references:") {
 			// Parse: references:table_name[:on_delete_action]
-			parts := strings.Split(typ, ":")
+			parts := strings.Split(fullType, ":")
 			if len(parts) < 2 {
 				return nil, fmt.Errorf("field '%s': invalid references syntax, expected 'references:table_name'", name)
 			}

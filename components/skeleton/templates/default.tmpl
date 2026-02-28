@@ -1,0 +1,36 @@
+{{define "lvt:skeleton:default:v1"}}
+{{if .IsStyled}}
+{{/* Tailwind CSS styled version */}}
+{{if .IsMultiLine}}
+<div class="space-y-2" data-skeleton="{{.ID}}">
+  {{range .LineIndices}}
+  <div
+    class="bg-gray-200 {{$.ShapeClass}} {{$.AnimationClass}}"
+    style="width: {{$.Width}}; height: {{$.Height}}"
+  ></div>
+  {{end}}
+</div>
+{{else}}
+<div
+  class="bg-gray-200 {{.ShapeClass}} {{.AnimationClass}}"
+  style="width: {{.Width}}; height: {{.Height}}"
+  data-skeleton="{{.ID}}"
+></div>
+{{end}}
+{{else}}
+{{/* Unstyled semantic HTML version */}}
+{{if .IsMultiLine}}
+<div data-skeleton="{{.ID}}" class="skeleton-lines">
+  {{range .LineIndices}}
+  <div class="skeleton-line" style="width: {{$.Width}}; height: {{$.Height}}"></div>
+  {{end}}
+</div>
+{{else}}
+<div
+  data-skeleton="{{.ID}}"
+  class="skeleton"
+  style="width: {{.Width}}; height: {{.Height}}"
+></div>
+{{end}}
+{{end}}
+{{end}}

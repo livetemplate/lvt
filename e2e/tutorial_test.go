@@ -375,7 +375,7 @@ func TestTutorialE2E(t *testing.T) {
 						return cells.length > 0 && cells[0].textContent.trim() === 'My First Blog Post';
 					});
 					if (targetRow) {
-						const deleteButton = targetRow.querySelector('button[lvt-click="delete"]');
+						const deleteButton = targetRow.querySelector('button[lvt-click="request_delete"]');
 						return !!deleteButton;
 					}
 					return false;
@@ -426,9 +426,8 @@ func TestTutorialE2E(t *testing.T) {
 		}
 		t.Log("✅ Edit button clicked, modal should be open")
 
-		// Verify delete button exists in modal with lvt-confirm attribute
-		var deleteButtonInModal bool
-		var hasConfirmAttr bool
+		// Verify request_delete button exists in modal (triggers confirm modal flow)
+		var requestDeleteInModal bool
 		var modalHTML string
 		err = chromedp.Run(testCtx,
 			// Capture the edit form HTML for debugging (not add modal)
@@ -440,39 +439,66 @@ func TestTutorialE2E(t *testing.T) {
 			`, &modalHTML),
 			chromedp.Evaluate(`
 				(() => {
-					const deleteButton = document.querySelector('button[lvt-click="delete"]');
+					const deleteButton = document.querySelector('button[lvt-click="request_delete"]');
 					return !!deleteButton;
 				})()
-			`, &deleteButtonInModal),
-			chromedp.Evaluate(`
-				(() => {
-					const deleteButton = document.querySelector('button[lvt-click="delete"]');
-					return deleteButton ? deleteButton.hasAttribute('lvt-confirm') : false;
-				})()
-			`, &hasConfirmAttr),
+			`, &requestDeleteInModal),
 		)
 		if err != nil {
-			t.Fatalf("Failed to check delete button in modal: %v", err)
+			t.Fatalf("Failed to check request_delete button in modal: %v", err)
 		}
 
-		if !deleteButtonInModal {
+		if !requestDeleteInModal {
 			t.Logf("❌ Modal HTML:\n%s", modalHTML)
-			t.Fatal("❌ Delete button not found in modal")
+			t.Fatal("❌ request_delete button not found in modal")
 		}
-		t.Log("✅ Delete button found in modal")
+		t.Log("✅ request_delete button found in modal")
 
-		if !hasConfirmAttr {
-			t.Error("❌ Delete button missing lvt-confirm attribute")
+		// Click request_delete and verify the confirm modal appears
+		var confirmModalAppeared bool
+		err = chromedp.Run(testCtx,
+			chromedp.Evaluate(`
+				(() => {
+					const deleteButton = document.querySelector('button[lvt-click="request_delete"]');
+					if (deleteButton) {
+						deleteButton.click();
+						return true;
+					}
+					return false;
+				})()
+			`, nil),
+			// Wait for confirm modal to appear with confirm_delete button
+			waitFor(`document.querySelector('button[lvt-click="confirm_delete"]') !== null`, 5*time.Second),
+			chromedp.Evaluate(`document.querySelector('button[lvt-click="confirm_delete"]') !== null`, &confirmModalAppeared),
+		)
+		if err != nil {
+			t.Fatalf("Failed to verify confirm modal: %v", err)
+		}
+
+		if !confirmModalAppeared {
+			t.Error("❌ Confirm modal did not appear after clicking request_delete")
 		} else {
-			t.Log("✅ Delete button has lvt-confirm attribute")
+			t.Log("✅ Confirm modal appeared with confirm_delete button")
 		}
 
-		// We've already verified the key requirements:
-		// 1. No delete button in table rows ✅
-		// 2. Delete button exists in modal ✅
-		// 3. Delete button has lvt-confirm attribute ✅
-		// The confirmation dialog functionality is client-side JavaScript (window.confirm)
-		// which is tested implicitly through the next test case
+		// Also verify cancel_delete button exists in the confirm modal
+		var cancelDeleteExists bool
+		err = chromedp.Run(testCtx,
+			chromedp.Evaluate(`document.querySelector('button[lvt-click="cancel_delete"]') !== null`, &cancelDeleteExists),
+		)
+		if err != nil {
+			t.Fatalf("Failed to check cancel_delete button: %v", err)
+		}
+		if !cancelDeleteExists {
+			t.Error("❌ cancel_delete button not found in confirm modal")
+		} else {
+			t.Log("✅ cancel_delete button found in confirm modal")
+		}
+
+		// We've verified the key requirements:
+		// 1. No delete button in table rows (modal mode)
+		// 2. request_delete button exists in edit modal
+		// 3. Clicking request_delete opens confirm modal with confirm_delete and cancel_delete buttons
 
 		t.Log("✅ Modal delete confirmation setup verified")
 	})
@@ -633,7 +659,7 @@ func TestTutorialE2E(t *testing.T) {
 			})()
 			`, targetTitle), &postExists),
 			// Wait for modal controls to be ready before continuing
-			waitFor(`document.querySelector('button[lvt-click="delete"]') !== null`, 10*time.Second),
+			waitFor(`document.querySelector('button[lvt-click="request_delete"]') !== null`, 10*time.Second),
 		)
 		if err != nil {
 			t.Fatalf("Failed to open edit modal: %v", err)
@@ -757,12 +783,11 @@ func TestTutorialE2E(t *testing.T) {
 			t.Logf("📡 WebSocket interceptor: %s", interceptorResult)
 		}
 
-		// Override window.confirm to return true (accept)
+		// Click request_delete to open the confirm modal, then click confirm_delete
 		err = chromedp.Run(testCtx,
-			chromedp.Evaluate(`window.confirm = () => true;`, nil),
 			chromedp.Evaluate(`
 				(() => {
-					const deleteButton = document.querySelector('button[lvt-click="delete"]');
+					const deleteButton = document.querySelector('button[lvt-click="request_delete"]');
 					if (deleteButton) {
 						deleteButton.click();
 						return true;
@@ -772,7 +797,25 @@ func TestTutorialE2E(t *testing.T) {
 			`, &postExists),
 		)
 		if err != nil {
-			t.Fatalf("Failed to click delete button: %v", err)
+			t.Fatalf("Failed to click request_delete button: %v", err)
+		}
+
+		// Wait for confirm modal to appear, then click confirm_delete
+		err = chromedp.Run(testCtx,
+			waitFor(`document.querySelector('button[lvt-click="confirm_delete"]') !== null`, 5*time.Second),
+			chromedp.Evaluate(`
+				(() => {
+					const confirmButton = document.querySelector('button[lvt-click="confirm_delete"]');
+					if (confirmButton) {
+						confirmButton.click();
+						return true;
+					}
+					return false;
+				})()
+			`, &postExists),
+		)
+		if err != nil {
+			t.Fatalf("Failed to click confirm_delete button: %v", err)
 		}
 
 		// Wait a moment for the delete to be sent

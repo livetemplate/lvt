@@ -1,0 +1,19 @@
+{{define "lvt:skeleton:avatar:v1"}}
+{{if .IsStyled}}
+{{/* Tailwind CSS styled version */}}
+<div class="relative inline-block" data-skeleton="{{.ID}}">
+  <div class="{{.SizeClass}} bg-gray-200 rounded-full animate-pulse"></div>
+  {{if .ShowBadge}}
+  <div class="absolute bottom-0 right-0 w-3 h-3 bg-gray-300 rounded-full border-2 border-white animate-pulse"></div>
+  {{end}}
+</div>
+{{else}}
+{{/* Unstyled semantic HTML version */}}
+<div data-skeleton="{{.ID}}" class="skeleton-avatar">
+  <div class="avatar"></div>
+  {{if .ShowBadge}}
+  <div class="badge"></div>
+  {{end}}
+</div>
+{{end}}
+{{end}}

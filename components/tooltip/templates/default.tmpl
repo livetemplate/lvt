@@ -1,0 +1,62 @@
+{{define "lvt:tooltip:default:v1"}}
+{{if .IsStyled}}
+{{/* Tailwind CSS styled version */}}
+<div class="relative inline-block" data-tooltip="{{.ID}}">
+  {{/* Trigger element wrapper */}}
+  <div
+    {{if .IsHoverTrigger}}
+    lvt-mouseenter="show_{{.ID}}"
+    lvt-mouseleave="hide_{{.ID}}"
+    {{end}}
+    {{if .IsFocusTrigger}}
+    lvt-focus="show_{{.ID}}"
+    lvt-blur="hide_{{.ID}}"
+    {{end}}
+    {{if .IsClickTrigger}}
+    lvt-click="toggle_{{.ID}}"
+    {{end}}
+  >
+    {{/* Slot for trigger content - use nested template */}}
+  </div>
+
+  {{/* Tooltip content */}}
+  {{if .Visible}}
+  <div
+    role="tooltip"
+    class="absolute z-50 px-2 py-1 text-sm text-white bg-gray-900 rounded shadow-lg whitespace-nowrap {{.PositionClasses}}"
+    style="max-width: {{.MaxWidth}}"
+  >
+    {{.Content}}
+    {{if .Arrow}}
+    <div class="{{.ArrowClasses}}"></div>
+    {{end}}
+  </div>
+  {{end}}
+</div>
+{{else}}
+{{/* Unstyled semantic HTML version */}}
+<div data-tooltip="{{.ID}}">
+  <div
+    {{if .IsHoverTrigger}}
+    lvt-mouseenter="show_{{.ID}}"
+    lvt-mouseleave="hide_{{.ID}}"
+    {{end}}
+    {{if .IsFocusTrigger}}
+    lvt-focus="show_{{.ID}}"
+    lvt-blur="hide_{{.ID}}"
+    {{end}}
+    {{if .IsClickTrigger}}
+    lvt-click="toggle_{{.ID}}"
+    {{end}}
+  >
+    {{/* Trigger slot */}}
+  </div>
+
+  {{if .Visible}}
+  <div role="tooltip">
+    {{.Content}}
+  </div>
+  {{end}}
+</div>
+{{end}}
+{{end}}

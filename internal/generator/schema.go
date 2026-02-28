@@ -52,6 +52,8 @@ func GenerateSchema(basePath, moduleName, tableName string, fields []parser.Fiel
 			ReferencedTable: f.ReferencedTable,
 			OnDelete:        f.OnDelete,
 			IsTextarea:      f.IsTextarea,
+			IsSelect:        f.IsSelect,
+			SelectOptions:   f.SelectOptions,
 		})
 	}
 

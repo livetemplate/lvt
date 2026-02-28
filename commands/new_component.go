@@ -97,7 +97,7 @@ func NewComponent(args []string) error {
 	fmt.Printf("  3. Run tests: go test ./%s/...\n", destDir)
 	fmt.Println()
 	fmt.Println("To contribute to the official library:")
-	fmt.Println("  - Fork github.com/livetemplate/components")
+	fmt.Println("  - Fork github.com/livetemplate/lvt/components")
 	fmt.Println("  - Move your component to the fork")
 	fmt.Println("  - Submit a pull request")
 
@@ -184,7 +184,7 @@ const componentGoTemplate = `// Package {{.PackageName}} provides {{.Name}} comp
 package {{.PackageName}}
 
 import (
-	"github.com/livetemplate/components/base"
+	"github.com/livetemplate/lvt/components/base"
 )
 
 // {{.NamePascal}} represents a {{.Name}} component.
@@ -241,7 +241,7 @@ const templatesGoTemplate = `package {{.PackageName}}
 import (
 	"embed"
 
-	"github.com/livetemplate/components/base"
+	"github.com/livetemplate/lvt/components/base"
 )
 
 //go:embed templates/*.tmpl

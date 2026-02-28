@@ -115,9 +115,11 @@ func setupSharedResources() error {
 			return
 		}
 
+		// Inject components module so Docker can resolve component imports
+		injectComponentsForTest(&testing.T{}, appDir)
+
 		// Run go mod tidy and vendor in a Docker container to isolate background processes
 		// This prevents background processes from affecting the test process
-		// Using the published version of livetemplate (no replace directive)
 		log.Println("Running go mod tidy and vendor in Docker container...")
 		dockerCmd := exec.Command("docker", "run", "--rm",
 			"-v", fmt.Sprintf("%s:/app", appDir),

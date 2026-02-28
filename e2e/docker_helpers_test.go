@@ -137,6 +137,9 @@ func buildDockerImage(t *testing.T, appDir, imageName string) {
 	t.Helper()
 	t.Logf("Building Docker image: %s", imageName)
 
+	// Inject components module so Docker build can resolve component imports
+	injectComponentsForTest(t, appDir)
+
 	// Ensure base image exists
 	buildBaseImage(t)
 
@@ -321,6 +324,9 @@ func buildAndRunNative(t *testing.T, appDir string, port int) *exec.Cmd {
 	t.Helper()
 
 	t.Log("Step 6: Building app natively (fast path)...")
+
+	// Inject components module so native builds can resolve component imports
+	injectComponentsForTest(t, appDir)
 
 	// Write embedded client library (DevMode should already be enabled)
 	writeEmbeddedClientLibrary(t, appDir)

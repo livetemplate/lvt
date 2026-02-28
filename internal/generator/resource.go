@@ -72,6 +72,8 @@ func GenerateResource(basePath, moduleName, resourceName string, fields []parser
 			ReferencedTable: f.ReferencedTable,
 			OnDelete:        f.OnDelete,
 			IsTextarea:      f.IsTextarea,
+			IsSelect:        f.IsSelect,
+			SelectOptions:   f.SelectOptions,
 		})
 	}
 
@@ -94,6 +96,7 @@ func GenerateResource(basePath, moduleName, resourceName string, fields []parser
 		PageSize:             pageSize,
 		EditMode:             editMode,
 	}
+	data.Components = DetectUsedComponents(data)
 
 	// Create resource directory
 	resourceDir := filepath.Join(basePath, "app", resourceNameLower)

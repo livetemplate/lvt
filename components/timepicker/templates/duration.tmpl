@@ -1,0 +1,180 @@
+{{define "lvt:timepicker:duration:v1"}}
+{{if .IsStyled}}
+{{/* Tailwind CSS styled version */}}
+<div class="relative inline-block" data-timepicker="{{.ID}}" data-duration="true">
+  <button
+    type="button"
+    class="w-full px-4 py-2 text-left bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+    lvt-click="toggle_{{.ID}}"
+    aria-haspopup="dialog"
+    aria-expanded="{{.Open}}"
+  >
+    <span class="flex items-center justify-between">
+      <span class="{{if not .HasValue}}text-gray-400{{end}}">{{.DisplayValue}}</span>
+      <svg class="w-5 h-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
+      </svg>
+    </span>
+  </button>
+
+  {{if .Open}}
+  <div
+    class="absolute z-10 mt-1 p-4 bg-white border border-gray-200 rounded-lg shadow-lg"
+    lvt-click-away="close_{{.ID}}"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Choose duration"
+  >
+    <div class="flex items-center justify-center gap-4">
+      {{/* Hours */}}
+      <div class="flex flex-col items-center">
+        <span class="text-xs text-gray-500 mb-1">Hours</span>
+        <button
+          type="button"
+          class="p-1 hover:bg-gray-100 rounded"
+          lvt-click="inc_hours_{{.ID}}"
+          aria-label="Increment hours"
+        >
+          <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd" />
+          </svg>
+        </button>
+        <input
+          type="text"
+          class="w-12 text-center text-lg font-semibold border border-gray-300 rounded py-1"
+          value="{{.Hours}}"
+          readonly
+        />
+        <button
+          type="button"
+          class="p-1 hover:bg-gray-100 rounded"
+          lvt-click="dec_hours_{{.ID}}"
+          aria-label="Decrement hours"
+        >
+          <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+          </svg>
+        </button>
+      </div>
+
+      {{/* Minutes */}}
+      <div class="flex flex-col items-center">
+        <span class="text-xs text-gray-500 mb-1">Minutes</span>
+        <button
+          type="button"
+          class="p-1 hover:bg-gray-100 rounded"
+          lvt-click="inc_minutes_{{.ID}}"
+          aria-label="Increment minutes"
+        >
+          <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd" />
+          </svg>
+        </button>
+        <input
+          type="text"
+          class="w-12 text-center text-lg font-semibold border border-gray-300 rounded py-1"
+          value="{{printf \"%02d\" .Minutes}}"
+          readonly
+        />
+        <button
+          type="button"
+          class="p-1 hover:bg-gray-100 rounded"
+          lvt-click="dec_minutes_{{.ID}}"
+          aria-label="Decrement minutes"
+        >
+          <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+          </svg>
+        </button>
+      </div>
+
+      {{if .ShowSeconds}}
+      {{/* Seconds */}}
+      <div class="flex flex-col items-center">
+        <span class="text-xs text-gray-500 mb-1">Seconds</span>
+        <button
+          type="button"
+          class="p-1 hover:bg-gray-100 rounded"
+          lvt-click="inc_seconds_{{.ID}}"
+          aria-label="Increment seconds"
+        >
+          <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd" />
+          </svg>
+        </button>
+        <input
+          type="text"
+          class="w-12 text-center text-lg font-semibold border border-gray-300 rounded py-1"
+          value="{{printf \"%02d\" .Seconds}}"
+          readonly
+        />
+        <button
+          type="button"
+          class="p-1 hover:bg-gray-100 rounded"
+          lvt-click="dec_seconds_{{.ID}}"
+          aria-label="Decrement seconds"
+        >
+          <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+          </svg>
+        </button>
+      </div>
+      {{end}}
+    </div>
+
+    {{if .HasValue}}
+    <div class="flex justify-end mt-4 pt-4 border-t border-gray-200">
+      <button
+        type="button"
+        class="text-sm text-gray-500 hover:text-gray-700"
+        lvt-click="clear_{{.ID}}"
+      >
+        Clear
+      </button>
+    </div>
+    {{end}}
+  </div>
+  {{end}}
+</div>
+{{else}}
+{{/* Unstyled semantic HTML version */}}
+<div data-timepicker="{{.ID}}" data-duration="true">
+  <button
+    type="button"
+    lvt-click="toggle_{{.ID}}"
+    aria-haspopup="dialog"
+    aria-expanded="{{.Open}}"
+  >
+    {{.DisplayValue}}
+  </button>
+
+  {{if .Open}}
+  <div lvt-click-away="close_{{.ID}}" role="dialog" aria-modal="true">
+    <div>
+      <label>Hours</label>
+      <button type="button" lvt-click="inc_hours_{{.ID}}">+</button>
+      <span>{{.Hours}}</span>
+      <button type="button" lvt-click="dec_hours_{{.ID}}">-</button>
+    </div>
+    <div>
+      <label>Minutes</label>
+      <button type="button" lvt-click="inc_minutes_{{.ID}}">+</button>
+      <span>{{printf "%02d" .Minutes}}</span>
+      <button type="button" lvt-click="dec_minutes_{{.ID}}">-</button>
+    </div>
+    {{if .ShowSeconds}}
+    <div>
+      <label>Seconds</label>
+      <button type="button" lvt-click="inc_seconds_{{.ID}}">+</button>
+      <span>{{printf "%02d" .Seconds}}</span>
+      <button type="button" lvt-click="dec_seconds_{{.ID}}">-</button>
+    </div>
+    {{end}}
+    {{if .HasValue}}
+    <button type="button" lvt-click="clear_{{.ID}}">Clear</button>
+    {{end}}
+  </div>
+  {{end}}
+</div>
+{{end}}
+{{end}}

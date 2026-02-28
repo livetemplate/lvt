@@ -4,6 +4,8 @@ go 1.26.0
 
 require github.com/livetemplate/livetemplate v0.8.2
 
+replace github.com/livetemplate/lvt/components => ./components
+
 require (
 	github.com/brianvoe/gofakeit/v7 v7.8.2
 	github.com/charmbracelet/bubbles v0.21.0

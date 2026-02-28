@@ -1,0 +1,123 @@
+{{define "lvt:menu:default:v1"}}
+{{if .IsStyled}}
+{{/* Tailwind CSS styled version */}}
+<div class="relative inline-block text-left" data-menu="{{.ID}}">
+  <button
+    type="button"
+    class="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+    lvt-click="toggle_{{.ID}}"
+    aria-haspopup="true"
+    aria-expanded="{{.Open}}"
+  >
+    {{if .TriggerIcon}}<span>{{.TriggerIcon}}</span>{{end}}
+    {{if .Trigger}}{{.Trigger}}{{else}}Menu{{end}}
+    <svg class="w-4 h-4 {{if .Open}}rotate-180{{end}}" viewBox="0 0 20 20" fill="currentColor">
+      <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+    </svg>
+  </button>
+
+  {{if .Open}}
+  <div
+    class="absolute z-10 mt-2 w-56 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none
+      {{if eq .Position "bottom-right"}}right-0{{else if eq .Position "top-left"}}bottom-full mb-2 left-0{{else if eq .Position "top-right"}}bottom-full mb-2 right-0{{else}}left-0{{end}}"
+    role="menu"
+    aria-orientation="vertical"
+    lvt-click-away="close_{{.ID}}"
+  >
+    <div class="py-1">
+      {{range $index, $item := .Items}}
+      {{if $item.IsDivider}}
+      <hr class="my-1 border-gray-200" />
+      {{else if $item.IsHeader}}
+      <div class="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+        {{$item.Label}}
+      </div>
+      {{else}}
+      {{if $item.IsLink}}
+      <a
+        href="{{$item.Href}}"
+        {{if $item.Target}}target="{{$item.Target}}"{{end}}
+        class="flex items-center justify-between px-4 py-2 text-sm
+          {{if $item.Disabled}}text-gray-400 cursor-not-allowed{{else if $item.Active}}bg-gray-100 text-gray-900{{else if $.IsHighlighted $item.ID}}bg-gray-100 text-gray-900{{else}}text-gray-700 hover:bg-gray-100{{end}}"
+        role="menuitem"
+        {{if $item.Disabled}}aria-disabled="true"{{end}}
+      >
+      {{else}}
+      <button
+        type="button"
+        class="flex items-center justify-between w-full px-4 py-2 text-sm text-left
+          {{if $item.Disabled}}text-gray-400 cursor-not-allowed{{else if $item.Active}}bg-gray-100 text-gray-900{{else if $.IsHighlighted $item.ID}}bg-gray-100 text-gray-900{{else}}text-gray-700 hover:bg-gray-100{{end}}"
+        role="menuitem"
+        {{if not $item.Disabled}}
+        lvt-click="select_{{$.ID}}"
+        lvt-data-item="{{$item.ID}}"
+        {{end}}
+        {{if $item.Disabled}}disabled aria-disabled="true"{{end}}
+      >
+      {{end}}
+        <span class="flex items-center gap-2">
+          {{if $item.HasIcon}}<span class="w-5 h-5">{{$item.Icon}}</span>{{end}}
+          <span>{{$item.Label}}</span>
+        </span>
+        <span class="flex items-center gap-2">
+          {{if $item.HasBadge}}
+          <span class="px-2 py-0.5 text-xs rounded-full
+            {{if eq $item.BadgeColor "red"}}bg-red-100 text-red-700{{else if eq $item.BadgeColor "blue"}}bg-blue-100 text-blue-700{{else if eq $item.BadgeColor "green"}}bg-green-100 text-green-700{{else}}bg-gray-100 text-gray-700{{end}}">
+            {{$item.Badge}}
+          </span>
+          {{end}}
+          {{if $item.HasShortcut}}
+          <span class="text-xs text-gray-400">{{$item.Shortcut}}</span>
+          {{end}}
+        </span>
+      {{if $item.IsLink}}</a>{{else}}</button>{{end}}
+      {{end}}
+      {{end}}
+    </div>
+  </div>
+  {{end}}
+</div>
+{{else}}
+{{/* Unstyled semantic HTML version */}}
+<div data-menu="{{.ID}}">
+  <button
+    type="button"
+    lvt-click="toggle_{{.ID}}"
+    aria-haspopup="true"
+    aria-expanded="{{.Open}}"
+  >
+    {{if .Trigger}}{{.Trigger}}{{else}}Menu{{end}}
+  </button>
+
+  {{if .Open}}
+  <ul role="menu" lvt-click-away="close_{{.ID}}">
+    {{range $item := .Items}}
+    {{if $item.IsDivider}}
+    <li role="separator"><hr /></li>
+    {{else if $item.IsHeader}}
+    <li role="presentation"><strong>{{$item.Label}}</strong></li>
+    {{else}}
+    <li role="menuitem">
+      {{if $item.IsLink}}
+      <a href="{{$item.Href}}" {{if $item.Target}}target="{{$item.Target}}"{{end}}>{{$item.Label}}</a>
+      {{else}}
+      <button
+        type="button"
+        {{if not $item.Disabled}}
+        lvt-click="select_{{$.ID}}"
+        lvt-data-item="{{$item.ID}}"
+        {{end}}
+        {{if $item.Disabled}}disabled{{end}}
+      >
+        {{$item.Label}}
+        {{if $item.HasShortcut}}<small>{{$item.Shortcut}}</small>{{end}}
+      </button>
+      {{end}}
+    </li>
+    {{end}}
+    {{end}}
+  </ul>
+  {{end}}
+</div>
+{{end}}
+{{end}}

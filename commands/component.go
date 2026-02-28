@@ -39,7 +39,7 @@ func ComponentList(args []string) error {
 		return nil
 	}
 
-	fmt.Println("Available components from github.com/livetemplate/components:")
+	fmt.Println("Available components from github.com/livetemplate/lvt/components:")
 	fmt.Println()
 
 	// Use single source of truth from eject package

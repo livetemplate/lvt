@@ -18,12 +18,13 @@ type ResourceData struct {
 	ResourceNamePlural   string // Plural, capitalized (e.g., "Users")
 	TableName            string // Plural table name (e.g., "users")
 	Fields               []FieldData
-	Kit                  *kits.KitInfo // CSS framework kit (new)
-	CSSFramework         string        // CSS framework name: "tailwind", "bulma", "pico", "none" (for backward compatibility)
-	DevMode              bool          // Use local client library instead of CDN
-	PaginationMode       string        // Pagination mode: "infinite", "load-more", "prev-next", "numbers"
-	PageSize             int           // Page size for pagination
-	EditMode             string        // Edit mode: "modal", "page"
+	Kit                  *kits.KitInfo  // CSS framework kit (new)
+	CSSFramework         string         // CSS framework name: "tailwind", "bulma", "pico", "none" (for backward compatibility)
+	DevMode              bool           // Use local client library instead of CDN
+	PaginationMode       string         // Pagination mode: "infinite", "load-more", "prev-next", "numbers"
+	PageSize             int            // Page size for pagination
+	EditMode             string         // Edit mode: "modal", "page"
+	Components           ComponentUsage // Which UI components this resource uses
 }
 
 type FieldData struct {
@@ -33,7 +34,9 @@ type FieldData struct {
 	IsReference     bool
 	ReferencedTable string
 	OnDelete        string
-	IsTextarea      bool // true if field should render as textarea
+	IsTextarea      bool     // true if field should render as textarea
+	IsSelect        bool     // true if field should render as <select>
+	SelectOptions   []string // options for select fields
 }
 
 type AppData struct {

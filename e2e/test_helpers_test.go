@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -291,6 +292,70 @@ func startServeInBackground(t *testing.T, workDir string, args ...string) (*Serv
 	})
 
 	return handle, nil
+}
+
+// injectComponentsForTest copies the components module into the test app directory
+// and adds a replace directive so go mod tidy can resolve component imports.
+// This is needed because the components sub-module isn't published to the Go module proxy yet.
+func injectComponentsForTest(t *testing.T, appDir string) {
+	t.Helper()
+
+	// Find project root (e2e tests live in <root>/e2e/)
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("Failed to get current file path for components injection")
+	}
+	projectRoot := filepath.Dir(filepath.Dir(filename))
+	componentsSrc := filepath.Join(projectRoot, "components")
+
+	// Check if components source exists
+	if _, err := os.Stat(componentsSrc); os.IsNotExist(err) {
+		t.Logf("⏭️  Components directory not found at %s, skipping injection", componentsSrc)
+		return
+	}
+
+	// Copy components directory into app
+	componentsDst := filepath.Join(appDir, "components")
+	cpCmd := exec.Command("cp", "-r", componentsSrc, componentsDst)
+	if output, err := cpCmd.CombinedOutput(); err != nil {
+		t.Fatalf("Failed to copy components: %v\nOutput: %s", err, output)
+	}
+
+	// Add replace directive to app's go.mod
+	goModPath := filepath.Join(appDir, "go.mod")
+	goModContent, err := os.ReadFile(goModPath)
+	if err != nil {
+		t.Fatalf("Failed to read go.mod for components injection: %v", err)
+	}
+
+	goModStr := string(goModContent)
+	modified := false
+
+	// Add require if not present
+	if !strings.Contains(goModStr, "github.com/livetemplate/lvt/components") {
+		goModStr += "\nrequire github.com/livetemplate/lvt/components v0.0.0\n"
+		goModStr += "\nreplace github.com/livetemplate/lvt/components => ./components\n"
+		modified = true
+	} else if !strings.Contains(goModStr, "replace github.com/livetemplate/lvt/components") {
+		// Has require but no replace
+		goModStr += "\nreplace github.com/livetemplate/lvt/components => ./components\n"
+		modified = true
+	}
+
+	if modified {
+		if err := os.WriteFile(goModPath, []byte(goModStr), 0644); err != nil {
+			t.Fatalf("Failed to update go.mod for components injection: %v", err)
+		}
+
+		// Run go mod tidy to resolve dependency graph
+		tidyCmd := exec.Command("go", "mod", "tidy")
+		tidyCmd.Dir = appDir
+		tidyCmd.Env = append(os.Environ(), "GOWORK=off")
+		if output, err := tidyCmd.CombinedOutput(); err != nil {
+			t.Logf("⚠️  go mod tidy after components injection: %v\nOutput: %s", err, output)
+		}
+	}
+	t.Log("✅ Components module injected for test")
 }
 
 // createTestApp creates a new test application and sets it up for testing

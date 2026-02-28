@@ -1,0 +1,94 @@
+{{define "lvt:timeline:default:v1"}}
+{{if .IsStyled}}
+{{/* Tailwind CSS styled version */}}
+<div
+  class="{{if .IsHorizontal}}flex flex-row space-x-4 overflow-x-auto{{else}}relative{{end}}"
+  data-timeline="{{.ID}}"
+>
+  {{if and .IsVertical .ShowConnectors}}
+  {{/* Vertical connector line */}}
+  <div class="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>
+  {{end}}
+
+  {{range $index, $item := .Items}}
+  <div
+    class="{{if $.IsHorizontal}}flex-shrink-0 flex flex-col items-center{{else}}relative pl-10 pb-8 last:pb-0{{end}}"
+    data-timeline-item="{{$item.ID}}"
+  >
+    {{if $.IsVertical}}
+    {{/* Indicator dot */}}
+    <div
+      class="absolute left-0 w-8 h-8 rounded-full flex items-center justify-center {{$item.IndicatorClass}} {{$item.RingClass}} z-10"
+    >
+      {{if $item.HasIcon}}
+      <span class="text-white text-sm">{{$item.Icon}}</span>
+      {{else if $item.IsComplete}}
+      <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+      </svg>
+      {{else}}
+      <span class="w-3 h-3 rounded-full bg-white"></span>
+      {{end}}
+    </div>
+
+    {{/* Content */}}
+    <div class="flex-1">
+      {{if $item.HasTime}}
+      <time class="text-sm text-gray-500 mb-1 block">{{$item.Time}}</time>
+      {{end}}
+      {{if $item.HasTitle}}
+      <h4 class="text-base font-semibold text-gray-900">{{$item.Title}}</h4>
+      {{end}}
+      {{if $item.HasDescription}}
+      <p class="mt-1 text-sm text-gray-600">{{$item.Description}}</p>
+      {{end}}
+    </div>
+    {{else}}
+    {{/* Horizontal layout */}}
+    <div
+      class="w-10 h-10 rounded-full flex items-center justify-center {{$item.IndicatorClass}} {{$item.RingClass}} mb-3"
+    >
+      {{if $item.HasIcon}}
+      <span class="text-white text-sm">{{$item.Icon}}</span>
+      {{else if $item.IsComplete}}
+      <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+      </svg>
+      {{else}}
+      <span class="w-3 h-3 rounded-full bg-white"></span>
+      {{end}}
+    </div>
+    {{if $.ShowConnectors}}
+    {{/* Horizontal connector */}}
+    {{if not (eq $index (sub (len $.Items) 1))}}
+    <div class="absolute top-5 left-full w-4 h-0.5 bg-gray-200"></div>
+    {{end}}
+    {{end}}
+    <div class="text-center max-w-32">
+      {{if $item.HasTime}}
+      <time class="text-xs text-gray-500 block">{{$item.Time}}</time>
+      {{end}}
+      {{if $item.HasTitle}}
+      <h4 class="text-sm font-medium text-gray-900">{{$item.Title}}</h4>
+      {{end}}
+    </div>
+    {{end}}
+  </div>
+  {{end}}
+</div>
+{{else}}
+{{/* Unstyled semantic HTML version */}}
+<ol class="timeline" data-timeline="{{.ID}}">
+  {{range $item := .Items}}
+  <li class="timeline-item" data-timeline-item="{{$item.ID}}">
+    <div class="indicator"></div>
+    <div class="content">
+      {{if $item.HasTime}}<time>{{$item.Time}}</time>{{end}}
+      {{if $item.HasTitle}}<h4>{{$item.Title}}</h4>{{end}}
+      {{if $item.HasDescription}}<p>{{$item.Description}}</p>{{end}}
+    </div>
+  </li>
+  {{end}}
+</ol>
+{{end}}
+{{end}}
