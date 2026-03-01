@@ -80,7 +80,7 @@ func TestGeneratedFilesExist(t *testing.T) {
 		t.Fatalf("Failed to change directory: %v", err)
 	}
 
-	if err := generator.GenerateApp("testapp", "testapp", "multi", false); err != nil { // false = production mode
+	if err := generator.GenerateApp("testapp", "testapp", "multi", "tailwind", false); err != nil { // false = production mode
 		t.Fatalf("Failed to generate app: %v", err)
 	}
 
@@ -288,7 +288,7 @@ func TestGeneratedAppFullFlow(t *testing.T) {
 
 	// Step 1: Generate app
 	t.Log("Step 1: Generating app...")
-	if err := generator.GenerateApp(appName, appName, "multi", false); err != nil {
+	if err := generator.GenerateApp(appName, appName, "multi", "tailwind", false); err != nil {
 		t.Fatalf("Failed to generate app: %v", err)
 	}
 	t.Log("✅ App generated")

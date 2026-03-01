@@ -35,9 +35,10 @@ func printNewHelp() {
 	fmt.Println("Usage: lvt new <app-name> [options]")
 	fmt.Println()
 	fmt.Println("Options:")
-	fmt.Println("  --module <name>   Go module name (defaults to app name)")
-	fmt.Println("  --kit <kit>       Template kit: multi, single, simple (default: multi)")
-	fmt.Println("  --dev             Use local development mode")
+	fmt.Println("  --module <name>     Go module name (defaults to app name)")
+	fmt.Println("  --kit <kit>         Template kit: multi, single, simple (default: multi)")
+	fmt.Println("  --styles <adapter>  Style adapter: tailwind, unstyled (default: tailwind)")
+	fmt.Println("  --dev               Use local development mode")
 	fmt.Println()
 	fmt.Println("Run 'lvt --help' for full documentation.")
 }

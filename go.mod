@@ -14,6 +14,7 @@ require (
 	github.com/chromedp/cdproto v0.0.0-20250803210736-d308e07a266d
 	github.com/chromedp/chromedp v0.14.2
 	github.com/gorilla/websocket v1.5.3
+	github.com/livetemplate/lvt/components v0.0.0-00010101000000-000000000000
 	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/modelcontextprotocol/go-sdk v1.1.0
 	github.com/pressly/goose/v3 v3.26.0
@@ -61,7 +62,6 @@ require (
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/gabriel-vasile/mimetype v1.4.12 // indirect
 	github.com/go-json-experiment/json v0.0.0-20250725192818-e39067aee2d2 // indirect
-	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.30.1 // indirect
