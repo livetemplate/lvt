@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/livetemplate/lvt/components/base"
+	"github.com/livetemplate/lvt/components/styles"
 )
 
 // Size defines the progress bar size.
@@ -165,33 +166,49 @@ func (p *Progress) IsComplete() bool {
 	return p.Value >= p.Max
 }
 
+// Styles returns the resolved ProgressStyles for this component.
+func (p *Progress) Styles() styles.ProgressStyles {
+	if s, ok := p.StyleData().(styles.ProgressStyles); ok {
+		return s
+	}
+	adapter := styles.ForStyled(p.IsStyled())
+	if adapter == nil {
+		return styles.ProgressStyles{}
+	}
+	s := adapter.ProgressStyles()
+	p.SetStyleData(s)
+	return s
+}
+
 // SizeClass returns CSS class for size.
 func (p *Progress) SizeClass() string {
+	st := p.Styles()
 	switch p.Size {
 	case SizeXs:
-		return "h-1"
+		return st.SizeXs
 	case SizeSm:
-		return "h-2"
+		return st.SizeSm
 	case SizeLg:
-		return "h-6"
+		return st.SizeLg
 	default: // md
-		return "h-4"
+		return st.SizeMd
 	}
 }
 
 // ColorClass returns CSS class for color.
 func (p *Progress) ColorClass() string {
+	st := p.Styles()
 	switch p.Color {
 	case ColorSuccess:
-		return "bg-green-500"
+		return st.ColorSuccess
 	case ColorWarning:
-		return "bg-yellow-500"
+		return st.ColorWarning
 	case ColorDanger:
-		return "bg-red-500"
+		return st.ColorDanger
 	case ColorInfo:
-		return "bg-cyan-500"
+		return st.ColorInfo
 	default: // primary
-		return "bg-blue-500"
+		return st.ColorPrimary
 	}
 }
 
@@ -297,19 +314,34 @@ func (c *CircularProgress) Center() int {
 	return c.Size / 2
 }
 
+// Styles returns the resolved CircularProgressStyles for this component.
+func (c *CircularProgress) Styles() styles.CircularProgressStyles {
+	if s, ok := c.StyleData().(styles.CircularProgressStyles); ok {
+		return s
+	}
+	adapter := styles.ForStyled(c.IsStyled())
+	if adapter == nil {
+		return styles.CircularProgressStyles{}
+	}
+	s := adapter.CircularProgressStyles()
+	c.SetStyleData(s)
+	return s
+}
+
 // ColorClass returns CSS class for color.
 func (c *CircularProgress) ColorClass() string {
+	st := c.Styles()
 	switch c.Color {
 	case ColorSuccess:
-		return "text-green-500"
+		return st.ColorSuccess
 	case ColorWarning:
-		return "text-yellow-500"
+		return st.ColorWarning
 	case ColorDanger:
-		return "text-red-500"
+		return st.ColorDanger
 	case ColorInfo:
-		return "text-cyan-500"
+		return st.ColorInfo
 	default: // primary
-		return "text-blue-500"
+		return st.ColorPrimary
 	}
 }
 
@@ -349,32 +381,48 @@ func NewSpinner(id string, opts ...SpinnerOption) *Spinner {
 	return s
 }
 
+// Styles returns the resolved SpinnerStyles for this component.
+func (s *Spinner) Styles() styles.SpinnerStyles {
+	if st, ok := s.StyleData().(styles.SpinnerStyles); ok {
+		return st
+	}
+	adapter := styles.ForStyled(s.IsStyled())
+	if adapter == nil {
+		return styles.SpinnerStyles{}
+	}
+	st := adapter.SpinnerStyles()
+	s.SetStyleData(st)
+	return st
+}
+
 // SizeClass returns CSS class for spinner size.
 func (s *Spinner) SizeClass() string {
+	st := s.Styles()
 	switch s.Size {
 	case "sm":
-		return "w-4 h-4"
+		return st.SizeSm
 	case "lg":
-		return "w-8 h-8"
+		return st.SizeLg
 	case "xl":
-		return "w-12 h-12"
+		return st.SizeXl
 	default: // md
-		return "w-6 h-6"
+		return st.SizeMd
 	}
 }
 
 // ColorClass returns CSS class for spinner color.
 func (s *Spinner) ColorClass() string {
+	st := s.Styles()
 	switch s.Color {
 	case ColorSuccess:
-		return "text-green-500"
+		return st.ColorSuccess
 	case ColorWarning:
-		return "text-yellow-500"
+		return st.ColorWarning
 	case ColorDanger:
-		return "text-red-500"
+		return st.ColorDanger
 	case ColorInfo:
-		return "text-cyan-500"
+		return st.ColorInfo
 	default: // primary
-		return "text-blue-500"
+		return st.ColorPrimary
 	}
 }

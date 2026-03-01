@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/livetemplate/lvt/components/base"
+	"github.com/livetemplate/lvt/components/styles"
 )
 
 // Item represents a single option in the dropdown.
@@ -114,6 +115,20 @@ func (d *Dropdown) Value() string {
 		return d.Selected.Value
 	}
 	return ""
+}
+
+// Styles returns the resolved DropdownStyles for this component.
+func (d *Dropdown) Styles() styles.DropdownStyles {
+	if s, ok := d.StyleData().(styles.DropdownStyles); ok {
+		return s
+	}
+	adapter := styles.ForStyled(d.IsStyled())
+	if adapter == nil {
+		return styles.DropdownStyles{}
+	}
+	s := adapter.DropdownStyles()
+	d.SetStyleData(s)
+	return s
 }
 
 // Searchable is a dropdown with search/filter capability.

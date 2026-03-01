@@ -19,6 +19,7 @@ package tooltip
 
 import (
 	"github.com/livetemplate/lvt/components/base"
+	"github.com/livetemplate/lvt/components/styles"
 )
 
 // Position defines where the tooltip appears relative to trigger.
@@ -162,35 +163,50 @@ func (t *Tooltip) IsClickTrigger() bool {
 	return t.Trigger == TriggerClick
 }
 
+// Styles returns the resolved TooltipStyles for this component.
+func (t *Tooltip) Styles() styles.TooltipStyles {
+	if s, ok := t.StyleData().(styles.TooltipStyles); ok {
+		return s
+	}
+	adapter := styles.ForStyled(t.IsStyled())
+	if adapter == nil {
+		return styles.TooltipStyles{}
+	}
+	s := adapter.TooltipStyles()
+	t.SetStyleData(s)
+	return s
+}
+
 // PositionClasses returns CSS classes for position.
 func (t *Tooltip) PositionClasses() string {
+	s := t.Styles()
 	switch t.Position {
 	case PositionTop:
-		return "bottom-full left-1/2 -translate-x-1/2 mb-2"
+		return s.PosTop
 	case PositionTopStart:
-		return "bottom-full left-0 mb-2"
+		return s.PosTopStart
 	case PositionTopEnd:
-		return "bottom-full right-0 mb-2"
+		return s.PosTopEnd
 	case PositionBottom:
-		return "top-full left-1/2 -translate-x-1/2 mt-2"
+		return s.PosBottom
 	case PositionBottomStart:
-		return "top-full left-0 mt-2"
+		return s.PosBottomStart
 	case PositionBottomEnd:
-		return "top-full right-0 mt-2"
+		return s.PosBottomEnd
 	case PositionLeft:
-		return "right-full top-1/2 -translate-y-1/2 mr-2"
+		return s.PosLeft
 	case PositionLeftStart:
-		return "right-full top-0 mr-2"
+		return s.PosLeftStart
 	case PositionLeftEnd:
-		return "right-full bottom-0 mr-2"
+		return s.PosLeftEnd
 	case PositionRight:
-		return "left-full top-1/2 -translate-y-1/2 ml-2"
+		return s.PosRight
 	case PositionRightStart:
-		return "left-full top-0 ml-2"
+		return s.PosRightStart
 	case PositionRightEnd:
-		return "left-full bottom-0 ml-2"
+		return s.PosRightEnd
 	default:
-		return "bottom-full left-1/2 -translate-x-1/2 mb-2"
+		return s.PosTop
 	}
 }
 
@@ -199,15 +215,16 @@ func (t *Tooltip) ArrowClasses() string {
 	if !t.Arrow {
 		return ""
 	}
+	s := t.Styles()
 	switch {
 	case t.IsTop():
-		return "absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"
+		return s.ArrowTop
 	case t.IsBottom():
-		return "absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-gray-900"
+		return s.ArrowBottom
 	case t.IsLeft():
-		return "absolute left-full top-1/2 -translate-y-1/2 border-4 border-transparent border-l-gray-900"
+		return s.ArrowLeft
 	case t.IsRight():
-		return "absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900"
+		return s.ArrowRight
 	default:
 		return ""
 	}

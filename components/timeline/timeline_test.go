@@ -2,6 +2,9 @@ package timeline
 
 import (
 	"testing"
+
+	// Register the tailwind adapter so CSS class methods return expected values.
+	_ "github.com/livetemplate/lvt/components/styles/tailwind"
 )
 
 // =============================================================================
@@ -217,15 +220,15 @@ func TestTimelineIsAlternate(t *testing.T) {
 func TestTimelineOrientationClass(t *testing.T) {
 	t.Run("vertical", func(t *testing.T) {
 		tl := New("test")
-		if tl.OrientationClass() != "flex flex-col" {
-			t.Errorf("expected 'flex flex-col', got %q", tl.OrientationClass())
+		if tl.OrientationClass() != "relative" {
+			t.Errorf("expected 'relative', got %q", tl.OrientationClass())
 		}
 	})
 
 	t.Run("horizontal", func(t *testing.T) {
 		tl := New("test", WithOrientation(OrientationHorizontal))
-		if tl.OrientationClass() != "flex flex-row" {
-			t.Errorf("expected 'flex flex-row', got %q", tl.OrientationClass())
+		if tl.OrientationClass() != "flex flex-row space-x-4 overflow-x-auto" {
+			t.Errorf("expected 'flex flex-row space-x-4 overflow-x-auto', got %q", tl.OrientationClass())
 		}
 	})
 }

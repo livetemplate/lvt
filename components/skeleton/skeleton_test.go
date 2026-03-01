@@ -2,6 +2,9 @@ package skeleton
 
 import (
 	"testing"
+
+	// Register the tailwind adapter so CSS class methods return expected values.
+	_ "github.com/livetemplate/lvt/components/styles/tailwind"
 )
 
 // =============================================================================

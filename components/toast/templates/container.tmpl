@@ -1,43 +1,41 @@
 {{define "lvt:toast:container:v1"}}
-{{if .IsStyled}}
-{{/* Tailwind CSS styled version */}}
 <div
-  class="fixed z-50 {{.GetPositionClasses}} flex flex-col gap-3 w-full max-w-sm pointer-events-none"
+  class="{{.Styles.Container}} {{.GetPositionClasses}} {{.Styles.ContainerWidth}}"
   data-toast-container="{{.ID}}"
   aria-live="polite"
   aria-atomic="true"
 >
   {{range .VisibleMessages}}
   <div
-    class="pointer-events-auto w-full bg-white shadow-lg rounded-lg border overflow-hidden"
+    class="{{$.Styles.Toast}} {{$.GetTypeClasses .Type}}"
     role="alert"
     data-toast="{{.ID}}"
   >
-    <div class="p-4">
-      <div class="flex items-start">
+    <div class="{{$.Styles.ToastInner}}">
+      <div class="{{$.Styles.ToastLayout}}">
         {{if .Icon}}
-        <div class="flex-shrink-0">
+        <div class="{{$.Styles.IconWrap}}">
           {{.Icon}}
         </div>
         {{end}}
-        <div class="{{if .Icon}}ml-3{{end}} flex-1">
+        <div class="{{$.Styles.ContentWrap}}{{if .Icon}} {{$.Styles.ContentIcon}}{{end}}">
           {{if .Title}}
-          <p class="text-sm font-medium text-gray-900">{{.Title}}</p>
+          <p class="{{$.Styles.Title}}">{{.Title}}</p>
           {{end}}
           {{if .Body}}
-          <p class="{{if .Title}}mt-1{{end}} text-sm text-gray-500">{{.Body}}</p>
+          <p class="{{$.Styles.Body}}{{if .Title}} {{$.Styles.BodyWithTitle}}{{end}}">{{.Body}}</p>
           {{end}}
         </div>
         {{if .Dismissible}}
-        <div class="ml-4 flex-shrink-0 flex">
+        <div class="{{$.Styles.DismissWrap}}">
           <button
             type="button"
-            class="inline-flex text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-md"
+            class="{{$.Styles.DismissBtn}}"
             lvt-click="dismiss_toast_{{$.ID}}"
             lvt-data-toast="{{.ID}}"
             aria-label="Dismiss"
           >
-            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <svg class="{{$.Styles.DismissIcon}}" viewBox="0 0 20 20" fill="currentColor">
               <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
             </svg>
           </button>
@@ -48,31 +46,4 @@
   </div>
   {{end}}
 </div>
-{{else}}
-{{/* Unstyled semantic HTML version with essential positioning */}}
-<div
-  data-toast-container="{{.ID}}"
-  aria-live="polite"
-  aria-atomic="true"
-  style="position:fixed;top:1rem;right:1rem;z-index:50;display:flex;flex-direction:column;gap:0.5rem;max-width:320px;"
->
-  {{range .VisibleMessages}}
-  <div role="alert" data-toast="{{.ID}}" style="background:var(--pico-background-color,#fff);border:1px solid var(--pico-muted-border-color,#ddd);border-radius:0.5rem;padding:1rem;box-shadow:0 4px 6px rgba(0,0,0,0.1);">
-    {{if .Title}}<strong>{{.Title}}</strong>{{end}}
-    {{if .Body}}<p style="margin:0.25rem 0 0 0;">{{.Body}}</p>{{end}}
-    {{if .Dismissible}}
-    <button
-      type="button"
-      lvt-click="dismiss_toast_{{$.ID}}"
-      lvt-data-toast="{{.ID}}"
-      aria-label="Dismiss"
-      style="margin-top:0.5rem;"
-    >
-      Close
-    </button>
-    {{end}}
-  </div>
-  {{end}}
-</div>
-{{end}}
 {{end}}

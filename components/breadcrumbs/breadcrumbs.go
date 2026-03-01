@@ -21,6 +21,7 @@ package breadcrumbs
 
 import (
 	"github.com/livetemplate/lvt/components/base"
+	"github.com/livetemplate/lvt/components/styles"
 )
 
 // Separator defines the visual separator between items.
@@ -162,15 +163,30 @@ func (bc *Breadcrumbs) IsChevronSeparator() bool {
 	return bc.Separator == SeparatorChevron
 }
 
+// Styles returns the resolved BreadcrumbsStyles for this component.
+func (bc *Breadcrumbs) Styles() styles.BreadcrumbsStyles {
+	if s, ok := bc.StyleData().(styles.BreadcrumbsStyles); ok {
+		return s
+	}
+	adapter := styles.ForStyled(bc.IsStyled())
+	if adapter == nil {
+		return styles.BreadcrumbsStyles{}
+	}
+	s := adapter.BreadcrumbsStyles()
+	bc.SetStyleData(s)
+	return s
+}
+
 // SizeClass returns CSS class for size.
 func (bc *Breadcrumbs) SizeClass() string {
+	st := bc.Styles()
 	switch bc.Size {
 	case SizeSm:
-		return "text-sm"
+		return st.SizeSm
 	case SizeLg:
-		return "text-lg"
+		return st.SizeLg
 	default:
-		return "text-base"
+		return st.SizeMd
 	}
 }
 
@@ -229,13 +245,28 @@ func (i *BreadcrumbItem) IsClickable() bool {
 	return i.HasHref() && !i.Current && !i.Disabled
 }
 
+// Styles returns the resolved BreadcrumbItemStyles for this item.
+func (i *BreadcrumbItem) Styles() styles.BreadcrumbItemStyles {
+	if s, ok := i.StyleData().(styles.BreadcrumbItemStyles); ok {
+		return s
+	}
+	adapter := styles.ForStyled(i.IsStyled())
+	if adapter == nil {
+		return styles.BreadcrumbItemStyles{}
+	}
+	s := adapter.BreadcrumbItemStyles()
+	i.SetStyleData(s)
+	return s
+}
+
 // LinkClass returns CSS class for link state.
 func (i *BreadcrumbItem) LinkClass() string {
+	st := i.Styles()
 	if i.Current {
-		return "text-gray-700 font-medium"
+		return st.Current
 	}
 	if i.Disabled {
-		return "text-gray-400 cursor-not-allowed"
+		return st.Disabled
 	}
-	return "text-gray-500 hover:text-gray-700"
+	return st.Link
 }

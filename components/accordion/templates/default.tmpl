@@ -1,13 +1,11 @@
 {{define "lvt:accordion:default:v1"}}
-{{if .IsStyled}}
-{{/* Tailwind CSS styled version */}}
-<div class="divide-y divide-gray-200 border border-gray-200 rounded-lg" data-accordion="{{.ID}}">
+<div class="{{.Styles.Root}}" data-accordion="{{.ID}}">
   {{range .Items}}
-  <div class="{{if .Disabled}}opacity-50{{end}}">
+  <div class="{{if .Disabled}}{{$.Styles.ItemDisabled}}{{end}}">
     <button
       type="button"
       id="accordion-header-{{$.ID}}-{{.ID}}"
-      class="flex items-center justify-between w-full px-4 py-4 text-left font-medium text-gray-900 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 {{if .Disabled}}cursor-not-allowed{{end}}"
+      class="{{$.Styles.Header}} {{if .Disabled}}cursor-not-allowed{{end}}"
       lvt-click="toggle_accordion_{{$.ID}}"
       lvt-data-item="{{.ID}}"
       aria-expanded="{{$.IsOpen .ID}}"
@@ -15,11 +13,11 @@
       {{if .Disabled}}disabled{{end}}
     >
       <span class="flex items-center">
-        {{if .Icon}}<span class="mr-3">{{.Icon}}</span>{{end}}
+        {{if .Icon}}<span class="{{$.Styles.HeaderIcon}}">{{.Icon}}</span>{{end}}
         {{.Title}}
       </span>
       <svg
-        class="w-5 h-5 text-gray-500 transition-transform duration-200 {{if $.IsOpen .ID}}rotate-180{{end}}"
+        class="{{$.Styles.ChevronIcon}} {{if $.IsOpen .ID}}{{$.Styles.ChevronOpen}}{{end}}"
         viewBox="0 0 20 20"
         fill="currentColor"
       >
@@ -29,7 +27,7 @@
     {{if $.IsOpen .ID}}
     <div
       id="accordion-content-{{$.ID}}-{{.ID}}"
-      class="px-4 pb-4 text-gray-600"
+      class="{{$.Styles.Content}}"
       role="region"
       aria-labelledby="accordion-header-{{$.ID}}-{{.ID}}"
     >
@@ -39,32 +37,4 @@
   </div>
   {{end}}
 </div>
-{{else}}
-{{/* Unstyled semantic HTML version */}}
-<div data-accordion="{{.ID}}">
-  {{range .Items}}
-  <div>
-    <button
-      type="button"
-      lvt-click="toggle_accordion_{{$.ID}}"
-      lvt-data-item="{{.ID}}"
-      aria-expanded="{{$.IsOpen .ID}}"
-      aria-controls="accordion-content-{{$.ID}}-{{.ID}}"
-      {{if .Disabled}}disabled{{end}}
-    >
-      {{if .Icon}}<span>{{.Icon}}</span>{{end}}
-      {{.Title}}
-    </button>
-    {{if $.IsOpen .ID}}
-    <div
-      id="accordion-content-{{$.ID}}-{{.ID}}"
-      role="region"
-    >
-      {{.Content}}
-    </div>
-    {{end}}
-  </div>
-  {{end}}
-</div>
-{{end}}
 {{end}}

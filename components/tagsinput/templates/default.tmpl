@@ -1,19 +1,17 @@
 {{define "lvt:tagsinput:default:v1"}}
-{{if .IsStyled}}
-{{/* Tailwind CSS styled version */}}
-<div class="relative" data-tagsinput="{{.ID}}">
-  <div class="flex flex-wrap gap-2 p-2 border border-gray-300 rounded-md bg-white focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
+<div class="{{.Styles.Root}}" data-tagsinput="{{.ID}}">
+  <div class="{{.Styles.Wrapper}}">
     {{range $i, $tag := .Tags}}
-    <span class="inline-flex items-center gap-1 px-2 py-1 text-sm bg-blue-100 text-blue-800 rounded-md">
+    <span class="{{$.Styles.Tag}}">
       {{if $tag.Label}}{{$tag.Label}}{{else}}{{$tag.Value}}{{end}}
       <button
         type="button"
-        class="inline-flex items-center justify-center w-4 h-4 text-blue-600 hover:text-blue-800 hover:bg-blue-200 rounded-full"
+        class="{{$.Styles.TagRemoveBtn}}"
         lvt-click="remove_tag_{{$.ID}}"
         lvt-data-value="{{$tag.Value}}"
         aria-label="Remove tag"
       >
-        <svg class="w-3 h-3" viewBox="0 0 20 20" fill="currentColor">
+        <svg class="{{$.Styles.TagRemoveIcon}}" viewBox="0 0 20 20" fill="currentColor">
           <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
         </svg>
       </button>
@@ -22,7 +20,7 @@
     {{if .CanAddMore}}
     <input
       type="text"
-      class="flex-1 min-w-[120px] outline-none bg-transparent text-sm"
+      class="{{.Styles.Input}}"
       placeholder="{{.Placeholder}}"
       value="{{.Input}}"
       lvt-input="input_tag_{{.ID}}"
@@ -35,10 +33,10 @@
     {{end}}
   </div>
   {{if and .ShowSuggestions .FilteredSuggestions}}
-  <div class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-auto">
+  <div class="{{.Styles.Dropdown}}">
     {{range .FilteredSuggestions}}
     <div
-      class="px-3 py-2 text-sm cursor-pointer hover:bg-blue-50"
+      class="{{$.Styles.Suggestion}}"
       lvt-click="select_suggestion_{{$.ID}}"
       lvt-data-value="{{.}}"
     >
@@ -48,50 +46,7 @@
   </div>
   {{end}}
   {{if .MaxTags}}
-  <p class="mt-1 text-xs text-gray-500">{{.Count}}/{{.MaxTags}} tags</p>
+  <p class="{{.Styles.Counter}}">{{.Count}}/{{.MaxTags}} tags</p>
   {{end}}
 </div>
-{{else}}
-{{/* Unstyled semantic HTML version */}}
-<div data-tagsinput="{{.ID}}">
-  <div>
-    {{range .Tags}}
-    <span>
-      {{if .Label}}{{.Label}}{{else}}{{.Value}}{{end}}
-      <button
-        type="button"
-        lvt-click="remove_tag_{{$.ID}}"
-        lvt-data-value="{{.Value}}"
-        aria-label="Remove tag"
-      >
-        &times;
-      </button>
-    </span>
-    {{end}}
-    {{if .CanAddMore}}
-    <input
-      type="text"
-      placeholder="{{.Placeholder}}"
-      value="{{.Input}}"
-      lvt-input="input_tag_{{.ID}}"
-      lvt-keydown="keydown_tag_{{.ID}}"
-      lvt-key="Enter,Backspace"
-      autocomplete="off"
-    />
-    {{end}}
-  </div>
-  {{if and .ShowSuggestions .FilteredSuggestions}}
-  <ul>
-    {{range .FilteredSuggestions}}
-    <li
-      lvt-click="select_suggestion_{{$.ID}}"
-      lvt-data-value="{{.}}"
-    >
-      {{.}}
-    </li>
-    {{end}}
-  </ul>
-  {{end}}
-</div>
-{{end}}
 {{end}}

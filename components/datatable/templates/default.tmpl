@@ -1,14 +1,12 @@
 {{define "lvt:datatable:default:v1"}}
 {{$dt := .}}{{/* Capture datatable context for use inside range loops */}}
-{{if .Styled}}
-{{/* Tailwind CSS styled version */}}
-<div class="overflow-hidden" data-datatable="{{dtID $dt}}">
+<div class="{{.Styles.Root}}" data-datatable="{{dtID $dt}}">
   {{/* Filter input */}}
   {{if .FilterValue}}{{/* Show filter UI only if filtering is enabled */}}
-  <div class="mb-4">
+  <div class="{{.Styles.FilterWrapper}}">
     <input
       type="text"
-      class="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+      class="{{.Styles.FilterInput}}"
       placeholder="Search..."
       value="{{.FilterValue}}"
       lvt-input="filter_{{dtID $dt}}"
@@ -18,22 +16,22 @@
 
   {{/* Loading overlay */}}
   {{if .Loading}}
-  <div class="flex items-center justify-center py-8">
-    <svg class="w-8 h-8 text-blue-600 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+  <div class="{{.Styles.LoadingWrapper}}">
+    <svg class="{{.Styles.LoadingIcon}}" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
       <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
       <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
     </svg>
   </div>
   {{else}}
-  <div class="overflow-x-auto border border-gray-200 rounded-lg">
-    <table class="min-w-full divide-y divide-gray-200">
-      <thead class="bg-gray-50">
+  <div class="{{.Styles.TableWrapper}}">
+    <table class="{{.Styles.Table}}">
+      <thead class="{{.Styles.Thead}}">
         <tr>
           {{if and .Selectable .MultiSelect}}
-          <th class="w-10 px-4 py-3">
+          <th class="w-10 {{.Styles.Th}}">
             <input
               type="checkbox"
-              class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              class="{{.Styles.Checkbox}}"
               {{if dtAllSelected $dt}}checked{{end}}
               lvt-click="toggle_all_{{dtID $dt}}"
             />
@@ -41,25 +39,25 @@
           {{end}}
           {{range $col := dtVisibleColumns $dt}}
           <th
-            class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider
-              {{if eq (colAlign $col) "center"}}text-center{{else if eq (colAlign $col) "right"}}text-right{{end}}
-              {{if colSortable $col}}cursor-pointer hover:bg-gray-100{{end}}"
+            class="{{$dt.Styles.Th}}
+              {{if eq (colAlign $col) "center"}}{{$dt.Styles.ThAlignCenter}}{{else if eq (colAlign $col) "right"}}{{$dt.Styles.ThAlignRight}}{{end}}
+              {{if colSortable $col}}{{$dt.Styles.ThSortable}}{{end}}"
             {{if colWidth $col}}style="width: {{colWidth $col}}"{{end}}
             {{if colSortable $col}}lvt-click="sort_{{dtID $dt}}" lvt-data-column="{{colID $col}}"{{end}}
           >
-            <span class="flex items-center gap-1 {{if eq (colAlign $col) "center"}}justify-center{{else if eq (colAlign $col) "right"}}justify-end{{end}}">
+            <span class="{{$dt.Styles.ThContent}} {{if eq (colAlign $col) "center"}}justify-center{{else if eq (colAlign $col) "right"}}justify-end{{end}}">
               {{colLabel $col}}
               {{if colSortable $col}}
               {{if isSortedAsc $dt (colID $col)}}
-              <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+              <svg class="{{$dt.Styles.SortIcon}}" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd" />
               </svg>
               {{else if isSortedDesc $dt (colID $col)}}
-              <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+              <svg class="{{$dt.Styles.SortIcon}}" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
               </svg>
               {{else}}
-              <svg class="w-4 h-4 text-gray-300" viewBox="0 0 20 20" fill="currentColor">
+              <svg class="{{$dt.Styles.SortIconIdle}}" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zm-3.707 9.293a1 1 0 011.414 0L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
               </svg>
               {{end}}
@@ -69,21 +67,21 @@
           {{end}}
         </tr>
       </thead>
-      <tbody class="bg-white divide-y divide-gray-200">
+      <tbody class="{{.Styles.Tbody}}">
         {{if dtIsEmpty $dt}}
         <tr>
-          <td colspan="{{len (dtVisibleColumns $dt)}}{{if and $dt.Selectable $dt.MultiSelect}} + 1{{end}}" class="px-4 py-8 text-center text-gray-500">
+          <td colspan="{{len (dtVisibleColumns $dt)}}{{if and $dt.Selectable $dt.MultiSelect}} + 1{{end}}" class="{{$dt.Styles.EmptyCell}}">
             {{$dt.EmptyMessage}}
           </td>
         </tr>
         {{else}}
         {{range $index, $row := dtPageRows $dt}}
-        <tr class="{{if $dt.Striped}}{{if mod $index 2}}bg-gray-50{{end}}{{end}} {{if $dt.Hoverable}}hover:bg-gray-100{{end}} {{if isRowSelected $row}}bg-blue-50{{end}}">
+        <tr class="{{if $dt.Striped}}{{if mod $index 2}}{{$dt.Styles.RowStriped}}{{end}}{{end}} {{if $dt.Hoverable}}{{$dt.Styles.RowHover}}{{end}} {{if isRowSelected $row}}{{$dt.Styles.RowSelected}}{{end}}">
           {{if and $dt.Selectable $dt.MultiSelect}}
-          <td class="w-10 px-4 py-3">
+          <td class="w-10 {{$dt.Styles.Td}}">
             <input
               type="checkbox"
-              class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              class="{{$dt.Styles.Checkbox}}"
               {{if isRowSelected $row}}checked{{end}}
               {{if isRowDisabled $row}}disabled{{end}}
               lvt-click="toggle_row_{{dtID $dt}}"
@@ -92,8 +90,8 @@
           </td>
           {{end}}
           {{range $col := dtVisibleColumns $dt}}
-          <td class="px-4 {{if $dt.Compact}}py-2{{else}}py-3{{end}} text-sm text-gray-900
-            {{if eq (colAlign $col) "center"}}text-center{{else if eq (colAlign $col) "right"}}text-right{{end}}"
+          <td class="{{$dt.Styles.Td}} {{if $dt.Compact}}{{$dt.Styles.TdCompact}}{{end}}
+            {{if eq (colAlign $col) "center"}}{{$dt.Styles.TdAlignCenter}}{{else if eq (colAlign $col) "right"}}{{$dt.Styles.TdAlignRight}}{{end}}"
             {{if and $dt.Selectable (not $dt.MultiSelect)}}
             lvt-click="select_row_{{dtID $dt}}"
             lvt-data-row="{{getRowID $row}}"
@@ -111,21 +109,21 @@
 
   {{/* Pagination */}}
   {{if gt (dtPageSize $dt) 0}}
-  <div class="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200">
-    <div class="text-sm text-gray-700">
-      Showing <span class="font-medium">{{dtStartIndex $dt}}</span> to <span class="font-medium">{{dtEndIndex $dt}}</span> of <span class="font-medium">{{dtTotalRows $dt}}</span> results
+  <div class="{{.Styles.Pagination}}">
+    <div class="{{.Styles.PageInfo}}">
+      Showing <span class="{{.Styles.PageInfoBold}}">{{dtStartIndex $dt}}</span> to <span class="{{.Styles.PageInfoBold}}">{{dtEndIndex $dt}}</span> of <span class="{{.Styles.PageInfoBold}}">{{dtTotalRows $dt}}</span> results
     </div>
     <div class="flex gap-2">
       <button
         type="button"
-        class="px-3 py-1 text-sm border border-gray-300 rounded-md {{if dtHasPrev $dt}}hover:bg-gray-50{{else}}opacity-50 cursor-not-allowed{{end}}"
+        class="{{.Styles.PageBtn}} {{if not (dtHasPrev $dt)}}{{.Styles.PageBtnDisabled}}{{end}}"
         {{if dtHasPrev $dt}}lvt-click="prev_page_{{dtID $dt}}"{{else}}disabled{{end}}
       >
         Previous
       </button>
       <button
         type="button"
-        class="px-3 py-1 text-sm border border-gray-300 rounded-md {{if dtHasNext $dt}}hover:bg-gray-50{{else}}opacity-50 cursor-not-allowed{{end}}"
+        class="{{.Styles.PageBtn}} {{if not (dtHasNext $dt)}}{{.Styles.PageBtnDisabled}}{{end}}"
         {{if dtHasNext $dt}}lvt-click="next_page_{{dtID $dt}}"{{else}}disabled{{end}}
       >
         Next
@@ -135,83 +133,4 @@
   {{end}}
   {{end}}
 </div>
-{{else}}
-{{/* Unstyled semantic HTML version */}}
-<div data-datatable="{{dtID $dt}}">
-  {{if .Loading}}
-  <p>Loading...</p>
-  {{else}}
-  <table>
-    <thead>
-      <tr>
-        {{if and .Selectable .MultiSelect}}
-        <th>
-          <input
-            type="checkbox"
-            {{if dtAllSelected $dt}}checked{{end}}
-            lvt-click="toggle_all_{{dtID $dt}}"
-          />
-        </th>
-        {{end}}
-        {{range $col := dtVisibleColumns $dt}}
-        <th
-          {{if colSortable $col}}lvt-click="sort_{{dtID $dt}}" lvt-data-column="{{colID $col}}"{{end}}
-        >
-          {{colLabel $col}}
-          {{if isSortedAsc $dt (colID $col)}}↑{{else if isSortedDesc $dt (colID $col)}}↓{{end}}
-        </th>
-        {{end}}
-      </tr>
-    </thead>
-    <tbody>
-      {{if dtIsEmpty $dt}}
-      <tr>
-        <td colspan="{{len (dtVisibleColumns $dt)}}">{{$dt.EmptyMessage}}</td>
-      </tr>
-      {{else}}
-      {{range $row := dtPageRows $dt}}
-      <tr>
-        {{if and $dt.Selectable $dt.MultiSelect}}
-        <td>
-          <input
-            type="checkbox"
-            {{if isRowSelected $row}}checked{{end}}
-            {{if isRowDisabled $row}}disabled{{end}}
-            lvt-click="toggle_row_{{dtID $dt}}"
-            lvt-data-row="{{getRowID $row}}"
-          />
-        </td>
-        {{end}}
-        {{range $col := dtVisibleColumns $dt}}
-        <td
-          {{if and $dt.Selectable (not $dt.MultiSelect)}}
-          lvt-click="select_row_{{dtID $dt}}"
-          lvt-data-row="{{getRowID $row}}"
-          {{end}}
-        >
-          {{getCellValue $row (colID $col)}}
-        </td>
-        {{end}}
-      </tr>
-      {{end}}
-      {{end}}
-    </tbody>
-  </table>
-
-  {{if gt (dtPageSize $dt) 0}}
-  <div>
-    <span>Showing {{dtStartIndex $dt}} to {{dtEndIndex $dt}} of {{dtTotalRows $dt}}</span>
-    <button
-      type="button"
-      {{if dtHasPrev $dt}}lvt-click="prev_page_{{dtID $dt}}"{{else}}disabled{{end}}
-    >Previous</button>
-    <button
-      type="button"
-      {{if dtHasNext $dt}}lvt-click="next_page_{{dtID $dt}}"{{else}}disabled{{end}}
-    >Next</button>
-  </div>
-  {{end}}
-  {{end}}
-</div>
-{{end}}
 {{end}}
