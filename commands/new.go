@@ -29,9 +29,9 @@ func New(args []string) error {
 	if err := ValidatePositionalArg(appName, "app name"); err != nil {
 		return err
 	}
-	moduleName := appName  // Default to app name
-	devMode := false       // Default to production (use CDN)
-	kit := "multi"         // Default kit
+	moduleName := appName       // Default to app name
+	devMode := false            // Default to production (use CDN)
+	kit := "multi"              // Default kit
 	stylesAdapter := "tailwind" // Default style adapter
 
 	// Check for flags
