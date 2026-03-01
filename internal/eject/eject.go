@@ -14,7 +14,7 @@ import (
 // ComponentInfo holds information about an ejectable component.
 type ComponentInfo struct {
 	Name        string
-	Package     string // e.g., "github.com/livetemplate/components/dropdown"
+	Package     string // e.g., "github.com/livetemplate/lvt/components/dropdown"
 	Description string
 	Templates   []string
 }

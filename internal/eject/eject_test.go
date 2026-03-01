@@ -318,8 +318,8 @@ func TestUpdateImports(t *testing.T) {
 	content := `package test
 
 import (
-	"github.com/livetemplate/components/dropdown"
-	"github.com/livetemplate/components/dropdown/internal"
+	"github.com/livetemplate/lvt/components/dropdown"
+	"github.com/livetemplate/lvt/components/dropdown/internal"
 )
 
 func main() {
@@ -331,7 +331,7 @@ func main() {
 	}
 
 	// Update imports
-	oldPkg := "github.com/livetemplate/components/dropdown"
+	oldPkg := "github.com/livetemplate/lvt/components/dropdown"
 	newPkg := "mymodule/internal/components/dropdown"
 	if err := updateImports(goFile, oldPkg, newPkg); err != nil {
 		t.Fatalf("updateImports failed: %v", err)
