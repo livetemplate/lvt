@@ -1,32 +1,33 @@
 {{define "lvt:menu:default:v1"}}
-<div class="{{.Styles.Root}}" data-menu="{{.ID}}">
+{{$c := .}}
+<div class="{{$c.Styles.Root}}" data-menu="{{$c.ID}}">
   <button
     type="button"
-    class="{{.Styles.TriggerBtn}}"
-    lvt-click="toggle_{{.ID}}"
+    class="{{$c.Styles.TriggerBtn}}"
+    lvt-click="toggle_{{$c.ID}}"
     aria-haspopup="true"
-    aria-expanded="{{.Open}}"
+    aria-expanded="{{$c.Open}}"
   >
-    {{if .TriggerIcon}}<span>{{.TriggerIcon}}</span>{{end}}
-    {{if .Trigger}}{{.Trigger}}{{else}}Menu{{end}}
-    <svg class="{{.Styles.TriggerIcon}} {{if .Open}}{{.Styles.TriggerIconOpen}}{{end}}" viewBox="0 0 20 20" fill="currentColor">
+    {{if $c.TriggerIcon}}<span>{{$c.TriggerIcon}}</span>{{end}}
+    {{if $c.Trigger}}{{$c.Trigger}}{{else}}Menu{{end}}
+    <svg class="{{$c.Styles.TriggerIcon}} {{if $c.Open}}{{$c.Styles.TriggerIconOpen}}{{end}}" viewBox="0 0 20 20" fill="currentColor">
       <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
     </svg>
   </button>
 
-  {{if .Open}}
+  {{if $c.Open}}
   <div
-    class="{{.Styles.Panel}} {{.PositionClass}}"
+    class="{{$c.Styles.Panel}} {{$c.PositionClass}}"
     role="menu"
     aria-orientation="vertical"
-    lvt-click-away="close_{{.ID}}"
+    lvt-click-away="close_{{$c.ID}}"
   >
-    <div class="{{.Styles.PanelInner}}">
-      {{range $index, $item := .Items}}
+    <div class="{{$c.Styles.PanelInner}}">
+      {{range $index, $item := $c.Items}}
       {{if $item.IsDivider}}
-      <hr class="{{$.Styles.Divider}}" />
+      <hr class="{{$c.Styles.Divider}}" />
       {{else if $item.IsHeader}}
-      <div class="{{$.Styles.SectionHeader}}">
+      <div class="{{$c.Styles.SectionHeader}}">
         {{$item.Label}}
       </div>
       {{else}}
@@ -34,34 +35,34 @@
       <a
         href="{{$item.Href}}"
         {{if $item.Target}}target="{{$item.Target}}"{{end}}
-        class="{{$.Styles.Item}} {{$.ItemClass $item}}"
+        class="{{$c.Styles.Item}} {{$c.ItemClass $item}}"
         role="menuitem"
         {{if $item.Disabled}}aria-disabled="true"{{end}}
       >
       {{else}}
       <button
         type="button"
-        class="{{$.Styles.Item}} w-full text-left {{$.ItemClass $item}}"
+        class="{{$c.Styles.Item}} w-full text-left {{$c.ItemClass $item}}"
         role="menuitem"
         {{if not $item.Disabled}}
-        lvt-click="select_{{$.ID}}"
+        lvt-click="select_{{$c.ID}}"
         lvt-data-item="{{$item.ID}}"
         {{end}}
         {{if $item.Disabled}}disabled aria-disabled="true"{{end}}
       >
       {{end}}
         <span class="flex items-center gap-2">
-          {{if $item.HasIcon}}<span class="{{$.Styles.ItemIcon}}">{{$item.Icon}}</span>{{end}}
+          {{if $item.HasIcon}}<span class="{{$c.Styles.ItemIcon}}">{{$item.Icon}}</span>{{end}}
           <span>{{$item.Label}}</span>
         </span>
         <span class="flex items-center gap-2">
           {{if $item.HasBadge}}
-          <span class="{{$.Styles.Badge}} {{$.BadgeClass $item.BadgeColor}}">
+          <span class="{{$c.Styles.Badge}} {{$c.BadgeClass $item.BadgeColor}}">
             {{$item.Badge}}
           </span>
           {{end}}
           {{if $item.HasShortcut}}
-          <span class="{{$.Styles.Shortcut}}">{{$item.Shortcut}}</span>
+          <span class="{{$c.Styles.Shortcut}}">{{$item.Shortcut}}</span>
           {{end}}
         </span>
       {{if $item.IsLink}}</a>{{else}}</button>{{end}}

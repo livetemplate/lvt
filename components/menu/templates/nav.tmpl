@@ -1,43 +1,44 @@
 {{define "lvt:menu:nav:v1"}}
-<nav class="{{if eq .Orientation "vertical"}}flex flex-col space-y-1{{else}}flex items-center space-x-1{{end}}" data-menu="{{.ID}}" data-nav="true">
-  {{range $item := .Items}}
+{{$c := .}}
+<nav class="{{if eq $c.Orientation "vertical"}}flex flex-col space-y-1{{else}}flex items-center space-x-1{{end}}" data-menu="{{$c.ID}}" data-nav="true">
+  {{range $item := $c.Items}}
   {{if $item.IsDivider}}
-  {{if eq $.Orientation "vertical"}}
-  <hr class="{{$.Styles.Divider}}" />
+  {{if eq $c.Orientation "vertical"}}
+  <hr class="{{$c.Styles.Divider}}" />
   {{else}}
   <div class="h-6 w-px bg-gray-200"></div>
   {{end}}
   {{else if $item.IsHeader}}
-  <div class="{{$.Styles.SectionHeader}}">
+  <div class="{{$c.Styles.SectionHeader}}">
     {{$item.Label}}
   </div>
   {{else if $item.IsSubmenu}}
   <div class="relative">
     <button
       type="button"
-      class="{{$.Styles.Item}} {{if $item.Active}}{{$.Styles.ItemActive}}{{else}}{{$.Styles.ItemDefault}}{{end}}"
-      lvt-click="toggle_submenu_{{$.ID}}"
+      class="{{$c.Styles.Item}} {{if $item.Active}}{{$c.Styles.ItemActive}}{{else}}{{$c.Styles.ItemDefault}}{{end}}"
+      lvt-click="toggle_submenu_{{$c.ID}}"
       lvt-data-submenu="{{$item.ID}}"
-      aria-expanded="{{$.IsSubmenuOpen $item.ID}}"
+      aria-expanded="{{$c.IsSubmenuOpen $item.ID}}"
       aria-haspopup="true"
     >
       {{if $item.HasIcon}}<span>{{$item.Icon}}</span>{{end}}
       {{$item.Label}}
-      <svg class="{{$.Styles.TriggerIcon}} {{if $.IsSubmenuOpen $item.ID}}{{$.Styles.TriggerIconOpen}}{{end}}" viewBox="0 0 20 20" fill="currentColor">
+      <svg class="{{$c.Styles.TriggerIcon}} {{if $c.IsSubmenuOpen $item.ID}}{{$c.Styles.TriggerIconOpen}}{{end}}" viewBox="0 0 20 20" fill="currentColor">
         <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
       </svg>
     </button>
-    {{if $.IsSubmenuOpen $item.ID}}
+    {{if $c.IsSubmenuOpen $item.ID}}
     <div
-      class="{{if eq $.Orientation "vertical"}}pl-4 mt-1 space-y-1{{else}}{{$.Styles.Panel}}{{end}}"
-      lvt-click-away="close_submenu_{{$.ID}}"
+      class="{{if eq $c.Orientation "vertical"}}pl-4 mt-1 space-y-1{{else}}{{$c.Styles.Panel}}{{end}}"
+      lvt-click-away="close_submenu_{{$c.ID}}"
     >
       {{range $subItem := $item.Items}}
       {{if $subItem.IsLink}}
       <a
         href="{{$subItem.Href}}"
         {{if $subItem.Target}}target="{{$subItem.Target}}"{{end}}
-        class="{{$.Styles.Item}} {{if $subItem.Active}}{{$.Styles.ItemActive}}{{else if $subItem.Disabled}}{{$.Styles.ItemDisabled}}{{else}}{{$.Styles.ItemDefault}}{{end}}"
+        class="{{$c.Styles.Item}} {{if $subItem.Active}}{{$c.Styles.ItemActive}}{{else if $subItem.Disabled}}{{$c.Styles.ItemDisabled}}{{else}}{{$c.Styles.ItemDefault}}{{end}}"
       >
         {{if $subItem.HasIcon}}<span class="mr-2">{{$subItem.Icon}}</span>{{end}}
         {{$subItem.Label}}
@@ -45,9 +46,9 @@
       {{else}}
       <button
         type="button"
-        class="{{$.Styles.Item}} w-full text-left {{if $subItem.Active}}{{$.Styles.ItemActive}}{{else if $subItem.Disabled}}{{$.Styles.ItemDisabled}}{{else}}{{$.Styles.ItemDefault}}{{end}}"
+        class="{{$c.Styles.Item}} w-full text-left {{if $subItem.Active}}{{$c.Styles.ItemActive}}{{else if $subItem.Disabled}}{{$c.Styles.ItemDisabled}}{{else}}{{$c.Styles.ItemDefault}}{{end}}"
         {{if not $subItem.Disabled}}
-        lvt-click="select_{{$.ID}}"
+        lvt-click="select_{{$c.ID}}"
         lvt-data-item="{{$subItem.ID}}"
         {{end}}
         {{if $subItem.Disabled}}disabled{{end}}
@@ -64,13 +65,13 @@
   <a
     href="{{$item.Href}}"
     {{if $item.Target}}target="{{$item.Target}}"{{end}}
-    class="{{$.Styles.Item}} {{if $item.Active}}{{$.Styles.ItemActive}}{{else if $item.Disabled}}{{$.Styles.ItemDisabled}}{{else}}{{$.Styles.ItemDefault}}{{end}}"
+    class="{{$c.Styles.Item}} {{if $item.Active}}{{$c.Styles.ItemActive}}{{else if $item.Disabled}}{{$c.Styles.ItemDisabled}}{{else}}{{$c.Styles.ItemDefault}}{{end}}"
     {{if $item.Disabled}}aria-disabled="true"{{end}}
   >
     {{if $item.HasIcon}}<span>{{$item.Icon}}</span>{{end}}
     {{$item.Label}}
     {{if $item.HasBadge}}
-    <span class="{{$.Styles.Badge}} {{$.BadgeClass $item.BadgeColor}}">
+    <span class="{{$c.Styles.Badge}} {{$c.BadgeClass $item.BadgeColor}}">
       {{$item.Badge}}
     </span>
     {{end}}
@@ -78,9 +79,9 @@
   {{else}}
   <button
     type="button"
-    class="{{$.Styles.Item}} {{if $item.Active}}{{$.Styles.ItemActive}}{{else if $item.Disabled}}{{$.Styles.ItemDisabled}}{{else}}{{$.Styles.ItemDefault}}{{end}}"
+    class="{{$c.Styles.Item}} {{if $item.Active}}{{$c.Styles.ItemActive}}{{else if $item.Disabled}}{{$c.Styles.ItemDisabled}}{{else}}{{$c.Styles.ItemDefault}}{{end}}"
     {{if not $item.Disabled}}
-    lvt-click="select_{{$.ID}}"
+    lvt-click="select_{{$c.ID}}"
     lvt-data-item="{{$item.ID}}"
     {{end}}
     {{if $item.Disabled}}disabled{{end}}
@@ -88,7 +89,7 @@
     {{if $item.HasIcon}}<span>{{$item.Icon}}</span>{{end}}
     {{$item.Label}}
     {{if $item.HasBadge}}
-    <span class="{{$.Styles.Badge}} {{$.BadgeClass $item.BadgeColor}}">
+    <span class="{{$c.Styles.Badge}} {{$c.BadgeClass $item.BadgeColor}}">
       {{$item.Badge}}
     </span>
     {{end}}

@@ -1,10 +1,11 @@
 {{define "lvt:skeleton:default:v1"}}
-{{if .IsMultiLine}}
-<div class="{{.Styles.MultiLineWrap}}" data-skeleton="{{.ID}}">
-  {{range .LineIndices}}
+{{$c := .}}
+{{if $c.IsMultiLine}}
+<div class="{{$c.Styles.MultiLineWrap}}" data-skeleton="{{$c.ID}}">
+  {{range $c.LineIndices}}
   <div
-    class="{{$.Styles.Base}} {{$.ShapeClass}} {{$.AnimationClass}}"
-    style="width: {{$.Width}}; height: {{$.Height}}"
+    class="{{$c.Styles.Base}} {{$c.ShapeClass}} {{$c.AnimationClass}}"
+    style="width: {{$c.Width}}; height: {{$c.Height}}"
   ></div>
   {{end}}
 </div>

@@ -1,38 +1,39 @@
 {{define "lvt:menu:context:v1"}}
-{{if .Open}}
+{{$c := .}}
+{{if $c.Open}}
 <div
-  class="{{.Styles.Panel}}"
-  style="position: fixed; left: {{.X}}px; top: {{.Y}}px; z-index: 50;"
+  class="{{$c.Styles.Panel}}"
+  style="position: fixed; left: {{$c.X}}px; top: {{$c.Y}}px; z-index: 50;"
   role="menu"
-  data-menu="{{.ID}}"
+  data-menu="{{$c.ID}}"
   data-context="true"
-  lvt-click-away="close_{{.ID}}"
+  lvt-click-away="close_{{$c.ID}}"
 >
-  <div class="{{.Styles.PanelInner}}">
-    {{range $index, $item := .Items}}
+  <div class="{{$c.Styles.PanelInner}}">
+    {{range $index, $item := $c.Items}}
     {{if $item.IsDivider}}
-    <hr class="{{$.Styles.Divider}}" />
+    <hr class="{{$c.Styles.Divider}}" />
     {{else if $item.IsHeader}}
-    <div class="{{$.Styles.SectionHeader}}">
+    <div class="{{$c.Styles.SectionHeader}}">
       {{$item.Label}}
     </div>
     {{else}}
     <button
       type="button"
-      class="{{$.Styles.Item}} w-full text-left {{$.ItemClass $item}}"
+      class="{{$c.Styles.Item}} w-full text-left {{$c.ItemClass $item}}"
       role="menuitem"
       {{if not $item.Disabled}}
-      lvt-click="select_{{$.ID}}"
+      lvt-click="select_{{$c.ID}}"
       lvt-data-item="{{$item.ID}}"
       {{end}}
       {{if $item.Disabled}}disabled aria-disabled="true"{{end}}
     >
       <span class="flex items-center gap-2">
-        {{if $item.HasIcon}}<span class="{{$.Styles.ItemIcon}}">{{$item.Icon}}</span>{{end}}
+        {{if $item.HasIcon}}<span class="{{$c.Styles.ItemIcon}}">{{$item.Icon}}</span>{{end}}
         <span>{{$item.Label}}</span>
       </span>
       {{if $item.HasShortcut}}
-      <span class="{{$.Styles.Shortcut}}">{{$item.Shortcut}}</span>
+      <span class="{{$c.Styles.Shortcut}}">{{$item.Shortcut}}</span>
       {{end}}
     </button>
     {{end}}

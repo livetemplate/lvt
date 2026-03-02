@@ -1,21 +1,22 @@
 {{define "lvt:tabs:horizontal:v1"}}
-<div class="{{.Styles.Root}}" data-tabs="{{.ID}}">
-  <div class="{{.Styles.TabList}}" role="tablist" aria-orientation="horizontal">
-    <nav class="{{.Styles.Nav}}">
-      {{range .Items}}
+{{$c := .}}
+<div class="{{$c.Styles.Root}}" data-tabs="{{$c.ID}}">
+  <div class="{{$c.Styles.TabList}}" role="tablist" aria-orientation="horizontal">
+    <nav class="{{$c.Styles.Nav}}">
+      {{range $c.Items}}
       <button
         type="button"
-        class="{{$.Styles.Tab}} {{if eq $.ActiveID .ID}}{{$.Styles.TabActive}}{{else}}{{$.Styles.TabDefault}}{{end}} {{if .Disabled}}{{$.Styles.TabDisabled}}{{end}}"
-        lvt-click="select_tab_{{$.ID}}"
+        class="{{$c.Styles.Tab}} {{if eq $c.ActiveID .ID}}{{$c.Styles.TabActive}}{{else}}{{$c.Styles.TabDefault}}{{end}} {{if .Disabled}}{{$c.Styles.TabDisabled}}{{end}}"
+        lvt-click="select_tab_{{$c.ID}}"
         lvt-data-tab="{{.ID}}"
         role="tab"
-        aria-selected="{{if eq $.ActiveID .ID}}true{{else}}false{{end}}"
+        aria-selected="{{if eq $c.ActiveID .ID}}true{{else}}false{{end}}"
         {{if .Disabled}}disabled aria-disabled="true"{{end}}
-        {{if eq $.ActiveID .ID}}aria-current="page"{{end}}
+        {{if eq $c.ActiveID .ID}}aria-current="page"{{end}}
       >
-        {{if .Icon}}<span class="{{$.Styles.TabIcon}}">{{.Icon}}</span>{{end}}
+        {{if .Icon}}<span class="{{$c.Styles.TabIcon}}">{{.Icon}}</span>{{end}}
         {{.Label}}
-        {{if .Badge}}<span class="{{$.Styles.Badge}}">{{.Badge}}</span>{{end}}
+        {{if .Badge}}<span class="{{$c.Styles.Badge}}">{{.Badge}}</span>{{end}}
       </button>
       {{end}}
     </nav>

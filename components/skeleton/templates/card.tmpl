@@ -1,5 +1,6 @@
 {{define "lvt:skeleton:card:v1"}}
-<div class="{{.Styles.Root}}" data-skeleton="{{.ID}}">
+{{$c := .}}
+<div class="{{$c.Styles.Root}}" data-skeleton="{{$c.ID}}">
   {{if .ShowImage}}
   <div class="{{.Styles.Image}}" style="height: {{.ImageHeight}}"></div>
   {{end}}
@@ -11,8 +12,8 @@
 
     {{if .ShowDescription}}
     <div class="{{.Styles.DescWrapper}}">
-      {{range $i := .DescLineIndices}}
-      <div class="{{if $.IsLastDescLine $i}}{{$.Styles.DescLineLast}}{{else}}{{$.Styles.DescLine}}{{end}}"></div>
+      {{range $i := $c.DescLineIndices}}
+      <div class="{{if $c.IsLastDescLine $i}}{{$c.Styles.DescLineLast}}{{else}}{{$c.Styles.DescLine}}{{end}}"></div>
       {{end}}
     </div>
     {{end}}

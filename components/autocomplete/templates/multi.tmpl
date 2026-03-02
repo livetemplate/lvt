@@ -1,17 +1,18 @@
 {{define "lvt:autocomplete:multi:v1"}}
-<div class="{{.Styles.Root}}" data-autocomplete="{{.ID}}" data-multi="true">
-  <div class="{{.Styles.InputWrapper}}">
-    {{range .SelectedItems}}
-    <span class="{{$.Styles.OptionLabel}}">
+{{$c := .}}
+<div class="{{$c.Styles.Root}}" data-autocomplete="{{$c.ID}}" data-multi="true">
+  <div class="{{$c.Styles.InputWrapper}}">
+    {{range $c.SelectedItems}}
+    <span class="{{$c.Styles.OptionLabel}}">
       {{.Label}}
       <button
         type="button"
-        class="{{$.Styles.ClearIcon}}"
-        lvt-click="remove_{{$.ID}}"
+        class="{{$c.Styles.ClearIcon}}"
+        lvt-click="remove_{{$c.ID}}"
         lvt-data-value="{{.Value}}"
         aria-label="Remove {{.Label}}"
       >
-        <svg class="{{$.Styles.ClearIcon}}" viewBox="0 0 20 20" fill="currentColor">
+        <svg class="{{$c.Styles.ClearIcon}}" viewBox="0 0 20 20" fill="currentColor">
           <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
         </svg>
       </button>
@@ -19,69 +20,69 @@
     {{end}}
     <input
       type="text"
-      class="{{.Styles.Input}}"
-      placeholder="{{if .HasSelectedItems}}{{else}}{{.Placeholder}}{{end}}"
-      value="{{.Query}}"
-      lvt-input="query_{{.ID}}"
-      lvt-focus="focus_{{.ID}}"
-      lvt-keydown="keydown_{{.ID}}"
+      class="{{$c.Styles.Input}}"
+      placeholder="{{if $c.HasSelectedItems}}{{else}}{{$c.Placeholder}}{{end}}"
+      value="{{$c.Query}}"
+      lvt-input="query_{{$c.ID}}"
+      lvt-focus="focus_{{$c.ID}}"
+      lvt-keydown="keydown_{{$c.ID}}"
       autocomplete="off"
       aria-autocomplete="list"
       aria-haspopup="listbox"
-      aria-expanded="{{.Open}}"
+      aria-expanded="{{$c.Open}}"
     />
-    {{if .Loading}}
-    <div class="{{.Styles.LoadingWrapper}}">
-      <svg class="{{.Styles.LoadingIcon}}" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+    {{if $c.Loading}}
+    <div class="{{$c.Styles.LoadingWrapper}}">
+      <svg class="{{$c.Styles.LoadingIcon}}" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
       </svg>
     </div>
-    {{else if .HasSelectedItems}}
+    {{else if $c.HasSelectedItems}}
     <button
       type="button"
-      class="{{.Styles.ClearBtn}}"
-      lvt-click="clear_multi_{{.ID}}"
+      class="{{$c.Styles.ClearBtn}}"
+      lvt-click="clear_multi_{{$c.ID}}"
       aria-label="Clear all"
     >
-      <svg class="{{.Styles.ClearIcon}}" viewBox="0 0 20 20" fill="currentColor">
+      <svg class="{{$c.Styles.ClearIcon}}" viewBox="0 0 20 20" fill="currentColor">
         <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
       </svg>
     </button>
     {{end}}
   </div>
 
-  {{if .Open}}
+  {{if $c.Open}}
   <ul
-    class="{{.Styles.Dropdown}}"
+    class="{{$c.Styles.Dropdown}}"
     role="listbox"
-    lvt-click-away="blur_{{.ID}}"
+    lvt-click-away="blur_{{$c.ID}}"
   >
-    {{$filtered := .FilteredExcludingSelected}}
+    {{$filtered := $c.FilteredExcludingSelected}}
     {{range $index, $suggestion := $filtered}}
     <li
-      class="{{$.Styles.Option}} {{if $suggestion.Disabled}}{{$.Styles.OptionDisabled}}{{else if $.IsHighlighted $index}}{{$.Styles.OptionActive}}{{end}}"
+      class="{{$c.Styles.Option}} {{if $suggestion.Disabled}}{{$c.Styles.OptionDisabled}}{{else if $c.IsHighlighted $index}}{{$c.Styles.OptionActive}}{{end}}"
       role="option"
       {{if not $suggestion.Disabled}}
-      lvt-click="select_multi_{{$.ID}}"
+      lvt-click="select_multi_{{$c.ID}}"
       lvt-data-value="{{$suggestion.Value}}"
       {{end}}
       {{if $suggestion.Disabled}}aria-disabled="true"{{end}}
     >
-      <div class="{{$.Styles.OptionLayout}}">
+      <div class="{{$c.Styles.OptionLayout}}">
         {{if $suggestion.Icon}}
-        <span class="{{$.Styles.OptionIcon}}">{{$suggestion.Icon}}</span>
+        <span class="{{$c.Styles.OptionIcon}}">{{$suggestion.Icon}}</span>
         {{end}}
         <div>
-          <div class="{{$.Styles.OptionLabel}}">{{$suggestion.Label}}</div>
+          <div class="{{$c.Styles.OptionLabel}}">{{$suggestion.Label}}</div>
           {{if $suggestion.Description}}
-          <div class="{{if $.IsHighlighted $index}}{{$.Styles.OptionDescAlt}}{{else}}{{$.Styles.OptionDesc}}{{end}}">{{$suggestion.Description}}</div>
+          <div class="{{if $c.IsHighlighted $index}}{{$c.Styles.OptionDescAlt}}{{else}}{{$c.Styles.OptionDesc}}{{end}}">{{$suggestion.Description}}</div>
           {{end}}
         </div>
       </div>
     </li>
     {{else}}
-    <li class="{{$.Styles.Empty}}">No suggestions found</li>
+    <li class="{{$c.Styles.Empty}}">No suggestions found</li>
     {{end}}
   </ul>
   {{end}}

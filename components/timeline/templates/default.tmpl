@@ -1,21 +1,22 @@
 {{define "lvt:timeline:default:v1"}}
-{{if .IsStyled}}
+{{$c := .}}
+{{if $c.IsStyled}}
 {{/* Tailwind CSS styled version */}}
 <div
-  class="{{if .IsHorizontal}}{{.Styles.HorizontalRoot}}{{else}}{{.Styles.VerticalRoot}}{{end}}"
-  data-timeline="{{.ID}}"
+  class="{{if $c.IsHorizontal}}{{$c.Styles.HorizontalRoot}}{{else}}{{$c.Styles.VerticalRoot}}{{end}}"
+  data-timeline="{{$c.ID}}"
 >
-  {{if and .IsVertical .ShowConnectors}}
+  {{if and $c.IsVertical $c.ShowConnectors}}
   {{/* Vertical connector line */}}
-  <div class="{{.Styles.Connector}}"></div>
+  <div class="{{$c.Styles.Connector}}"></div>
   {{end}}
 
-  {{range $index, $item := .Items}}
+  {{range $index, $item := $c.Items}}
   <div
-    class="{{if $.IsHorizontal}}{{$item.Styles.HorizontalItem}}{{else}}{{$item.Styles.VerticalItem}}{{end}}"
+    class="{{if $c.IsHorizontal}}{{$item.Styles.HorizontalItem}}{{else}}{{$item.Styles.VerticalItem}}{{end}}"
     data-timeline-item="{{$item.ID}}"
   >
-    {{if $.IsVertical}}
+    {{if $c.IsVertical}}
     {{/* Indicator dot */}}
     <div
       class="{{$item.Styles.IndicatorVertical}} {{$item.IndicatorClass}} {{$item.RingClass}} z-10"
@@ -58,9 +59,9 @@
       <span class="{{$item.Styles.IndicatorDot}}"></span>
       {{end}}
     </div>
-    {{if $.ShowConnectors}}
+    {{if $c.ShowConnectors}}
     {{/* Horizontal connector */}}
-    {{if not (eq $index (sub (len $.Items) 1))}}
+    {{if not (eq $index (sub (len $c.Items) 1))}}
     <div class="{{$item.Styles.HorizConnector}}"></div>
     {{end}}
     {{end}}

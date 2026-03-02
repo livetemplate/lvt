@@ -30,47 +30,48 @@
 {{end}}
 
 {{define "lvt:datepicker:calendar"}}
-<div class="{{.Styles.Calendar}}">
-  <div class="{{.Styles.NavWrapper}}">
+{{$c := .}}
+<div class="{{$c.Styles.Calendar}}">
+  <div class="{{$c.Styles.NavWrapper}}">
     <button
       type="button"
-      class="{{.Styles.NavBtn}}"
-      lvt-click="prev_month_{{.ID}}"
+      class="{{$c.Styles.NavBtn}}"
+      lvt-click="prev_month_{{$c.ID}}"
       aria-label="Previous month"
     >
-      <svg class="{{.Styles.NavIcon}}" viewBox="0 0 20 20" fill="currentColor">
+      <svg class="{{$c.Styles.NavIcon}}" viewBox="0 0 20 20" fill="currentColor">
         <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
       </svg>
     </button>
-    <span class="{{.Styles.MonthLabel}}">
-      {{.ViewMonth}} {{.ViewYear}}
+    <span class="{{$c.Styles.MonthLabel}}">
+      {{$c.ViewMonth}} {{$c.ViewYear}}
     </span>
     <button
       type="button"
-      class="{{.Styles.NavBtn}}"
-      lvt-click="next_month_{{.ID}}"
+      class="{{$c.Styles.NavBtn}}"
+      lvt-click="next_month_{{$c.ID}}"
       aria-label="Next month"
     >
-      <svg class="{{.Styles.NavIcon}}" viewBox="0 0 20 20" fill="currentColor">
+      <svg class="{{$c.Styles.NavIcon}}" viewBox="0 0 20 20" fill="currentColor">
         <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
       </svg>
     </button>
   </div>
 
-  <div class="{{.Styles.WeekdayGrid}}">
-    {{range .WeekdayNames}}
-    <div class="{{$.Styles.Weekday}}">{{.}}</div>
+  <div class="{{$c.Styles.WeekdayGrid}}">
+    {{range $c.WeekdayNames}}
+    <div class="{{$c.Styles.Weekday}}">{{.}}</div>
     {{end}}
   </div>
 
-  {{range .CalendarWeeks}}
-  <div class="{{$.Styles.WeekGrid}}">
+  {{range $c.CalendarWeeks}}
+  <div class="{{$c.Styles.WeekGrid}}">
     {{range .}}
     <button
       type="button"
-      class="{{$.Styles.DayBtn}} {{if not .InMonth}}{{$.Styles.DayOutMonth}}{{else if .IsDisabled}}{{$.Styles.DayDisabled}}{{else if .IsSelected}}{{$.Styles.DaySelected}}{{else if .IsToday}}{{$.Styles.DayToday}}{{else}}{{$.Styles.DayDefault}}{{end}}"
+      class="{{$c.Styles.DayBtn}} {{if not .InMonth}}{{$c.Styles.DayOutMonth}}{{else if .IsDisabled}}{{$c.Styles.DayDisabled}}{{else if .IsSelected}}{{$c.Styles.DaySelected}}{{else if .IsToday}}{{$c.Styles.DayToday}}{{else}}{{$c.Styles.DayDefault}}{{end}}"
       {{if and .InMonth (not .IsDisabled)}}
-      lvt-click="select_date_{{$.ID}}"
+      lvt-click="select_date_{{$c.ID}}"
       lvt-data-date="{{.DateString}}"
       {{else}}
       disabled
@@ -82,19 +83,19 @@
   </div>
   {{end}}
 
-  <div class="{{.Styles.Footer}}">
+  <div class="{{$c.Styles.Footer}}">
     <button
       type="button"
-      class="{{.Styles.TodayBtn}}"
-      lvt-click="today_{{.ID}}"
+      class="{{$c.Styles.TodayBtn}}"
+      lvt-click="today_{{$c.ID}}"
     >
       Today
     </button>
-    {{if .Selected}}
+    {{if $c.Selected}}
     <button
       type="button"
-      class="{{.Styles.ClearBtn}}"
-      lvt-click="clear_date_{{.ID}}"
+      class="{{$c.Styles.ClearBtn}}"
+      lvt-click="clear_date_{{$c.ID}}"
     >
       Clear
     </button>

@@ -1,43 +1,44 @@
 {{define "lvt:tagsinput:default:v1"}}
-<div class="{{.Styles.Root}}" data-tagsinput="{{.ID}}">
-  <div class="{{.Styles.Wrapper}}">
-    {{range $i, $tag := .Tags}}
-    <span class="{{$.Styles.Tag}}">
+{{$c := .}}
+<div class="{{$c.Styles.Root}}" data-tagsinput="{{$c.ID}}">
+  <div class="{{$c.Styles.Wrapper}}">
+    {{range $i, $tag := $c.Tags}}
+    <span class="{{$c.Styles.Tag}}">
       {{if $tag.Label}}{{$tag.Label}}{{else}}{{$tag.Value}}{{end}}
       <button
         type="button"
-        class="{{$.Styles.TagRemoveBtn}}"
-        lvt-click="remove_tag_{{$.ID}}"
+        class="{{$c.Styles.TagRemoveBtn}}"
+        lvt-click="remove_tag_{{$c.ID}}"
         lvt-data-value="{{$tag.Value}}"
         aria-label="Remove tag"
       >
-        <svg class="{{$.Styles.TagRemoveIcon}}" viewBox="0 0 20 20" fill="currentColor">
+        <svg class="{{$c.Styles.TagRemoveIcon}}" viewBox="0 0 20 20" fill="currentColor">
           <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
         </svg>
       </button>
     </span>
     {{end}}
-    {{if .CanAddMore}}
+    {{if $c.CanAddMore}}
     <input
       type="text"
-      class="{{.Styles.Input}}"
-      placeholder="{{.Placeholder}}"
-      value="{{.Input}}"
-      lvt-input="input_tag_{{.ID}}"
-      lvt-keydown="keydown_tag_{{.ID}}"
+      class="{{$c.Styles.Input}}"
+      placeholder="{{$c.Placeholder}}"
+      value="{{$c.Input}}"
+      lvt-input="input_tag_{{$c.ID}}"
+      lvt-keydown="keydown_tag_{{$c.ID}}"
       lvt-key="Enter,Backspace"
-      lvt-focus="focus_tag_{{.ID}}"
-      lvt-blur="blur_tag_{{.ID}}"
+      lvt-focus="focus_tag_{{$c.ID}}"
+      lvt-blur="blur_tag_{{$c.ID}}"
       autocomplete="off"
     />
     {{end}}
   </div>
-  {{if and .ShowSuggestions .FilteredSuggestions}}
-  <div class="{{.Styles.Dropdown}}">
-    {{range .FilteredSuggestions}}
+  {{if and $c.ShowSuggestions $c.FilteredSuggestions}}
+  <div class="{{$c.Styles.Dropdown}}">
+    {{range $c.FilteredSuggestions}}
     <div
-      class="{{$.Styles.Suggestion}}"
-      lvt-click="select_suggestion_{{$.ID}}"
+      class="{{$c.Styles.Suggestion}}"
+      lvt-click="select_suggestion_{{$c.ID}}"
       lvt-data-value="{{.}}"
     >
       {{.}}
@@ -45,8 +46,8 @@
     {{end}}
   </div>
   {{end}}
-  {{if .MaxTags}}
-  <p class="{{.Styles.Counter}}">{{.Count}}/{{.MaxTags}} tags</p>
+  {{if $c.MaxTags}}
+  <p class="{{$c.Styles.Counter}}">{{$c.Count}}/{{$c.MaxTags}} tags</p>
   {{end}}
 </div>
 {{end}}

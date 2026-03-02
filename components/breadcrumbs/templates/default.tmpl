@@ -1,6 +1,7 @@
 {{define "lvt:breadcrumbs:default:v1"}}
-<nav class="{{.Styles.Nav}} {{.SizeClass}}" aria-label="Breadcrumb" data-breadcrumbs="{{.ID}}">
-  <ol class="{{.Styles.List}}">
+{{$c := .}}
+<nav class="{{$c.Styles.Nav}} {{$c.SizeClass}}" aria-label="Breadcrumb" data-breadcrumbs="{{$c.ID}}">
+  <ol class="{{$c.Styles.List}}">
     {{/* Home icon */}}
     {{if .ShowHome}}
     <li class="{{.Styles.ListItem}}">
@@ -28,15 +29,15 @@
     {{if .IsCollapsed}}
     {{/* First item */}}
     {{with index .Items 0}}
-    <li class="{{$.Styles.ListItem}}">
+    <li class="{{$c.Styles.ListItem}}">
       {{if .IsClickable}}
       <a href="{{.Href}}" class="{{.LinkClass}}">
-        {{if .HasIcon}}<span class="{{$.Styles.ItemIcon}}">{{.Icon}}</span>{{end}}
+        {{if .HasIcon}}<span class="{{$c.Styles.ItemIcon}}">{{.Icon}}</span>{{end}}
         {{.Label}}
       </a>
       {{else}}
       <span class="{{.LinkClass}}" {{if .Current}}aria-current="page"{{end}}>
-        {{if .HasIcon}}<span class="{{$.Styles.ItemIcon}}">{{.Icon}}</span>{{end}}
+        {{if .HasIcon}}<span class="{{$c.Styles.ItemIcon}}">{{.Icon}}</span>{{end}}
         {{.Label}}
       </span>
       {{end}}
@@ -45,12 +46,12 @@
 
     {{/* Ellipsis */}}
     <li class="{{.Styles.ListItem}}">
-      {{if $.IsChevronSeparator}}
-      <svg class="{{$.Styles.SepIcon}}" fill="currentColor" viewBox="0 0 20 20">
+      {{if $c.IsChevronSeparator}}
+      <svg class="{{$c.Styles.SepIcon}}" fill="currentColor" viewBox="0 0 20 20">
         <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
       </svg>
       {{else}}
-      <span class="{{$.Styles.SepText}}">{{$.SeparatorSymbol}}</span>
+      <span class="{{$c.Styles.SepText}}">{{$c.SeparatorSymbol}}</span>
       {{end}}
     </li>
     <li class="{{.Styles.ListItem}}">
@@ -58,26 +59,26 @@
     </li>
 
     {{/* Remaining visible items */}}
-    {{$start := sub (len $.Items) (sub $.MaxVisible 1)}}
-    {{range $idx, $item := slice $.Items $start}}
-    <li class="{{$.Styles.ListItem}}">
-      {{if $.IsChevronSeparator}}
-      <svg class="{{$.Styles.SepIcon}}" fill="currentColor" viewBox="0 0 20 20">
+    {{$start := sub (len $c.Items) (sub $c.MaxVisible 1)}}
+    {{range $idx, $item := slice $c.Items $start}}
+    <li class="{{$c.Styles.ListItem}}">
+      {{if $c.IsChevronSeparator}}
+      <svg class="{{$c.Styles.SepIcon}}" fill="currentColor" viewBox="0 0 20 20">
         <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
       </svg>
       {{else}}
-      <span class="{{$.Styles.SepText}}">{{$.SeparatorSymbol}}</span>
+      <span class="{{$c.Styles.SepText}}">{{$c.SeparatorSymbol}}</span>
       {{end}}
     </li>
-    <li class="{{$.Styles.ListItem}}">
+    <li class="{{$c.Styles.ListItem}}">
       {{if $item.IsClickable}}
       <a href="{{$item.Href}}" class="{{$item.LinkClass}}">
-        {{if $item.HasIcon}}<span class="{{$.Styles.ItemIcon}}">{{$item.Icon}}</span>{{end}}
+        {{if $item.HasIcon}}<span class="{{$c.Styles.ItemIcon}}">{{$item.Icon}}</span>{{end}}
         {{$item.Label}}
       </a>
       {{else}}
       <span class="{{$item.LinkClass}}" {{if $item.Current}}aria-current="page"{{end}}>
-        {{if $item.HasIcon}}<span class="{{$.Styles.ItemIcon}}">{{$item.Icon}}</span>{{end}}
+        {{if $item.HasIcon}}<span class="{{$c.Styles.ItemIcon}}">{{$item.Icon}}</span>{{end}}
         {{$item.Label}}
       </span>
       {{end}}
@@ -87,25 +88,25 @@
     {{/* All items visible */}}
     {{range $idx, $item := .Items}}
     {{if gt $idx 0}}
-    <li class="{{$.Styles.ListItem}}">
-      {{if $.IsChevronSeparator}}
-      <svg class="{{$.Styles.SepIcon}}" fill="currentColor" viewBox="0 0 20 20">
+    <li class="{{$c.Styles.ListItem}}">
+      {{if $c.IsChevronSeparator}}
+      <svg class="{{$c.Styles.SepIcon}}" fill="currentColor" viewBox="0 0 20 20">
         <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
       </svg>
       {{else}}
-      <span class="{{$.Styles.SepText}}">{{$.SeparatorSymbol}}</span>
+      <span class="{{$c.Styles.SepText}}">{{$c.SeparatorSymbol}}</span>
       {{end}}
     </li>
     {{end}}
-    <li class="{{$.Styles.ListItem}}">
+    <li class="{{$c.Styles.ListItem}}">
       {{if $item.IsClickable}}
       <a href="{{$item.Href}}" class="{{$item.LinkClass}}">
-        {{if $item.HasIcon}}<span class="{{$.Styles.ItemIcon}}">{{$item.Icon}}</span>{{end}}
+        {{if $item.HasIcon}}<span class="{{$c.Styles.ItemIcon}}">{{$item.Icon}}</span>{{end}}
         {{$item.Label}}
       </a>
       {{else}}
       <span class="{{$item.LinkClass}}" {{if $item.Current}}aria-current="page"{{end}}>
-        {{if $item.HasIcon}}<span class="{{$.Styles.ItemIcon}}">{{$item.Icon}}</span>{{end}}
+        {{if $item.HasIcon}}<span class="{{$c.Styles.ItemIcon}}">{{$item.Icon}}</span>{{end}}
         {{$item.Label}}
       </span>
       {{end}}

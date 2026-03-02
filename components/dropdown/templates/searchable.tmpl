@@ -1,60 +1,61 @@
 {{define "lvt:dropdown:searchable:v1"}}
-<div class="{{.Styles.Root}}" data-dropdown="{{.ID}}">
+{{$c := .}}
+<div class="{{$c.Styles.Root}}" data-dropdown="{{$c.ID}}">
   <div class="relative">
     <input
       type="text"
-      class="{{.Styles.TriggerBtn}}"
-      placeholder="{{.Placeholder}}"
-      value="{{.Query}}"
-      lvt-input="search_{{.ID}}"
+      class="{{$c.Styles.TriggerBtn}}"
+      placeholder="{{$c.Placeholder}}"
+      value="{{$c.Query}}"
+      lvt-input="search_{{$c.ID}}"
       lvt-debounce="150"
-      lvt-focus="open_{{.ID}}"
-      {{if .Disabled}}disabled{{end}}
+      lvt-focus="open_{{$c.ID}}"
+      {{if $c.Disabled}}disabled{{end}}
       autocomplete="off"
       aria-haspopup="listbox"
-      aria-expanded="{{.Open}}"
-      {{if .Open}}lvt-autofocus{{end}}
+      aria-expanded="{{$c.Open}}"
+      {{if $c.Open}}lvt-autofocus{{end}}
     />
-    {{if .Query}}
+    {{if $c.Query}}
     <button
       type="button"
-      class="{{.Styles.TriggerIconWrap}}"
-      lvt-click="clear_search_{{.ID}}"
+      class="{{$c.Styles.TriggerIconWrap}}"
+      lvt-click="clear_search_{{$c.ID}}"
     >
-      <svg class="{{.Styles.TriggerIcon}}" viewBox="0 0 20 20" fill="currentColor">
+      <svg class="{{$c.Styles.TriggerIcon}}" viewBox="0 0 20 20" fill="currentColor">
         <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
       </svg>
     </button>
     {{end}}
-    <span class="{{.Styles.TriggerIconWrap}}">
-      <svg class="{{.Styles.TriggerIcon}}" viewBox="0 0 20 20" fill="currentColor">
+    <span class="{{$c.Styles.TriggerIconWrap}}">
+      <svg class="{{$c.Styles.TriggerIcon}}" viewBox="0 0 20 20" fill="currentColor">
         <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
       </svg>
     </span>
   </div>
 
-  {{if .Open}}
+  {{if $c.Open}}
   <div
-    class="{{.Styles.Dropdown}}"
-    lvt-click-away="close_{{.ID}}"
+    class="{{$c.Styles.Dropdown}}"
+    lvt-click-away="close_{{$c.ID}}"
     role="listbox"
   >
-    {{$visibleOptions := .VisibleOptions}}
+    {{$visibleOptions := $c.VisibleOptions}}
     {{if $visibleOptions}}
     {{range $visibleOptions}}
     <div
-      class="{{$.Styles.Option}} {{if .Disabled}}{{$.Styles.OptionDisabled}}{{end}} {{if and $.Selected (eq $.Selected.Value .Value)}}{{$.Styles.OptionSelected}}{{end}}"
-      lvt-click="select_{{$.ID}}"
+      class="{{$c.Styles.Option}} {{if .Disabled}}{{$c.Styles.OptionDisabled}}{{end}} {{if and $c.Selected (eq $c.Selected.Value .Value)}}{{$c.Styles.OptionSelected}}{{end}}"
+      lvt-click="select_{{$c.ID}}"
       lvt-data-value="{{.Value}}"
       role="option"
       {{if .Disabled}}aria-disabled="true"{{end}}
-      {{if and $.Selected (eq $.Selected.Value .Value)}}aria-selected="true"{{end}}
+      {{if and $c.Selected (eq $c.Selected.Value .Value)}}aria-selected="true"{{end}}
     >
       {{.Label}}
     </div>
     {{end}}
     {{else}}
-    <div class="{{$.Styles.Option}}">
+    <div class="{{$c.Styles.Option}}">
       No results found
     </div>
     {{end}}

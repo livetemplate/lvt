@@ -1,19 +1,20 @@
 {{define "lvt:tabs:pills:v1"}}
-<div class="{{.Styles.Root}}" data-tabs="{{.ID}}">
-  <nav class="{{.Styles.PillsNav}}" role="tablist">
-    {{range .Items}}
+{{$c := .}}
+<div class="{{$c.Styles.Root}}" data-tabs="{{$c.ID}}">
+  <nav class="{{$c.Styles.PillsNav}}" role="tablist">
+    {{range $c.Items}}
     <button
       type="button"
-      class="{{$.Styles.PillTab}} {{if eq $.ActiveID .ID}}{{$.Styles.PillActive}}{{else}}{{$.Styles.PillDefault}}{{end}} {{if .Disabled}}{{$.Styles.PillDisabled}}{{end}}"
-      lvt-click="select_tab_{{$.ID}}"
+      class="{{$c.Styles.PillTab}} {{if eq $c.ActiveID .ID}}{{$c.Styles.PillActive}}{{else}}{{$c.Styles.PillDefault}}{{end}} {{if .Disabled}}{{$c.Styles.PillDisabled}}{{end}}"
+      lvt-click="select_tab_{{$c.ID}}"
       lvt-data-tab="{{.ID}}"
       role="tab"
-      aria-selected="{{if eq $.ActiveID .ID}}true{{else}}false{{end}}"
+      aria-selected="{{if eq $c.ActiveID .ID}}true{{else}}false{{end}}"
       {{if .Disabled}}disabled aria-disabled="true"{{end}}
     >
-      {{if .Icon}}<span class="{{$.Styles.TabIcon}}">{{.Icon}}</span>{{end}}
+      {{if .Icon}}<span class="{{$c.Styles.TabIcon}}">{{.Icon}}</span>{{end}}
       {{.Label}}
-      {{if .Badge}}<span class="{{$.Styles.Badge}}">{{.Badge}}</span>{{end}}
+      {{if .Badge}}<span class="{{$c.Styles.Badge}}">{{.Badge}}</span>{{end}}
     </button>
     {{end}}
   </nav>
