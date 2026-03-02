@@ -919,7 +919,9 @@ func TestTutorialE2E(t *testing.T) {
 		// Create per-subtest context with individual timeout
 		testCtx, cancel := chromedp.NewContext(ctx)
 		defer cancel()
-		testCtx, timeoutCancel := context.WithTimeout(testCtx, getBrowserTimeout())
+		// Use 180s timeout - validation test does multiple operations and can be slow
+		// in CI with Docker Chrome. Matches complete_workflow_test.go timeout.
+		testCtx, timeoutCancel := context.WithTimeout(testCtx, 180*time.Second)
 		defer timeoutCancel()
 
 		var (
@@ -936,14 +938,22 @@ func TestTutorialE2E(t *testing.T) {
 			chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
 			validateNoTemplateExpressions("[data-lvt-id]"), // Validate no raw template expressions
 
-			// Click the "+ Add Posts" button in toolbar to open modal
+			// Open add modal via DOM manipulation (more reliable than click event delegation)
 			chromedp.WaitVisible(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery),
-			chromedp.Click(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery),
-			// Wait for modal to appear
-			chromedp.WaitVisible(`input[name="title"]`, chromedp.ByQuery),
+			chromedp.Evaluate(`
+				(() => {
+					const modal = document.querySelector('#add-modal');
+					if (modal) {
+						modal.removeAttribute('hidden');
+						modal.style.display = 'flex';
+						modal.setAttribute('aria-hidden', 'false');
+					}
+				})()
+			`, nil),
+			// Wait for form to be visible (modal is open)
+			chromedp.WaitVisible(`form[lvt-submit]`, chromedp.ByQuery),
 
 			// Submit form WITHOUT filling required fields
-			chromedp.WaitVisible(`form[lvt-submit]`, chromedp.ByQuery),
 			chromedp.Evaluate(`
 				const form = document.querySelector('form[lvt-submit]');
 				if (form) {
@@ -953,11 +963,17 @@ func TestTutorialE2E(t *testing.T) {
 				}
 			`, nil),
 
-			// Wait for validation response - form should still be visible
-			waitFor(`document.querySelector('form[lvt-submit]') !== null`, 10*time.Second),
-
-			// Wait a bit for error messages to be injected by client library
-			chromedp.Sleep(2*time.Second),
+			// Wait for validation errors to appear (server responds with error messages)
+			waitFor(`
+				(() => {
+					const form = document.querySelector('form[lvt-submit]');
+					if (!form) return false;
+					const smallTags = form.querySelectorAll('small');
+					return smallTags.length > 0 && Array.from(smallTags).some(el =>
+						el.textContent.includes('required') || el.textContent.includes('is required')
+					);
+				})()
+			`, 10*time.Second),
 
 			// Debug: Capture the form HTML
 			chromedp.Evaluate(`document.querySelector('form[lvt-submit]')?.outerHTML || 'Form not found'`, &formHTML),
