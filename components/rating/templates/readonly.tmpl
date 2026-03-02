@@ -1,47 +1,31 @@
 {{define "lvt:rating:readonly:v1"}}
-{{if .IsStyled}}
-{{/* Tailwind CSS styled version - Optimized read-only display */}}
-<div class="inline-flex items-center gap-2" data-rating="{{.ID}}" data-readonly="true">
-  {{if .Label}}
-  <span class="text-sm text-gray-600">{{.Label}}</span>
+{{$c := .}}
+<div class="{{$c.Styles.Root}}" data-rating="{{$c.ID}}" data-readonly="true">
+  {{if $c.Label}}
+  <span class="{{$c.Styles.Label}}">{{$c.Label}}</span>
   {{end}}
 
-  <div class="inline-flex {{.SizeClass}}">
-    {{range $star := .Stars}}
-    <span class="{{if $.IsStarFull $star}}{{$.ColorClass}}{{else if $.IsStarHalf $star}}{{$.ColorClass}}{{else}}{{$.EmptyColorClass}}{{end}}">
-      {{if $.IsStarHalf $star}}
-      <span class="relative inline-block">
-        <span class="absolute overflow-hidden" style="width: 50%">{{$.Character}}</span>
-        <span class="{{$.EmptyColorClass}}">{{$.Character}}</span>
+  <div class="{{$c.Styles.StarsWrapper}} {{$c.SizeClass}}">
+    {{range $star := $c.Stars}}
+    <span class="{{if $c.IsStarFull $star}}{{$c.ColorClass}}{{else if $c.IsStarHalf $star}}{{$c.ColorClass}}{{else}}{{$c.EmptyColorClass}}{{end}}">
+      {{if $c.IsStarHalf $star}}
+      <span class="{{$c.Styles.HalfStarOuter}}">
+        <span class="{{$c.Styles.HalfStarInner}}" style="width: 50%">{{$c.Character}}</span>
+        <span class="{{$c.EmptyColorClass}}">{{$c.Character}}</span>
       </span>
       {{else}}
-      {{$.Character}}
+      {{$c.Character}}
       {{end}}
     </span>
     {{end}}
   </div>
 
-  {{if .ShowValue}}
-  <span class="text-sm font-medium text-gray-700">{{.FormatValue}}</span>
+  {{if $c.ShowValue}}
+  <span class="{{$c.Styles.ValueText}}">{{$c.FormatValue}}</span>
   {{end}}
 
-  {{if and .ShowCount (gt .Count 0)}}
-  <span class="text-sm text-gray-500">({{.Count}} reviews)</span>
+  {{if and $c.ShowCount (gt $c.Count 0)}}
+  <span class="{{$c.Styles.CountText}}">({{$c.Count}} reviews)</span>
   {{end}}
 </div>
-{{else}}
-{{/* Unstyled semantic HTML version */}}
-<div data-rating="{{.ID}}" data-readonly="true">
-  {{if .Label}}<label>{{.Label}}</label>{{end}}
-
-  <span aria-label="Rating: {{.FormatValueWithMax}}">
-    {{range $star := .Stars}}
-    <span>{{if $.IsStarFull $star}}★{{else if $.IsStarHalf $star}}☆{{else}}☆{{end}}</span>
-    {{end}}
-  </span>
-
-  {{if .ShowValue}}<span>{{.FormatValue}}</span>{{end}}
-  {{if and .ShowCount (gt .Count 0)}}<span>({{.Count}} reviews)</span>{{end}}
-</div>
-{{end}}
 {{end}}

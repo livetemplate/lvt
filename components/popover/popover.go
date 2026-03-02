@@ -19,6 +19,7 @@ package popover
 
 import (
 	"github.com/livetemplate/lvt/components/base"
+	"github.com/livetemplate/lvt/components/styles"
 )
 
 // Position defines where the popover appears relative to trigger.
@@ -181,35 +182,50 @@ func (p *Popover) HasHeader() bool {
 	return p.HasTitle() || p.ShowClose
 }
 
+// Styles returns the resolved PopoverStyles for this component.
+func (p *Popover) Styles() styles.PopoverStyles {
+	if s, ok := p.StyleData().(styles.PopoverStyles); ok {
+		return s
+	}
+	adapter := styles.ForStyled(p.IsStyled())
+	if adapter == nil {
+		return styles.PopoverStyles{}
+	}
+	s := adapter.PopoverStyles()
+	p.SetStyleData(s)
+	return s
+}
+
 // PositionClasses returns CSS classes for position.
 func (p *Popover) PositionClasses() string {
+	s := p.Styles()
 	switch p.Position {
 	case PositionTop:
-		return "bottom-full left-1/2 -translate-x-1/2 mb-2"
+		return s.PosTop
 	case PositionTopStart:
-		return "bottom-full left-0 mb-2"
+		return s.PosTopStart
 	case PositionTopEnd:
-		return "bottom-full right-0 mb-2"
+		return s.PosTopEnd
 	case PositionBottom:
-		return "top-full left-1/2 -translate-x-1/2 mt-2"
+		return s.PosBottom
 	case PositionBottomStart:
-		return "top-full left-0 mt-2"
+		return s.PosBottomStart
 	case PositionBottomEnd:
-		return "top-full right-0 mt-2"
+		return s.PosBottomEnd
 	case PositionLeft:
-		return "right-full top-1/2 -translate-y-1/2 mr-2"
+		return s.PosLeft
 	case PositionLeftStart:
-		return "right-full top-0 mr-2"
+		return s.PosLeftStart
 	case PositionLeftEnd:
-		return "right-full bottom-0 mr-2"
+		return s.PosLeftEnd
 	case PositionRight:
-		return "left-full top-1/2 -translate-y-1/2 ml-2"
+		return s.PosRight
 	case PositionRightStart:
-		return "left-full top-0 ml-2"
+		return s.PosRightStart
 	case PositionRightEnd:
-		return "left-full bottom-0 ml-2"
+		return s.PosRightEnd
 	default:
-		return "top-full left-1/2 -translate-x-1/2 mt-2"
+		return s.PosBottom
 	}
 }
 
@@ -218,15 +234,16 @@ func (p *Popover) ArrowClasses() string {
 	if !p.Arrow {
 		return ""
 	}
+	s := p.Styles()
 	switch {
 	case p.IsTop():
-		return "absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-white"
+		return s.ArrowTop
 	case p.IsBottom():
-		return "absolute bottom-full left-1/2 -translate-x-1/2 border-8 border-transparent border-b-white"
+		return s.ArrowBottom
 	case p.IsLeft():
-		return "absolute left-full top-1/2 -translate-y-1/2 border-8 border-transparent border-l-white"
+		return s.ArrowLeft
 	case p.IsRight():
-		return "absolute right-full top-1/2 -translate-y-1/2 border-8 border-transparent border-r-white"
+		return s.ArrowRight
 	default:
 		return ""
 	}

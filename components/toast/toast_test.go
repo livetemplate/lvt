@@ -4,6 +4,9 @@ import (
 	"html/template"
 	"strings"
 	"testing"
+
+	_ "github.com/livetemplate/lvt/components/styles/tailwind"
+	_ "github.com/livetemplate/lvt/components/styles/unstyled"
 )
 
 func TestNew(t *testing.T) {
@@ -198,7 +201,7 @@ func TestContainer_GetPositionClasses(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		c := New("test", WithPosition(tc.pos))
+		c := New("test", WithPosition(tc.pos), WithStyled(true))
 		if c.GetPositionClasses() != tc.expected {
 			t.Errorf("Position %s: expected '%s', got '%s'", tc.pos, tc.expected, c.GetPositionClasses())
 		}
@@ -216,8 +219,9 @@ func TestGetTypeClasses(t *testing.T) {
 		{Error, "red"},
 	}
 
+	c := New("test", WithStyled(true))
 	for _, tc := range tests {
-		classes := GetTypeClasses(tc.typ)
+		classes := c.GetTypeClasses(tc.typ)
 		if !strings.Contains(classes, tc.contains) {
 			t.Errorf("Type %s: expected classes to contain '%s', got '%s'", tc.typ, tc.contains, classes)
 		}
@@ -337,9 +341,13 @@ func TestUnstyledTemplateRendering(t *testing.T) {
 	}
 
 	html := buf.String()
-	// Unstyled version should not have Tailwind classes
+	// Unstyled version should use BEM-style class names, not Tailwind
 	if strings.Contains(html, "fixed z-50") {
 		t.Error("unstyled template should not have Tailwind classes")
+	}
+	// Should have unstyled BEM classes
+	if !strings.Contains(html, "lvt-toast") {
+		t.Error("unstyled template should have BEM-style classes")
 	}
 	// But should still have functional attributes
 	if !strings.Contains(html, `role="alert"`) {

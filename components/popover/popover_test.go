@@ -2,6 +2,8 @@ package popover
 
 import (
 	"testing"
+
+	_ "github.com/livetemplate/lvt/components/styles/tailwind"
 )
 
 // =============================================================================

@@ -614,6 +614,7 @@ func TestLoadProjectConfig_WithFile(t *testing.T) {
 	// Create .lvtrc file with correct key names
 	content := `# Project configuration
 kit=simple
+styles=unstyled
 dev_mode=true
 `
 	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
@@ -630,6 +631,10 @@ dev_mode=true
 		t.Errorf("Expected kit 'simple', got '%s'", cfg.Kit)
 	}
 
+	if cfg.Styles != "unstyled" {
+		t.Errorf("Expected styles 'unstyled', got '%s'", cfg.Styles)
+	}
+
 	if !cfg.DevMode {
 		t.Error("Expected DevMode true")
 	}
@@ -640,6 +645,7 @@ func TestSaveProjectConfig(t *testing.T) {
 
 	cfg := &ProjectConfig{
 		Kit:     "multi",
+		Styles:  "tailwind",
 		DevMode: true,
 	}
 
@@ -662,6 +668,10 @@ func TestSaveProjectConfig(t *testing.T) {
 
 	if loadedCfg.Kit != cfg.Kit {
 		t.Errorf("Kit mismatch: expected %s, got %s", cfg.Kit, loadedCfg.Kit)
+	}
+
+	if loadedCfg.Styles != cfg.Styles {
+		t.Errorf("Styles mismatch: expected %s, got %s", cfg.Styles, loadedCfg.Styles)
 	}
 
 	if loadedCfg.DevMode != cfg.DevMode {

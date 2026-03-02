@@ -4,6 +4,9 @@ import (
 	"html/template"
 	"strings"
 	"testing"
+
+	_ "github.com/livetemplate/lvt/components/styles/tailwind"
+	_ "github.com/livetemplate/lvt/components/styles/unstyled"
 )
 
 func TestNew(t *testing.T) {

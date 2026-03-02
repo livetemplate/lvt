@@ -29,9 +29,10 @@ func New(args []string) error {
 	if err := ValidatePositionalArg(appName, "app name"); err != nil {
 		return err
 	}
-	moduleName := appName // Default to app name
-	devMode := false      // Default to production (use CDN)
-	kit := "multi"        // Default kit
+	moduleName := appName       // Default to app name
+	devMode := false            // Default to production (use CDN)
+	kit := "multi"              // Default kit
+	stylesAdapter := "tailwind" // Default style adapter
 
 	// Check for flags
 	for i := 1; i < len(args); i++ {
@@ -43,7 +44,16 @@ func New(args []string) error {
 		} else if args[i] == "--kit" && i+1 < len(args) {
 			kit = args[i+1]
 			i++ // Skip next arg
+		} else if args[i] == "--styles" && i+1 < len(args) {
+			stylesAdapter = args[i+1]
+			i++ // Skip next arg
 		}
+	}
+
+	// Validate styles adapter
+	validStyles := map[string]bool{"tailwind": true, "unstyled": true}
+	if !validStyles[stylesAdapter] {
+		return fmt.Errorf("invalid styles adapter: %s (valid: tailwind, unstyled)", stylesAdapter)
 	}
 
 	// Validate kit
@@ -54,6 +64,7 @@ func New(args []string) error {
 
 	fmt.Printf("Creating new LiveTemplate app: %s\n", appName)
 	fmt.Printf("Kit: %s\n", kit)
+	fmt.Printf("Styles: %s\n", stylesAdapter)
 	if devMode {
 		fmt.Println("Mode: Development (using local client library)")
 	}
@@ -64,7 +75,7 @@ func New(args []string) error {
 		isNested = true
 	}
 
-	if err := generator.GenerateApp(appName, moduleName, kit, devMode); err != nil {
+	if err := generator.GenerateApp(appName, moduleName, kit, stylesAdapter, devMode); err != nil {
 		return err
 	}
 

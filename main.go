@@ -62,6 +62,8 @@ func main() {
 		err = commands.InstallAgent(args)
 	case "mcp-server", "mcp":
 		err = commands.MCPServer(args)
+	case "styles":
+		err = commands.Styles(args)
 	case "component", "comp":
 		err = commands.Component(args)
 	case "auth":
@@ -159,6 +161,7 @@ func printUsage() {
 	fmt.Println("  lvt env <command>                             Manage environment variables")
 	fmt.Println("  lvt install-agent [--llm <type>]              Install AI agent for your LLM")
 	fmt.Println("  lvt mcp-server [--help|--setup|--list-tools]  Start MCP server or show setup guide")
+	fmt.Println("  lvt styles <command>                          Manage component style adapters")
 	fmt.Println("  lvt component <command>                       Manage UI components (list, eject)")
 	fmt.Println("  lvt auth <command>                            Manage auth users (confirm, list)")
 	fmt.Println("  lvt evolution|evo <command>                    Evolution system (status, patterns, propose)")
@@ -250,6 +253,11 @@ func printUsage() {
 	fmt.Println("  lvt mcp-server --setup                    Interactive setup wizard")
 	fmt.Println("  lvt mcp-server --list-tools               List all 16 available tools")
 	fmt.Println("  lvt mcp-server --version                  Show MCP protocol version")
+	fmt.Println()
+	fmt.Println("Styles Commands:")
+	fmt.Println("  lvt styles list                           List registered style adapters")
+	fmt.Println("  lvt styles info <name>                    Show adapter details")
+	fmt.Println("  lvt styles scaffold [--output file]       Generate CSS scaffold (unstyled)")
 	fmt.Println()
 	fmt.Println("Component Commands:")
 	fmt.Println("  lvt component list                        List available UI components")

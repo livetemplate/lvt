@@ -33,6 +33,10 @@ type Base struct {
 
 	// Styled indicates whether to use Tailwind CSS classes (true) or semantic HTML only (false).
 	Styled bool `json:"styled"`
+
+	// styleData caches the resolved style struct for this component.
+	// Not serialized — re-resolved from the style adapter after deserialization.
+	styleData any
 }
 
 // NewBase creates a new Base with the given ID and namespace.
@@ -73,11 +77,23 @@ func (b *Base) ActionName(action string) string {
 }
 
 // SetStyled sets whether to use Tailwind CSS classes.
+// Clears cached style data so the component re-resolves from the adapter.
 func (b *Base) SetStyled(styled bool) {
 	b.Styled = styled
+	b.styleData = nil
 }
 
 // IsStyled returns true if the component should use Tailwind CSS classes.
 func (b *Base) IsStyled() bool {
 	return b.Styled
+}
+
+// StyleData returns the cached style struct, or nil if not yet resolved.
+func (b *Base) StyleData() any {
+	return b.styleData
+}
+
+// SetStyleData caches a resolved style struct on this component.
+func (b *Base) SetStyleData(data any) {
+	b.styleData = data
 }

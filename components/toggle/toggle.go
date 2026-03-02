@@ -20,6 +20,7 @@ package toggle
 
 import (
 	"github.com/livetemplate/lvt/components/base"
+	"github.com/livetemplate/lvt/components/styles"
 )
 
 // Size defines the toggle size.
@@ -145,57 +146,75 @@ func (t *Toggle) IsLabelRight() bool {
 	return t.LabelPosition == "right"
 }
 
+// Styles returns the resolved ToggleStyles for this component.
+func (t *Toggle) Styles() styles.ToggleStyles {
+	if s, ok := t.StyleData().(styles.ToggleStyles); ok {
+		return s
+	}
+	adapter := styles.ForStyled(t.IsStyled())
+	if adapter == nil {
+		return styles.ToggleStyles{}
+	}
+	s := adapter.ToggleStyles()
+	t.SetStyleData(s)
+	return s
+}
+
 // SizeClasses returns CSS classes for the toggle track.
 func (t *Toggle) SizeClasses() string {
+	s := t.Styles()
 	switch t.Size {
 	case SizeSm:
-		return "w-8 h-4"
+		return s.TrackSm
 	case SizeLg:
-		return "w-14 h-8"
-	default: // md
-		return "w-11 h-6"
+		return s.TrackLg
+	default:
+		return s.TrackMd
 	}
 }
 
 // KnobSizeClasses returns CSS classes for the toggle knob.
 func (t *Toggle) KnobSizeClasses() string {
+	s := t.Styles()
 	switch t.Size {
 	case SizeSm:
-		return "w-3 h-3"
+		return s.KnobSm
 	case SizeLg:
-		return "w-6 h-6"
-	default: // md
-		return "w-5 h-5"
+		return s.KnobLg
+	default:
+		return s.KnobMd
 	}
 }
 
 // KnobTranslateClass returns CSS class for knob position.
 func (t *Toggle) KnobTranslateClass() string {
+	s := t.Styles()
 	if !t.Checked {
-		return "translate-x-0.5"
+		return s.KnobUnchecked
 	}
 	switch t.Size {
 	case SizeSm:
-		return "translate-x-4"
+		return s.KnobSmChecked
 	case SizeLg:
-		return "translate-x-7"
-	default: // md
-		return "translate-x-5"
+		return s.KnobLgChecked
+	default:
+		return s.KnobMdChecked
 	}
 }
 
 // TrackColorClass returns CSS class for track color.
 func (t *Toggle) TrackColorClass() string {
+	s := t.Styles()
 	if t.Disabled {
 		if t.Checked {
-			return "bg-blue-300"
+			return s.TrackCheckedDisabled
 		}
-		return "bg-gray-200"
+		return s.TrackUncheckedDisabled
 	}
 	if t.Checked {
-		return "bg-blue-600"
+		return s.TrackChecked
 	}
-	return "bg-gray-200"
+	return s.TrackUnchecked
 }
 
 // Checkbox is a styled checkbox component.
@@ -290,16 +309,31 @@ func (c *Checkbox) HasDescription() bool {
 	return c.Description != ""
 }
 
+// Styles returns the resolved CheckboxStyles for this component.
+func (c *Checkbox) Styles() styles.CheckboxStyles {
+	if s, ok := c.StyleData().(styles.CheckboxStyles); ok {
+		return s
+	}
+	adapter := styles.ForStyled(c.IsStyled())
+	if adapter == nil {
+		return styles.CheckboxStyles{}
+	}
+	s := adapter.CheckboxStyles()
+	c.SetStyleData(s)
+	return s
+}
+
 // CheckboxStateClass returns CSS class for checkbox state.
 func (c *Checkbox) CheckboxStateClass() string {
+	s := c.Styles()
 	if c.Disabled {
 		if c.Checked {
-			return "bg-blue-300 border-blue-300"
+			return s.StateCheckedDisabled
 		}
-		return "bg-gray-100 border-gray-200"
+		return s.StateUncheckedDisabled
 	}
 	if c.Checked {
-		return "bg-blue-600 border-blue-600"
+		return s.StateChecked
 	}
-	return "bg-white border-gray-300"
+	return s.StateUnchecked
 }
