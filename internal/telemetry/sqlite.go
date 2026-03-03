@@ -84,6 +84,8 @@ func (s *SQLiteStore) Save(ctx context.Context, event *GenerationEvent) error {
 	if err != nil {
 		return fmt.Errorf("marshal files: %w", err)
 	}
+	// json.Marshal(nil) produces "null" stored as TEXT, not SQL NULL.
+	// Direct DB queries should use: WHERE col IS NULL OR col = 'null'
 	componentsJSON, err := json.Marshal(event.ComponentsUsed)
 	if err != nil {
 		return fmt.Errorf("marshal components_used: %w", err)
