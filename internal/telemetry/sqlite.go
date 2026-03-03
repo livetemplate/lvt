@@ -45,8 +45,9 @@ func (s *SQLiteStore) ensureSchema() error {
 // to existing databases created before these columns were added to schema.sql.
 // Safe to call repeatedly — checks column existence first.
 func (s *SQLiteStore) migrateComponentColumns() error {
-	// Allowed column names — validated to prevent DDL injection since SQLite
-	// doesn't support parameterized ALTER TABLE.
+	// Allowed column names — guards against future additions to the loop
+	// without a corresponding allowlist entry. ALTER TABLE cannot use
+	// parameterized column names, so we validate against this set.
 	allowed := map[string]bool{"components_used": true, "component_errors": true}
 
 	for _, col := range []string{"components_used", "component_errors"} {
