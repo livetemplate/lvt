@@ -141,6 +141,23 @@ func (cap *Capture) RecordFileGenerated(path string) {
 	cap.event.FilesGenerated = append(cap.event.FilesGenerated, path)
 }
 
+// RecordComponentsUsed sets the components involved in this generation.
+func (cap *Capture) RecordComponentsUsed(components []string) {
+	if cap.noop {
+		return
+	}
+	cap.event.ComponentsUsed = components
+}
+
+// AttributeComponentErrors runs attribution logic on accumulated errors.
+// Call this before Complete() to populate ComponentErrors.
+func (cap *Capture) AttributeComponentErrors() {
+	if cap.noop {
+		return
+	}
+	cap.event.ComponentErrors = AttributeErrors(cap.event.Errors, cap.event.ComponentsUsed)
+}
+
 // Complete finalises the capture, computes duration, and stores the event.
 // It is always safe to call (noop if disabled).
 func (cap *Capture) Complete(success bool, validationJSON string) {

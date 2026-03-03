@@ -224,9 +224,86 @@ func TestNoopCapture(t *testing.T) {
 	cap.SetKit("multi")
 	cap.RecordError(GenerationError{Phase: "test", Message: "test"})
 	cap.RecordFileGenerated("file.go")
+	cap.RecordComponentsUsed([]string{"modal"})
+	cap.AttributeComponentErrors()
 	cap.Complete(true, "")
 
 	if cap.Event() != nil {
 		t.Error("expected nil event for NoopCapture")
+	}
+}
+
+func TestCollector_ComponentDataRoundTrip(t *testing.T) {
+	store := openTestStore(t)
+	c := NewCollectorWithStore(store)
+	defer c.Close()
+
+	cap := c.StartCapture("gen resource", map[string]any{
+		"resource_name": "orders",
+	})
+	cap.SetKit("multi")
+	cap.RecordComponentsUsed([]string{"modal", "toast", "dropdown"})
+	cap.RecordError(GenerationError{
+		Phase:   "generation",
+		File:    "components/modal/modal.go",
+		Message: "modal.New: invalid size",
+	})
+	cap.RecordError(GenerationError{
+		Phase:   "generation",
+		File:    "app/orders/handler.go",
+		Message: "unrelated error",
+	})
+	cap.AttributeComponentErrors()
+	cap.Complete(false, "")
+
+	// Retrieve and verify round-trip
+	ctx := context.Background()
+	event, err := store.Get(ctx, cap.Event().ID)
+	if err != nil {
+		t.Fatalf("get event: %v", err)
+	}
+
+	// Verify components_used round-trip
+	if len(event.ComponentsUsed) != 3 {
+		t.Fatalf("expected 3 components_used, got %d: %v", len(event.ComponentsUsed), event.ComponentsUsed)
+	}
+	expected := []string{"modal", "toast", "dropdown"}
+	for i, exp := range expected {
+		if event.ComponentsUsed[i] != exp {
+			t.Errorf("components_used[%d]: expected %q, got %q", i, exp, event.ComponentsUsed[i])
+		}
+	}
+
+	// Verify component_errors round-trip (should have 1 — the modal error)
+	if len(event.ComponentErrors) != 1 {
+		t.Fatalf("expected 1 component_error, got %d: %v", len(event.ComponentErrors), event.ComponentErrors)
+	}
+	if event.ComponentErrors[0].Component != "modal" {
+		t.Errorf("expected component 'modal', got %q", event.ComponentErrors[0].Component)
+	}
+	if event.ComponentErrors[0].Phase != "generation" {
+		t.Errorf("expected phase 'generation', got %q", event.ComponentErrors[0].Phase)
+	}
+}
+
+func TestCollector_BackwardCompat_NoComponentColumns(t *testing.T) {
+	// Events without component data should still work
+	store := openTestStore(t)
+	c := NewCollectorWithStore(store)
+	defer c.Close()
+
+	cap := c.StartCapture("gen view", nil)
+	cap.Complete(true, "")
+
+	ctx := context.Background()
+	event, err := store.Get(ctx, cap.Event().ID)
+	if err != nil {
+		t.Fatalf("get event: %v", err)
+	}
+	if event.ComponentsUsed != nil {
+		t.Errorf("expected nil ComponentsUsed for event without component data, got %v", event.ComponentsUsed)
+	}
+	if event.ComponentErrors != nil {
+		t.Errorf("expected nil ComponentErrors for event without component data, got %v", event.ComponentErrors)
 	}
 }
