@@ -410,12 +410,12 @@ func evolutionComponents(args []string) error {
 
 	for _, name := range names {
 		s := byComponent[name]
-		rate := float64(0)
-		if s.usage > 0 {
-			rate = float64(s.success) / float64(s.usage) * 100
+		if s.usage == 0 {
+			continue // skip components with only error data and no usage records
 		}
+		rate := float64(s.success) / float64(s.usage) * 100
 		status := "OK"
-		if rate < warnThresholdPct && s.usage > 0 {
+		if rate < warnThresholdPct {
 			status = "WARN"
 		}
 		fmt.Printf("%-20s %8d %8d %9.1f%% %s\n", truncate(name, 20), s.usage, s.success, rate, status)

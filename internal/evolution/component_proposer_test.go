@@ -75,11 +75,20 @@ func TestClassifyError_KitWithComponentsSubdir(t *testing.T) {
 }
 
 func TestClassifyError_Generated(t *testing.T) {
-	loc := ClassifyError(telemetry.GenerationError{
-		File: "app/posts/handler.go",
-	})
-	if loc.Type != "generated" {
-		t.Errorf("expected type 'generated', got %q", loc.Type)
+	tests := []struct {
+		name string
+		file string
+	}{
+		{name: "app prefix", file: "app/posts/handler.go"},
+		{name: "app in middle of path", file: "cmd/server/app/handler.go"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			loc := ClassifyError(telemetry.GenerationError{File: tt.file})
+			if loc.Type != "generated" {
+				t.Errorf("expected type 'generated' for %q, got %q", tt.file, loc.Type)
+			}
+		})
 	}
 }
 
