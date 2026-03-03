@@ -42,9 +42,17 @@ func (s *SQLiteStore) ensureSchema() error {
 }
 
 // migrateComponentColumns adds components_used and component_errors columns
-// to existing databases. Safe to call repeatedly — checks column existence first.
+// to existing databases created before these columns were added to schema.sql.
+// Safe to call repeatedly — checks column existence first.
 func (s *SQLiteStore) migrateComponentColumns() error {
+	// Allowed column names — validated to prevent DDL injection since SQLite
+	// doesn't support parameterized ALTER TABLE.
+	allowed := map[string]bool{"components_used": true, "component_errors": true}
+
 	for _, col := range []string{"components_used", "component_errors"} {
+		if !allowed[col] {
+			return fmt.Errorf("unexpected column name %q", col)
+		}
 		var count int
 		err := s.db.QueryRow(
 			`SELECT COUNT(*) FROM pragma_table_info('generation_events') WHERE name = ?`, col,

@@ -286,8 +286,8 @@ func TestCollector_ComponentDataRoundTrip(t *testing.T) {
 	}
 }
 
-func TestCollector_BackwardCompat_NoComponentColumns(t *testing.T) {
-	// Events without component data should still work
+func TestCollector_EventWithoutComponentData(t *testing.T) {
+	// Events saved without component data should round-trip with nil fields
 	store := openTestStore(t)
 	c := NewCollectorWithStore(store)
 	defer c.Close()
