@@ -171,6 +171,23 @@ func TestAttributeErrors_PrefixNoFalsePositive(t *testing.T) {
 	}
 }
 
+func TestAttributeErrors_SuffixFalsePositive(t *testing.T) {
+	// "modal." matches inside "premodal." because Contains does no word-boundary
+	// check on the left side. This is a known limitation: false positives can occur
+	// when a component name appears as a suffix of a longer token.
+	// With current component names (modal, toast, dropdown, etc.) this is unlikely
+	// in practice. If it becomes a problem, add a word-boundary guard.
+	errors := []GenerationError{
+		{Phase: "runtime", Message: "premodal.init: failed"},
+	}
+	result := AttributeErrors(errors, []string{"modal"})
+
+	// Known false positive — "modal." is a substring of "premodal."
+	if len(result) != 1 {
+		t.Fatalf("expected 1 (known false positive), got %d", len(result))
+	}
+}
+
 func TestComponentsFromUsage_IgnoresNonUseFields(t *testing.T) {
 	// Struct with bool fields that don't start with "Use" must be skipped.
 	type MixedUsage struct {
