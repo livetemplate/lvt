@@ -9,7 +9,7 @@ import (
 // ErrorLocation classifies where an error originated.
 type ErrorLocation struct {
 	Type      string // "component", "kit", "generated", "unknown"
-	Component string // e.g. "modal" (only when Type == "component")
+	Component string // normalized to lowercase; e.g. "modal" (only when Type == "component")
 	Path      string // original path as provided
 }
 

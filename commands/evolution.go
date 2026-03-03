@@ -411,10 +411,12 @@ func evolutionComponents(args []string) error {
 	}
 	sort.Strings(names)
 
+	hidden := 0
 	for _, name := range names {
 		s := byComponent[name]
 		if s.usage == 0 {
-			continue // skip components with only error data and no usage records
+			hidden++ // components with only error data and no usage records
+			continue
 		}
 		rate := float64(s.success) / float64(s.usage) * 100
 		status := "OK"
@@ -422,6 +424,9 @@ func evolutionComponents(args []string) error {
 			status = "WARN"
 		}
 		fmt.Printf("%-20s %8d %8d %9.1f%% %s\n", truncate(name, 20), s.usage, s.success, rate, status)
+	}
+	if hidden > 0 {
+		fmt.Printf("\n  (%d component(s) had errors recorded but no usage attributed)\n", hidden)
 	}
 
 	// Print top errors per component (skip components with no usage records)
