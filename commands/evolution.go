@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"fmt"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -336,6 +337,8 @@ func evolutionComponents(args []string) error {
 		if args[i] == "--days" && i+1 < len(args) {
 			if n, err := strconv.Atoi(args[i+1]); err == nil && n > 0 {
 				days = n
+			} else {
+				fmt.Fprintf(os.Stderr, "warning: invalid --days value %q, using default %d\n", args[i+1], defaultLookbackDays)
 			}
 			i++
 		}
@@ -421,11 +424,11 @@ func evolutionComponents(args []string) error {
 		fmt.Printf("%-20s %8d %8d %9.1f%% %s\n", truncate(name, 20), s.usage, s.success, rate, status)
 	}
 
-	// Print top errors per component
+	// Print top errors per component (skip components with no usage records)
 	hasErrors := false
 	for _, name := range names {
 		s := byComponent[name]
-		if len(s.errors) == 0 {
+		if len(s.errors) == 0 || s.usage == 0 {
 			continue
 		}
 		if !hasErrors {
@@ -449,11 +452,7 @@ func evolutionComponents(args []string) error {
 			return errs[i].count > errs[j].count
 		})
 
-		limit := 3
-		if len(errs) < limit {
-			limit = len(errs)
-		}
-		for _, e := range errs[:limit] {
+		for _, e := range errs[:min(3, len(errs))] {
 			fmt.Printf("    [%dx] %s\n", e.count, e.msg)
 		}
 	}
