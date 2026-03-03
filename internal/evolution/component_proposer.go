@@ -10,7 +10,7 @@ import (
 type ErrorLocation struct {
 	Type      string // "component", "kit", "generated", "unknown"
 	Component string // e.g. "modal" (only when Type == "component")
-	Path      string // normalized path
+	Path      string // original path as provided
 }
 
 // ClassifyError determines if an error is in components/, internal/kits/,
@@ -28,7 +28,15 @@ func classifyPath(path string) ErrorLocation {
 	loc := ErrorLocation{Path: path}
 	lower := strings.ToLower(path)
 
-	// Check for component paths: components/<name>/
+	// Check kit paths first — kits may contain a components/ subdirectory
+	// (e.g. internal/kits/system/multi/components/form.tmpl) which would
+	// otherwise be misclassified as a top-level component.
+	if strings.Contains(lower, "internal/kits/") {
+		loc.Type = "kit"
+		return loc
+	}
+
+	// Check for top-level component paths: components/<name>/
 	if idx := strings.Index(lower, "components/"); idx != -1 {
 		rest := lower[idx+len("components/"):]
 		if slashIdx := strings.Index(rest, "/"); slashIdx > 0 {
@@ -46,14 +54,9 @@ func classifyPath(path string) ErrorLocation {
 		}
 	}
 
-	// Check for kit paths: internal/kits/
-	if strings.Contains(lower, "internal/kits/") {
-		loc.Type = "kit"
-		return loc
-	}
-
-	// Check for generated app code: app/
-	if strings.Contains(lower, "app/") {
+	// Check for generated app code: must be at path start or after a separator
+	// to avoid false positives from "webapp/", "myapp/", etc.
+	if strings.HasPrefix(lower, "app/") || strings.Contains(lower, "/app/") {
 		loc.Type = "generated"
 		return loc
 	}

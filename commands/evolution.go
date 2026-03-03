@@ -58,7 +58,7 @@ func printEvolutionHelp() {
 	fmt.Println("  metrics                         Show per-command metrics")
 	fmt.Println("  failures [--last N]             List recent failed events")
 	fmt.Println("  patterns                        List all known patterns from knowledge base")
-	fmt.Println("  components [--days N]            Show per-component health dashboard")
+	fmt.Println("  components [--days N]           Show per-component health dashboard")
 	fmt.Println("  propose <event-id>              Propose fixes for a specific event")
 	fmt.Println("  apply <fix-id> [--dry-run]      Apply a proposed fix [coming soon]")
 	fmt.Println("  upstream-status                 Show upstream pattern status")
@@ -355,7 +355,10 @@ func evolutionComponents(args []string) error {
 		return fmt.Errorf("list events: %w", err)
 	}
 
-	// Aggregate by component
+	// Aggregate by component.
+	// Note: success is tracked at event level, so a component's success rate
+	// reflects all events it was involved in — even if the failure was unrelated.
+	// This is a reasonable first approximation that may overcount failures.
 	type compStats struct {
 		usage   int
 		success int
