@@ -1,5 +1,7 @@
 # LiveTemplate Components Library
 
+![Components Independence](https://github.com/livetemplate/lvt/actions/workflows/components-independence.yml/badge.svg)
+
 A comprehensive collection of reusable UI components for the [LiveTemplate](https://github.com/livetemplate/livetemplate) framework.
 
 ## Features
@@ -250,6 +252,29 @@ func New(id string, opts ...Option) *Rating {
 {{end}}
 {{end}}
 ```
+
+## Independence Guarantee
+
+The components module is fully independent from the parent `lvt` CLI tool.
+This means external projects can import and use components without pulling
+in the entire `lvt` dependency tree.
+
+**What CI checks:**
+- No imports of `github.com/livetemplate/lvt` (parent module)
+- No imports of `github.com/livetemplate/lvt/internal` or `lvt/commands`
+- `components/go.mod` does not require the parent module
+- `go build ./...` and `go test ./...` pass with `GOWORK=off`
+- An external test module can import and build against components
+
+**Using components in your project:**
+
+```go
+import "github.com/livetemplate/lvt/components/modal"
+
+m := modal.New("my-modal", modal.WithTitle("Confirm"))
+```
+
+No `lvt` CLI installation required — components are a standalone Go library.
 
 ## Contributing
 
