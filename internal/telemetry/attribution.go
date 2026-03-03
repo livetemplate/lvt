@@ -5,14 +5,6 @@ import (
 	"strings"
 )
 
-// KnownComponents is the canonical list of component package names.
-var KnownComponents = []string{
-	"accordion", "autocomplete", "breadcrumbs", "datatable", "datepicker",
-	"drawer", "dropdown", "menu", "modal", "popover", "progress", "rating",
-	"skeleton", "tabs", "tagsinput", "timeline", "timepicker", "toast",
-	"toggle", "tooltip",
-}
-
 // ComponentError links an error to a specific component.
 type ComponentError struct {
 	Component string `json:"component"`
@@ -103,11 +95,13 @@ func ComponentsFromUsage(usage any) []string {
 		if !v.Field(i).Bool() {
 			continue
 		}
-		// Convert "UseModal" → "modal", "UseToast" → "toast"
+		// Convert "UseModal" → "modal", "UseToast" → "toast".
+		// Only process fields with "Use" prefix — other bool fields are ignored.
 		name := field.Name
-		if strings.HasPrefix(name, "Use") {
-			name = name[3:]
+		if !strings.HasPrefix(name, "Use") {
+			continue
 		}
+		name = name[3:]
 		components = append(components, strings.ToLower(name))
 	}
 	return components

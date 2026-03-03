@@ -227,7 +227,7 @@ func GenResource(args []string) error {
 
 	if err := generator.GenerateResource(basePath, moduleName, resourceName, fields, kit, cssFramework, paginationMode, pageSize, editMode); err != nil {
 		capture.RecordError(telemetry.GenerationError{Phase: "generation", Message: err.Error()})
-		capture.AttributeComponentErrors()
+		capture.AttributeComponentErrors() // attribute errors on failure path
 		capture.Complete(false, "")
 		return err
 	}
@@ -244,7 +244,7 @@ func GenResource(args []string) error {
 			Message: validationErr.Error(),
 		})
 	}
-	capture.AttributeComponentErrors()
+	capture.AttributeComponentErrors() // attribute errors on success/validation path
 	capture.Complete(validationErr == nil, marshalValidationResult(validationResult))
 
 	resourceNameLower := strings.ToLower(resourceName)
@@ -682,6 +682,8 @@ func marshalValidationResult(result *validator.ValidationResult) string {
 }
 
 // toFieldData converts parser.Fields to generator.FieldData for component detection.
+// Only fields needed by DetectUsedComponents are mapped (currently IsSelect for
+// dropdown detection). Other FieldData fields are intentionally omitted.
 func toFieldData(fields []parser.Field) []generator.FieldData {
 	fd := make([]generator.FieldData, len(fields))
 	for i, f := range fields {

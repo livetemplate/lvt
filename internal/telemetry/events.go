@@ -13,10 +13,10 @@ type GenerationEvent struct {
 	Success        bool              `json:"success"`                   // whether generation succeeded
 	ValidationJSON string            `json:"validation,omitempty"`      // JSON of validator.ValidationResult
 	Errors         []GenerationError `json:"errors,omitempty"`          // errors captured during generation
-	DurationMs      int64             `json:"duration_ms"`                // wall-clock duration
-	FilesGenerated  []string          `json:"files_generated,omitempty"`  // paths of generated files
-	ComponentsUsed  []string          `json:"components_used,omitempty"`  // component packages involved
-	ComponentErrors []ComponentError  `json:"component_errors,omitempty"` // errors attributed to components
+	DurationMs      int64            `json:"duration_ms"`                // wall-clock duration
+	FilesGenerated  []string         `json:"files_generated,omitempty"`  // paths of generated files
+	ComponentsUsed  []string         `json:"components_used,omitempty"`  // component packages involved
+	ComponentErrors []ComponentError `json:"component_errors,omitempty"` // errors attributed to components
 }
 
 // GenerationError records a single error captured during generation.
