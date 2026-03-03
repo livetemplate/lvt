@@ -2,9 +2,12 @@ package telemetry
 
 import (
 	"context"
+	"database/sql"
 	"path/filepath"
 	"testing"
 	"time"
+
+	_ "modernc.org/sqlite"
 )
 
 func openTestStore(t *testing.T) *SQLiteStore {
@@ -283,6 +286,103 @@ func TestCollector_ComponentDataRoundTrip(t *testing.T) {
 	}
 	if event.ComponentErrors[0].Phase != "generation" {
 		t.Errorf("expected phase 'generation', got %q", event.ComponentErrors[0].Phase)
+	}
+}
+
+func TestSQLiteStore_MigrationUpgrade(t *testing.T) {
+	// Simulate an old database without component columns.
+	// Create a DB with the pre-migration schema, insert a row,
+	// then open it with OpenSQLite which runs migrateComponentColumns.
+	dbPath := filepath.Join(t.TempDir(), "upgrade-test.db")
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Fatalf("open raw db: %v", err)
+	}
+
+	// Old schema — missing components_used and component_errors columns
+	oldSchema := `CREATE TABLE IF NOT EXISTS generation_events (
+		id TEXT PRIMARY KEY,
+		timestamp DATETIME NOT NULL,
+		command TEXT NOT NULL,
+		inputs TEXT NOT NULL,
+		kit TEXT,
+		lvt_version TEXT,
+		success BOOLEAN NOT NULL,
+		validation TEXT,
+		errors TEXT,
+		duration_ms INTEGER,
+		files_generated TEXT
+	);`
+	if _, err := db.Exec(oldSchema); err != nil {
+		t.Fatalf("create old schema: %v", err)
+	}
+
+	// Insert a row in the old format
+	_, err = db.Exec(
+		`INSERT INTO generation_events (id, timestamp, command, inputs, success, errors, duration_ms, files_generated)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		"old-event-1",
+		time.Now().UTC().Format(time.RFC3339),
+		"gen resource",
+		`{"resource_name":"posts"}`,
+		true,
+		`[{"phase":"generation","message":"old error"}]`,
+		100,
+		`["app/posts/handler.go"]`,
+	)
+	if err != nil {
+		t.Fatalf("insert old event: %v", err)
+	}
+	db.Close()
+
+	// Now open with OpenSQLite — migration should add columns
+	store, err := OpenSQLite(dbPath)
+	if err != nil {
+		t.Fatalf("open with migration: %v", err)
+	}
+	defer store.Close()
+
+	// Verify old row survived and can be read with new columns
+	ctx := context.Background()
+	event, err := store.Get(ctx, "old-event-1")
+	if err != nil {
+		t.Fatalf("get old event after migration: %v", err)
+	}
+	if event.Command != "gen resource" {
+		t.Errorf("expected command 'gen resource', got %q", event.Command)
+	}
+	if event.ComponentsUsed != nil {
+		t.Errorf("expected nil ComponentsUsed for old event, got %v", event.ComponentsUsed)
+	}
+	if event.ComponentErrors != nil {
+		t.Errorf("expected nil ComponentErrors for old event, got %v", event.ComponentErrors)
+	}
+	if len(event.Errors) != 1 || event.Errors[0].Message != "old error" {
+		t.Errorf("expected old error preserved, got %v", event.Errors)
+	}
+
+	// Verify new events with component data can be saved and retrieved
+	newEvent := &GenerationEvent{
+		ID:              "new-event-1",
+		Timestamp:       time.Now(),
+		Command:         "gen resource",
+		Inputs:          map[string]any{},
+		Success:         false,
+		ComponentsUsed:  []string{"modal", "toast"},
+		ComponentErrors: []ComponentError{{Component: "modal", Phase: "generation", Message: "test error"}},
+	}
+	if err := store.Save(ctx, newEvent); err != nil {
+		t.Fatalf("save new event after migration: %v", err)
+	}
+	retrieved, err := store.Get(ctx, "new-event-1")
+	if err != nil {
+		t.Fatalf("get new event: %v", err)
+	}
+	if len(retrieved.ComponentsUsed) != 2 {
+		t.Errorf("expected 2 components_used, got %d", len(retrieved.ComponentsUsed))
+	}
+	if len(retrieved.ComponentErrors) != 1 {
+		t.Errorf("expected 1 component_error, got %d", len(retrieved.ComponentErrors))
 	}
 }
 

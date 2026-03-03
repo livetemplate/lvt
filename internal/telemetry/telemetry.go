@@ -151,6 +151,7 @@ func (cap *Capture) RecordComponentsUsed(components []string) {
 
 // AttributeComponentErrors runs attribution logic on accumulated errors.
 // Call this before Complete() to populate ComponentErrors.
+// Safe to call multiple times; last call wins (overwrites previous results).
 func (cap *Capture) AttributeComponentErrors() {
 	if cap.noop {
 		return
