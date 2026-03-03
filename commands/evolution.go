@@ -35,6 +35,8 @@ func Evolution(args []string) error {
 		return evolutionPropose(args[1:])
 	case "apply":
 		return evolutionApply(args[1:])
+	case "components":
+		return evolutionComponents(args[1:])
 	case "upstream-status":
 		return evolutionUpstreamStatus(args[1:])
 	case "help", "--help", "-h":
@@ -56,6 +58,7 @@ func printEvolutionHelp() {
 	fmt.Println("  metrics                         Show per-command metrics")
 	fmt.Println("  failures [--last N]             List recent failed events")
 	fmt.Println("  patterns                        List all known patterns from knowledge base")
+	fmt.Println("  components [--days N]            Show per-component health dashboard")
 	fmt.Println("  propose <event-id>              Propose fixes for a specific event")
 	fmt.Println("  apply <fix-id> [--dry-run]      Apply a proposed fix [coming soon]")
 	fmt.Println("  upstream-status                 Show upstream pattern status")
@@ -305,9 +308,150 @@ func evolutionPropose(args []string) error {
 		fmt.Printf("\n  Fix %d: %s\n", i+1, fix.ID)
 		fmt.Printf("  Pattern: %s\n", fix.PatternID)
 		fmt.Printf("  Target:  %s\n", fix.TargetFile)
+
+		loc := evolution.ClassifyFix(fix)
+		switch loc.Type {
+		case "component":
+			fmt.Printf("  Location: component (%s)\n", loc.Component)
+		case "kit":
+			fmt.Printf("  Location: kit template\n")
+		case "generated":
+			fmt.Printf("  Location: generated code\n")
+		default:
+			fmt.Printf("  Location: %s\n", loc.Type)
+		}
+
 		fmt.Printf("  Confidence: %.0f%%\n", fix.Confidence*100)
 		fmt.Printf("  Find:    %s\n", fix.FindPattern)
 		fmt.Printf("  Replace: %s\n", fix.Replace)
+	}
+
+	return nil
+}
+
+func evolutionComponents(args []string) error {
+	days := defaultLookbackDays
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--days" && i+1 < len(args) {
+			if n, err := strconv.Atoi(args[i+1]); err == nil && n > 0 {
+				days = n
+			}
+			i++
+		}
+	}
+
+	collector := telemetry.NewCollector()
+	defer collector.Close()
+
+	if !collector.IsEnabled() {
+		fmt.Println("Telemetry is disabled (set LVT_TELEMETRY=true to enable)")
+		return nil
+	}
+
+	ctx := context.Background()
+	since := time.Now().AddDate(0, 0, -days)
+	events, err := collector.Store().List(ctx, telemetry.ListOptions{Since: since})
+	if err != nil {
+		return fmt.Errorf("list events: %w", err)
+	}
+
+	// Aggregate by component
+	type compStats struct {
+		usage   int
+		success int
+		errors  map[string]int // error message → count
+	}
+	byComponent := make(map[string]*compStats)
+
+	for _, e := range events {
+		for _, comp := range e.ComponentsUsed {
+			s, ok := byComponent[comp]
+			if !ok {
+				s = &compStats{errors: make(map[string]int)}
+				byComponent[comp] = s
+			}
+			s.usage++
+			if e.Success {
+				s.success++
+			}
+		}
+		for _, ce := range e.ComponentErrors {
+			s, ok := byComponent[ce.Component]
+			if !ok {
+				s = &compStats{errors: make(map[string]int)}
+				byComponent[ce.Component] = s
+			}
+			s.errors[truncate(ce.Message, 60)]++
+		}
+	}
+
+	fmt.Printf("Component Health Dashboard (last %d days)\n", days)
+	fmt.Println("==========================================")
+
+	if len(byComponent) == 0 {
+		fmt.Println("  No component data recorded yet.")
+		fmt.Println("  Components are tracked in 'gen resource' commands.")
+		return nil
+	}
+
+	fmt.Printf("%-20s %8s %8s %10s %s\n", "Component", "Uses", "Success", "Rate", "Status")
+	fmt.Println(strings.Repeat("-", 65))
+
+	// Sort component names for stable output
+	names := make([]string, 0, len(byComponent))
+	for name := range byComponent {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	for _, name := range names {
+		s := byComponent[name]
+		rate := float64(0)
+		if s.usage > 0 {
+			rate = float64(s.success) / float64(s.usage) * 100
+		}
+		status := "OK"
+		if rate < 90 && s.usage > 0 {
+			status = "WARN"
+		}
+		fmt.Printf("%-20s %8d %8d %9.1f%% %s\n", name, s.usage, s.success, rate, status)
+	}
+
+	// Print top errors per component
+	hasErrors := false
+	for _, name := range names {
+		s := byComponent[name]
+		if len(s.errors) == 0 {
+			continue
+		}
+		if !hasErrors {
+			fmt.Println()
+			fmt.Println("Top Errors by Component")
+			fmt.Println("-----------------------")
+			hasErrors = true
+		}
+		fmt.Printf("\n  %s:\n", name)
+
+		// Sort errors by count descending
+		type errEntry struct {
+			msg   string
+			count int
+		}
+		errs := make([]errEntry, 0, len(s.errors))
+		for msg, count := range s.errors {
+			errs = append(errs, errEntry{msg, count})
+		}
+		sort.Slice(errs, func(i, j int) bool {
+			return errs[i].count > errs[j].count
+		})
+
+		limit := 3
+		if len(errs) < limit {
+			limit = len(errs)
+		}
+		for _, e := range errs[:limit] {
+			fmt.Printf("    [%dx] %s\n", e.count, e.msg)
+		}
 	}
 
 	return nil
