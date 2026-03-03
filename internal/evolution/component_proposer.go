@@ -40,14 +40,17 @@ func classifyPath(path string) ErrorLocation {
 	if idx := strings.Index(lower, "components/"); idx != -1 {
 		rest := lower[idx+len("components/"):]
 		if slashIdx := strings.Index(rest, "/"); slashIdx > 0 {
-			loc.Type = "component"
-			loc.Component = rest[:slashIdx]
-			return loc
+			name := rest[:slashIdx]
+			if !strings.Contains(name, "*") {
+				loc.Type = "component"
+				loc.Component = name
+				return loc
+			}
 		}
 		// Bare component reference like "components/modal.go"
 		name := strings.TrimSuffix(rest, ".go")
 		name = strings.TrimSuffix(name, ".tmpl")
-		if name != "" {
+		if name != "" && !strings.Contains(name, "*") {
 			loc.Type = "component"
 			loc.Component = name
 			return loc

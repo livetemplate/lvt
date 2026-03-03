@@ -136,16 +136,25 @@ func TestClassifyFix(t *testing.T) {
 			name:     "kit",
 			target:   "internal/kits/system/multi/templates/*.tmpl",
 			wantType: "kit",
+			wantComp: "",
 		},
 		{
 			name:     "generated",
 			target:   "app/posts/handler.go",
 			wantType: "generated",
+			wantComp: "",
 		},
 		{
 			name:     "unknown",
 			target:   "config/settings.go",
 			wantType: "unknown",
+			wantComp: "",
+		},
+		{
+			name:     "wildcard glob",
+			target:   "components/*/handler.go",
+			wantType: "unknown",
+			wantComp: "",
 		},
 	}
 	for _, tt := range tests {
@@ -154,7 +163,7 @@ func TestClassifyFix(t *testing.T) {
 			if loc.Type != tt.wantType {
 				t.Errorf("Type: got %q, want %q", loc.Type, tt.wantType)
 			}
-			if tt.wantComp != "" && loc.Component != tt.wantComp {
+			if loc.Component != tt.wantComp {
 				t.Errorf("Component: got %q, want %q", loc.Component, tt.wantComp)
 			}
 		})

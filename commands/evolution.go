@@ -14,6 +14,7 @@ import (
 )
 
 const defaultLookbackDays = 30
+const warnThresholdPct = 90
 
 // Evolution is the main router for evolution system commands.
 func Evolution(args []string) error {
@@ -414,10 +415,10 @@ func evolutionComponents(args []string) error {
 			rate = float64(s.success) / float64(s.usage) * 100
 		}
 		status := "OK"
-		if rate < 90 && s.usage > 0 {
+		if rate < warnThresholdPct && s.usage > 0 {
 			status = "WARN"
 		}
-		fmt.Printf("%-20s %8d %8d %9.1f%% %s\n", name, s.usage, s.success, rate, status)
+		fmt.Printf("%-20s %8d %8d %9.1f%% %s\n", truncate(name, 20), s.usage, s.success, rate, status)
 	}
 
 	// Print top errors per component
