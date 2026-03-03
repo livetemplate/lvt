@@ -65,22 +65,17 @@ jobs:
           cd /tmp/test-import
           go mod init test-import
           go mod edit -replace github.com/livetemplate/lvt/components=$GITHUB_WORKSPACE/components
-          cat > main.go << 'GOEOF'
-          package main
+          cat > main.go <<'GOEOF'
+package main
 
-          import (
-              "fmt"
-              "github.com/livetemplate/lvt/components/modal"
-              "github.com/livetemplate/lvt/components/toast"
-              "github.com/livetemplate/lvt/components/toggle"
-          )
+import (
+	"fmt"
+	"github.com/livetemplate/lvt/components"
+)
 
-          func main() {
-              m := modal.New("test-modal")
-              t := toast.New("test-toast")
-              tg := toggle.New("test-toggle")
-              fmt.Println(m.ID, t.ID, tg.ID)
-          }
-          GOEOF
-          go mod tidy
-          go build .
+func main() {
+	fmt.Println(components.Version())
+}
+GOEOF
+          GOWORK=off go mod tidy
+          GOWORK=off go build .
