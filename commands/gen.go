@@ -244,7 +244,7 @@ func GenResource(args []string) error {
 			Message: validationErr.Error(),
 		})
 	}
-	capture.AttributeComponentErrors() // attribute errors on success/validation path
+	capture.AttributeComponentErrors() // attribute any captured errors to components before completing
 	capture.Complete(validationErr == nil, marshalValidationResult(validationResult))
 
 	resourceNameLower := strings.ToLower(resourceName)

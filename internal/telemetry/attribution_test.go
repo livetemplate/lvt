@@ -158,6 +158,41 @@ func TestAttributeErrors_CaseInsensitive(t *testing.T) {
 	}
 }
 
+func TestAttributeErrors_PrefixNoFalsePositive(t *testing.T) {
+	// Verify that "toast." does NOT match "toaster." — the dot acts as a
+	// natural word boundary so component-name prefixes don't false-positive.
+	errors := []GenerationError{
+		{Phase: "runtime", Message: "toaster.New: invalid config"},
+	}
+	result := AttributeErrors(errors, []string{"toast"})
+
+	if len(result) != 0 {
+		t.Fatalf("expected 0 (no false positive), got %d", len(result))
+	}
+}
+
+func TestComponentsFromUsage_IgnoresNonUseFields(t *testing.T) {
+	// Struct with bool fields that don't start with "Use" must be skipped.
+	type MixedUsage struct {
+		UseModal bool
+		Enabled  bool
+		Active   bool
+		UseToast bool
+	}
+	result := ComponentsFromUsage(MixedUsage{
+		UseModal: true,
+		Enabled:  true,
+		Active:   true,
+		UseToast: true,
+	})
+	if len(result) != 2 {
+		t.Fatalf("expected 2, got %d: %v", len(result), result)
+	}
+	if result[0] != "modal" || result[1] != "toast" {
+		t.Errorf("expected [modal, toast], got %v", result)
+	}
+}
+
 func TestAttributeErrors_PreservesPhaseAndMessage(t *testing.T) {
 	errors := []GenerationError{
 		{Phase: "compilation", File: "components/dropdown/dropdown.go", Message: "undefined: Searchable", Context: "line 42"},
