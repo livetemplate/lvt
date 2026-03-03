@@ -63,7 +63,7 @@ jobs:
         run: |
           mkdir -p /tmp/test-import
           cd /tmp/test-import
-          go mod init test-import
+          go mod init example.com/test-import
           go mod edit -replace github.com/livetemplate/lvt/components=$GITHUB_WORKSPACE/components
           cat > main.go <<'GOEOF'
 package main
@@ -79,3 +79,4 @@ func main() {
 GOEOF
           GOWORK=off go mod tidy
           GOWORK=off go build .
+          GOWORK=off go run .
