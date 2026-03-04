@@ -388,6 +388,20 @@ func createTestApp(t *testing.T, tmpDir, appName string, opts *AppOptions) strin
 
 	appDir := filepath.Join(tmpDir, appName)
 
+	// Add replace directives so auth generation's `go get github.com/livetemplate/lvt@latest`
+	// can resolve lvt/components (a local-only sub-module not published to any proxy)
+	_, thisFile, _, _ := runtime.Caller(0)
+	lvtRoot := filepath.Dir(filepath.Dir(thisFile))
+	goModPath := filepath.Join(appDir, "go.mod")
+	goModContent, err := os.ReadFile(goModPath)
+	if err != nil {
+		t.Fatalf("failed to read generated app's go.mod: %v", err)
+	}
+	replaceBlock := fmt.Sprintf("\nreplace github.com/livetemplate/lvt => %s\nreplace github.com/livetemplate/lvt/components => %s/components\n", lvtRoot, lvtRoot)
+	if err := os.WriteFile(goModPath, append(goModContent, []byte(replaceBlock)...), 0644); err != nil {
+		t.Fatalf("failed to add replace directives: %v", err)
+	}
+
 	// Skip go mod tidy if requested (e.g., for Docker-based tests that run it inside Docker)
 	// For non-Docker tests (lvt serve), go mod tidy is required to work properly
 	if !opts.SkipGoModTidy {
