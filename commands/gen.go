@@ -206,6 +206,11 @@ func GenResource(args []string) error {
 	})
 	capture.SetKit(kit) // also sets the dedicated Kit column for SQL queries; inputs has it for context
 
+	// Detect which components this resource will use and record for telemetry
+	resourceData := generator.ResourceData{Fields: generator.FieldDataFromFields(fields)}
+	compUsage := generator.DetectUsedComponents(resourceData)
+	capture.RecordComponentsUsed(telemetry.ComponentsFromUsage(compUsage))
+
 	fmt.Printf("Generating CRUD resource: %s\n", resourceName)
 	fmt.Printf("Kit: %s\n", kit)
 	fmt.Printf("CSS Framework: %s\n", cssFramework)
@@ -222,6 +227,7 @@ func GenResource(args []string) error {
 
 	if err := generator.GenerateResource(basePath, moduleName, resourceName, fields, kit, cssFramework, paginationMode, pageSize, editMode); err != nil {
 		capture.RecordError(telemetry.GenerationError{Phase: "generation", Message: err.Error()})
+		capture.AttributeComponentErrors() // attribute errors on failure path
 		capture.Complete(false, "")
 		return err
 	}
@@ -238,6 +244,7 @@ func GenResource(args []string) error {
 			Message: validationErr.Error(),
 		})
 	}
+	capture.AttributeComponentErrors() // attribute any captured errors to components before completing
 	capture.Complete(validationErr == nil, marshalValidationResult(validationResult))
 
 	resourceNameLower := strings.ToLower(resourceName)

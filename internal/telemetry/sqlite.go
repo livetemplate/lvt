@@ -38,6 +38,32 @@ func (s *SQLiteStore) ensureSchema() error {
 	if err != nil {
 		return fmt.Errorf("create telemetry schema: %w", err)
 	}
+	return s.migrateComponentColumns()
+}
+
+// componentColumns lists columns added after the initial schema.
+// Used by migrateComponentColumns to ALTER TABLE existing databases.
+var componentColumns = []string{"components_used", "component_errors"}
+
+// migrateComponentColumns adds components_used and component_errors columns
+// to existing databases created before these columns were added to schema.sql.
+// Safe to call repeatedly — checks column existence first.
+func (s *SQLiteStore) migrateComponentColumns() error {
+	for _, col := range componentColumns {
+		var count int
+		err := s.db.QueryRow(
+			`SELECT COUNT(*) FROM pragma_table_info('generation_events') WHERE name = ?`, col,
+		).Scan(&count)
+		if err != nil {
+			return fmt.Errorf("check column %s: %w", col, err)
+		}
+		if count == 0 {
+			_, err = s.db.Exec(fmt.Sprintf(`ALTER TABLE generation_events ADD COLUMN %s TEXT`, col))
+			if err != nil {
+				return fmt.Errorf("add column %s: %w", col, err)
+			}
+		}
+	}
 	return nil
 }
 
@@ -54,12 +80,22 @@ func (s *SQLiteStore) Save(ctx context.Context, event *GenerationEvent) error {
 	if err != nil {
 		return fmt.Errorf("marshal files: %w", err)
 	}
+	// json.Marshal(nil) produces "null" stored as TEXT, not SQL NULL.
+	// Direct DB queries should use: WHERE col IS NULL OR col = 'null'
+	componentsJSON, err := json.Marshal(event.ComponentsUsed)
+	if err != nil {
+		return fmt.Errorf("marshal components_used: %w", err)
+	}
+	compErrorsJSON, err := json.Marshal(event.ComponentErrors)
+	if err != nil {
+		return fmt.Errorf("marshal component_errors: %w", err)
+	}
 
 	// OR IGNORE: IDs are 128-bit random so collisions are effectively impossible,
 	// but this avoids a hard error if one ever occurs.
 	_, err = s.db.ExecContext(ctx,
-		`INSERT OR IGNORE INTO generation_events (id, timestamp, command, inputs, kit, lvt_version, success, validation, errors, duration_ms, files_generated)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT OR IGNORE INTO generation_events (id, timestamp, command, inputs, kit, lvt_version, success, validation, errors, duration_ms, files_generated, components_used, component_errors)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		event.ID,
 		event.Timestamp.UTC().Format(time.RFC3339),
 		event.Command,
@@ -71,19 +107,21 @@ func (s *SQLiteStore) Save(ctx context.Context, event *GenerationEvent) error {
 		string(errorsJSON),
 		event.DurationMs,
 		string(filesJSON),
+		string(componentsJSON),
+		string(compErrorsJSON),
 	)
 	return err
 }
 
 func (s *SQLiteStore) Get(ctx context.Context, id string) (*GenerationEvent, error) {
 	row := s.db.QueryRowContext(ctx,
-		`SELECT id, timestamp, command, inputs, kit, lvt_version, success, validation, errors, duration_ms, files_generated
+		`SELECT id, timestamp, command, inputs, kit, lvt_version, success, validation, errors, duration_ms, files_generated, components_used, component_errors
 		 FROM generation_events WHERE id = ?`, id)
 	return scanEvent(row)
 }
 
 func (s *SQLiteStore) List(ctx context.Context, opts ListOptions) ([]*GenerationEvent, error) {
-	query := `SELECT id, timestamp, command, inputs, kit, lvt_version, success, validation, errors, duration_ms, files_generated
+	query := `SELECT id, timestamp, command, inputs, kit, lvt_version, success, validation, errors, duration_ms, files_generated, components_used, component_errors
 	          FROM generation_events WHERE 1=1`
 	var args []any
 
@@ -154,12 +192,14 @@ func scanInto(sc scanner) (*GenerationEvent, error) {
 	var e GenerationEvent
 	var ts, inputsJSON, errorsJSON, filesJSON string
 	var kit, lvtVersion, validationJSON sql.NullString
+	var componentsJSON, compErrorsJSON sql.NullString
 	var durationMs sql.NullInt64
 
 	err := sc.Scan(
 		&e.ID, &ts, &e.Command, &inputsJSON,
 		&kit, &lvtVersion, &e.Success, &validationJSON,
 		&errorsJSON, &durationMs, &filesJSON,
+		&componentsJSON, &compErrorsJSON,
 	)
 	if err != nil {
 		return nil, err
@@ -187,6 +227,16 @@ func scanInto(sc scanner) (*GenerationEvent, error) {
 	if filesJSON != "" && filesJSON != "null" {
 		if err := json.Unmarshal([]byte(filesJSON), &e.FilesGenerated); err != nil {
 			return nil, fmt.Errorf("unmarshal files: %w", err)
+		}
+	}
+	if componentsJSON.Valid && componentsJSON.String != "" && componentsJSON.String != "null" {
+		if err := json.Unmarshal([]byte(componentsJSON.String), &e.ComponentsUsed); err != nil {
+			return nil, fmt.Errorf("unmarshal components_used: %w", err)
+		}
+	}
+	if compErrorsJSON.Valid && compErrorsJSON.String != "" && compErrorsJSON.String != "null" {
+		if err := json.Unmarshal([]byte(compErrorsJSON.String), &e.ComponentErrors); err != nil {
+			return nil, fmt.Errorf("unmarshal component_errors: %w", err)
 		}
 	}
 

@@ -2,9 +2,12 @@ package telemetry
 
 import (
 	"context"
+	"database/sql"
 	"path/filepath"
 	"testing"
 	"time"
+
+	_ "modernc.org/sqlite"
 )
 
 func openTestStore(t *testing.T) *SQLiteStore {
@@ -224,9 +227,183 @@ func TestNoopCapture(t *testing.T) {
 	cap.SetKit("multi")
 	cap.RecordError(GenerationError{Phase: "test", Message: "test"})
 	cap.RecordFileGenerated("file.go")
+	cap.RecordComponentsUsed([]string{"modal"})
+	cap.AttributeComponentErrors()
 	cap.Complete(true, "")
 
 	if cap.Event() != nil {
 		t.Error("expected nil event for NoopCapture")
+	}
+}
+
+func TestCollector_ComponentDataRoundTrip(t *testing.T) {
+	store := openTestStore(t)
+	c := NewCollectorWithStore(store)
+	defer c.Close()
+
+	cap := c.StartCapture("gen resource", map[string]any{
+		"resource_name": "orders",
+	})
+	cap.SetKit("multi")
+	cap.RecordComponentsUsed([]string{"modal", "toast", "dropdown"})
+	cap.RecordError(GenerationError{
+		Phase:   "generation",
+		File:    "components/modal/modal.go",
+		Message: "modal.New: invalid size",
+	})
+	cap.RecordError(GenerationError{
+		Phase:   "generation",
+		File:    "app/orders/handler.go",
+		Message: "unrelated error",
+	})
+	cap.AttributeComponentErrors()
+	cap.Complete(false, "")
+
+	// Retrieve and verify round-trip
+	ctx := context.Background()
+	event, err := store.Get(ctx, cap.Event().ID)
+	if err != nil {
+		t.Fatalf("get event: %v", err)
+	}
+
+	// Verify components_used round-trip
+	if len(event.ComponentsUsed) != 3 {
+		t.Fatalf("expected 3 components_used, got %d: %v", len(event.ComponentsUsed), event.ComponentsUsed)
+	}
+	expected := []string{"modal", "toast", "dropdown"}
+	for i, exp := range expected {
+		if event.ComponentsUsed[i] != exp {
+			t.Errorf("components_used[%d]: expected %q, got %q", i, exp, event.ComponentsUsed[i])
+		}
+	}
+
+	// Verify component_errors round-trip (should have 1 — the modal error)
+	if len(event.ComponentErrors) != 1 {
+		t.Fatalf("expected 1 component_error, got %d: %v", len(event.ComponentErrors), event.ComponentErrors)
+	}
+	if event.ComponentErrors[0].Component != "modal" {
+		t.Errorf("expected component 'modal', got %q", event.ComponentErrors[0].Component)
+	}
+	if event.ComponentErrors[0].Phase != "generation" {
+		t.Errorf("expected phase 'generation', got %q", event.ComponentErrors[0].Phase)
+	}
+}
+
+func TestSQLiteStore_MigrationUpgrade(t *testing.T) {
+	// Simulate an old database without component columns.
+	// Create a DB with the pre-migration schema, insert a row,
+	// then open it with OpenSQLite which runs migrateComponentColumns.
+	dbPath := filepath.Join(t.TempDir(), "upgrade-test.db")
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Fatalf("open raw db: %v", err)
+	}
+
+	// Old schema — missing components_used and component_errors columns
+	oldSchema := `CREATE TABLE IF NOT EXISTS generation_events (
+		id TEXT PRIMARY KEY,
+		timestamp DATETIME NOT NULL,
+		command TEXT NOT NULL,
+		inputs TEXT NOT NULL,
+		kit TEXT,
+		lvt_version TEXT,
+		success BOOLEAN NOT NULL,
+		validation TEXT,
+		errors TEXT,
+		duration_ms INTEGER,
+		files_generated TEXT
+	);`
+	if _, err := db.Exec(oldSchema); err != nil {
+		t.Fatalf("create old schema: %v", err)
+	}
+
+	// Insert a row in the old format
+	_, err = db.Exec(
+		`INSERT INTO generation_events (id, timestamp, command, inputs, success, errors, duration_ms, files_generated)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		"old-event-1",
+		time.Now().UTC().Format(time.RFC3339),
+		"gen resource",
+		`{"resource_name":"posts"}`,
+		true,
+		`[{"phase":"generation","message":"old error"}]`,
+		100,
+		`["app/posts/handler.go"]`,
+	)
+	if err != nil {
+		t.Fatalf("insert old event: %v", err)
+	}
+	db.Close()
+
+	// Now open with OpenSQLite — migration should add columns
+	store, err := OpenSQLite(dbPath)
+	if err != nil {
+		t.Fatalf("open with migration: %v", err)
+	}
+	defer store.Close()
+
+	// Verify old row survived and can be read with new columns
+	ctx := context.Background()
+	event, err := store.Get(ctx, "old-event-1")
+	if err != nil {
+		t.Fatalf("get old event after migration: %v", err)
+	}
+	if event.Command != "gen resource" {
+		t.Errorf("expected command 'gen resource', got %q", event.Command)
+	}
+	if event.ComponentsUsed != nil {
+		t.Errorf("expected nil ComponentsUsed for old event, got %v", event.ComponentsUsed)
+	}
+	if event.ComponentErrors != nil {
+		t.Errorf("expected nil ComponentErrors for old event, got %v", event.ComponentErrors)
+	}
+	if len(event.Errors) != 1 || event.Errors[0].Message != "old error" {
+		t.Errorf("expected old error preserved, got %v", event.Errors)
+	}
+
+	// Verify new events with component data can be saved and retrieved
+	newEvent := &GenerationEvent{
+		ID:              "new-event-1",
+		Timestamp:       time.Now(),
+		Command:         "gen resource",
+		Inputs:          map[string]any{},
+		Success:         false,
+		ComponentsUsed:  []string{"modal", "toast"},
+		ComponentErrors: []ComponentError{{Component: "modal", Phase: "generation", Message: "test error"}},
+	}
+	if err := store.Save(ctx, newEvent); err != nil {
+		t.Fatalf("save new event after migration: %v", err)
+	}
+	retrieved, err := store.Get(ctx, "new-event-1")
+	if err != nil {
+		t.Fatalf("get new event: %v", err)
+	}
+	if len(retrieved.ComponentsUsed) != 2 {
+		t.Errorf("expected 2 components_used, got %d", len(retrieved.ComponentsUsed))
+	}
+	if len(retrieved.ComponentErrors) != 1 {
+		t.Errorf("expected 1 component_error, got %d", len(retrieved.ComponentErrors))
+	}
+}
+
+func TestCollector_EventWithoutComponentData(t *testing.T) {
+	// Events saved without component data should round-trip with nil fields
+	store := openTestStore(t)
+	c := NewCollectorWithStore(store)
+	defer c.Close()
+
+	cap := c.StartCapture("gen view", nil)
+	cap.Complete(true, "")
+
+	ctx := context.Background()
+	event, err := store.Get(ctx, cap.Event().ID)
+	if err != nil {
+		t.Fatalf("get event: %v", err)
+	}
+	if event.ComponentsUsed != nil {
+		t.Errorf("expected nil ComponentsUsed for event without component data, got %v", event.ComponentsUsed)
+	}
+	if event.ComponentErrors != nil {
+		t.Errorf("expected nil ComponentErrors for event without component data, got %v", event.ComponentErrors)
 	}
 }
