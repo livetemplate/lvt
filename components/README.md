@@ -261,7 +261,7 @@ in the entire `lvt` dependency tree.
 
 **What CI checks:**
 - No imports of `github.com/livetemplate/lvt` (parent module)
-- No imports of `github.com/livetemplate/lvt/internal` or `github.com/livetemplate/lvt/commands`
+- No imports of `github.com/livetemplate/lvt/internal` or `github.com/livetemplate/lvt/commands` (fully-qualified import paths)
 - `components/go.mod` does not require the parent module
 - `go build ./...` and `go test ./...` pass with `GOWORK=off`
 - An external test module can import and build against components
