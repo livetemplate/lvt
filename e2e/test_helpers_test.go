@@ -480,6 +480,7 @@ func readLvtrc(t *testing.T, appDir string) (kit string) {
 		line = strings.TrimSpace(line)
 		if strings.HasPrefix(line, "kit=") {
 			kit = strings.TrimPrefix(line, "kit=")
+			kit = strings.Trim(kit, `'"`)
 		}
 	}
 
