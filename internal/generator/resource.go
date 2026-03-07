@@ -90,7 +90,7 @@ func GenerateResource(basePath, moduleName, resourceName string, fields []parser
 		EditMode:             editMode,
 		Styles:               styles,
 	}
-	data.Components = DetectUsedComponents(data)
+	data.Components = DefaultComponentUsage(data)
 
 	// Create resource directory
 	resourceDir := filepath.Join(basePath, "app", resourceNameLower)

@@ -6,10 +6,18 @@ import (
 	"github.com/livetemplate/lvt/internal/telemetry"
 )
 
+// Location type constants for ErrorLocation.Type.
+const (
+	LocationComponent = "component"
+	LocationKit       = "kit"
+	LocationGenerated = "generated"
+	LocationUnknown   = "unknown"
+)
+
 // ErrorLocation classifies where an error originated.
 type ErrorLocation struct {
-	Type      string // "component", "kit", "generated", "unknown"
-	Component string // normalized to lowercase; e.g. "modal" (only when Type == "component")
+	Type      string // one of Location* constants
+	Component string // normalized to lowercase; e.g. "modal" (only when Type == LocationComponent)
 	Path      string // original path as provided
 }
 
@@ -34,7 +42,7 @@ func classifyPath(path string) ErrorLocation {
 	// (e.g. internal/kits/system/multi/components/form.tmpl) which would
 	// otherwise be misclassified as a top-level component.
 	if strings.Contains(lower, "internal/kits/") {
-		loc.Type = "kit"
+		loc.Type = LocationKit
 		return loc
 	}
 
@@ -52,7 +60,7 @@ func classifyPath(path string) ErrorLocation {
 		if slashIdx := strings.Index(rest, "/"); slashIdx > 0 {
 			name := rest[:slashIdx]
 			if !strings.Contains(name, "*") {
-				loc.Type = "component"
+				loc.Type = LocationComponent
 				loc.Component = name
 				return loc
 			}
@@ -62,7 +70,7 @@ func classifyPath(path string) ErrorLocation {
 		name := strings.TrimSuffix(rest, ".tmpl")
 		name = strings.TrimSuffix(name, ".go")
 		if name != "" && !strings.Contains(name, "*") {
-			loc.Type = "component"
+			loc.Type = LocationComponent
 			loc.Component = name
 			return loc
 		}
@@ -71,10 +79,10 @@ func classifyPath(path string) ErrorLocation {
 	// Check for generated app code: must be at path start or after a separator
 	// to avoid false positives from "webapp/", "myapp/", etc.
 	if strings.HasPrefix(lower, "app/") || strings.Contains(lower, "/app/") {
-		loc.Type = "generated"
+		loc.Type = LocationGenerated
 		return loc
 	}
 
-	loc.Type = "unknown"
+	loc.Type = LocationUnknown
 	return loc
 }

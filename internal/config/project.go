@@ -101,10 +101,10 @@ func SaveProjectConfig(basePath string, config *ProjectConfig) error {
 		lines = append(lines, fmt.Sprintf("module=%q", config.Module))
 	}
 	if config.Kit != "" {
-		lines = append(lines, fmt.Sprintf("kit=%s", config.Kit))
+		lines = append(lines, fmt.Sprintf("kit=%q", config.Kit))
 	}
 	if config.Styles != "" {
-		lines = append(lines, fmt.Sprintf("styles=%s", config.Styles))
+		lines = append(lines, fmt.Sprintf("styles=%q", config.Styles))
 	}
 	lines = append(lines, fmt.Sprintf("dev_mode=%v", config.DevMode))
 
