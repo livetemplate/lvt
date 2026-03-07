@@ -35,6 +35,10 @@ func GenerateResource(basePath, moduleName, resourceName string, fields []parser
 	if styles == "" {
 		styles = "tailwind"
 	}
+	validStyles := map[string]bool{"tailwind": true, "unstyled": true}
+	if !validStyles[styles] {
+		return fmt.Errorf("invalid styles adapter: %q (valid: tailwind, unstyled)", styles)
+	}
 
 	// appMode is the same as kit name in the new architecture
 	appMode := kitName

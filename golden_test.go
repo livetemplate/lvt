@@ -113,6 +113,28 @@ func TestResourceHandlerUnstyledImport(t *testing.T) {
 	}
 }
 
+// TestResourceHandlerInvalidStyles verifies that an invalid styles value is rejected
+func TestResourceHandlerInvalidStyles(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	dbDir := filepath.Join(tmpDir, "database")
+	if err := os.MkdirAll(dbDir, 0755); err != nil {
+		t.Fatalf("Failed to create database directory: %v", err)
+	}
+
+	fields := []parser.Field{
+		{Name: "name", Type: "string", GoType: "string", SQLType: "TEXT"},
+	}
+
+	err := generator.GenerateResource(tmpDir, "testmodule", "Item", fields, "multi", "tailwind", "bootstrap", "infinite", 20, "modal")
+	if err == nil {
+		t.Fatal("Expected error for invalid styles adapter, got nil")
+	}
+	if !strings.Contains(err.Error(), "invalid styles adapter") {
+		t.Errorf("Expected 'invalid styles adapter' error, got: %v", err)
+	}
+}
+
 // TestViewHandlerGolden validates view generation against golden file
 func TestViewHandlerGolden(t *testing.T) {
 	tmpDir := t.TempDir()

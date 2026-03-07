@@ -226,13 +226,6 @@ func GenResource(args []string) error {
 	fmt.Println()
 
 	styles := projectConfig.Styles
-	if styles == "" {
-		styles = "tailwind"
-	}
-	validStyles := map[string]bool{"tailwind": true, "unstyled": true}
-	if !validStyles[styles] {
-		return fmt.Errorf("invalid styles adapter: %s (valid: tailwind, unstyled)", styles)
-	}
 	if err := generator.GenerateResource(basePath, moduleName, resourceName, fields, kit, cssFramework, styles, paginationMode, pageSize, editMode); err != nil {
 		capture.RecordError(telemetry.GenerationError{Phase: "generation", Message: err.Error()})
 		capture.AttributeComponentErrors() // attribute errors on failure path
