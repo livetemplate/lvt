@@ -19,6 +19,7 @@ package drawer
 
 import (
 	"github.com/livetemplate/lvt/components/base"
+	"github.com/livetemplate/lvt/components/styles"
 )
 
 // Position defines where the drawer slides from.
@@ -153,65 +154,82 @@ func (d *Drawer) IsVertical() bool {
 	return d.IsTop() || d.IsBottom()
 }
 
+// Styles returns the resolved DrawerStyles for this component.
+func (d *Drawer) Styles() styles.DrawerStyles {
+	if s, ok := d.StyleData().(styles.DrawerStyles); ok {
+		return s
+	}
+	adapter := styles.ForStyled(d.IsStyled())
+	if adapter == nil {
+		return styles.DrawerStyles{}
+	}
+	s := adapter.DrawerStyles()
+	d.SetStyleData(s)
+	return s
+}
+
 // SizeClass returns CSS classes for the size.
 func (d *Drawer) SizeClass() string {
+	s := d.Styles()
 	if d.IsHorizontal() {
 		switch d.Size {
 		case SizeSm:
-			return "w-64"
+			return s.SizeSmH
 		case SizeLg:
-			return "w-96"
+			return s.SizeLgH
 		case SizeXl:
-			return "w-[32rem]"
+			return s.SizeXlH
 		case SizeFull:
-			return "w-full"
+			return s.SizeFullH
 		default: // md
-			return "w-80"
+			return s.SizeMdH
 		}
 	}
 	// Vertical
 	switch d.Size {
 	case SizeSm:
-		return "h-48"
+		return s.SizeSmV
 	case SizeLg:
-		return "h-96"
+		return s.SizeLgV
 	case SizeXl:
-		return "h-[32rem]"
+		return s.SizeXlV
 	case SizeFull:
-		return "h-full"
+		return s.SizeFullV
 	default: // md
-		return "h-64"
+		return s.SizeMdV
 	}
 }
 
 // PositionClass returns CSS classes for position.
 func (d *Drawer) PositionClass() string {
+	s := d.Styles()
 	switch d.Position {
 	case PositionRight:
-		return "right-0 top-0 h-full"
+		return s.PositionRight
 	case PositionTop:
-		return "top-0 left-0 w-full"
+		return s.PositionTop
 	case PositionBottom:
-		return "bottom-0 left-0 w-full"
+		return s.PositionBottom
 	default: // left
-		return "left-0 top-0 h-full"
+		return s.PositionLeft
 	}
 }
 
 // TransformClass returns CSS transform classes for animation.
 func (d *Drawer) TransformClass() string {
+	s := d.Styles()
 	if d.Open {
-		return "translate-x-0 translate-y-0"
+		return s.TransformOpen
 	}
 	switch d.Position {
 	case PositionRight:
-		return "translate-x-full"
+		return s.TransformRight
 	case PositionTop:
-		return "-translate-y-full"
+		return s.TransformTop
 	case PositionBottom:
-		return "translate-y-full"
+		return s.TransformBottom
 	default: // left
-		return "-translate-x-full"
+		return s.TransformLeft
 	}
 }
 

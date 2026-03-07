@@ -80,7 +80,7 @@ func TestGeneratedFilesExist(t *testing.T) {
 		t.Fatalf("Failed to change directory: %v", err)
 	}
 
-	if err := generator.GenerateApp("testapp", "testapp", "multi", false); err != nil { // false = production mode
+	if err := generator.GenerateApp("testapp", "testapp", "multi", "tailwind", false); err != nil { // false = production mode
 		t.Fatalf("Failed to generate app: %v", err)
 	}
 
@@ -288,7 +288,7 @@ func TestGeneratedAppFullFlow(t *testing.T) {
 
 	// Step 1: Generate app
 	t.Log("Step 1: Generating app...")
-	if err := generator.GenerateApp(appName, appName, "multi", false); err != nil {
+	if err := generator.GenerateApp(appName, appName, "multi", "tailwind", false); err != nil {
 		t.Fatalf("Failed to generate app: %v", err)
 	}
 	t.Log("✅ App generated")
@@ -305,8 +305,24 @@ func TestGeneratedAppFullFlow(t *testing.T) {
 	}
 	t.Log("✅ Resource generated")
 
-	// Step 3: Generate auth (with delay to avoid migration timestamp collision)
-	t.Log("Step 3: Generating auth...")
+	// Step 3: Add replace directives BEFORE generating auth
+	// GenerateAuth runs `go get github.com/livetemplate/lvt@latest` which
+	// transitively requires lvt/components — a local-only module not published
+	// to any module proxy. The replace directives must be in place first.
+	t.Log("Step 3: Adding replace directives for local packages...")
+	goModPath := filepath.Join(appDir, "go.mod")
+	goModContent, err := os.ReadFile(goModPath)
+	if err != nil {
+		t.Fatalf("Failed to read go.mod: %v", err)
+	}
+	replaceDirective := fmt.Sprintf("\nreplace github.com/livetemplate/lvt => %s\nreplace github.com/livetemplate/lvt/components => %s/components\n", origDir, origDir)
+	if err := os.WriteFile(goModPath, append(goModContent, []byte(replaceDirective)...), 0644); err != nil {
+		t.Fatalf("Failed to update go.mod: %v", err)
+	}
+	t.Log("✅ Replace directives added")
+
+	// Step 4: Generate auth (with delay to avoid migration timestamp collision)
+	t.Log("Step 4: Generating auth...")
 	time.Sleep(2 * time.Second)
 	authConfig := &generator.AuthConfig{
 		ModuleName:         appName,
@@ -320,23 +336,8 @@ func TestGeneratedAppFullFlow(t *testing.T) {
 	}
 	t.Log("✅ Auth generated")
 
-	// Step 3.5: Add replace directive to use local lvt packages
-	// This is needed because the new pkg/* packages are not yet published
-	t.Log("Step 3.5: Adding replace directive for local packages...")
-	goModPath := filepath.Join(appDir, "go.mod")
-	goModContent, err := os.ReadFile(goModPath)
-	if err != nil {
-		t.Fatalf("Failed to read go.mod: %v", err)
-	}
-	// Add replace directives at the end (both lvt and its components sub-module)
-	replaceDirective := fmt.Sprintf("\nreplace github.com/livetemplate/lvt => %s\nreplace github.com/livetemplate/lvt/components => %s/components\n", origDir, origDir)
-	if err := os.WriteFile(goModPath, append(goModContent, []byte(replaceDirective)...), 0644); err != nil {
-		t.Fatalf("Failed to update go.mod: %v", err)
-	}
-	t.Log("✅ Replace directive added")
-
-	// Step 4: Run go mod tidy
-	t.Log("Step 4: Running go mod tidy...")
+	// Step 5: Run go mod tidy
+	t.Log("Step 5: Running go mod tidy...")
 	cmd := exec.Command("go", "mod", "tidy")
 	cmd.Dir = appDir
 	// Don't set GOWORK=off - we want to use the go.work file
@@ -345,8 +346,8 @@ func TestGeneratedAppFullFlow(t *testing.T) {
 	}
 	t.Log("✅ go mod tidy completed")
 
-	// Step 5: Generate sqlc code
-	t.Log("Step 5: Generating sqlc code...")
+	// Step 6: Generate sqlc code
+	t.Log("Step 6: Generating sqlc code...")
 	cmd = exec.Command("sqlc", "generate")
 	cmd.Dir = filepath.Join(appDir, "database")
 	if output, err := cmd.CombinedOutput(); err != nil {
@@ -354,8 +355,8 @@ func TestGeneratedAppFullFlow(t *testing.T) {
 	}
 	t.Log("✅ sqlc generate completed")
 
-	// Step 6: Build the app (uses go.work to find local lvt packages)
-	t.Log("Step 6: Building app...")
+	// Step 7: Build the app (uses go.work to find local lvt packages)
+	t.Log("Step 7: Building app...")
 	cmd = exec.Command("go", "build", "./...")
 	cmd.Dir = appDir
 	if output, err := cmd.CombinedOutput(); err != nil {
@@ -363,8 +364,8 @@ func TestGeneratedAppFullFlow(t *testing.T) {
 	}
 	t.Log("✅ Build successful")
 
-	// Step 7: Run short tests (skip E2E which requires Docker/Chrome)
-	t.Log("Step 7: Running generated tests (short mode)...")
+	// Step 8: Run short tests (skip E2E which requires Docker/Chrome)
+	t.Log("Step 8: Running generated tests (short mode)...")
 	cmd = exec.Command("go", "test", "./...", "-short", "-v")
 	cmd.Dir = appDir
 	output, err := cmd.CombinedOutput()

@@ -21,6 +21,7 @@ package modal
 
 import (
 	"github.com/livetemplate/lvt/components/base"
+	"github.com/livetemplate/lvt/components/styles"
 )
 
 // Size defines the modal size.
@@ -114,19 +115,34 @@ func (m *Modal) HasHeader() bool {
 	return m.HasTitle() || m.ShowClose
 }
 
+// Styles returns the resolved ModalStyles for this component.
+func (m *Modal) Styles() styles.ModalStyles {
+	if s, ok := m.StyleData().(styles.ModalStyles); ok {
+		return s
+	}
+	adapter := styles.ForStyled(m.IsStyled())
+	if adapter == nil {
+		return styles.ModalStyles{}
+	}
+	s := adapter.ModalStyles()
+	m.SetStyleData(s)
+	return s
+}
+
 // SizeClass returns CSS class for modal size.
 func (m *Modal) SizeClass() string {
+	s := m.Styles()
 	switch m.Size {
 	case SizeSm:
-		return "max-w-sm"
+		return s.SizeSm
 	case SizeLg:
-		return "max-w-2xl"
+		return s.SizeLg
 	case SizeXl:
-		return "max-w-4xl"
+		return s.SizeXl
 	case SizeFull:
-		return "max-w-full mx-4"
+		return s.SizeFull
 	default: // md
-		return "max-w-lg"
+		return s.SizeMd
 	}
 }
 
@@ -210,30 +226,46 @@ func (c *ConfirmModal) IsDestructive() bool {
 	return c.Destructive
 }
 
+// Styles returns the resolved ConfirmModalStyles for this component.
+func (c *ConfirmModal) Styles() styles.ConfirmModalStyles {
+	if s, ok := c.StyleData().(styles.ConfirmModalStyles); ok {
+		return s
+	}
+	adapter := styles.ForStyled(c.IsStyled())
+	if adapter == nil {
+		return styles.ConfirmModalStyles{}
+	}
+	s := adapter.ConfirmModalStyles()
+	c.SetStyleData(s)
+	return s
+}
+
 // ConfirmButtonClass returns CSS class for confirm button.
 func (c *ConfirmModal) ConfirmButtonClass() string {
+	s := c.Styles()
 	if c.Destructive {
-		return "bg-red-600 hover:bg-red-700 text-white"
+		return s.ConfirmDestructive
 	}
-	return "bg-blue-600 hover:bg-blue-700 text-white"
+	return s.ConfirmDefault
 }
 
 // IconClass returns CSS class for the icon.
 func (c *ConfirmModal) IconClass() string {
+	s := c.Styles()
 	switch c.Icon {
 	case "warning":
 		if c.Destructive {
-			return "text-red-500"
+			return s.IconWarningDestructive
 		}
-		return "text-yellow-500"
+		return s.IconWarning
 	case "info":
-		return "text-blue-500"
+		return s.IconInfo
 	case "success":
-		return "text-green-500"
+		return s.IconSuccess
 	case "error":
-		return "text-red-500"
+		return s.IconError
 	default:
-		return "text-gray-500"
+		return s.IconDefault
 	}
 }
 
@@ -334,68 +366,85 @@ func (s *SheetModal) IsVertical() bool {
 	return s.IsTop() || s.IsBottom()
 }
 
+// Styles returns the resolved SheetStyles for this component.
+func (s *SheetModal) Styles() styles.SheetStyles {
+	if st, ok := s.StyleData().(styles.SheetStyles); ok {
+		return st
+	}
+	adapter := styles.ForStyled(s.IsStyled())
+	if adapter == nil {
+		return styles.SheetStyles{}
+	}
+	st := adapter.SheetStyles()
+	s.SetStyleData(st)
+	return st
+}
+
 // PositionClass returns CSS classes for position.
 func (s *SheetModal) PositionClass() string {
+	st := s.Styles()
 	switch s.Position {
 	case "left":
-		return "left-0 top-0 h-full"
+		return st.PositionLeft
 	case "right":
-		return "right-0 top-0 h-full"
+		return st.PositionRight
 	case "top":
-		return "top-0 left-0 w-full"
+		return st.PositionTop
 	case "bottom":
-		return "bottom-0 left-0 w-full"
+		return st.PositionBottom
 	default:
-		return "right-0 top-0 h-full"
+		return st.PositionRight
 	}
 }
 
 // SizeClass returns CSS class for sheet size.
 func (s *SheetModal) SizeClass() string {
+	st := s.Styles()
 	if s.IsHorizontal() {
 		switch s.Size {
 		case SizeSm:
-			return "w-64"
+			return st.SizeSmH
 		case SizeLg:
-			return "w-96"
+			return st.SizeLgH
 		case SizeXl:
-			return "w-[32rem]"
+			return st.SizeXlH
 		case SizeFull:
-			return "w-full"
+			return st.SizeFullH
 		default:
-			return "w-80"
+			return st.SizeMdH
 		}
 	}
 	// Vertical
 	switch s.Size {
 	case SizeSm:
-		return "h-48"
+		return st.SizeSmV
 	case SizeLg:
-		return "h-96"
+		return st.SizeLgV
 	case SizeXl:
-		return "h-[32rem]"
+		return st.SizeXlV
 	case SizeFull:
-		return "h-full"
+		return st.SizeFullV
 	default:
-		return "h-64"
+		return st.SizeMdV
 	}
 }
 
 // TransformClass returns CSS transform for animation.
 func (s *SheetModal) TransformClass() string {
+	st := s.Styles()
 	if s.Open {
-		return "translate-x-0 translate-y-0"
+		return st.TransformOpen
 	}
 	switch s.Position {
 	case "left":
-		return "-translate-x-full"
+		return st.TransformLeft
 	case "right":
-		return "translate-x-full"
+		return st.TransformRight
 	case "top":
-		return "-translate-y-full"
+		return st.TransformTop
 	case "bottom":
-		return "translate-y-full"
+		return st.TransformBottom
 	default:
-		return "translate-x-full"
+		return st.TransformRight
 	}
 }

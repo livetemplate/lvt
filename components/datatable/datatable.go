@@ -26,6 +26,7 @@ import (
 	"fmt"
 
 	"github.com/livetemplate/lvt/components/base"
+	"github.com/livetemplate/lvt/components/styles"
 )
 
 // SortDirection indicates the sort order.
@@ -535,6 +536,20 @@ func (r Row) GetCellString(columnID string) string {
 		return s
 	}
 	return ""
+}
+
+// Styles returns the resolved DatatableStyles for this component.
+func (dt *DataTable) Styles() styles.DatatableStyles {
+	if s, ok := dt.StyleData().(styles.DatatableStyles); ok {
+		return s
+	}
+	adapter := styles.ForStyled(dt.IsStyled())
+	if adapter == nil {
+		return styles.DatatableStyles{}
+	}
+	s := adapter.DatatableStyles()
+	dt.SetStyleData(s)
+	return s
 }
 
 // MarshalJSON implements json.Marshaler to include computed fields for RPC serialization.

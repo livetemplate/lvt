@@ -19,6 +19,7 @@ package skeleton
 
 import (
 	"github.com/livetemplate/lvt/components/base"
+	"github.com/livetemplate/lvt/components/styles"
 )
 
 // Shape defines the skeleton shape.
@@ -120,17 +121,32 @@ func NewAvatar(id string, opts ...AvatarOption) *AvatarSkeleton {
 	return a
 }
 
+// Styles returns the resolved AvatarSkeletonStyles for this component.
+func (a *AvatarSkeleton) Styles() styles.AvatarSkeletonStyles {
+	if st, ok := a.StyleData().(styles.AvatarSkeletonStyles); ok {
+		return st
+	}
+	adapter := styles.ForStyled(a.IsStyled())
+	if adapter == nil {
+		return styles.AvatarSkeletonStyles{}
+	}
+	st := adapter.AvatarSkeletonStyles()
+	a.SetStyleData(st)
+	return st
+}
+
 // SizeClass returns the CSS class for avatar size.
 func (a *AvatarSkeleton) SizeClass() string {
+	st := a.Styles()
 	switch a.Size {
 	case "sm":
-		return "w-8 h-8"
+		return st.SizeSm
 	case "lg":
-		return "w-16 h-16"
+		return st.SizeLg
 	case "xl":
-		return "w-24 h-24"
+		return st.SizeXl
 	default: // md
-		return "w-12 h-12"
+		return st.SizeMd
 	}
 }
 
@@ -183,13 +199,56 @@ func NewCard(id string, opts ...CardOption) *CardSkeleton {
 	return c
 }
 
+// Styles returns the resolved CardSkeletonStyles for this component.
+func (c *CardSkeleton) Styles() styles.CardSkeletonStyles {
+	if st, ok := c.StyleData().(styles.CardSkeletonStyles); ok {
+		return st
+	}
+	adapter := styles.ForStyled(c.IsStyled())
+	if adapter == nil {
+		return styles.CardSkeletonStyles{}
+	}
+	st := adapter.CardSkeletonStyles()
+	c.SetStyleData(st)
+	return st
+}
+
+// DescLineIndices returns indices for description line rendering.
+func (c *CardSkeleton) DescLineIndices() []int {
+	indices := make([]int, c.DescriptionLines)
+	for i := range indices {
+		indices[i] = i + 1
+	}
+	return indices
+}
+
+// IsLastDescLine returns true if this is the last description line.
+func (c *CardSkeleton) IsLastDescLine(i int) bool {
+	return i == c.DescriptionLines
+}
+
+// Styles returns the resolved SkeletonStyles for this component.
+func (s *Skeleton) Styles() styles.SkeletonStyles {
+	if st, ok := s.StyleData().(styles.SkeletonStyles); ok {
+		return st
+	}
+	adapter := styles.ForStyled(s.IsStyled())
+	if adapter == nil {
+		return styles.SkeletonStyles{}
+	}
+	st := adapter.SkeletonStyles()
+	s.SetStyleData(st)
+	return st
+}
+
 // ShapeClass returns CSS class for the shape.
 func (s *Skeleton) ShapeClass() string {
+	st := s.Styles()
 	switch s.Shape {
 	case ShapeCircle:
-		return "rounded-full"
+		return st.ShapeCircle
 	case ShapeRounded:
-		return "rounded-md"
+		return st.ShapeRounded
 	default:
 		return ""
 	}
@@ -197,13 +256,14 @@ func (s *Skeleton) ShapeClass() string {
 
 // AnimationClass returns CSS class for animation.
 func (s *Skeleton) AnimationClass() string {
+	st := s.Styles()
 	switch s.Animation {
 	case AnimationWave:
-		return "animate-shimmer"
+		return st.AnimationWave
 	case AnimationNone:
 		return ""
 	default: // pulse
-		return "animate-pulse"
+		return st.AnimationPulse
 	}
 }
 
