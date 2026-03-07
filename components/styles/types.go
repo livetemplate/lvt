@@ -20,9 +20,11 @@ type AutocompleteStyles struct {
 	InputLoading   string // extra padding when loading spinner shown
 	LoadingWrapper string // loading icon container: absolute positioning
 	LoadingIcon    string // spinner SVG: size, color, animation
-	ClearBtn       string // clear button: absolute positioning
-	ClearIcon      string // clear icon SVG: size, color, hover
-	Dropdown       string // suggestions list: absolute, z-index, border, shadow
+	ClearBtn          string // clear-all button: absolute positioning
+	ClearIcon         string // clear icon SVG: size, color, hover
+	SelectedBadge     string // selected item pill wrapper: bg, text, padding, rounded
+	SelectedBadgeBtn  string // remove button inside badge: color, hover
+	Dropdown          string // suggestions list: absolute, z-index, border, shadow
 	Option         string // suggestion item: padding, cursor
 	OptionDisabled string // disabled option: opacity, cursor
 	OptionActive   string // highlighted option: bg, text color
@@ -158,8 +160,9 @@ type DropdownStyles struct {
 	Root            string // outer container: relative, inline-block
 	TriggerBtn      string // trigger button: width, padding, border, shadow, hover, ring
 	SelectedText    string // selected label: truncate
-	TriggerIconWrap string // icon wrapper: absolute, inset-y, flex, padding
+	TriggerIconWrap string // decorative icon wrapper: absolute, inset-y, flex, padding, pointer-events-none
 	TriggerIcon     string // chevron SVG: size, color
+	ClearBtnWrap    string // clear button wrapper: absolute, inset-y, flex, padding (pointer-events enabled)
 	Dropdown        string // options panel: absolute, z, border, shadow, max-h, overflow
 	Option          string // option: padding, cursor, hover
 	OptionDisabled  string // disabled option: opacity, cursor

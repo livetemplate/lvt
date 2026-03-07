@@ -45,6 +45,7 @@ type ResourceData struct {
 	PageSize             int            // Page size for pagination
 	EditMode             string         // Edit mode: "modal", "page"
 	Components           ComponentUsage // Which UI components this resource uses
+	Styles               string         // Style adapter: "tailwind", "unstyled"
 }
 
 type FieldData struct {

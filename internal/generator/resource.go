@@ -15,7 +15,7 @@ import (
 	"golang.org/x/text/language"
 )
 
-func GenerateResource(basePath, moduleName, resourceName string, fields []parser.Field, kitName, cssFramework, paginationMode string, pageSize int, editMode string) error {
+func GenerateResource(basePath, moduleName, resourceName string, fields []parser.Field, kitName, cssFramework, styles, paginationMode string, pageSize int, editMode string) error {
 	// Defaults
 	if kitName == "" {
 		kitName = "multi"
@@ -81,6 +81,7 @@ func GenerateResource(basePath, moduleName, resourceName string, fields []parser
 		PaginationMode:       paginationMode,
 		PageSize:             pageSize,
 		EditMode:             editMode,
+		Styles:               styles,
 	}
 	data.Components = DetectUsedComponents(data)
 

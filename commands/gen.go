@@ -225,7 +225,11 @@ func GenResource(args []string) error {
 	}
 	fmt.Println()
 
-	if err := generator.GenerateResource(basePath, moduleName, resourceName, fields, kit, cssFramework, paginationMode, pageSize, editMode); err != nil {
+	styles := projectConfig.Styles
+	if styles == "" {
+		styles = "tailwind"
+	}
+	if err := generator.GenerateResource(basePath, moduleName, resourceName, fields, kit, cssFramework, styles, paginationMode, pageSize, editMode); err != nil {
 		capture.RecordError(telemetry.GenerationError{Phase: "generation", Message: err.Error()})
 		capture.AttributeComponentErrors() // attribute errors on failure path
 		capture.Complete(false, "")

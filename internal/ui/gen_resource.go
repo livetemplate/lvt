@@ -363,7 +363,8 @@ func (m genResourceModel) generateResource() tea.Msg {
 	pageSize := 20
 	editMode := "modal" // default edit mode
 
-	if err := generator.GenerateResource(m.basePath, m.moduleName, resourceNameLower, fields, cssFramework, appMode, paginationMode, pageSize, editMode); err != nil {
+	styles := "tailwind" // TODO: read from project config (#175)
+	if err := generator.GenerateResource(m.basePath, m.moduleName, resourceNameLower, fields, cssFramework, appMode, styles, paginationMode, pageSize, editMode); err != nil {
 		m.err = err
 		m.stage = 1
 		return m
