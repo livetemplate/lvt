@@ -679,6 +679,47 @@ func TestSaveProjectConfig(t *testing.T) {
 	}
 }
 
+func TestSaveProjectConfig_QuotedValuesRoundTrip(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	cfg := &ProjectConfig{
+		Module:  "github.com/example/app",
+		Kit:     "multi",
+		Styles:  "tailwind",
+		DevMode: false,
+	}
+
+	if err := SaveProjectConfig(tmpDir, cfg); err != nil {
+		t.Fatalf("SaveProjectConfig failed: %v", err)
+	}
+
+	// Verify file uses %q quoting for module, kit, and styles
+	content, err := os.ReadFile(filepath.Join(tmpDir, ProjectConfigFileName))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`module="github.com/example/app"`, `kit="multi"`, `styles="tailwind"`} {
+		if !strings.Contains(string(content), want) {
+			t.Errorf("expected .lvtrc to contain %s, got:\n%s", want, content)
+		}
+	}
+
+	// Verify round-trip: Load reads back the same values
+	loaded, err := LoadProjectConfig(tmpDir)
+	if err != nil {
+		t.Fatalf("LoadProjectConfig failed: %v", err)
+	}
+	if loaded.Module != cfg.Module {
+		t.Errorf("Module mismatch: expected %q, got %q", cfg.Module, loaded.Module)
+	}
+	if loaded.Kit != cfg.Kit {
+		t.Errorf("Kit mismatch: expected %q, got %q", cfg.Kit, loaded.Kit)
+	}
+	if loaded.Styles != cfg.Styles {
+		t.Errorf("Styles mismatch: expected %q, got %q", cfg.Styles, loaded.Styles)
+	}
+}
+
 func TestProjectConfig_GetKit(t *testing.T) {
 	cfg := &ProjectConfig{
 		Kit: "pico",

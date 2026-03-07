@@ -57,7 +57,7 @@ func TestClassifyError_Kit(t *testing.T) {
 		File: "internal/kits/system/multi/form.tmpl",
 	})
 	if loc.Type != LocationKit {
-		t.Errorf("expected type 'kit', got %q", loc.Type)
+		t.Errorf("expected type %q, got %q", LocationKit, loc.Type)
 	}
 	if loc.Component != "" {
 		t.Errorf("expected empty component for kit, got %q", loc.Component)
@@ -70,7 +70,7 @@ func TestClassifyError_KitWithComponentsSubdir(t *testing.T) {
 		File: "internal/kits/system/multi/components/form.tmpl",
 	})
 	if loc.Type != LocationKit {
-		t.Errorf("expected type 'kit' for kit components/ subdir, got %q", loc.Type)
+		t.Errorf("expected type %q for kit components/ subdir, got %q", LocationKit, loc.Type)
 	}
 }
 
@@ -86,7 +86,7 @@ func TestClassifyError_Generated(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			loc := ClassifyError(telemetry.GenerationError{File: tt.file})
 			if loc.Type != LocationGenerated {
-				t.Errorf("expected type 'generated' for %q, got %q", tt.file, loc.Type)
+				t.Errorf("expected type %q for %q, got %q", LocationGenerated, tt.file, loc.Type)
 			}
 		})
 	}
@@ -106,7 +106,7 @@ func TestClassifyError_GeneratedNoFalsePositive(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			loc := ClassifyError(telemetry.GenerationError{File: tt.file})
 			if loc.Type == LocationGenerated {
-				t.Errorf("expected NOT 'generated' for %q, but got 'generated'", tt.file)
+				t.Errorf("expected NOT %q for %q, but got %q", LocationGenerated, tt.file, loc.Type)
 			}
 		})
 	}
@@ -117,14 +117,14 @@ func TestClassifyError_Unknown(t *testing.T) {
 		File: "some/other/path.go",
 	})
 	if loc.Type != LocationUnknown {
-		t.Errorf("expected type 'unknown', got %q", loc.Type)
+		t.Errorf("expected type %q, got %q", LocationUnknown, loc.Type)
 	}
 }
 
 func TestClassifyError_EmptyFile(t *testing.T) {
 	loc := ClassifyError(telemetry.GenerationError{File: ""})
 	if loc.Type != LocationUnknown {
-		t.Errorf("expected type 'unknown' for empty file, got %q", loc.Type)
+		t.Errorf("expected type %q for empty file, got %q", LocationUnknown, loc.Type)
 	}
 }
 
@@ -192,7 +192,7 @@ func TestClassifyError_NoFalseComponentMatch(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			loc := ClassifyError(telemetry.GenerationError{File: tt.file})
 			if loc.Type == LocationComponent {
-				t.Errorf("expected NOT 'component' for %q, but got 'component'", tt.file)
+				t.Errorf("expected NOT %q for %q, but got %q", LocationComponent, tt.file, loc.Type)
 			}
 		})
 	}
@@ -204,7 +204,7 @@ func TestClassifyError_WindowsPathNormalization(t *testing.T) {
 		File: "components\\modal\\modal.go",
 	})
 	if loc.Type != LocationComponent {
-		t.Errorf("expected type 'component' for Windows path, got %q", loc.Type)
+		t.Errorf("expected type %q for Windows path, got %q", LocationComponent, loc.Type)
 	}
 	if loc.Component != "modal" {
 		t.Errorf("expected component 'modal', got %q", loc.Component)
@@ -216,7 +216,7 @@ func TestClassifyError_CaseInsensitive(t *testing.T) {
 		File: "Components/Modal/Modal.go",
 	})
 	if loc.Type != LocationComponent {
-		t.Errorf("expected type 'component', got %q", loc.Type)
+		t.Errorf("expected type %q, got %q", LocationComponent, loc.Type)
 	}
 	if loc.Component != "modal" {
 		t.Errorf("expected component 'modal', got %q", loc.Component)
