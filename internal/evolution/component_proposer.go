@@ -57,9 +57,10 @@ func classifyPath(path string) ErrorLocation {
 				return loc
 			}
 		}
-		// Bare component reference like "components/modal.go"
-		name := strings.TrimSuffix(rest, ".go")
-		name = strings.TrimSuffix(name, ".tmpl")
+		// Bare component reference like "components/modal.go" or "components/modal.go.tmpl"
+		// Strip .tmpl first so .go.tmpl → .go → (name)
+		name := strings.TrimSuffix(rest, ".tmpl")
+		name = strings.TrimSuffix(name, ".go")
 		if name != "" && !strings.Contains(name, "*") {
 			loc.Type = "component"
 			loc.Component = name

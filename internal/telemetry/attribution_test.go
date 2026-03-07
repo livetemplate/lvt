@@ -171,20 +171,27 @@ func TestAttributeErrors_PrefixNoFalsePositive(t *testing.T) {
 	}
 }
 
-func TestAttributeErrors_SuffixFalsePositive(t *testing.T) {
-	// "modal." matches inside "premodal." because Contains does no word-boundary
-	// check on the left side. This is a known limitation: false positives can occur
-	// when a component name appears as a suffix of a longer token.
-	// With current component names (modal, toast, dropdown, etc.) this is unlikely
-	// in practice. If it becomes a problem, add a word-boundary guard.
+func TestAttributeErrors_SuffixNoFalsePositive(t *testing.T) {
+	// "premodal.init: failed" must NOT match component "modal" — the
+	// left-boundary guard requires a non-word character before the match.
 	errors := []GenerationError{
 		{Phase: "runtime", Message: "premodal.init: failed"},
 	}
 	result := AttributeErrors(errors, []string{"modal"})
 
-	// Known false positive — "modal." is a substring of "premodal."
+	if len(result) != 0 {
+		t.Fatalf("expected 0 (left-boundary guard should prevent match), got %d", len(result))
+	}
+}
+
+func TestAttributeErrors_BoundaryMatch(t *testing.T) {
+	// "modal.init: failed" should still match at a word boundary
+	errors := []GenerationError{
+		{Phase: "runtime", Message: "modal.init: failed"},
+	}
+	result := AttributeErrors(errors, []string{"modal"})
 	if len(result) != 1 {
-		t.Fatalf("expected 1 (known false positive), got %d", len(result))
+		t.Fatalf("expected 1, got %d", len(result))
 	}
 }
 
