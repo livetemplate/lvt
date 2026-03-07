@@ -58,3 +58,25 @@ jobs:
         run: |
           cd components
           GOWORK=off go test ./...
+
+      - name: Test external import
+        run: |
+          mkdir -p /tmp/test-import
+          cd /tmp/test-import
+          go mod init example.com/test-import
+          go mod edit -replace github.com/livetemplate/lvt/components=$GITHUB_WORKSPACE/components
+          cat > main.go <<'GOEOF'
+package main
+
+import (
+	"fmt"
+	"github.com/livetemplate/lvt/components"
+)
+
+func main() {
+	fmt.Println(components.Version())
+}
+GOEOF
+          GOWORK=off go mod tidy
+          GOWORK=off go build .
+          GOWORK=off go run .
