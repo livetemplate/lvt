@@ -207,7 +207,7 @@ func GenResource(args []string) error {
 	capture.SetKit(kit) // also sets the dedicated Kit column for SQL queries; inputs has it for context
 
 	// Detect which components this resource will use and record for telemetry
-	resourceData := generator.ResourceData{Fields: toFieldData(fields)}
+	resourceData := generator.ResourceData{Fields: generator.FieldDataFromFields(fields)}
 	compUsage := generator.DetectUsedComponents(resourceData)
 	capture.RecordComponentsUsed(telemetry.ComponentsFromUsage(compUsage))
 
@@ -679,22 +679,6 @@ func marshalValidationResult(result *validator.ValidationResult) string {
 		return ""
 	}
 	return string(b)
-}
-
-// toFieldData converts parser.Fields to generator.FieldData for component detection.
-// Only fields needed by DetectUsedComponents are mapped (currently IsSelect for
-// dropdown detection). Other FieldData fields are intentionally omitted.
-func toFieldData(fields []parser.Field) []generator.FieldData {
-	fd := make([]generator.FieldData, len(fields))
-	for i, f := range fields {
-		fd[i] = generator.FieldData{
-			Name:     f.Name,
-			GoType:   f.GoType,
-			SQLType:  f.SQLType,
-			IsSelect: f.IsSelect,
-		}
-	}
-	return fd
 }
 
 func getModuleName() (string, error) {

@@ -41,21 +41,7 @@ func GenerateSchema(basePath, moduleName, tableName string, fields []parser.Fiel
 	resourceNameSingularCap := titleCaser.String(tableNameSingular)
 	resourceNamePluralCap := titleCaser.String(tableNamePlural)
 
-	// Convert parser.Field to FieldData
-	var fieldData []FieldData
-	for _, f := range fields {
-		fieldData = append(fieldData, FieldData{
-			Name:            f.Name,
-			GoType:          f.GoType,
-			SQLType:         f.SQLType,
-			IsReference:     f.IsReference,
-			ReferencedTable: f.ReferencedTable,
-			OnDelete:        f.OnDelete,
-			IsTextarea:      f.IsTextarea,
-			IsSelect:        f.IsSelect,
-			SelectOptions:   f.SelectOptions,
-		})
-	}
+	fieldData := FieldDataFromFields(fields)
 
 	data := ResourceData{
 		PackageName:          tableNameLower,
