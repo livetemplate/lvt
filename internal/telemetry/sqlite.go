@@ -41,19 +41,15 @@ func (s *SQLiteStore) ensureSchema() error {
 	return s.migrateComponentColumns()
 }
 
+// componentColumns lists columns added after the initial schema.
+// Used by migrateComponentColumns to ALTER TABLE existing databases.
+var componentColumns = []string{"components_used", "component_errors"}
+
 // migrateComponentColumns adds components_used and component_errors columns
 // to existing databases created before these columns were added to schema.sql.
 // Safe to call repeatedly — checks column existence first.
 func (s *SQLiteStore) migrateComponentColumns() error {
-	// Allowed column names — guards against future additions to the loop
-	// without a corresponding allowlist entry. ALTER TABLE cannot use
-	// parameterized column names, so we validate against this set.
-	allowed := map[string]bool{"components_used": true, "component_errors": true}
-
-	for _, col := range []string{"components_used", "component_errors"} {
-		if !allowed[col] {
-			return fmt.Errorf("unexpected column name %q", col)
-		}
+	for _, col := range componentColumns {
 		var count int
 		err := s.db.QueryRow(
 			`SELECT COUNT(*) FROM pragma_table_info('generation_events') WHERE name = ?`, col,

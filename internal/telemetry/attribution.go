@@ -56,13 +56,25 @@ func matchComponent(genErr GenerationError, componentsUsed []string) string {
 		}
 
 		// Check error message patterns: "modal.New:", "modal:", "modal "
-		if strings.Contains(msgLower, compLower+".") ||
-			strings.Contains(msgLower, compLower+":") ||
-			strings.HasPrefix(msgLower, compLower+" ") {
-			return comp
+		// Use left-boundary guard to avoid false positives like "premodal.init"
+		for _, suffix := range []string{".", ":", " "} {
+			needle := compLower + suffix
+			idx := strings.Index(msgLower, needle)
+			if idx == -1 {
+				continue
+			}
+			// Accept if at start of message or preceded by a non-word character
+			if idx == 0 || !isWordChar(msgLower[idx-1]) {
+				return comp
+			}
 		}
 	}
 	return ""
+}
+
+// isWordChar returns true if b is a letter, digit, or underscore.
+func isWordChar(b byte) bool {
+	return (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || (b >= '0' && b <= '9') || b == '_'
 }
 
 // ComponentsFromUsage converts a ComponentUsage struct (or any struct with
