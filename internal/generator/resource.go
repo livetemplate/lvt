@@ -15,7 +15,7 @@ import (
 	"golang.org/x/text/language"
 )
 
-func GenerateResource(basePath, moduleName, resourceName string, fields []parser.Field, kitName, cssFramework, paginationMode string, pageSize int, editMode string) error {
+func GenerateResource(basePath, moduleName, resourceName string, fields []parser.Field, kitName, cssFramework, styles, paginationMode string, pageSize int, editMode string) error {
 	// Defaults
 	if kitName == "" {
 		kitName = "multi"
@@ -31,6 +31,13 @@ func GenerateResource(basePath, moduleName, resourceName string, fields []parser
 	}
 	if editMode == "" {
 		editMode = "modal"
+	}
+	if styles == "" {
+		styles = "tailwind"
+	}
+	validStyles := map[string]bool{"tailwind": true, "unstyled": true}
+	if !validStyles[styles] {
+		return fmt.Errorf("invalid styles adapter: %q (valid: tailwind, unstyled)", styles)
 	}
 
 	// appMode is the same as kit name in the new architecture
@@ -81,6 +88,7 @@ func GenerateResource(basePath, moduleName, resourceName string, fields []parser
 		PaginationMode:       paginationMode,
 		PageSize:             pageSize,
 		EditMode:             editMode,
+		Styles:               styles,
 	}
 	data.Components = DetectUsedComponents(data)
 

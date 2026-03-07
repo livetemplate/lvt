@@ -25,7 +25,7 @@ func TestResourceHandlerGolden(t *testing.T) {
 		{Name: "age", Type: "int", GoType: "int64", SQLType: "INTEGER"},
 	}
 
-	if err := generator.GenerateResource(tmpDir, "testmodule", "User", fields, "multi", "tailwind", "infinite", 20, "modal"); err != nil {
+	if err := generator.GenerateResource(tmpDir, "testmodule", "User", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal"); err != nil {
 		t.Fatalf("Failed to generate resource: %v", err)
 	}
 
@@ -78,6 +78,60 @@ func TestResourceHandlerGolden(t *testing.T) {
 				break
 			}
 		}
+	}
+}
+
+// TestResourceHandlerUnstyledImport verifies that styles="unstyled" generates the unstyled import
+func TestResourceHandlerUnstyledImport(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	dbDir := filepath.Join(tmpDir, "database")
+	if err := os.MkdirAll(dbDir, 0755); err != nil {
+		t.Fatalf("Failed to create database directory: %v", err)
+	}
+
+	fields := []parser.Field{
+		{Name: "name", Type: "string", GoType: "string", SQLType: "TEXT"},
+	}
+
+	if err := generator.GenerateResource(tmpDir, "testmodule", "Item", fields, "multi", "tailwind", "unstyled", "infinite", 20, "modal"); err != nil {
+		t.Fatalf("Failed to generate resource: %v", err)
+	}
+
+	handlerPath := filepath.Join(tmpDir, "app", "item", "item.go")
+	generated, err := os.ReadFile(handlerPath)
+	if err != nil {
+		t.Fatalf("Failed to read generated handler: %v", err)
+	}
+
+	content := string(generated)
+	if !strings.Contains(content, `styles/unstyled"`) {
+		t.Error("Expected styles/unstyled import in generated handler, not found")
+	}
+	if strings.Contains(content, `styles/tailwind"`) {
+		t.Error("Expected no styles/tailwind import in generated handler for unstyled mode, but found one")
+	}
+}
+
+// TestResourceHandlerInvalidStyles verifies that an invalid styles value is rejected
+func TestResourceHandlerInvalidStyles(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	dbDir := filepath.Join(tmpDir, "database")
+	if err := os.MkdirAll(dbDir, 0755); err != nil {
+		t.Fatalf("Failed to create database directory: %v", err)
+	}
+
+	fields := []parser.Field{
+		{Name: "name", Type: "string", GoType: "string", SQLType: "TEXT"},
+	}
+
+	err := generator.GenerateResource(tmpDir, "testmodule", "Item", fields, "multi", "tailwind", "bootstrap", "infinite", 20, "modal")
+	if err == nil {
+		t.Fatal("Expected error for invalid styles adapter, got nil")
+	}
+	if !strings.Contains(err.Error(), "invalid styles adapter") {
+		t.Errorf("Expected 'invalid styles adapter' error, got: %v", err)
 	}
 }
 
@@ -142,7 +196,7 @@ func TestResourceTemplateGolden(t *testing.T) {
 		{Name: "published", Type: "bool", GoType: "bool", SQLType: "BOOLEAN"},
 	}
 
-	if err := generator.GenerateResource(tmpDir, "testmodule", "Post", fields, "multi", "tailwind", "prev-next", 10, "modal"); err != nil {
+	if err := generator.GenerateResource(tmpDir, "testmodule", "Post", fields, "multi", "tailwind", "tailwind", "prev-next", 10, "modal"); err != nil {
 		t.Fatalf("Failed to generate resource: %v", err)
 	}
 

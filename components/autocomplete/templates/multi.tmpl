@@ -3,11 +3,11 @@
 <div class="{{$c.Styles.Root}}" data-autocomplete="{{$c.ID}}" data-multi="true">
   <div class="{{$c.Styles.InputWrapper}}">
     {{range $c.SelectedItems}}
-    <span class="{{$c.Styles.OptionLabel}}">
+    <span class="{{$c.Styles.SelectedBadge}}">
       {{.Label}}
       <button
         type="button"
-        class="{{$c.Styles.ClearIcon}}"
+        class="{{$c.Styles.SelectedBadgeBtn}}"
         lvt-click="remove_{{$c.ID}}"
         lvt-data-value="{{.Value}}"
         aria-label="Remove {{.Label}}"

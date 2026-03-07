@@ -32,6 +32,7 @@ type ProjectConfig struct {
 func DefaultProjectConfig() *ProjectConfig {
 	return &ProjectConfig{
 		Kit:     "multi",
+		Styles:  "tailwind",
 		DevMode: false,
 	}
 }

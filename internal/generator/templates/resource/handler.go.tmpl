@@ -13,7 +13,11 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/livetemplate/livetemplate"
 [[- if or .Components.UseModal .Components.UseToast]]
+[[- if eq .Styles "unstyled"]]
+	_ "github.com/livetemplate/lvt/components/styles/unstyled"
+[[- else]]
 	_ "github.com/livetemplate/lvt/components/styles/tailwind"
+[[- end]]
 [[- end]]
 [[- if .Components.UseModal]]
 	"github.com/livetemplate/lvt/components/modal"
