@@ -79,6 +79,17 @@ func TestEvolution_Metrics(t *testing.T) {
 	}
 }
 
+func TestEvolution_Components(t *testing.T) {
+	t.Setenv("LVT_TELEMETRY", "true")
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", "")
+
+	err := Evolution([]string{"components"})
+	if err != nil {
+		t.Errorf("components: %v", err)
+	}
+}
+
 func TestEvolution_Propose_NoArgs(t *testing.T) {
 	err := Evolution([]string{"propose"})
 	if err == nil {

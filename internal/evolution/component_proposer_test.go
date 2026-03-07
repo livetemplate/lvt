@@ -179,6 +179,38 @@ func TestClassifyFix(t *testing.T) {
 	}
 }
 
+func TestClassifyError_NoFalseComponentMatch(t *testing.T) {
+	// "custom_components/" should NOT match as a component
+	tests := []struct {
+		name string
+		file string
+	}{
+		{name: "custom_components prefix", file: "vendor/custom_components/modal.go"},
+		{name: "my_components prefix", file: "third_party/my_components/toast/toast.go"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			loc := ClassifyError(telemetry.GenerationError{File: tt.file})
+			if loc.Type == "component" {
+				t.Errorf("expected NOT 'component' for %q, but got 'component'", tt.file)
+			}
+		})
+	}
+}
+
+func TestClassifyError_WindowsPathNormalization(t *testing.T) {
+	// Backslash paths should be normalized and still classify correctly
+	loc := ClassifyError(telemetry.GenerationError{
+		File: "components\\modal\\modal.go",
+	})
+	if loc.Type != "component" {
+		t.Errorf("expected type 'component' for Windows path, got %q", loc.Type)
+	}
+	if loc.Component != "modal" {
+		t.Errorf("expected component 'modal', got %q", loc.Component)
+	}
+}
+
 func TestClassifyError_CaseInsensitive(t *testing.T) {
 	loc := ClassifyError(telemetry.GenerationError{
 		File: "Components/Modal/Modal.go",

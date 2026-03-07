@@ -25,8 +25,10 @@ func ClassifyFix(fix Fix) ErrorLocation {
 }
 
 func classifyPath(path string) ErrorLocation {
-	loc := ErrorLocation{Path: path}
-	lower := strings.ToLower(path)
+	// Normalize path separators for cross-platform consistency
+	normalized := strings.ReplaceAll(path, "\\", "/")
+	loc := ErrorLocation{Path: normalized}
+	lower := strings.ToLower(normalized)
 
 	// Check kit paths first — kits may contain a components/ subdirectory
 	// (e.g. internal/kits/system/multi/components/form.tmpl) which would
@@ -37,8 +39,16 @@ func classifyPath(path string) ErrorLocation {
 	}
 
 	// Check for top-level component paths: components/<name>/
-	if idx := strings.Index(lower, "components/"); idx != -1 {
-		rest := lower[idx+len("components/"):]
+	// Use segment-aware matching to avoid false positives from paths like
+	// "custom_components/" — require "components/" at start or after "/".
+	compIdx := -1
+	if strings.HasPrefix(lower, "components/") {
+		compIdx = 0
+	} else if idx := strings.Index(lower, "/components/"); idx != -1 {
+		compIdx = idx + 1 // skip the leading "/"
+	}
+	if compIdx != -1 {
+		rest := lower[compIdx+len("components/"):]
 		if slashIdx := strings.Index(rest, "/"); slashIdx > 0 {
 			name := rest[:slashIdx]
 			if !strings.Contains(name, "*") {
