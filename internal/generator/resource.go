@@ -61,21 +61,7 @@ func GenerateResource(basePath, moduleName, resourceName string, fields []parser
 	resourceNamePluralCap := titleCaser.String(pluralize(resourceNameSingular))
 	tableName := pluralize(resourceNameSingular)
 
-	// Convert parser.Field to FieldData
-	var fieldData []FieldData
-	for _, f := range fields {
-		fieldData = append(fieldData, FieldData{
-			Name:            f.Name,
-			GoType:          f.GoType,
-			SQLType:         f.SQLType,
-			IsReference:     f.IsReference,
-			ReferencedTable: f.ReferencedTable,
-			OnDelete:        f.OnDelete,
-			IsTextarea:      f.IsTextarea,
-			IsSelect:        f.IsSelect,
-			SelectOptions:   f.SelectOptions,
-		})
-	}
+	fieldData := FieldDataFromFields(fields)
 
 	// Read dev mode setting from .lvtrc
 	devMode := ReadDevMode(basePath)

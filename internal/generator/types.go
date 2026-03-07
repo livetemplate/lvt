@@ -5,9 +5,29 @@ import (
 	"text/template"
 
 	"github.com/livetemplate/lvt/internal/kits"
+	"github.com/livetemplate/lvt/internal/parser"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
+
+// FieldDataFromFields converts parsed fields to FieldData for template rendering.
+func FieldDataFromFields(fields []parser.Field) []FieldData {
+	fd := make([]FieldData, len(fields))
+	for i, f := range fields {
+		fd[i] = FieldData{
+			Name:            f.Name,
+			GoType:          f.GoType,
+			SQLType:         f.SQLType,
+			IsReference:     f.IsReference,
+			ReferencedTable: f.ReferencedTable,
+			OnDelete:        f.OnDelete,
+			IsTextarea:      f.IsTextarea,
+			IsSelect:        f.IsSelect,
+			SelectOptions:   f.SelectOptions,
+		}
+	}
+	return fd
+}
 
 type ResourceData struct {
 	PackageName          string
