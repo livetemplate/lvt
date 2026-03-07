@@ -32,6 +32,9 @@ func GenerateResource(basePath, moduleName, resourceName string, fields []parser
 	if editMode == "" {
 		editMode = "modal"
 	}
+	if styles == "" {
+		styles = "tailwind"
+	}
 
 	// appMode is the same as kit name in the new architecture
 	appMode := kitName

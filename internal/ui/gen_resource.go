@@ -368,6 +368,12 @@ func (m genResourceModel) generateResource() tea.Msg {
 	if cfg, err := config.LoadProjectConfig(m.basePath); err == nil && cfg.Styles != "" {
 		styles = cfg.Styles
 	}
+	validStyles := map[string]bool{"tailwind": true, "unstyled": true}
+	if !validStyles[styles] {
+		m.err = fmt.Errorf("invalid styles adapter: %s (valid: tailwind, unstyled)", styles)
+		m.stage = 1
+		return m
+	}
 	if err := generator.GenerateResource(m.basePath, m.moduleName, resourceNameLower, fields, appMode, cssFramework, styles, paginationMode, pageSize, editMode); err != nil {
 		m.err = err
 		m.stage = 1
