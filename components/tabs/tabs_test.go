@@ -4,6 +4,11 @@ import (
 	"html/template"
 	"strings"
 	"testing"
+
+	// Register the tailwind adapter so CSS class methods return expected values.
+	_ "github.com/livetemplate/lvt/components/styles/tailwind"
+	// Register the unstyled adapter for WithStyled(false) tests.
+	_ "github.com/livetemplate/lvt/components/styles/unstyled"
 )
 
 func TestNew(t *testing.T) {

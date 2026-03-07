@@ -63,3 +63,47 @@ func TestBase_SetStyled(t *testing.T) {
 		t.Error("expected styled after SetStyled(true)")
 	}
 }
+
+func TestBase_StyleData(t *testing.T) {
+	b := NewBase("myid", "dropdown")
+
+	// Initially nil
+	if b.StyleData() != nil {
+		t.Error("expected nil StyleData initially")
+	}
+
+	// Set and get
+	data := "test-style-data"
+	b.SetStyleData(data)
+	if b.StyleData() != data {
+		t.Errorf("StyleData() = %v, want %v", b.StyleData(), data)
+	}
+
+	// SetStyled clears cached style data
+	b.SetStyled(false)
+	if b.StyleData() != nil {
+		t.Error("expected nil StyleData after SetStyled(false)")
+	}
+}
+
+func TestBase_StyleDataWithStruct(t *testing.T) {
+	type testStyles struct {
+		Panel string
+		Body  string
+	}
+
+	b := NewBase("myid", "modal")
+	s := testStyles{Panel: "bg-white", Body: "p-4"}
+	b.SetStyleData(s)
+
+	got, ok := b.StyleData().(testStyles)
+	if !ok {
+		t.Fatal("StyleData type assertion failed")
+	}
+	if got.Panel != "bg-white" {
+		t.Errorf("Panel = %q, want %q", got.Panel, "bg-white")
+	}
+	if got.Body != "p-4" {
+		t.Errorf("Body = %q, want %q", got.Body, "p-4")
+	}
+}

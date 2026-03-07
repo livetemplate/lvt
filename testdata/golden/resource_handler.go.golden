@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/livetemplate/livetemplate"
+	_ "github.com/livetemplate/lvt/components/styles/tailwind"
 	"github.com/livetemplate/lvt/components/modal"
 	"github.com/livetemplate/lvt/components/toast"
 	"testmodule/database/models"

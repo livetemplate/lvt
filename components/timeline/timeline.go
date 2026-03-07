@@ -21,6 +21,7 @@ package timeline
 
 import (
 	"github.com/livetemplate/lvt/components/base"
+	"github.com/livetemplate/lvt/components/styles"
 )
 
 // Orientation defines timeline layout direction.
@@ -163,12 +164,28 @@ func (t *Timeline) IsAlternate() bool {
 	return t.Position == PositionAlternate
 }
 
+// Styles returns the resolved TimelineStyles for this component.
+// It uses lazy resolution: the result is cached after the first call.
+func (t *Timeline) Styles() styles.TimelineStyles {
+	if s, ok := t.StyleData().(styles.TimelineStyles); ok {
+		return s
+	}
+	adapter := styles.ForStyled(t.IsStyled())
+	if adapter == nil {
+		return styles.TimelineStyles{}
+	}
+	s := adapter.TimelineStyles()
+	t.SetStyleData(s)
+	return s
+}
+
 // OrientationClass returns CSS class for orientation.
 func (t *Timeline) OrientationClass() string {
+	st := t.Styles()
 	if t.IsHorizontal() {
-		return "flex flex-row"
+		return st.HorizontalRoot
 	}
-	return "flex flex-col"
+	return st.VerticalRoot
 }
 
 // TimelineItem represents a single timeline entry.
@@ -256,56 +273,74 @@ func (i *TimelineItem) IsError() bool {
 	return i.Status == StatusError
 }
 
+// Styles returns the resolved TimelineItemStyles for this component.
+// It uses lazy resolution: the result is cached after the first call.
+func (i *TimelineItem) Styles() styles.TimelineItemStyles {
+	if s, ok := i.StyleData().(styles.TimelineItemStyles); ok {
+		return s
+	}
+	adapter := styles.ForStyled(i.IsStyled())
+	if adapter == nil {
+		return styles.TimelineItemStyles{}
+	}
+	s := adapter.TimelineItemStyles()
+	i.SetStyleData(s)
+	return s
+}
+
 // IndicatorClass returns CSS class for the indicator dot.
 func (i *TimelineItem) IndicatorClass() string {
+	st := i.Styles()
 	switch i.Color {
 	case ColorBlue:
-		return "bg-blue-500"
+		return st.ColorBlue
 	case ColorGreen:
-		return "bg-green-500"
+		return st.ColorGreen
 	case ColorYellow:
-		return "bg-yellow-500"
+		return st.ColorYellow
 	case ColorRed:
-		return "bg-red-500"
+		return st.ColorRed
 	case ColorPurple:
-		return "bg-purple-500"
+		return st.ColorPurple
 	default:
-		return "bg-gray-400"
+		return st.ColorGray
 	}
 }
 
 // StatusClass returns CSS class based on status.
 func (i *TimelineItem) StatusClass() string {
+	st := i.Styles()
 	switch i.Status {
 	case StatusPending:
-		return "bg-gray-200 text-gray-500"
+		return st.StatusPending
 	case StatusActive:
-		return "bg-blue-500 text-white ring-4 ring-blue-100"
+		return st.StatusActive
 	case StatusComplete:
-		return "bg-green-500 text-white"
+		return st.StatusComplete
 	case StatusError:
-		return "bg-red-500 text-white"
+		return st.StatusError
 	default:
-		return "bg-gray-400 text-white"
+		return st.StatusDefault
 	}
 }
 
 // RingClass returns ring CSS class for active items.
 func (i *TimelineItem) RingClass() string {
 	if i.IsActive() {
+		st := i.Styles()
 		switch i.Color {
 		case ColorBlue:
-			return "ring-4 ring-blue-100"
+			return st.RingBlue
 		case ColorGreen:
-			return "ring-4 ring-green-100"
+			return st.RingGreen
 		case ColorYellow:
-			return "ring-4 ring-yellow-100"
+			return st.RingYellow
 		case ColorRed:
-			return "ring-4 ring-red-100"
+			return st.RingRed
 		case ColorPurple:
-			return "ring-4 ring-purple-100"
+			return st.RingPurple
 		default:
-			return "ring-4 ring-gray-100"
+			return st.RingGray
 		}
 	}
 	return ""

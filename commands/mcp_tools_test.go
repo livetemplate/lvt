@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -253,6 +254,20 @@ func TestMCPTool_LvtGenAuth(t *testing.T) {
 	appDir := filepath.Join(tmpDir, "testapp")
 	if err := os.Chdir(appDir); err != nil {
 		t.Fatalf("Failed to change to app dir: %v", err)
+	}
+
+	// Add replace directives so GenerateAuth's `go get github.com/livetemplate/lvt@latest`
+	// can resolve lvt/components (a local-only sub-module not published to any proxy)
+	_, testFile, _, _ := runtime.Caller(0)
+	lvtRoot := filepath.Dir(filepath.Dir(testFile))
+	goModPath := filepath.Join(appDir, "go.mod")
+	goModContent, err := os.ReadFile(goModPath)
+	if err != nil {
+		t.Fatalf("Failed to read go.mod: %v", err)
+	}
+	replaceDirective := fmt.Sprintf("\nreplace github.com/livetemplate/lvt => %s\nreplace github.com/livetemplate/lvt/components => %s/components\n", lvtRoot, lvtRoot)
+	if err := os.WriteFile(goModPath, append(goModContent, []byte(replaceDirective)...), 0644); err != nil {
+		t.Fatalf("Failed to add replace directives: %v", err)
 	}
 
 	tests := []struct {

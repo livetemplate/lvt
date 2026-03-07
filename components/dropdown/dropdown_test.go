@@ -4,6 +4,9 @@ import (
 	"html/template"
 	"strings"
 	"testing"
+
+	_ "github.com/livetemplate/lvt/components/styles/tailwind"
+	_ "github.com/livetemplate/lvt/components/styles/unstyled"
 )
 
 func TestNew(t *testing.T) {
@@ -619,8 +622,8 @@ func TestUnstyledTemplateRendering(t *testing.T) {
 		}
 
 		html := buf.String()
-		// Unstyled version should not have Tailwind classes
-		if strings.Contains(html, "class=\"relative") {
+		// Unstyled version should not have Tailwind classes like "rounded-md"
+		if strings.Contains(html, "rounded-md") {
 			t.Error("unstyled template should not have Tailwind classes")
 		}
 	})

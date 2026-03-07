@@ -21,6 +21,9 @@ type ProjectConfig struct {
 	// Kit is the kit used for this project
 	Kit string
 
+	// Styles is the style adapter for components (e.g. "tailwind", "unstyled")
+	Styles string
+
 	// DevMode indicates whether to use local client library
 	DevMode bool
 }
@@ -74,6 +77,8 @@ func LoadProjectConfig(basePath string) (*ProjectConfig, error) {
 			config.Module = value
 		case "kit":
 			config.Kit = value
+		case "styles":
+			config.Styles = value
 		case "dev_mode":
 			config.DevMode = value == "true"
 		}
@@ -96,6 +101,9 @@ func SaveProjectConfig(basePath string, config *ProjectConfig) error {
 	}
 	if config.Kit != "" {
 		lines = append(lines, fmt.Sprintf("kit=%s", config.Kit))
+	}
+	if config.Styles != "" {
+		lines = append(lines, fmt.Sprintf("styles=%s", config.Styles))
 	}
 	lines = append(lines, fmt.Sprintf("dev_mode=%v", config.DevMode))
 

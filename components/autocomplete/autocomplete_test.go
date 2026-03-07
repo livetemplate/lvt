@@ -3,6 +3,8 @@ package autocomplete
 import (
 	"strings"
 	"testing"
+
+	_ "github.com/livetemplate/lvt/components/styles/tailwind"
 )
 
 func TestNew(t *testing.T) {

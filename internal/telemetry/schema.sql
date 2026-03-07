@@ -9,7 +9,9 @@ CREATE TABLE IF NOT EXISTS generation_events (
     validation TEXT,
     errors TEXT,
     duration_ms INTEGER,
-    files_generated TEXT
+    files_generated TEXT,
+    components_used TEXT,
+    component_errors TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_events_timestamp ON generation_events(timestamp);
 CREATE INDEX IF NOT EXISTS idx_events_success ON generation_events(success);

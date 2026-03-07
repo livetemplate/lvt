@@ -206,6 +206,11 @@ func GenResource(args []string) error {
 	})
 	capture.SetKit(kit) // also sets the dedicated Kit column for SQL queries; inputs has it for context
 
+	// Detect which components this resource will use and record for telemetry
+	resourceData := generator.ResourceData{Fields: toFieldData(fields)}
+	compUsage := generator.DetectUsedComponents(resourceData)
+	capture.RecordComponentsUsed(telemetry.ComponentsFromUsage(compUsage))
+
 	fmt.Printf("Generating CRUD resource: %s\n", resourceName)
 	fmt.Printf("Kit: %s\n", kit)
 	fmt.Printf("CSS Framework: %s\n", cssFramework)
@@ -222,6 +227,7 @@ func GenResource(args []string) error {
 
 	if err := generator.GenerateResource(basePath, moduleName, resourceName, fields, kit, cssFramework, paginationMode, pageSize, editMode); err != nil {
 		capture.RecordError(telemetry.GenerationError{Phase: "generation", Message: err.Error()})
+		capture.AttributeComponentErrors() // attribute errors on failure path
 		capture.Complete(false, "")
 		return err
 	}
@@ -238,6 +244,7 @@ func GenResource(args []string) error {
 			Message: validationErr.Error(),
 		})
 	}
+	capture.AttributeComponentErrors() // attribute any captured errors to components before completing
 	capture.Complete(validationErr == nil, marshalValidationResult(validationResult))
 
 	resourceNameLower := strings.ToLower(resourceName)
@@ -672,6 +679,22 @@ func marshalValidationResult(result *validator.ValidationResult) string {
 		return ""
 	}
 	return string(b)
+}
+
+// toFieldData converts parser.Fields to generator.FieldData for component detection.
+// Only fields needed by DetectUsedComponents are mapped (currently IsSelect for
+// dropdown detection). Other FieldData fields are intentionally omitted.
+func toFieldData(fields []parser.Field) []generator.FieldData {
+	fd := make([]generator.FieldData, len(fields))
+	for i, f := range fields {
+		fd[i] = generator.FieldData{
+			Name:     f.Name,
+			GoType:   f.GoType,
+			SQLType:  f.SQLType,
+			IsSelect: f.IsSelect,
+		}
+	}
+	return fd
 }
 
 func getModuleName() (string, error) {

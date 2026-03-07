@@ -1,65 +1,41 @@
 {{define "lvt:rating:default:v1"}}
-{{if .IsStyled}}
-{{/* Tailwind CSS styled version */}}
-<div class="inline-flex items-center gap-2" data-rating="{{.ID}}">
-  {{if .Label}}
-  <span class="text-sm text-gray-600">{{.Label}}</span>
+{{$c := .}}
+<div class="{{$c.Styles.Root}}" data-rating="{{$c.ID}}">
+  {{if $c.Label}}
+  <span class="{{$c.Styles.Label}}">{{$c.Label}}</span>
   {{end}}
 
   <div
-    class="inline-flex {{.SizeClass}} {{if not .Readonly}}cursor-pointer{{end}}"
-    {{if not .Readonly}}lvt-mouseleave="leave_{{.ID}}"{{end}}
+    class="{{$c.Styles.StarsWrapper}} {{$c.SizeClass}} {{if not $c.Readonly}}{{$c.Styles.StarBtn}}{{else}}{{$c.Styles.StarReadonly}}{{end}}"
+    {{if not $c.Readonly}}lvt-mouseleave="leave_{{$c.ID}}"{{end}}
   >
-    {{range $star := .Stars}}
+    {{range $star := $c.Stars}}
     <span
-      class="transition-colors {{if $.IsStarFull $star}}{{$.ColorClass}}{{else if $.IsStarHalf $star}}{{$.ColorClass}}{{else}}{{$.EmptyColorClass}}{{end}}"
-      {{if not $.Readonly}}
-      lvt-click="click_{{$.ID}}"
+      class="{{if $c.IsStarFull $star}}{{$c.ColorClass}}{{else if $c.IsStarHalf $star}}{{$c.ColorClass}}{{else}}{{$c.EmptyColorClass}}{{end}}"
+      {{if not $c.Readonly}}
+      lvt-click="click_{{$c.ID}}"
       lvt-data-star="{{$star}}"
-      lvt-mouseover="hover_{{$.ID}}"
+      lvt-mouseover="hover_{{$c.ID}}"
       {{end}}
     >
-      {{if $.IsStarHalf $star}}
-      <span class="relative">
-        <span class="absolute overflow-hidden" style="width: 50%">{{$.Character}}</span>
-        <span class="{{$.EmptyColorClass}}">{{$.Character}}</span>
+      {{if $c.IsStarHalf $star}}
+      <span class="{{$c.Styles.HalfStarOuter}}">
+        <span class="{{$c.Styles.HalfStarInner}}" style="width: 50%">{{$c.Character}}</span>
+        <span class="{{$c.EmptyColorClass}}">{{$c.Character}}</span>
       </span>
       {{else}}
-      {{$.Character}}
+      {{$c.Character}}
       {{end}}
     </span>
     {{end}}
   </div>
 
-  {{if .ShowValue}}
-  <span class="text-sm font-medium text-gray-700">{{.FormatValue}}</span>
+  {{if $c.ShowValue}}
+  <span class="{{$c.Styles.ValueText}}">{{$c.FormatValue}}</span>
   {{end}}
 
-  {{if and .ShowCount (gt .Count 0)}}
-  <span class="text-sm text-gray-500">({{.Count}})</span>
+  {{if and $c.ShowCount (gt $c.Count 0)}}
+  <span class="{{$c.Styles.CountText}}">({{$c.Count}})</span>
   {{end}}
 </div>
-{{else}}
-{{/* Unstyled semantic HTML version */}}
-<div data-rating="{{.ID}}">
-  {{if .Label}}<label>{{.Label}}</label>{{end}}
-
-  <span {{if not .Readonly}}lvt-mouseleave="leave_{{.ID}}"{{end}}>
-    {{range $star := .Stars}}
-    <span
-      {{if not $.Readonly}}
-      lvt-click="click_{{$.ID}}"
-      lvt-data-star="{{$star}}"
-      lvt-mouseover="hover_{{$.ID}}"
-      {{end}}
-    >
-      {{if $.IsStarFull $star}}★{{else if $.IsStarHalf $star}}☆{{else}}☆{{end}}
-    </span>
-    {{end}}
-  </span>
-
-  {{if .ShowValue}}<span>{{.FormatValue}}</span>{{end}}
-  {{if and .ShowCount (gt .Count 0)}}<span>({{.Count}})</span>{{end}}
-</div>
-{{end}}
 {{end}}

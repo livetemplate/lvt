@@ -1,8 +1,10 @@
 package generator
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -232,11 +234,19 @@ func TestGenerateAuth_Queries_Append(t *testing.T) {
 func TestGenerateAuth_UpdateDependencies(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Create minimal go.mod without dependencies
-	goModContent := `module testapp
+	// Derive LVT project root from this test file's location (internal/generator/)
+	_, testFile, _, _ := runtime.Caller(0)
+	lvtRoot := filepath.Dir(filepath.Dir(filepath.Dir(testFile)))
+
+	// Create go.mod with replace directives so `go get github.com/livetemplate/lvt@latest`
+	// can resolve lvt/components (a local-only sub-module not published to any proxy)
+	goModContent := fmt.Sprintf(`module testapp
 
 go 1.21
-`
+
+replace github.com/livetemplate/lvt => %s
+replace github.com/livetemplate/lvt/components => %s/components
+`, lvtRoot, lvtRoot)
 	if err := os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte(goModContent), 0644); err != nil {
 		t.Fatalf("failed to create go.mod: %v", err)
 	}
