@@ -317,7 +317,7 @@ func GenerateAuth(projectRoot string, authConfig *AuthConfig) error {
 			cmd := exec.Command("go", args...)
 			cmd.Dir = projectRoot
 			if output, err := cmd.CombinedOutput(); err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: could not fetch some dependencies (run 'go mod tidy' to resolve):\n%s\n", output)
+				fmt.Fprintf(os.Stderr, "Warning: could not fetch some dependencies (run 'go mod tidy' in %s to resolve):\n%s\n", projectRoot, output)
 			}
 		}
 	}
