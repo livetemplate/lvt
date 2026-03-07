@@ -20,6 +20,7 @@ package accordion
 
 import (
 	"github.com/livetemplate/lvt/components/base"
+	"github.com/livetemplate/lvt/components/styles"
 )
 
 // Item represents a single accordion section.
@@ -186,4 +187,19 @@ func (a *Accordion) RemoveItem(itemID string) {
 			return
 		}
 	}
+}
+
+// Styles returns the resolved CSS class set for this component.
+// It lazily resolves from the registered style adapter and caches the result.
+func (a *Accordion) Styles() styles.AccordionStyles {
+	if s, ok := a.StyleData().(styles.AccordionStyles); ok {
+		return s
+	}
+	adapter := styles.ForStyled(a.IsStyled())
+	if adapter == nil {
+		return styles.AccordionStyles{}
+	}
+	s := adapter.AccordionStyles()
+	a.SetStyleData(s)
+	return s
 }

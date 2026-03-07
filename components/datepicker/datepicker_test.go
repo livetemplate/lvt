@@ -3,6 +3,8 @@ package datepicker
 import (
 	"testing"
 	"time"
+
+	_ "github.com/livetemplate/lvt/components/styles/tailwind"
 )
 
 func TestNew(t *testing.T) {

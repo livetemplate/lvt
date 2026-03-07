@@ -26,6 +26,7 @@ import (
 	"strconv"
 
 	"github.com/livetemplate/lvt/components/base"
+	"github.com/livetemplate/lvt/components/styles"
 )
 
 // Type represents the visual style/severity of a toast.
@@ -170,37 +171,53 @@ func (c *Container) VisibleMessages() []Message {
 	return c.Messages[len(c.Messages)-c.MaxVisible:]
 }
 
-// GetPositionClasses returns Tailwind classes for the container position.
+// Styles returns the resolved ToastStyles for this component.
+func (c *Container) Styles() styles.ToastStyles {
+	if s, ok := c.StyleData().(styles.ToastStyles); ok {
+		return s
+	}
+	adapter := styles.ForStyled(c.IsStyled())
+	if adapter == nil {
+		return styles.ToastStyles{}
+	}
+	s := adapter.ToastStyles()
+	c.SetStyleData(s)
+	return s
+}
+
+// GetPositionClasses returns CSS classes for the container position.
 func (c *Container) GetPositionClasses() string {
+	s := c.Styles()
 	switch c.Position {
 	case TopRight:
-		return "top-4 right-4"
+		return s.PosTopRight
 	case TopLeft:
-		return "top-4 left-4"
+		return s.PosTopLeft
 	case TopCenter:
-		return "top-4 left-1/2 -translate-x-1/2"
+		return s.PosTopCenter
 	case BottomRight:
-		return "bottom-4 right-4"
+		return s.PosBottomRight
 	case BottomLeft:
-		return "bottom-4 left-4"
+		return s.PosBottomLeft
 	case BottomCenter:
-		return "bottom-4 left-1/2 -translate-x-1/2"
+		return s.PosBottomCenter
 	default:
-		return "top-4 right-4"
+		return s.PosTopRight
 	}
 }
 
-// GetTypeClasses returns Tailwind classes for a toast type.
-func GetTypeClasses(t Type) string {
+// GetTypeClasses returns CSS classes for a toast type using the style adapter.
+func (c *Container) GetTypeClasses(t Type) string {
+	s := c.Styles()
 	switch t {
 	case Success:
-		return "bg-green-50 border-green-200 text-green-800"
+		return s.TypeSuccess
 	case Warning:
-		return "bg-yellow-50 border-yellow-200 text-yellow-800"
+		return s.TypeWarning
 	case Error:
-		return "bg-red-50 border-red-200 text-red-800"
+		return s.TypeError
 	default: // Info
-		return "bg-blue-50 border-blue-200 text-blue-800"
+		return s.TypeInfo
 	}
 }
 

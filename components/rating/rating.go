@@ -23,6 +23,7 @@ import (
 	"math"
 
 	"github.com/livetemplate/lvt/components/base"
+	"github.com/livetemplate/lvt/components/styles"
 )
 
 // Rating is a star rating component.
@@ -257,47 +258,64 @@ func (r *Rating) FormatValueWithMax() string {
 	return r.FormatValue() + "/" + formatFloat(float64(r.MaxStars), 0)
 }
 
+// Styles returns the resolved RatingStyles for this component.
+func (r *Rating) Styles() styles.RatingStyles {
+	if s, ok := r.StyleData().(styles.RatingStyles); ok {
+		return s
+	}
+	adapter := styles.ForStyled(r.IsStyled())
+	if adapter == nil {
+		return styles.RatingStyles{}
+	}
+	s := adapter.RatingStyles()
+	r.SetStyleData(s)
+	return s
+}
+
 // SizeClass returns CSS size classes.
 func (r *Rating) SizeClass() string {
+	st := r.Styles()
 	switch r.Size {
 	case "sm":
-		return "text-lg"
+		return st.SizeSm
 	case "lg":
-		return "text-3xl"
+		return st.SizeLg
 	case "xl":
-		return "text-4xl"
+		return st.SizeXl
 	default: // md
-		return "text-2xl"
+		return st.SizeMd
 	}
 }
 
 // ColorClass returns CSS color classes for filled stars.
 func (r *Rating) ColorClass() string {
+	st := r.Styles()
 	switch r.Color {
 	case "red":
-		return "text-red-500"
+		return st.ColorRed
 	case "blue":
-		return "text-blue-500"
+		return st.ColorBlue
 	case "green":
-		return "text-green-500"
+		return st.ColorGreen
 	default: // yellow
-		return "text-yellow-400"
+		return st.ColorYellow
 	}
 }
 
 // EmptyColorClass returns CSS color classes for empty stars.
 func (r *Rating) EmptyColorClass() string {
+	st := r.Styles()
 	switch r.EmptyColor {
 	case "red":
-		return "text-red-200"
+		return st.EmptyRed
 	case "blue":
-		return "text-blue-200"
+		return st.EmptyBlue
 	case "green":
-		return "text-green-200"
+		return st.EmptyGreen
 	case "yellow":
-		return "text-yellow-200"
+		return st.EmptyYellow
 	default:
-		return "text-gray-300"
+		return st.EmptyDefault
 	}
 }
 

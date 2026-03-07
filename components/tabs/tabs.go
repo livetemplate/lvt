@@ -27,6 +27,7 @@ package tabs
 
 import (
 	"github.com/livetemplate/lvt/components/base"
+	"github.com/livetemplate/lvt/components/styles"
 )
 
 // Tab represents a single tab item.
@@ -212,4 +213,19 @@ func (t *Tabs) EnabledTabCount() int {
 		}
 	}
 	return count
+}
+
+// Styles returns the resolved CSS class set for this component.
+// It lazily resolves from the registered style adapter and caches the result.
+func (t *Tabs) Styles() styles.TabsStyles {
+	if s, ok := t.StyleData().(styles.TabsStyles); ok {
+		return s
+	}
+	adapter := styles.ForStyled(t.IsStyled())
+	if adapter == nil {
+		return styles.TabsStyles{}
+	}
+	s := adapter.TabsStyles()
+	t.SetStyleData(s)
+	return s
 }

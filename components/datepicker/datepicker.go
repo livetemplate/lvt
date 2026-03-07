@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/livetemplate/lvt/components/base"
+	"github.com/livetemplate/lvt/components/styles"
 )
 
 // DatePicker is a component for selecting a single date.
@@ -349,6 +350,20 @@ func (rp *RangePicker) DisplayRangeValue() string {
 		return start + " - ..."
 	}
 	return start + " - " + rp.EndDate.Format(rp.Format)
+}
+
+// Styles returns the resolved DatepickerStyles for this component.
+func (dp *DatePicker) Styles() styles.DatepickerStyles {
+	if s, ok := dp.StyleData().(styles.DatepickerStyles); ok {
+		return s
+	}
+	adapter := styles.ForStyled(dp.IsStyled())
+	if adapter == nil {
+		return styles.DatepickerStyles{}
+	}
+	s := adapter.DatepickerStyles()
+	dp.SetStyleData(s)
+	return s
 }
 
 // Helper functions

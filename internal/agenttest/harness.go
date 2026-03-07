@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -65,6 +66,16 @@ func Setup(t *testing.T, opts *SetupOptions) *AgentTestEnv {
 		require.NoError(t, err, "failed to create test app")
 
 		appDir = filepath.Join(tmpDir, opts.AppName)
+
+		// Add replace directives so auth generation's `go get github.com/livetemplate/lvt@latest`
+		// can resolve lvt/components (a local-only sub-module not published to any proxy)
+		_, thisFile, _, _ := runtime.Caller(0)
+		lvtRoot := filepath.Dir(filepath.Dir(filepath.Dir(thisFile)))
+		goModPath := filepath.Join(appDir, "go.mod")
+		goModContent, readErr := os.ReadFile(goModPath)
+		require.NoError(t, readErr, "failed to read generated app's go.mod")
+		replaceBlock := fmt.Sprintf("\nreplace github.com/livetemplate/lvt => %s\nreplace github.com/livetemplate/lvt/components => %s/components\n", lvtRoot, lvtRoot)
+		require.NoError(t, os.WriteFile(goModPath, append(goModContent, []byte(replaceBlock)...), 0644), "failed to add replace directives")
 
 		// Return to original directory
 		err = os.Chdir(originalDir)

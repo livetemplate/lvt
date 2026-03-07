@@ -45,6 +45,7 @@ type AppData struct {
 	Kit          *kits.KitInfo // CSS framework kit (new)
 	DevMode      bool          // Use local client library instead of CDN
 	CSSFramework string        // CSS framework name for home page (for backward compatibility)
+	Styles       string        // Style adapter: "tailwind", "unstyled"
 }
 
 var funcMap = template.FuncMap{

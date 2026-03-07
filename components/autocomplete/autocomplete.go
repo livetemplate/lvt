@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/livetemplate/lvt/components/base"
+	"github.com/livetemplate/lvt/components/styles"
 )
 
 // Suggestion represents an autocomplete suggestion.
@@ -306,6 +307,20 @@ func (ac *Autocomplete) DisplayValue() string {
 		return ac.Selected.Label
 	}
 	return ac.Query
+}
+
+// Styles returns the resolved AutocompleteStyles for this component.
+func (a *Autocomplete) Styles() styles.AutocompleteStyles {
+	if s, ok := a.StyleData().(styles.AutocompleteStyles); ok {
+		return s
+	}
+	adapter := styles.ForStyled(a.IsStyled())
+	if adapter == nil {
+		return styles.AutocompleteStyles{}
+	}
+	s := adapter.AutocompleteStyles()
+	a.SetStyleData(s)
+	return s
 }
 
 // SetSuggestions updates the suggestions and re-filters.

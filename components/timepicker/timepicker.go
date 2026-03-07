@@ -22,6 +22,7 @@ import (
 	"fmt"
 
 	"github.com/livetemplate/lvt/components/base"
+	"github.com/livetemplate/lvt/components/styles"
 )
 
 // TimePicker is a component for selecting time.
@@ -361,6 +362,34 @@ func (tp *TimePicker) SetNow() {
 	// In a real implementation, this would use time.Now()
 	// For the component, we just mark HasValue true
 	tp.HasValue = true
+}
+
+// Styles returns the resolved TimepickerStyles for this component.
+func (tp *TimePicker) Styles() styles.TimepickerStyles {
+	if s, ok := tp.StyleData().(styles.TimepickerStyles); ok {
+		return s
+	}
+	adapter := styles.ForStyled(tp.IsStyled())
+	if adapter == nil {
+		return styles.TimepickerStyles{}
+	}
+	s := adapter.TimepickerStyles()
+	tp.SetStyleData(s)
+	return s
+}
+
+// DurationStyles returns the resolved TimepickerStyles for the duration picker.
+func (dp *DurationPicker) DurationStyles() styles.TimepickerStyles {
+	if s, ok := dp.StyleData().(styles.TimepickerStyles); ok {
+		return s
+	}
+	adapter := styles.ForStyled(dp.IsStyled())
+	if adapter == nil {
+		return styles.TimepickerStyles{}
+	}
+	s := adapter.TimepickerStyles()
+	dp.SetStyleData(s)
+	return s
 }
 
 // DurationPicker methods

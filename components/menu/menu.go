@@ -25,6 +25,7 @@ package menu
 
 import (
 	"github.com/livetemplate/lvt/components/base"
+	"github.com/livetemplate/lvt/components/styles"
 )
 
 // ItemType defines the type of menu item.
@@ -259,6 +260,62 @@ func (m *Menu) GetItem(id string) *Item {
 	return nil
 }
 
+// Styles returns the resolved MenuStyles for this component.
+func (m *Menu) Styles() styles.MenuStyles {
+	if s, ok := m.StyleData().(styles.MenuStyles); ok {
+		return s
+	}
+	adapter := styles.ForStyled(m.IsStyled())
+	if adapter == nil {
+		return styles.MenuStyles{}
+	}
+	s := adapter.MenuStyles()
+	m.SetStyleData(s)
+	return s
+}
+
+// PositionClass returns the CSS classes for the menu position.
+func (m *Menu) PositionClass() string {
+	s := m.Styles()
+	switch m.Position {
+	case "bottom-right":
+		return s.PositionBottomRight
+	case "top-left":
+		return s.PositionTopLeft
+	case "top-right":
+		return s.PositionTopRight
+	default: // bottom-left
+		return s.PositionBottomLeft
+	}
+}
+
+// BadgeClass returns the CSS class for a badge color.
+func (m *Menu) BadgeClass(color string) string {
+	s := m.Styles()
+	switch color {
+	case "red":
+		return s.BadgeRed
+	case "blue":
+		return s.BadgeBlue
+	case "green":
+		return s.BadgeGreen
+	default:
+		return s.BadgeDefault
+	}
+}
+
+// ItemClass returns the CSS class for an item based on its state.
+func (m *Menu) ItemClass(item Item) string {
+	s := m.Styles()
+	if item.Disabled {
+		return s.ItemDisabled
+	}
+	if item.Active || m.IsHighlighted(item.ID) {
+		return s.ItemActive
+	}
+	return s.ItemDefault
+}
+
 // SetItemDisabled enables or disables an item.
 func (m *Menu) SetItemDisabled(id string, disabled bool) {
 	if item := m.GetItem(id); item != nil {
@@ -312,6 +369,20 @@ func (nm *NavMenu) SetActive(id string) {
 			nm.Items[i].Items[j].Active = nm.Items[i].Items[j].ID == id
 		}
 	}
+}
+
+// Styles returns the resolved MenuStyles for this component.
+func (nm *NavMenu) Styles() styles.MenuStyles {
+	if s, ok := nm.StyleData().(styles.MenuStyles); ok {
+		return s
+	}
+	adapter := styles.ForStyled(nm.IsStyled())
+	if adapter == nil {
+		return styles.MenuStyles{}
+	}
+	s := adapter.MenuStyles()
+	nm.SetStyleData(s)
+	return s
 }
 
 // IsActive checks if an item is active.

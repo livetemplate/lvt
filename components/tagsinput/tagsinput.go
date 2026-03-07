@@ -19,6 +19,7 @@ package tagsinput
 
 import (
 	"github.com/livetemplate/lvt/components/base"
+	"github.com/livetemplate/lvt/components/styles"
 )
 
 // Tag represents a single tag/chip.
@@ -206,6 +207,20 @@ func (t *TagsInput) FilteredSuggestions() []string {
 	}
 
 	return filtered
+}
+
+// Styles returns the resolved TagsInputStyles for this component.
+func (t *TagsInput) Styles() styles.TagsInputStyles {
+	if s, ok := t.StyleData().(styles.TagsInputStyles); ok {
+		return s
+	}
+	adapter := styles.ForStyled(t.IsStyled())
+	if adapter == nil {
+		return styles.TagsInputStyles{}
+	}
+	s := adapter.TagsInputStyles()
+	t.SetStyleData(s)
+	return s
 }
 
 // Helper functions

@@ -10,7 +10,7 @@ import (
 	"github.com/livetemplate/lvt/internal/kits"
 )
 
-func GenerateApp(appName, moduleName, kit string, devMode bool) error {
+func GenerateApp(appName, moduleName, kit, stylesAdapter string, devMode bool) error {
 	// Sanitize app name
 	appName = strings.ToLower(strings.TrimSpace(appName))
 	if appName == "" {
@@ -39,6 +39,7 @@ func GenerateApp(appName, moduleName, kit string, devMode bool) error {
 		DevMode:      devMode,
 		Kit:          kitInfo,
 		CSSFramework: cssFramework,
+		Styles:       stylesAdapter,
 	}
 
 	// Simple kit generates just 2 files
@@ -221,6 +222,7 @@ go test ./...
 	projectConfig := &config.ProjectConfig{
 		Module:  moduleName,
 		Kit:     kit,
+		Styles:  data.Styles,
 		DevMode: devMode,
 	}
 	if err := config.SaveProjectConfig(appName, projectConfig); err != nil {
@@ -314,6 +316,7 @@ lvt new myapp --kit multi
 	projectConfig := &config.ProjectConfig{
 		Module:  moduleName,
 		Kit:     "simple",
+		Styles:  data.Styles,
 		DevMode: data.DevMode,
 	}
 	if err := config.SaveProjectConfig(appName, projectConfig); err != nil {

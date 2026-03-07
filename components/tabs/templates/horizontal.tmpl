@@ -1,47 +1,25 @@
 {{define "lvt:tabs:horizontal:v1"}}
-{{if .IsStyled}}
-{{/* Tailwind CSS styled version */}}
-<div class="w-full" data-tabs="{{.ID}}">
-  <div class="border-b border-gray-200" role="tablist" aria-orientation="horizontal">
-    <nav class="flex -mb-px space-x-8">
-      {{range .Items}}
+{{$c := .}}
+<div class="{{$c.Styles.Root}}" data-tabs="{{$c.ID}}">
+  <div class="{{$c.Styles.TabList}}" role="tablist" aria-orientation="horizontal">
+    <nav class="{{$c.Styles.Nav}}">
+      {{range $c.Items}}
       <button
         type="button"
-        class="py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap {{if eq $.ActiveID .ID}}border-blue-500 text-blue-600{{else}}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300{{end}} {{if .Disabled}}opacity-50 cursor-not-allowed{{end}}"
-        lvt-click="select_tab_{{$.ID}}"
+        class="{{$c.Styles.Tab}} {{if eq $c.ActiveID .ID}}{{$c.Styles.TabActive}}{{else}}{{$c.Styles.TabDefault}}{{end}} {{if .Disabled}}{{$c.Styles.TabDisabled}}{{end}}"
+        lvt-click="select_tab_{{$c.ID}}"
         lvt-data-tab="{{.ID}}"
         role="tab"
-        aria-selected="{{if eq $.ActiveID .ID}}true{{else}}false{{end}}"
+        aria-selected="{{if eq $c.ActiveID .ID}}true{{else}}false{{end}}"
         {{if .Disabled}}disabled aria-disabled="true"{{end}}
-        {{if eq $.ActiveID .ID}}aria-current="page"{{end}}
+        {{if eq $c.ActiveID .ID}}aria-current="page"{{end}}
       >
-        {{if .Icon}}<span class="mr-2">{{.Icon}}</span>{{end}}
+        {{if .Icon}}<span class="{{$c.Styles.TabIcon}}">{{.Icon}}</span>{{end}}
         {{.Label}}
-        {{if .Badge}}<span class="ml-2 px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-600">{{.Badge}}</span>{{end}}
+        {{if .Badge}}<span class="{{$c.Styles.Badge}}">{{.Badge}}</span>{{end}}
       </button>
       {{end}}
     </nav>
   </div>
 </div>
-{{else}}
-{{/* Unstyled semantic HTML version */}}
-<div data-tabs="{{.ID}}">
-  <div role="tablist" aria-orientation="horizontal">
-    {{range .Items}}
-    <button
-      type="button"
-      lvt-click="select_tab_{{$.ID}}"
-      lvt-data-tab="{{.ID}}"
-      role="tab"
-      aria-selected="{{if eq $.ActiveID .ID}}true{{else}}false{{end}}"
-      {{if .Disabled}}disabled aria-disabled="true"{{end}}
-    >
-      {{if .Icon}}<span>{{.Icon}}</span>{{end}}
-      {{.Label}}
-      {{if .Badge}}<span>{{.Badge}}</span>{{end}}
-    </button>
-    {{end}}
-  </div>
-</div>
-{{end}}
 {{end}}
