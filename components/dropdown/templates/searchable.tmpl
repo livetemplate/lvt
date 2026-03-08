@@ -1,7 +1,7 @@
 {{define "lvt:dropdown:searchable:v1"}}
 {{$c := .}}
 <div class="{{$c.Styles.Root}}" data-dropdown="{{$c.ID}}">
-  <div class="relative">
+  <div class="{{$c.Styles.SearchWrapper}}">
     <input
       type="text"
       class="{{$c.Styles.TriggerBtn}}"

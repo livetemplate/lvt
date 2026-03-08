@@ -24,6 +24,7 @@ func datepickerStyles() styles.DatepickerStyles {
 		DaySelected:  "bg-blue-600 text-white",
 		DayToday:     "border border-blue-600 text-blue-600",
 		DayDefault:   "text-gray-700 hover:bg-gray-100",
+		HelperText:   "text-sm text-gray-600 mb-2",
 		Footer:       "flex justify-between mt-4 pt-4 border-t border-gray-200",
 		TodayBtn:     "text-sm text-blue-600 hover:text-blue-700",
 		ClearBtn:     "text-sm text-gray-500 hover:text-gray-700",

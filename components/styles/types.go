@@ -116,6 +116,7 @@ type DatepickerStyles struct {
 	DaySelected  string // selected day: bg, text-white
 	DayToday     string // today: border
 	DayDefault   string // normal day: text, hover
+	HelperText   string // helper text (e.g. "Select start/end date"): text size, color, margin
 	Footer       string // footer area: flex, justify-between, margin, border
 	TodayBtn     string // "Today" link: text, color, hover
 	ClearBtn     string // "Clear" link: text, color, hover
@@ -160,6 +161,7 @@ type DropdownStyles struct {
 	Root            string // outer container: relative, inline-block
 	TriggerBtn      string // trigger button: width, padding, border, shadow, hover, ring
 	SelectedText    string // selected label: truncate
+	SearchWrapper   string // inner wrapper for search input + icons: relative positioning
 	TriggerIconWrap string // decorative icon wrapper: absolute, inset-y, flex, padding, pointer-events-none
 	TriggerIcon     string // chevron SVG: size, color
 	ClearBtnWrap    string // clear button wrapper: absolute, inset-y, flex, padding (pointer-events enabled)
