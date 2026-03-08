@@ -2,13 +2,13 @@ package generator
 
 import "testing"
 
-func TestDetectUsedComponents_AlwaysUsesModalAndToast(t *testing.T) {
+func TestDefaultComponentUsage_AlwaysUsesModalAndToast(t *testing.T) {
 	data := ResourceData{
 		Fields: []FieldData{
 			{Name: "name", GoType: "string"},
 		},
 	}
-	usage := DetectUsedComponents(data)
+	usage := DefaultComponentUsage(data)
 
 	if !usage.UseModal {
 		t.Error("expected UseModal to be true (delete confirmation is always needed)")
@@ -21,23 +21,23 @@ func TestDetectUsedComponents_AlwaysUsesModalAndToast(t *testing.T) {
 	}
 }
 
-func TestDetectUsedComponents_DropdownWithSelectField(t *testing.T) {
+func TestDefaultComponentUsage_DropdownWithSelectField(t *testing.T) {
 	data := ResourceData{
 		Fields: []FieldData{
 			{Name: "name", GoType: "string"},
 			{Name: "status", GoType: "string", IsSelect: true, SelectOptions: []string{"active", "inactive"}},
 		},
 	}
-	usage := DetectUsedComponents(data)
+	usage := DefaultComponentUsage(data)
 
 	if !usage.UseDropdown {
 		t.Error("expected UseDropdown to be true when select fields present")
 	}
 }
 
-func TestDetectUsedComponents_NoFields(t *testing.T) {
+func TestDefaultComponentUsage_NoFields(t *testing.T) {
 	data := ResourceData{}
-	usage := DetectUsedComponents(data)
+	usage := DefaultComponentUsage(data)
 
 	if !usage.UseModal {
 		t.Error("expected UseModal to be true even with no fields")

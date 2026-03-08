@@ -14,26 +14,26 @@ type AccordionStyles struct {
 
 // AutocompleteStyles defines CSS classes for the autocomplete component.
 type AutocompleteStyles struct {
-	Root           string // outer container: relative
-	InputWrapper   string // wraps input + loading/clear icons
-	Input          string // text input: border, padding, ring
-	InputLoading   string // extra padding when loading spinner shown
-	LoadingWrapper string // loading icon container: absolute positioning
-	LoadingIcon    string // spinner SVG: size, color, animation
-	ClearBtn          string // clear-all button: absolute positioning
-	ClearIcon         string // clear icon SVG: size, color, hover
-	SelectedBadge     string // selected item pill wrapper: bg, text, padding, rounded
-	SelectedBadgeBtn  string // remove button inside badge: color, hover
-	Dropdown          string // suggestions list: absolute, z-index, border, shadow
-	Option         string // suggestion item: padding, cursor
-	OptionDisabled string // disabled option: opacity, cursor
-	OptionActive   string // highlighted option: bg, text color
-	OptionLabel    string // label text: font-medium
-	OptionDesc     string // description: text-sm, color
-	OptionDescAlt  string // description when highlighted
-	OptionIcon     string // icon in option: margin
-	OptionLayout   string // flex layout for option content
-	Empty          string // no suggestions message: padding, text
+	Root             string // outer container: relative
+	InputWrapper     string // wraps input + loading/clear icons
+	Input            string // text input: border, padding, ring
+	InputLoading     string // extra padding when loading spinner shown
+	LoadingWrapper   string // loading icon container: absolute positioning
+	LoadingIcon      string // spinner SVG: size, color, animation
+	ClearBtn         string // clear-all button: absolute positioning
+	ClearIcon        string // clear icon SVG: size, color, hover
+	SelectedBadge    string // selected item pill wrapper: bg, text, padding, rounded
+	SelectedBadgeBtn string // remove button inside badge: color, hover
+	Dropdown         string // suggestions list: absolute, z-index, border, shadow
+	Option           string // suggestion item: padding, cursor
+	OptionDisabled   string // disabled option: opacity, cursor
+	OptionActive     string // highlighted option: bg, text color
+	OptionLabel      string // label text: font-medium
+	OptionDesc       string // description: text-sm, color
+	OptionDescAlt    string // description when highlighted
+	OptionIcon       string // icon in option: margin
+	OptionLayout     string // flex layout for option content
+	Empty            string // no suggestions message: padding, text
 }
 
 // BreadcrumbsStyles defines CSS classes for the breadcrumbs component.

@@ -208,7 +208,7 @@ func GenResource(args []string) error {
 
 	// Detect which components this resource will use and record for telemetry
 	resourceData := generator.ResourceData{Fields: generator.FieldDataFromFields(fields)}
-	compUsage := generator.DetectUsedComponents(resourceData)
+	compUsage := generator.DefaultComponentUsage(resourceData)
 	capture.RecordComponentsUsed(telemetry.ComponentsFromUsage(compUsage))
 
 	fmt.Printf("Generating CRUD resource: %s\n", resourceName)
