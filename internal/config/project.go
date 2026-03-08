@@ -71,12 +71,14 @@ func LoadProjectConfig(basePath string) (*ProjectConfig, error) {
 
 		key := strings.TrimSpace(parts[0])
 		value := strings.TrimSpace(parts[1])
-		// Remove quotes: try strconv.Unquote for matched pairs, fall back
-		// to strings.Trim for single-quoted or legacy unquoted values.
+		// Remove matched-pair quotes written by SaveProjectConfig (%q).
+		// strconv.Unquote handles Go double-quoted strings (interprets
+		// escape sequences like \n). For hand-edited files that use
+		// single quotes or no quotes, strip a matched outer pair only.
 		if unq, err := strconv.Unquote(value); err == nil {
 			value = unq
-		} else {
-			value = strings.Trim(value, `'"`)
+		} else if len(value) >= 2 && value[0] == '\'' && value[len(value)-1] == '\'' {
+			value = value[1 : len(value)-1]
 		}
 
 		switch key {
