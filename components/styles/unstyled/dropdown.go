@@ -7,6 +7,7 @@ func dropdownStyles() styles.DropdownStyles {
 		Root:            "lvt-dropdown",
 		TriggerBtn:      "lvt-dropdown__trigger",
 		SelectedText:    "lvt-dropdown__selected-text",
+		SearchWrapper:   "lvt-dropdown__search-wrapper",
 		TriggerIconWrap: "lvt-dropdown__trigger-icon-wrap",
 		TriggerIcon:     "lvt-dropdown__trigger-icon",
 		ClearBtnWrap:    "lvt-dropdown__clear-btn-wrap",

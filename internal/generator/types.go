@@ -46,6 +46,7 @@ type ResourceData struct {
 	EditMode             string         // Edit mode: "modal", "page"
 	Components           ComponentUsage // Which UI components this resource uses
 	Styles               string         // Style adapter: "tailwind", "unstyled"
+	StylesImportPath     string         // computed import path for style adapter (empty if no components need it)
 }
 
 type FieldData struct {

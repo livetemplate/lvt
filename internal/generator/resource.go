@@ -91,6 +91,13 @@ func GenerateResource(basePath, moduleName, resourceName string, fields []parser
 		Styles:               styles,
 	}
 	data.Components = ComputeComponentUsage(data)
+	if data.Components.UseModal || data.Components.UseToast {
+		if data.Styles == "unstyled" {
+			data.StylesImportPath = "github.com/livetemplate/lvt/components/styles/unstyled"
+		} else {
+			data.StylesImportPath = "github.com/livetemplate/lvt/components/styles/tailwind"
+		}
+	}
 
 	// Create resource directory
 	resourceDir := filepath.Join(basePath, "app", resourceNameLower)

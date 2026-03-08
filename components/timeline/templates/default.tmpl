@@ -1,13 +1,10 @@
 {{define "lvt:timeline:default:v1"}}
 {{$c := .}}
-{{if $c.IsStyled}}
-{{/* Tailwind CSS styled version */}}
 <div
   class="{{if $c.IsHorizontal}}{{$c.Styles.HorizontalRoot}}{{else}}{{$c.Styles.VerticalRoot}}{{end}}"
   data-timeline="{{$c.ID}}"
 >
   {{if and $c.IsVertical $c.ShowConnectors}}
-  {{/* Vertical connector line */}}
   <div class="{{$c.Styles.Connector}}"></div>
   {{end}}
 
@@ -17,9 +14,8 @@
     data-timeline-item="{{$item.ID}}"
   >
     {{if $c.IsVertical}}
-    {{/* Indicator dot */}}
     <div
-      class="{{$item.Styles.IndicatorVertical}} {{$item.IndicatorClass}} {{$item.RingClass}} z-10"
+      class="{{$item.Styles.IndicatorVertical}} {{$item.IndicatorClass}} {{$item.RingClass}}"
     >
       {{if $item.HasIcon}}
       <span class="{{$item.Styles.IndicatorIcon}}">{{$item.Icon}}</span>
@@ -32,7 +28,6 @@
       {{end}}
     </div>
 
-    {{/* Content */}}
     <div class="{{$item.Styles.ContentVertical}}">
       {{if $item.HasTime}}
       <time class="{{$item.Styles.Time}} {{$item.Styles.TimeVertical}}">{{$item.Time}}</time>
@@ -45,7 +40,6 @@
       {{end}}
     </div>
     {{else}}
-    {{/* Horizontal layout */}}
     <div
       class="{{$item.Styles.IndicatorHoriz}} {{$item.IndicatorClass}} {{$item.RingClass}}"
     >
@@ -60,7 +54,6 @@
       {{end}}
     </div>
     {{if $c.ShowConnectors}}
-    {{/* Horizontal connector */}}
     {{if not (eq $index (sub (len $c.Items) 1))}}
     <div class="{{$item.Styles.HorizConnector}}"></div>
     {{end}}
@@ -77,19 +70,4 @@
   </div>
   {{end}}
 </div>
-{{else}}
-{{/* Unstyled semantic HTML version */}}
-<ol class="timeline" data-timeline="{{.ID}}">
-  {{range $item := .Items}}
-  <li class="timeline-item" data-timeline-item="{{$item.ID}}">
-    <div class="indicator"></div>
-    <div class="content">
-      {{if $item.HasTime}}<time>{{$item.Time}}</time>{{end}}
-      {{if $item.HasTitle}}<h4>{{$item.Title}}</h4>{{end}}
-      {{if $item.HasDescription}}<p>{{$item.Description}}</p>{{end}}
-    </div>
-  </li>
-  {{end}}
-</ol>
-{{end}}
 {{end}}

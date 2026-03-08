@@ -24,6 +24,7 @@ func datepickerStyles() styles.DatepickerStyles {
 		DaySelected: "lvt-datepicker__day--selected",
 		DayToday:    "lvt-datepicker__day--today",
 		DayDefault:  "lvt-datepicker__day--default",
+		HelperText:  "lvt-datepicker__helper-text",
 		Footer:      "lvt-datepicker__footer",
 		TodayBtn:    "lvt-datepicker__today-btn",
 		ClearBtn:    "lvt-datepicker__clear-btn",
