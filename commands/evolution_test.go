@@ -90,6 +90,30 @@ func TestEvolution_Components(t *testing.T) {
 	}
 }
 
+func TestEvolution_Components_DaysLastArg(t *testing.T) {
+	t.Setenv("LVT_TELEMETRY", "true")
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", "")
+
+	// --days as last argument (no value) should warn but not error
+	err := Evolution([]string{"components", "--days"})
+	if err != nil {
+		t.Errorf("components --days (no value): %v", err)
+	}
+}
+
+func TestEvolution_Components_DaysInvalid(t *testing.T) {
+	t.Setenv("LVT_TELEMETRY", "true")
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", "")
+
+	// --days with invalid value should warn but not error
+	err := Evolution([]string{"components", "--days", "bogus"})
+	if err != nil {
+		t.Errorf("components --days bogus: %v", err)
+	}
+}
+
 func TestEvolution_Propose_NoArgs(t *testing.T) {
 	err := Evolution([]string{"propose"})
 	if err == nil {
