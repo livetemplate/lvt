@@ -313,11 +313,11 @@ func evolutionPropose(args []string) error {
 
 		loc := evolution.ClassifyFix(fix)
 		switch loc.Type {
-		case "component":
+		case evolution.LocationComponent:
 			fmt.Printf("  Location: component (%s)\n", loc.Component)
-		case "kit":
+		case evolution.LocationKit:
 			fmt.Printf("  Location: kit template\n")
-		case "generated":
+		case evolution.LocationGenerated:
 			fmt.Printf("  Location: generated code\n")
 		default:
 			fmt.Printf("  Location: %s\n", loc.Type)
@@ -334,7 +334,11 @@ func evolutionPropose(args []string) error {
 func evolutionComponents(args []string) error {
 	days := defaultLookbackDays
 	for i := 0; i < len(args); i++ {
-		if args[i] == "--days" && i+1 < len(args) {
+		if args[i] == "--days" {
+			if i+1 >= len(args) {
+				fmt.Fprintf(os.Stderr, "warning: --days requires a value, using default %d\n", defaultLookbackDays)
+				continue
+			}
 			if n, err := strconv.Atoi(args[i+1]); err == nil && n > 0 {
 				days = n
 			} else {
@@ -460,6 +464,12 @@ func evolutionComponents(args []string) error {
 		for _, e := range errs[:min(3, len(errs))] {
 			fmt.Printf("    [%dx] %s\n", e.count, e.msg)
 		}
+	}
+
+	if hasErrors {
+		fmt.Println()
+		fmt.Println("Note: A component may show high success rate yet appear in errors above.")
+		fmt.Println("      Success is tracked per generation event, not per component.")
 	}
 
 	return nil

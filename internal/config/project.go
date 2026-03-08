@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -70,8 +71,13 @@ func LoadProjectConfig(basePath string) (*ProjectConfig, error) {
 
 		key := strings.TrimSpace(parts[0])
 		value := strings.TrimSpace(parts[1])
-		// Remove quotes (single or double) if present
-		value = strings.Trim(value, `'"`)
+		// Remove quotes: try strconv.Unquote for matched pairs, fall back
+		// to strings.Trim for single-quoted or legacy unquoted values.
+		if unq, err := strconv.Unquote(value); err == nil {
+			value = unq
+		} else {
+			value = strings.Trim(value, `'"`)
+		}
 
 		switch key {
 		case "module":

@@ -7,9 +7,9 @@ type ComponentUsage struct {
 	UseDropdown bool // select field dropdowns
 }
 
-// DefaultComponentUsage determines which components a resource needs
+// ComputeComponentUsage determines which components a resource needs
 // based on its field types.
-func DefaultComponentUsage(data ResourceData) ComponentUsage {
+func ComputeComponentUsage(data ResourceData) ComponentUsage {
 	usage := ComponentUsage{
 		UseModal: true, // always: delete confirmation
 		UseToast: true, // always: CRUD feedback

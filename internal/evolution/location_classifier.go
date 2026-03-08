@@ -6,17 +6,20 @@ import (
 	"github.com/livetemplate/lvt/internal/telemetry"
 )
 
+// LocationType classifies where a file originated in the project structure.
+type LocationType string
+
 // Location type constants for ErrorLocation.Type.
 const (
-	LocationComponent = "component"
-	LocationKit       = "kit"
-	LocationGenerated = "generated"
-	LocationUnknown   = "unknown"
+	LocationComponent LocationType = "component"
+	LocationKit       LocationType = "kit"
+	LocationGenerated LocationType = "generated"
+	LocationUnknown   LocationType = "unknown"
 )
 
 // ErrorLocation classifies where an error originated.
 type ErrorLocation struct {
-	Type      string // one of Location* constants
+	Type      LocationType // one of Location* constants
 	Component string // normalized to lowercase; e.g. "modal" (only when Type == LocationComponent)
 	Path      string // original path as provided
 }
