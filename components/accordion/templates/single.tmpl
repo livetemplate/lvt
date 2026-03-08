@@ -2,7 +2,7 @@
 {{$c := .}}
 <div class="{{$c.Styles.Root}}" data-accordion="{{$c.ID}}" data-single-open="true">
   {{range $c.Items}}
-  <div{{if or $c.Styles.Item .Disabled}} class="{{$c.Styles.Item}}{{if .Disabled}} {{$c.Styles.ItemDisabled}}{{end}}"{{end}}>
+  <div{{if or $c.Styles.Item .Disabled}} class="{{$c.Styles.Item}}{{if and $c.Styles.Item .Disabled}} {{end}}{{if .Disabled}}{{$c.Styles.ItemDisabled}}{{end}}"{{end}}>
     <button
       type="button"
       class="{{$c.Styles.Header}} {{if .Disabled}}cursor-not-allowed{{end}}"

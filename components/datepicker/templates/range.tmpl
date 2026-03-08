@@ -23,7 +23,7 @@
     aria-modal="true"
     aria-label="Choose date range"
   >
-    <p class="{{.Styles.HelperText}}">
+    <p{{if .Styles.HelperText}} class="{{.Styles.HelperText}}"{{end}}>
       {{if .SelectingEnd}}Select end date{{else}}Select start date{{end}}
     </p>
     {{template "lvt:datepicker:calendar" .DatePicker}}
