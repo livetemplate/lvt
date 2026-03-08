@@ -336,13 +336,13 @@ func evolutionComponents(args []string) error {
 	for i := 0; i < len(args); i++ {
 		if args[i] == "--days" {
 			if i+1 >= len(args) {
-				fmt.Fprintf(os.Stderr, "warning: --days requires a value, using default %d\n", defaultLookbackDays)
+				fmt.Fprintf(os.Stderr, "warning: --days requires a value, using %d\n", days)
 				continue
 			}
 			if n, err := strconv.Atoi(args[i+1]); err == nil && n > 0 {
 				days = n
 			} else {
-				fmt.Fprintf(os.Stderr, "warning: invalid --days value %q, using default %d\n", args[i+1], defaultLookbackDays)
+				fmt.Fprintf(os.Stderr, "warning: invalid --days value %q, using %d\n", args[i+1], days)
 			}
 			i++
 		}
