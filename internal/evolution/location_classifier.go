@@ -20,8 +20,8 @@ const (
 // ErrorLocation classifies where an error originated.
 type ErrorLocation struct {
 	Type      LocationType // one of Location* constants
-	Component string // normalized to lowercase; e.g. "modal" (only when Type == LocationComponent)
-	Path      string // original path as provided
+	Component string       // normalized to lowercase; e.g. "modal" (only when Type == LocationComponent)
+	Path      string       // original path as provided
 }
 
 // ClassifyError determines if an error is in components/, internal/kits/,
