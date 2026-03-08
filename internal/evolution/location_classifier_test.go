@@ -10,7 +10,7 @@ func TestClassifyError_Component(t *testing.T) {
 	tests := []struct {
 		name     string
 		file     string
-		wantType string
+		wantType LocationType
 		wantComp string
 	}{
 		{
@@ -132,7 +132,7 @@ func TestClassifyFix(t *testing.T) {
 	tests := []struct {
 		name     string
 		target   string
-		wantType string
+		wantType LocationType
 		wantComp string
 	}{
 		{

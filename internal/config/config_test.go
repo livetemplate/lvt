@@ -720,6 +720,60 @@ func TestSaveProjectConfig_QuotedValuesRoundTrip(t *testing.T) {
 	}
 }
 
+func TestLoadProjectConfig_UnquotedAndSingleQuoted(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, ProjectConfigFileName)
+
+	// Legacy unquoted values (no quotes at all)
+	content := "kit=multi\nstyles=tailwind\n"
+	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := LoadProjectConfig(tmpDir)
+	if err != nil {
+		t.Fatalf("LoadProjectConfig failed: %v", err)
+	}
+	if cfg.Kit != "multi" {
+		t.Errorf("unquoted kit: expected %q, got %q", "multi", cfg.Kit)
+	}
+
+	// Single-quoted values (matched pair)
+	content = "kit='single'\nstyles='unstyled'\n"
+	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err = LoadProjectConfig(tmpDir)
+	if err != nil {
+		t.Fatalf("LoadProjectConfig failed: %v", err)
+	}
+	if cfg.Kit != "single" {
+		t.Errorf("single-quoted kit: expected %q, got %q", "single", cfg.Kit)
+	}
+}
+
+func TestLoadProjectConfig_BackslashInValue(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, ProjectConfigFileName)
+
+	// Double-quoted value with backslash: strconv.Unquote interprets escapes.
+	// This documents the contract: %q-encoded values round-trip correctly,
+	// but hand-edited values with backslashes may be interpreted as escapes.
+	content := `module="github.com/example/app"` + "\nkit=\"multi\"\n"
+	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := LoadProjectConfig(tmpDir)
+	if err != nil {
+		t.Fatalf("LoadProjectConfig failed: %v", err)
+	}
+	if cfg.Module != "github.com/example/app" {
+		t.Errorf("module: expected %q, got %q", "github.com/example/app", cfg.Module)
+	}
+}
+
 func TestProjectConfig_GetKit(t *testing.T) {
 	cfg := &ProjectConfig{
 		Kit: "pico",
