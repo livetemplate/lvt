@@ -671,26 +671,14 @@ logger.Info("Server starting", "port", port)
 logger.Error("Database error", "error", err)
 ```
 
-**Health check endpoint:**
+**Health check endpoints (already included in generated apps):**
 ```go
-// Add to your routes
-http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-    // Check database
-    if err := db.Ping(); err != nil {
-        w.WriteHeader(http.StatusServiceUnavailable)
-        json.NewEncoder(w).Encode(map[string]string{
-            "status": "unhealthy",
-            "error": err.Error(),
-        })
-        return
-    }
-
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(map[string]string{
-        "status": "healthy",
-    })
-})
+// K8s-compatible health endpoints
+http.HandleFunc("/health/live", healthLiveHandler)   // Liveness - always 200
+http.HandleFunc("/health/ready", healthReadyHandler)  // Readiness - checks deps
 ```
+
+Configure Docker/K8s health checks to use `/health/live` for liveness and `/health/ready` for readiness probes.
 
 ### 5. Performance Tuning
 
