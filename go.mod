@@ -16,13 +16,11 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/livetemplate/lvt/components v0.0.0-00010101000000-000000000000
 	github.com/mattn/go-sqlite3 v1.14.32
-	github.com/modelcontextprotocol/go-sdk v1.1.0
 	github.com/pressly/goose/v3 v3.26.0
 	github.com/stretchr/testify v1.11.0
 	golang.org/x/crypto v0.47.0
 	golang.org/x/mod v0.33.0
 	golang.org/x/net v0.49.0
-	golang.org/x/term v0.39.0
 	golang.org/x/text v0.33.0
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.43.0
@@ -68,7 +66,6 @@ require (
 	github.com/gobwas/httphead v0.1.0 // indirect
 	github.com/gobwas/pool v0.2.1 // indirect
 	github.com/gobwas/ws v1.4.0 // indirect
-	github.com/google/jsonschema-go v0.3.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
@@ -89,10 +86,8 @@ require (
 	github.com/tdewolff/minify/v2 v2.24.8 // indirect
 	github.com/tdewolff/parse/v2 v2.8.5 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
-	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/exp v0.0.0-20251219203646-944ab1f22d93 // indirect
-	golang.org/x/oauth2 v0.30.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
 	golang.org/x/sys v0.40.0 // indirect
 	golang.org/x/time v0.14.0 // indirect

@@ -1,17 +1,40 @@
 package commands
 
 import (
-	"context"
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 )
 
+// setupGenTestDir creates a temp directory, changes to it, and returns a cleanup function.
+func setupGenTestDir(t *testing.T) (string, func()) {
+	t.Helper()
+	tmpDir, err := os.MkdirTemp("", "lvt-gen-test-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+
+	oldDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get working dir: %v", err)
+	}
+
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("Failed to change to temp dir: %v", err)
+	}
+
+	cleanup := func() {
+		os.Chdir(oldDir)
+		os.RemoveAll(tmpDir)
+	}
+
+	return tmpDir, cleanup
+}
+
 // TestGenResource_WithValidation verifies that structural validation (go.mod,
 // templates, migrations) runs after generation in a fully valid app.
 func TestGenResource_WithValidation(t *testing.T) {
-	tmpDir, cleanup := setupMCPTestDir(t)
+	tmpDir, cleanup := setupGenTestDir(t)
 	defer cleanup()
 
 	// Create a full app so structural validation passes
@@ -34,7 +57,7 @@ func TestGenResource_WithValidation(t *testing.T) {
 
 // TestGenResource_SkipValidation verifies that --skip-validation prevents validation.
 func TestGenResource_SkipValidation(t *testing.T) {
-	tmpDir, cleanup := setupMCPTestDir(t)
+	tmpDir, cleanup := setupGenTestDir(t)
 	defer cleanup()
 
 	// Create a full app
@@ -63,7 +86,7 @@ func TestGenResource_SkipValidation(t *testing.T) {
 
 // TestGenView_WithValidation verifies that structural validation runs after view generation.
 func TestGenView_WithValidation(t *testing.T) {
-	tmpDir, cleanup := setupMCPTestDir(t)
+	tmpDir, cleanup := setupGenTestDir(t)
 	defer cleanup()
 
 	err := New([]string{"testapp"})
@@ -85,7 +108,7 @@ func TestGenView_WithValidation(t *testing.T) {
 
 // TestGenSchema_WithValidation verifies that structural validation runs after schema generation.
 func TestGenSchema_WithValidation(t *testing.T) {
-	tmpDir, cleanup := setupMCPTestDir(t)
+	tmpDir, cleanup := setupGenTestDir(t)
 	defer cleanup()
 
 	err := New([]string{"testapp"})
@@ -102,102 +125,5 @@ func TestGenSchema_WithValidation(t *testing.T) {
 	err = Gen([]string{"schema", "orders", "total:float", "status:string"})
 	if err != nil {
 		t.Errorf("GenSchema with validation failed: %v", err)
-	}
-}
-
-// TestValidationOutput_JSONMarshal verifies ValidationOutput serializes correctly.
-func TestValidationOutput_JSONMarshal(t *testing.T) {
-	vo := &ValidationOutput{
-		Valid:        false,
-		ErrorCount:   2,
-		WarningCount: 1,
-		Issues: []ValidationIssueOutput{
-			{Level: "error", File: "main.go", Line: 10, Message: "undefined: foo"},
-			{Level: "error", File: "main.go", Line: 20, Message: "undefined: bar"},
-			{Level: "warning", Message: "no templates found"},
-		},
-	}
-
-	data, err := json.Marshal(vo)
-	if err != nil {
-		t.Fatalf("Failed to marshal ValidationOutput: %v", err)
-	}
-
-	// Verify it round-trips
-	var decoded ValidationOutput
-	if err := json.Unmarshal(data, &decoded); err != nil {
-		t.Fatalf("Failed to unmarshal ValidationOutput: %v", err)
-	}
-
-	if decoded.Valid {
-		t.Error("expected Valid=false")
-	}
-	if decoded.ErrorCount != 2 {
-		t.Errorf("expected ErrorCount=2, got %d", decoded.ErrorCount)
-	}
-	if decoded.WarningCount != 1 {
-		t.Errorf("expected WarningCount=1, got %d", decoded.WarningCount)
-	}
-	if len(decoded.Issues) != 3 {
-		t.Errorf("expected 3 issues, got %d", len(decoded.Issues))
-	}
-}
-
-// TestMCPGenResource_IncludesValidation verifies MCP gen_resource response has validation.
-func TestMCPGenResource_IncludesValidation(t *testing.T) {
-	tmpDir, cleanup := setupMCPTestDir(t)
-	defer cleanup()
-
-	// Create a full app
-	err := New([]string{"testapp"})
-	if err != nil {
-		t.Fatalf("Failed to create test app: %v", err)
-	}
-
-	appDir := filepath.Join(tmpDir, "testapp")
-	if err := os.Chdir(appDir); err != nil {
-		t.Fatalf("Failed to change to app dir: %v", err)
-	}
-
-	// Simulate MCP handler: call Gen with --skip-validation, then run validation
-	err = Gen([]string{"resource", "items", "name:string", "--skip-validation"})
-	if err != nil {
-		t.Fatalf("Gen resource failed: %v", err)
-	}
-
-	// Run MCP validation
-	result := runMCPValidation(context.Background(), appDir)
-	if result == nil {
-		t.Fatal("expected non-nil validation result")
-	}
-
-	// In a valid app, validation should pass
-	if !result.Valid {
-		t.Errorf("expected valid=true, got issues: %+v", result.Issues)
-	}
-	if result.ErrorCount != 0 {
-		t.Errorf("expected 0 errors, got %d", result.ErrorCount)
-	}
-
-	// Verify it can be placed into GenResourceOutput.
-	// Success reflects generation success (always true here), not validation state.
-	output := GenResourceOutput{
-		Success:    true,
-		Message:    "test",
-		Validation: result,
-	}
-
-	data, err := json.Marshal(output)
-	if err != nil {
-		t.Fatalf("Failed to marshal GenResourceOutput with validation: %v", err)
-	}
-
-	// Verify "validation" key exists in JSON
-	var raw map[string]interface{}
-	if err := json.Unmarshal(data, &raw); err != nil {
-		t.Fatalf("Failed to unmarshal JSON: %v", err)
-	}
-	if _, ok := raw["validation"]; !ok {
-		t.Error("expected 'validation' key in GenResourceOutput JSON")
 	}
 }

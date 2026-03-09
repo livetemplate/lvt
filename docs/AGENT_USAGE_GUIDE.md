@@ -4,44 +4,25 @@ This guide explains how to use LiveTemplate with AI assistants to create and dev
 
 ## Overview
 
-LiveTemplate supports **5 different AI assistants** with two integration approaches:
-
-1. **MCP Server** - Global tool access via Model Context Protocol (16 tools)
-2. **Agent Installation** - Project-specific instructions and workflows
+LiveTemplate supports **5 different AI assistants** via agent installation:
 
 **Supported AI Assistants:**
-- Claude Desktop / Claude Code
+- Claude Code
 - GitHub Copilot (VS Code)
 - Cursor AI
 - Aider CLI
-- Any MCP-compatible LLM (Generic)
+- Any LLM (Generic)
 
 ---
 
 ## Quick Start
 
-### Choose Your Approach
-
-**Use MCP Server if:**
-- You want global access across all projects
-- Your AI assistant supports MCP protocol
-- You prefer minimal project setup
-
-**Use Agent Installation if:**
-- You want project-specific guidance
-- You want workflow orchestration and best practices
-- You're using Claude Code, Copilot, Cursor, or Aider
-
 ### Installation
 
 ```bash
-# Option 1: Install project-specific agent
+# Install project-specific agent
 lvt install-agent                    # Interactive menu (recommended)
 lvt install-agent --llm <type>       # Direct installation
-
-# Option 2: Start MCP server (global)
-lvt mcp-server                       # Interactive setup (recommended)
-lvt mcp-server --help                # Full documentation
 ```
 
 ---
@@ -376,153 +357,37 @@ See `lvt-agent/README.md` for complete conversion examples.
 
 ---
 
-## MCP Server Reference
+## CLI Command Reference
 
-The LiveTemplate MCP server provides **16 tools** globally accessible to any MCP-compatible AI assistant.
-
-### Starting the MCP Server
+### Generation Commands
 
 ```bash
-# Interactive setup wizard (recommended)
-lvt mcp-server
-
-# Or use explicit flags
-lvt mcp-server --setup       # Setup wizard
-lvt mcp-server --list-tools  # Show all available tools
-lvt mcp-server --help        # Get full help
+lvt new <name> [--kit multi|single|simple] [--module <path>]
+lvt gen resource <name> <field:type>...
+lvt gen view <name>
+lvt gen auth [StructName] [table_name]
+lvt gen schema <table> <field:type>...
 ```
 
-### Available Tools
+### Database Commands
 
-#### Generation Tools (5)
-
-**`lvt_new`** - Create new application
-```json
-{
-  "name": "myblog",
-  "kit": "multi",      // multi, single, or simple
-  "css": "tailwind",   // tailwind or none
-  "module": "github.com/user/myblog"
-}
+```bash
+lvt migration up
+lvt migration down
+lvt migration status
+lvt migration create <name>
 ```
 
-**`lvt_gen_resource`** - Generate CRUD resource
-```json
-{
-  "name": "posts",
-  "fields": {
-    "title": "string",
-    "content": "text",
-    "published": "bool",
-    "author_id": "references:users"
-  }
-}
-```
+### Resource & Data Commands
 
-**`lvt_gen_view`** - Generate view-only page
-```json
-{
-  "name": "dashboard"
-}
-```
-
-**`lvt_gen_auth`** - Generate authentication system
-```json
-{
-  "struct_name": "User",      // optional, default: User
-  "table_name": "users"       // optional, default: users
-}
-```
-
-**`lvt_gen_schema`** - Generate database schema only
-```json
-{
-  "table": "products",
-  "fields": {
-    "name": "string",
-    "price": "float",
-    "stock": "int"
-  }
-}
-```
-
-#### Database Tools (4)
-
-**`lvt_migration_up`** - Apply pending migrations
-```json
-{}  // no input required
-```
-
-**`lvt_migration_down`** - Rollback last migration
-```json
-{}  // no input required
-```
-
-**`lvt_migration_status`** - Check migration status
-```json
-{}  // no input required
-```
-
-**`lvt_migration_create`** - Create new migration
-```json
-{
-  "name": "add_user_bio"
-}
-```
-
-#### Resource Inspection Tools (2)
-
-**`lvt_resource_list`** - List all resources
-```json
-{}  // no input required
-```
-
-**`lvt_resource_describe`** - Show resource schema
-```json
-{
-  "resource": "posts"
-}
-```
-
-#### Data Tools (1)
-
-**`lvt_seed`** - Generate test data
-```json
-{
-  "resource": "posts",
-  "count": 50,
-  "cleanup": false  // true to delete existing data first
-}
-```
-
-#### Template Tools (1)
-
-**`lvt_validate_template`** - Validate template syntax
-```json
-{
-  "template_file": "app/posts/posts.tmpl"
-}
-```
-
-#### Environment Tools (1)
-
-**`lvt_env_generate`** - Generate .env.example
-```json
-{}  // no input required
-```
-
-#### Kit Tools (2)
-
-**`lvt_kits_list`** - List available kits
-```json
-{}  // no input required
-```
-
-**`lvt_kits_info`** - Get kit details
-```json
-{
-  "name": "multi"
-}
+```bash
+lvt resource list
+lvt resource describe <name>
+lvt seed <resource> --count <N> [--cleanup]
+lvt parse <template-file>
+lvt env generate
+lvt kits list
+lvt kits info <name>
 ```
 
 ### Field Types Reference
@@ -537,13 +402,7 @@ text       → Go: string,     SQL: TEXT (for longer content)
 references → Go: int64,      SQL: INTEGER (foreign key)
 ```
 
-**Foreign Key Example:**
-```json
-{
-  "author_id": "references:users"
-}
-```
-Creates a foreign key to the `users` table.
+**Foreign Key Example:** `author_id:references:users` creates a foreign key to the `users` table.
 
 ---
 
@@ -552,15 +411,6 @@ Creates a foreign key to the `users` table.
 ### 1. Quick Start: Blog in 5 Minutes
 
 ```bash
-# Using MCP tools
-lvt_new({"name": "blog", "kit": "multi"})
-lvt_gen_resource({"name": "posts", "fields": {"title": "string", "content": "text"}})
-lvt_migration_up({})
-lvt_seed({"resource": "posts", "count": 10})
-```
-
-```bash
-# Using CLI
 lvt new blog --kit multi
 cd blog
 lvt gen resource posts title:string content:text
@@ -668,23 +518,6 @@ docker-compose up -d
 - Need custom integration
 - Want maximum flexibility
 
-### MCP vs Agent Installation
-
-**Use MCP Server:**
-- Global access across all projects
-- Minimal setup per project
-- Direct tool calling
-
-**Use Agent Installation:**
-- Project-specific context
-- Workflow orchestration
-- Best practice guidance
-- Richer documentation
-
-**Use Both:**
-- Claude Code: Agent + skills (best experience)
-- Can combine for any LLM if desired
-
 ### Common Patterns
 
 **1. CRUD Resource:**
@@ -724,19 +557,6 @@ lvt install-agent --llm <type> --force
 
 # Check installation
 ls -la .claude/  # or .cursor/, .aider/, etc.
-```
-
-### MCP Server Not Connecting
-
-```bash
-# Get setup help
-lvt mcp-server --setup
-
-# Verify tools available
-lvt mcp-server --list-tools
-
-# Test with inspector
-npx @modelcontextprotocol/inspector lvt mcp-server
 ```
 
 ### Skills Not Showing (Claude)
@@ -788,7 +608,6 @@ lvt install-agent --upgrade
 For more detailed information, see:
 
 - **Setup Guide:** `docs/AGENT_SETUP.md` - Complete setup instructions for all LLMs
-- **Tool Reference:** `docs/MCP_TOOLS.md` - Comprehensive MCP tool documentation
 - **Workflows:** `docs/WORKFLOWS.md` - Advanced development patterns
 - **User Guide:** `docs/guides/user-guide.md` - General usage and concepts
 
@@ -816,9 +635,6 @@ lvt migration --help
 
 # List available agents
 lvt install-agent --list
-
-# MCP server help
-lvt mcp-server --help
 ```
 
 ### From Community
@@ -835,7 +651,6 @@ After setting up your AI assistant:
 
 1. **Try the Quick Start** - Create a blog in 5 minutes
 2. **Explore Workflows** - See `docs/WORKFLOWS.md` for patterns
-3. **Read Tool Docs** - Understand all 16 MCP tools
-4. **Build Something** - Use your AI assistant to create a real project
+3. **Build Something** - Use your AI assistant to create a real project
 
 The AI assistant will guide you through the entire development process, from project creation to production deployment.

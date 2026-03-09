@@ -297,7 +297,6 @@ cat .env.example
 ## Documentation
 
 - Full CLI Reference: `lvt --help`
-- Tool Documentation: `docs/MCP_TOOLS.md`
 - Workflow Patterns: `docs/WORKFLOWS.md`
 - LiveTemplate: https://github.com/livetemplate/lvt
 

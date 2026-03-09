@@ -54,8 +54,6 @@ lvt install-agent --list
 # Install agent for your AI assistant
 lvt install-agent --llm <type>    # claude, copilot, cursor, aider, generic
 
-# Or start the MCP server (works with all MCP-compatible AIs)
-lvt mcp-server
 ```
 
 ### Supported AI Assistants
@@ -66,7 +64,7 @@ lvt mcp-server
 | **GitHub Copilot** | `lvt install-agent --llm copilot` | In-editor suggestions |
 | **Cursor** | `lvt install-agent --llm cursor` | Rule-based development |
 | **Aider** | `lvt install-agent --llm aider` | CLI-driven development |
-| **Generic/Other** | `lvt install-agent --llm generic` | Custom LLMs via MCP |
+| **Generic/Other** | `lvt install-agent --llm generic` | Custom LLMs via CLI |
 
 ### Claude Code (Recommended)
 
@@ -142,85 +140,8 @@ This preserves your custom settings while updating the agent files.
 For detailed setup instructions for each AI assistant, see:
 
 - **[docs/AGENT_SETUP.md](docs/AGENT_SETUP.md)** - Complete setup guide for all AI assistants
-- **[docs/MCP_TOOLS.md](docs/MCP_TOOLS.md)** - MCP server tools reference
 - **[docs/WORKFLOWS.md](docs/WORKFLOWS.md)** - Common development workflows
 - **[docs/AGENT_USAGE_GUIDE.md](docs/AGENT_USAGE_GUIDE.md)** - Claude Code usage examples
-
-## Global AI Access via MCP Server
-
-`lvt` also provides a Model Context Protocol (MCP) server that works with Claude Desktop, Claude Code, and other MCP-compatible AI applications. This gives you global access to `lvt` commands from anywhere.
-
-### Setup for Claude Desktop
-
-1. **Install lvt globally**:
-   ```bash
-   go install github.com/livetemplate/lvt@latest
-   ```
-
-2. **Configure Claude Desktop** by editing `claude_desktop_config.json`:
-
-   **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-
-   **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
-
-   **Linux**: `~/.config/Claude/claude_desktop_config.json`
-
-   Add:
-   ```json
-   {
-     "mcpServers": {
-       "lvt": {
-         "command": "lvt",
-         "args": ["mcp-server"]
-       }
-     }
-   }
-   ```
-
-3. **Restart Claude Desktop**
-
-### Available MCP Tools
-
-Once configured, Claude has access to these 16 tools:
-
-**Project & Resource Generation:**
-- **lvt_new** - Create new apps with kit/CSS/module options
-- **lvt_gen_resource** - Generate CRUD resources with fields
-- **lvt_gen_view** - Generate view-only handlers
-- **lvt_gen_auth** - Generate authentication systems
-- **lvt_gen_schema** - Generate database schema only
-
-**Database Migrations:**
-- **lvt_migration_up** - Run pending migrations
-- **lvt_migration_down** - Rollback last migration
-- **lvt_migration_status** - Check migration status
-- **lvt_migration_create** - Create new migration files
-
-**Data & Inspection:**
-- **lvt_seed** - Generate test data for resources
-- **lvt_resource_list** - List all available resources
-- **lvt_resource_describe** - Show detailed schema for a resource
-
-**Validation & Configuration:**
-- **lvt_validate_template** - Validate and analyze template files
-- **lvt_env_generate** - Generate .env.example with detected config
-- **lvt_kits_list** - List available CSS framework kits
-- **lvt_kits_info** - Show detailed kit information
-
-### Usage Example
-
-In Claude Desktop, simply ask:
-
-> "Create a new LiveTemplate app called 'blog' with the multi kit"
-
-Claude will use the MCP tools to create your app, even before you have a project directory!
-
-### MCP vs Embedded Agent
-
-- **MCP Server**: Global access, works with Claude Desktop, great for project creation
-- **Embedded Agent**: Project-specific, richer workflows, 20+ skills with detailed guidance
-
-Use both for the best experience!
 
 ## Quick Start
 

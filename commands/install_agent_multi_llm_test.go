@@ -81,8 +81,8 @@ func TestInstallAgent_CopilotAgent(t *testing.T) {
 	if !stringContains(contentStr, "LiveTemplate") {
 		t.Errorf("copilot-instructions.md doesn't mention LiveTemplate")
 	}
-	if !stringContains(contentStr, "MCP") {
-		t.Errorf("copilot-instructions.md doesn't mention MCP")
+	if !stringContains(contentStr, "lvt") {
+		t.Errorf("copilot-instructions.md doesn't mention lvt CLI")
 	}
 }
 
@@ -246,11 +246,11 @@ func TestInstallAgent_GenericAgent(t *testing.T) {
 
 	// Verify it contains generic LLM content
 	readmeStr := string(readmeContent)
-	if !stringContains(readmeStr, "MCP") {
-		t.Errorf("README.md doesn't mention MCP")
+	if !stringContains(readmeStr, "lvt") {
+		t.Errorf("README.md doesn't mention lvt CLI")
 	}
-	if !stringContains(readmeStr, "16 tools") {
-		t.Errorf("README.md doesn't mention 16 tools")
+	if !stringContains(readmeStr, "CLI") {
+		t.Errorf("README.md doesn't mention CLI")
 	}
 }
 

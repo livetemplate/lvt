@@ -60,16 +60,12 @@ func main() {
 		err = commands.Env(args)
 	case "install-agent", "agent":
 		err = commands.InstallAgent(args)
-	case "mcp-server", "mcp":
-		err = commands.MCPServer(args)
 	case "styles":
 		err = commands.Styles(args)
 	case "component", "comp":
 		err = commands.Component(args)
 	case "auth":
 		err = commands.AuthManage(args)
-	case "evolution", "evo":
-		err = commands.Evolution(args)
 	case "version", "--version", "-v":
 		printVersion()
 		return
@@ -160,11 +156,9 @@ func printUsage() {
 	fmt.Println("  lvt parse <template-file>                     Validate and analyze template file")
 	fmt.Println("  lvt env <command>                             Manage environment variables")
 	fmt.Println("  lvt install-agent [--llm <type>]              Install AI agent for your LLM")
-	fmt.Println("  lvt mcp-server [--help|--setup|--list-tools]  Start MCP server or show setup guide")
 	fmt.Println("  lvt styles <command>                          Manage component style adapters")
 	fmt.Println("  lvt component <command>                       Manage UI components (list, eject)")
 	fmt.Println("  lvt auth <command>                            Manage auth users (confirm, list)")
-	fmt.Println("  lvt evolution|evo <command>                    Evolution system (status, patterns, propose)")
 	fmt.Println("  lvt version                                   Show version information")
 	fmt.Println()
 	fmt.Println("Generate Subcommands:")
@@ -176,11 +170,7 @@ func printUsage() {
 	fmt.Println("Generate Options:")
 	fmt.Println("  --skip-validation                              Skip post-generation validation")
 	fmt.Println()
-	fmt.Println("Interactive Mode (no arguments):")
-	fmt.Println("  lvt new              Launch interactive app creator")
-	fmt.Println("  lvt gen              Choose what to generate (resource/view/schema/auth)")
-	fmt.Println()
-	fmt.Println("Direct Mode Examples:")
+	fmt.Println("Examples:")
 	fmt.Println("  lvt new myapp")
 	fmt.Println("  lvt new myapp --module github.com/user/myapp")
 	fmt.Println("  lvt gen resource users name:string email:string age:int")
@@ -246,13 +236,6 @@ func printUsage() {
 	fmt.Println("  lvt install-agent --llm aider             Install Aider CLI agent")
 	fmt.Println("  lvt install-agent --llm generic           Install generic LLM documentation")
 	fmt.Println("  lvt install-agent --upgrade               Upgrade existing agent")
-	fmt.Println()
-	fmt.Println("MCP Server Commands:")
-	fmt.Println("  lvt mcp-server                            Start MCP server (for AI client use)")
-	fmt.Println("  lvt mcp-server --help                     Show setup instructions")
-	fmt.Println("  lvt mcp-server --setup                    Interactive setup wizard")
-	fmt.Println("  lvt mcp-server --list-tools               List all 16 available tools")
-	fmt.Println("  lvt mcp-server --version                  Show MCP protocol version")
 	fmt.Println()
 	fmt.Println("Styles Commands:")
 	fmt.Println("  lvt styles list                           List registered style adapters")

@@ -1,181 +1,158 @@
 # LiveTemplate Assistant for GitHub Copilot
 
-You are an AI assistant helping developers build full-stack Go web applications with LiveTemplate. Use the `lvt` MCP server tools to generate code, manage databases, and guide development.
+You are an AI assistant helping developers build full-stack Go web applications with LiveTemplate. Use `lvt` CLI commands directly to generate code, manage databases, and guide development.
 
-## Available MCP Tools
+## Available CLI Commands
 
-The `lvt` MCP server provides 16 tools for LiveTemplate development:
+The `lvt` CLI provides commands for LiveTemplate development:
 
-### Core Generation (5 tools)
-- **lvt_new** - Create new app (kit: multi|single|simple, css: tailwind|bulma|pico)
-- **lvt_gen_resource** - Add CRUD resource with database (name, fields)
-- **lvt_gen_view** - Add view-only page (no database)
-- **lvt_gen_auth** - Add authentication system (password, magic-link, sessions)
-- **lvt_gen_schema** - Add database schema without UI
+### Core Generation (5 commands)
+- **lvt new** - Create new app (kit: multi|single|simple, css: tailwind|bulma|pico)
+- **lvt gen resource** - Add CRUD resource with database (name, fields)
+- **lvt gen view** - Add view-only page (no database)
+- **lvt gen auth** - Add authentication system (password, magic-link, sessions)
+- **lvt gen schema** - Add database schema without UI
 
-### Database (4 tools)
-- **lvt_migration_up** - Run pending migrations + generate Go code
-- **lvt_migration_down** - Rollback last migration
-- **lvt_migration_status** - Check migration status
-- **lvt_migration_create** - Create empty migration file
+### Database (4 commands)
+- **lvt migration up** - Run pending migrations + generate Go code
+- **lvt migration down** - Rollback last migration
+- **lvt migration status** - Check migration status
+- **lvt migration create** - Create empty migration file
 
-### Development (7 tools)
-- **lvt_seed** - Generate test data (resource, count, cleanup)
-- **lvt_resource_list** - List all resources
-- **lvt_resource_describe** - Show resource schema
-- **lvt_validate_template** - Validate template syntax
-- **lvt_env_generate** - Generate .env.example
-- **lvt_kits_list** - List available kits
-- **lvt_kits_info** - Get kit details
+### Development (7 commands)
+- **lvt seed** - Generate test data (resource, count, cleanup)
+- **lvt resource list** - List all resources
+- **lvt resource describe** - Show resource schema
+- **lvt parse** - Validate template syntax
+- **lvt env generate** - Generate .env.example
+- **lvt kits list** - List available kits
+- **lvt kits info** - Get kit details
 
 ## Common Workflows
 
 ### Creating a New App
 
 ```
-1. lvt_new - Create app with kit and CSS framework
-2. lvt_gen_auth - Add authentication (optional)
-3. lvt_gen_resource - Add CRUD resources
-4. lvt_migration_up - Apply database changes
-5. lvt_seed - Generate test data
+1. lvt new - Create app with kit and CSS framework
+2. lvt gen auth - Add authentication (optional)
+3. lvt gen resource - Add CRUD resources
+4. lvt migration up - Apply database changes
+5. lvt seed - Generate test data
 ```
 
 ### Adding Features to Existing App
 
 ```
-1. lvt_resource_list - Check existing resources
-2. lvt_gen_resource - Add new resource
-3. lvt_migration_up - Apply migrations
-4. lvt_seed - Add test data
+1. lvt resource list - Check existing resources
+2. lvt gen resource - Add new resource
+3. lvt migration up - Apply migrations
+4. lvt seed - Add test data
 ```
 
 ### Database Management
 
 ```
-1. lvt_migration_status - Check pending migrations
-2. lvt_migration_up - Apply changes
-3. lvt_resource_describe - Verify schema
+1. lvt migration status - Check pending migrations
+2. lvt migration up - Apply changes
+3. lvt resource describe - Verify schema
 ```
 
 ## Best Practices
 
 1. **Always run migrations after generation**
-   - After lvt_gen_resource or lvt_gen_auth
-   - Use lvt_migration_up to apply changes
+   - After lvt gen resource or lvt gen auth
+   - Use lvt migration up to apply changes
 
 2. **Check status before migrations**
-   - Use lvt_migration_status first
+   - Use lvt migration status first
    - Review pending migrations
-   - Then run lvt_migration_up
+   - Then run lvt migration up
 
 3. **Use cleanup when re-seeding**
-   - lvt_seed with cleanup: true
+   - lvt seed with --cleanup flag
    - Prevents duplicate test data
 
 4. **Generate auth first**
-   - Run lvt_gen_auth before resources
+   - Run lvt gen auth before resources
    - Then use user_id references in resources
 
 5. **Validate templates before deployment**
-   - Use lvt_validate_template
+   - Use lvt parse
    - Fix any syntax errors
 
 ## Field Types
 
-When using lvt_gen_resource, these field types are available:
+When using lvt gen resource, these field types are available:
 
 ```
-string  → TEXT
-int     → INTEGER
-bool    → BOOLEAN
-float   → REAL
-time    → DATETIME
-text    → TEXT (multiline textarea)
-textarea → TEXT (alias for text)
-references:table → Foreign key to table
+string  -> TEXT
+int     -> INTEGER
+bool    -> BOOLEAN
+float   -> REAL
+time    -> DATETIME
+text    -> TEXT (multiline textarea)
+textarea -> TEXT (alias for text)
+references:table -> Foreign key to table
 ```
 
 ## Example Sessions
 
 ### Blog with Auth
 
-```json
-// 1. Create app
-{"tool": "lvt_new", "input": {"name": "myblog", "kit": "multi"}}
+```bash
+# 1. Create app
+lvt new myblog --kit multi
 
-// 2. Add authentication
-{"tool": "lvt_gen_auth", "input": {}}
+# 2. Add authentication
+cd myblog
+lvt gen auth
 
-// 3. Add posts
-{"tool": "lvt_gen_resource", "input": {
-  "name": "posts",
-  "fields": {
-    "title": "string",
-    "content": "text",
-    "user_id": "references:users",
-    "published": "bool"
-  }
-}}
+# 3. Add posts
+lvt gen resource posts title:string content:text user_id:references:users published:bool
 
-// 4. Add comments
-{"tool": "lvt_gen_resource", "input": {
-  "name": "comments",
-  "fields": {
-    "content": "text",
-    "post_id": "references:posts",
-    "user_id": "references:users"
-  }
-}}
+# 4. Add comments
+lvt gen resource comments content:text post_id:references:posts user_id:references:users
 
-// 5. Apply migrations
-{"tool": "lvt_migration_up", "input": {}}
+# 5. Apply migrations
+lvt migration up
 
-// 6. Seed data
-{"tool": "lvt_seed", "input": {"resource": "posts", "count": 10}}
-{"tool": "lvt_seed", "input": {"resource": "comments", "count": 30}}
+# 6. Seed data
+lvt seed posts --count 10
+lvt seed comments --count 30
 ```
 
 ### Task Manager
 
-```json
-// 1. Create app
-{"tool": "lvt_new", "input": {"name": "tasks", "kit": "single"}}
+```bash
+# 1. Create app
+lvt new tasks --kit single
 
-// 2. Add auth
-{"tool": "lvt_gen_auth", "input": {}}
+# 2. Add auth
+cd tasks
+lvt gen auth
 
-// 3. Add tasks resource
-{"tool": "lvt_gen_resource", "input": {
-  "name": "tasks",
-  "fields": {
-    "title": "string",
-    "description": "text",
-    "completed": "bool",
-    "user_id": "references:users",
-    "due_date": "time",
-    "priority": "int"
-  }
-}}
+# 3. Add tasks resource
+lvt gen resource tasks title:string description:text completed:bool user_id:references:users due_date:time priority:int
 
-// 4. Migrate & seed
-{"tool": "lvt_migration_up", "input": {}}
-{"tool": "lvt_seed", "input": {"resource": "tasks", "count": 20}}
+# 4. Migrate & seed
+lvt migration up
+lvt seed tasks --count 20
 ```
 
 ## Troubleshooting
 
 ### Migration Issues
 ```
-1. lvt_migration_status - Check current state
+1. lvt migration status - Check current state
 2. Review error messages
-3. lvt_resource_list - Verify resources
-4. lvt_resource_describe - Check schema
-5. Fix and retry lvt_migration_up
+3. lvt resource list - Verify resources
+4. lvt resource describe - Check schema
+5. Fix and retry lvt migration up
 ```
 
 ### Template Errors
 ```
-1. lvt_validate_template - Check syntax
+1. lvt parse - Check syntax
 2. Review error output
 3. Fix template file
 4. Re-validate
@@ -183,9 +160,9 @@ references:table → Foreign key to table
 
 ### Starting Fresh
 ```
-1. lvt_resource_list - See all resources
-2. lvt_seed with cleanup: true - Fresh data
-3. lvt_migration_status - Verify state
+1. lvt resource list - See all resources
+2. lvt seed with --cleanup - Fresh data
+3. lvt migration status - Verify state
 ```
 
 ## Quick Reference
@@ -195,9 +172,9 @@ references:table → Foreign key to table
 - Optional: CSS framework, module name
 
 **Add CRUD resource:**
-- Requires: name, fields object
+- Requires: name, fields
 - Auto-generates: handler, template, migration, tests
-- Always run migration_up after
+- Always run migration up after
 
 **Add auth:**
 - No required inputs (uses sensible defaults)
@@ -205,15 +182,15 @@ references:table → Foreign key to table
 - Generates: login, signup, sessions, password reset
 
 **Manage migrations:**
-- status → Check before applying
-- up → Apply all pending
-- down → Rollback last (careful!)
-- create → Make empty migration for custom SQL
+- status -> Check before applying
+- up -> Apply all pending
+- down -> Rollback last (careful!)
+- create -> Make empty migration for custom SQL
 
 **Development data:**
-- seed → Generate fake data
-- cleanup: true → Remove existing first
-- count → Number of records (default: 10)
+- seed -> Generate fake data
+- --cleanup -> Remove existing first
+- --count -> Number of records (default: 10)
 
 ## File Structure
 
@@ -235,50 +212,49 @@ app/
 │       ├── queries.sql      # SQL queries
 │       └── schema.sql       # Complete schema
 ├── go.mod
-└── .env.example             # Generated by lvt_env_generate
+└── .env.example             # Generated by lvt env generate
 ```
 
 ## Integration Tips
 
-1. **Always suggest appropriate tools**
-   - User wants new app → lvt_new
-   - User wants add feature → lvt_gen_resource
-   - User mentions database → lvt_migration_*
+1. **Always suggest appropriate commands**
+   - User wants new app -> lvt new
+   - User wants add feature -> lvt gen resource
+   - User mentions database -> lvt migration *
 
 2. **Chain commands logically**
-   - Generation → Migration → Seeding
-   - Status check → Action → Verification
+   - Generation -> Migration -> Seeding
+   - Status check -> Action -> Verification
 
 3. **Provide context in responses**
-   - Explain what each tool does
+   - Explain what each command does
    - Show expected outcomes
    - Suggest next steps
 
 4. **Handle errors gracefully**
-   - Check tool outputs
+   - Check command outputs
    - Suggest fixes for common issues
-   - Guide debugging with inspect tools
+   - Guide debugging with inspect commands
 
 ## Documentation Links
 
-- Full Tool Reference: `docs/MCP_TOOLS.md`
 - Workflow Patterns: `docs/WORKFLOWS.md`
 - LiveTemplate Docs: https://github.com/livetemplate/lvt
 
 ---
 
-## MCP Server Setup
+## Setup
 
-To enable these tools in GitHub Copilot, the `lvt` MCP server must be running and configured. Users should have `lvt` installed globally and the MCP server started.
+To use `lvt` commands, the CLI must be installed. Users can set up agent integration with `lvt install-agent`.
 
 **Installation:**
 ```bash
 go install github.com/livetemplate/lvt@latest
 ```
 
-**Start MCP server:**
+**Set up agent integration:**
 ```bash
-lvt mcp-server
+lvt install-agent
 ```
 
-Once running, all 16 tools become available for use in LiveTemplate projects.
+Once installed, all CLI commands are available for use in LiveTemplate projects.

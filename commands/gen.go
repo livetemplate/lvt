@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -53,47 +52,21 @@ func Gen(args []string) error {
 }
 
 func interactiveGen() error {
-	fmt.Println("What would you like to generate?")
+	fmt.Println("Usage: lvt gen <subcommand> [args...]")
 	fmt.Println()
-	fmt.Println("  1. Resource - Full CRUD with database (handler + template + migration + queries)")
-	fmt.Println("  2. View     - UI only, no database (handler + template)")
-	fmt.Println("  3. Schema   - Database tables only (migration + schema + queries)")
-	fmt.Println("  4. Auth     - Authentication system (handler + middleware + migrations + E2E tests)")
+	fmt.Println("Subcommands:")
+	fmt.Println("  resource <name> <field:type>...       Generate full CRUD with database")
+	fmt.Println("  view <name>                           Generate view-only handler (no database)")
+	fmt.Println("  schema <table> <field:type>...        Generate database schema only")
+	fmt.Println("  auth [StructName] [table_name]        Generate authentication system")
+	fmt.Println("  stack <target>                        Generate deployment stack configuration")
 	fmt.Println()
-	fmt.Print("Enter your choice (1-4): ")
-
-	reader := bufio.NewReader(os.Stdin)
-	choice, err := reader.ReadString('\n')
-	if err != nil {
-		return fmt.Errorf("failed to read input: %w", err)
-	}
-
-	choice = strings.TrimSpace(choice)
-
-	switch choice {
-	case "1":
-		fmt.Println("\nGenerating resource...")
-		fmt.Println("You can also use: lvt gen resource <name> <field:type>...")
-		fmt.Println()
-		return fmt.Errorf("interactive resource generation not yet implemented - use: lvt gen resource <name> <field:type>...")
-	case "2":
-		fmt.Println("\nGenerating view...")
-		fmt.Println("You can also use: lvt gen view <name>")
-		fmt.Println()
-		return fmt.Errorf("interactive view generation not yet implemented - use: lvt gen view <name>")
-	case "3":
-		fmt.Println("\nGenerating schema...")
-		fmt.Println("You can also use: lvt gen schema <table> <field:type>...")
-		fmt.Println()
-		return fmt.Errorf("interactive schema generation not yet implemented - use: lvt gen schema <table> <field:type>...")
-	case "4":
-		fmt.Println("\nGenerating auth system...")
-		fmt.Println("You can also use: lvt gen auth [StructName] [table_name] [flags...]")
-		fmt.Println()
-		return fmt.Errorf("interactive auth generation not yet implemented - use: lvt gen auth")
-	default:
-		return fmt.Errorf("invalid choice: %s", choice)
-	}
+	fmt.Println("Examples:")
+	fmt.Println("  lvt gen resource posts title content:text published:bool")
+	fmt.Println("  lvt gen view dashboard")
+	fmt.Println("  lvt gen auth")
+	fmt.Println()
+	return fmt.Errorf("subcommand required")
 }
 
 func GenResource(args []string) error {
