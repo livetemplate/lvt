@@ -25,10 +25,18 @@
 | T16b | PENDING | Dropdown in select field (requires separate test) |
 | T16c | PENDING | Assess remaining component browser test needs |
 | T16d | N/A | No component bugs found yet |
-| T17 | PENDING | Audit core skills — new-app, add-resource, gen-auth |
-| T18 | PENDING | Audit deployment skills — deploy, gen-stack |
-| T19 | PENDING | Audit remaining skills |
+| T17 | DONE | Audit core skills — fixed health endpoint references |
+| T18 | DONE | Audit deployment skills — fixed health endpoint references |
+| T19 | DONE | Audit remaining skills — no stale references found |
 | T20 | N/A | MCP server removed in T1a |
-| T21 | PENDING | Automated skill pipeline test |
+| T21 | DONE | Automated skill pipeline test (full LLM workflow, chromedp verified) |
 
-(Full plan in session transcript — this file tracks progress only)
+### Remaining tasks (Phases 5-7)
+
+| Task | Status | Description |
+|------|--------|-------------|
+| T22-T27 | PENDING | Phase 5: Expose LiveTemplate library features (health checkers, Redis, broadcasting) |
+| T28-T30 | PENDING | Phase 6: End-to-end LLM workflow test (Docker, Fly.io, flakiness fixes) |
+| T31-T36 | PENDING | Phase 7: Documentation and release prep |
+
+(Full plan in main plan file — this file tracks progress only)
