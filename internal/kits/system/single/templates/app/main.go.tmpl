@@ -1,73 +1,254 @@
 package main
 
 import (
-	"log"
+	"bufio"
+	"context"
+	"fmt"
+	"log/slog"
+	"net"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"[[.ModuleName]]/app/home"
 	"[[.ModuleName]]/database"
 )
 
 func main() {
-	log.Println("[[.AppName]] starting...")
+	// Set up structured logging
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: getLogLevel(),
+	}))
+	slog.SetDefault(logger)
+
+	slog.Info("[[.AppName]] starting...",
+		"environment", os.Getenv("APP_ENV"),
+		"port", getPort())
 
 	// Initialize database
 	dbPath := getDBPath()
 	_, err := database.InitDB(dbPath)
 	if err != nil {
-		log.Fatalf("Failed to initialize database: %v", err)
+		slog.Error("Failed to initialize database", "error", err)
+		os.Exit(1)
 	}
 	defer database.CloseDB()
+
+	// Health endpoints (K8s-compatible)
+	http.HandleFunc("/health/live", healthLiveHandler)
+	http.HandleFunc("/health/ready", healthReadyHandler)
 
 	// Home page
 	http.Handle("/", home.Handler())
 
 	// Serve LiveTemplate client library
-	// For development: loads from node_modules or local copy
-	// For production: serve from CDN or embed in binary
 	http.HandleFunc("/livetemplate-client.js", serveClientLibrary)
 
 	// TODO: Add routes here
 	// Example: http.Handle("/users", users.Handler(queries))
 
+	// Wrap the default mux with middleware
+	handler := securityHeadersMiddleware(
+		recoveryMiddleware(
+			loggingMiddleware(http.DefaultServeMux)))
+
+	// Create server with production-ready settings
+	srv := &http.Server{
+		Addr:         ":" + getPort(),
+		Handler:      handler,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	// Start server in goroutine
+	go func() {
+		slog.Info("Server listening", "address", srv.Addr)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			slog.Error("Server error", "error", err)
+			os.Exit(1)
+		}
+	}()
+
+	// Graceful shutdown on signal
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	slog.Info("Shutting down server...")
+
+	// Give outstanding requests time to complete
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		slog.Error("Server forced to shutdown", "error", err)
+		os.Exit(1)
+	}
+
+	slog.Info("Server exited cleanly")
+}
+
+// healthLiveHandler returns 200 if the process is running (K8s liveness probe).
+func healthLiveHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"status":"healthy"}`))
+}
+
+// healthReadyHandler returns 200 if the app is ready to serve traffic (K8s readiness probe).
+func healthReadyHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"status":"healthy"}`))
+}
+
+// getPort returns the port from PORT env var, defaulting to 8080
+func getPort() string {
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
-	log.Printf("Server starting on http://localhost:%s", port)
+	return port
+}
 
-	err = http.ListenAndServe(":"+port, nil)
-	if err != nil {
-		log.Fatalf("Server failed to start: %v", err)
+// getLogLevel returns the log level from LOG_LEVEL env var
+func getLogLevel() slog.Level {
+	level := os.Getenv("LOG_LEVEL")
+	switch level {
+	case "debug":
+		return slog.LevelDebug
+	case "info":
+		return slog.LevelInfo
+	case "warn":
+		return slog.LevelWarn
+	case "error":
+		return slog.LevelError
+	default:
+		return slog.LevelInfo
 	}
 }
 
+// getDBPath returns database path, using :memory: in test mode
 func getDBPath() string {
 	if os.Getenv("TEST_MODE") == "1" {
 		return ":memory:"
 	}
-	return "app.db"
+	// Use DATABASE_PATH env var if set, otherwise default
+	path := os.Getenv("DATABASE_PATH")
+	if path == "" {
+		path = "app.db"
+	}
+	return path
 }
 
-func serveClientLibrary(w http.ResponseWriter, r *http.Request) {
-	// Try multiple paths for the client library (development/testing)
-	paths := []string{
-		"livetemplate-client.js",                                  // Local copy (for testing)
-		"../../client/dist/livetemplate-client.browser.js",        // When running from cmd/app
-		"../../../client/dist/livetemplate-client.browser.js",     // When running from deeper
-		"../../../../client/dist/livetemplate-client.browser.js",  // When running even deeper
-	}
+// loggingMiddleware logs all HTTP requests with structured logging
+func loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
 
-	for _, path := range paths {
-		content, err := os.ReadFile(path)
+		// Create a response writer wrapper to capture status code
+		rw := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+
+		next.ServeHTTP(rw, r)
+
+		duration := time.Since(start)
+
+		slog.Info("HTTP request",
+			"method", r.Method,
+			"path", r.URL.Path,
+			"status", rw.statusCode,
+			"duration_ms", duration.Milliseconds(),
+			"remote_addr", r.RemoteAddr,
+			"user_agent", r.UserAgent())
+	})
+}
+
+// responseWriter wraps http.ResponseWriter to capture the status code
+// and implements http.Hijacker for WebSocket support
+type responseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (rw *responseWriter) WriteHeader(code int) {
+	rw.statusCode = code
+	rw.ResponseWriter.WriteHeader(code)
+}
+
+// Hijack implements http.Hijacker to support WebSocket upgrades
+func (rw *responseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	hijacker, ok := rw.ResponseWriter.(http.Hijacker)
+	if !ok {
+		return nil, nil, fmt.Errorf("responseWriter does not implement http.Hijacker")
+	}
+	return hijacker.Hijack()
+}
+
+// recoveryMiddleware recovers from panics and logs them
+func recoveryMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if err := recover(); err != nil {
+				slog.Error("Panic recovered",
+					"error", err,
+					"method", r.Method,
+					"path", r.URL.Path,
+					"remote_addr", r.RemoteAddr)
+
+				// Return 500 error
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
+}
+
+// securityHeadersMiddleware adds security headers to all responses
+func securityHeadersMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-XSS-Protection", "1; mode=block")
+		w.Header().Set("X-Frame-Options", "DENY")
+
+		if os.Getenv("APP_ENV") == "production" {
+			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+		}
+
+		w.Header().Set("Content-Security-Policy",
+			"default-src 'self'; "+
+				"script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com; "+
+				"style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "+
+				"img-src 'self' data: https:; "+
+				"font-src 'self' data: https://cdn.jsdelivr.net; "+
+				"connect-src 'self' ws: wss: https://cdn.jsdelivr.net https://unpkg.com;")
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+// serveClientLibrary serves the LiveTemplate client JavaScript library.
+func serveClientLibrary(w http.ResponseWriter, r *http.Request) {
+	// Environment override for local development
+	if libPath := os.Getenv("CLIENT_LIB_PATH"); libPath != "" {
+		content, err := os.ReadFile(libPath)
 		if err == nil {
 			w.Header().Set("Content-Type", "application/javascript")
 			w.Write(content)
 			return
 		}
+		slog.Warn("CLIENT_LIB_PATH set but file not found", "path", libPath)
 	}
 
-	// If not found locally, return error with CDN suggestion
-	http.Error(w, "Client library not found. For production, use CDN: https://cdn.jsdelivr.net/npm/@livetemplate/client/dist/livetemplate-client.browser.js", http.StatusNotFound)
+	// Try local copy (for development/testing)
+	if content, err := os.ReadFile("livetemplate-client.js"); err == nil {
+		w.Header().Set("Content-Type", "application/javascript")
+		w.Write(content)
+		return
+	}
+
+	// Not found locally — CDN is used in templates
+	http.Error(w, "Client library not found locally. Templates load from CDN.", http.StatusNotFound)
 }

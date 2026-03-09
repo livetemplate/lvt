@@ -234,6 +234,36 @@ go test ./...
 		return fmt.Errorf("failed to create .lvtresources: %w", err)
 	}
 
+	// Create .gitignore with .env excluded
+	gitignore := "# Environment variables\n.env\n\n# SQLite databases\n*.db\n*.db-journal\n*.db-wal\n*.db-shm\n\n# Binary\n" + appName + "\n"
+	if err := os.WriteFile(filepath.Join(appName, ".gitignore"), []byte(gitignore), 0644); err != nil {
+		return fmt.Errorf("failed to create .gitignore: %w", err)
+	}
+
+	// Create .env.example with baseline env vars
+	envExample := `# LiveTemplate App Environment Variables
+# Copy this file to .env and fill in your actual values:
+#   cp .env.example .env
+
+# Server port (default: 8080)
+PORT=8080
+
+# Application environment (development, production)
+APP_ENV=development
+
+# Log level (debug, info, warn, error)
+LOG_LEVEL=info
+
+# SQLite database file path
+DATABASE_PATH=app.db
+
+# LiveTemplate client library path (for local development only)
+# CLIENT_LIB_PATH=./livetemplate-client.js
+`
+	if err := os.WriteFile(filepath.Join(appName, ".env.example"), []byte(envExample), 0644); err != nil {
+		return fmt.Errorf("failed to create .env.example: %w", err)
+	}
+
 	return nil
 }
 
@@ -321,6 +351,30 @@ lvt new myapp --kit multi
 	}
 	if err := config.SaveProjectConfig(appName, projectConfig); err != nil {
 		return fmt.Errorf("failed to save project config: %w", err)
+	}
+
+	// Create .gitignore with .env excluded
+	gitignore := "# Environment variables\n.env\n\n# Binary\n" + appName + "\n"
+	if err := os.WriteFile(filepath.Join(appName, ".gitignore"), []byte(gitignore), 0644); err != nil {
+		return fmt.Errorf("failed to create .gitignore: %w", err)
+	}
+
+	// Create .env.example with baseline env vars
+	envExample := `# LiveTemplate App Environment Variables
+# Copy this file to .env and fill in your actual values:
+#   cp .env.example .env
+
+# Server port (default: 8080)
+PORT=8080
+
+# Log level (debug, info, warn, error)
+LOG_LEVEL=info
+
+# LiveTemplate client library path (for local development only)
+# CLIENT_LIB_PATH=./livetemplate-client.js
+`
+	if err := os.WriteFile(filepath.Join(appName, ".env.example"), []byte(envExample), 0644); err != nil {
+		return fmt.Errorf("failed to create .env.example: %w", err)
 	}
 
 	return nil
