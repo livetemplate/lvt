@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/livetemplate/lvt/internal/config"
@@ -106,6 +107,7 @@ func GenResource(args []string) error {
 	pageSize := 20               // default
 	editMode := "modal"          // default
 	skipValidation := false
+	parentResource := ""
 	var filteredArgs []string
 	for i := 0; i < len(args); i++ {
 		if args[i] == "--pagination" && i+1 < len(args) {
@@ -121,6 +123,9 @@ func GenResource(args []string) error {
 			i++ // skip next arg
 		} else if args[i] == "--skip-validation" {
 			skipValidation = true
+		} else if args[i] == "--parent" && i+1 < len(args) {
+			parentResource = args[i+1]
+			i++ // skip next arg
 		} else {
 			filteredArgs = append(filteredArgs, args[i])
 		}
@@ -161,6 +166,27 @@ func GenResource(args []string) error {
 		return err
 	}
 
+	// Validate --parent flag
+	if parentResource != "" {
+		parentResource = strings.ToLower(parentResource)
+		// Check parent handler exists
+		parentHandlerPath := filepath.Join(basePath, "app", parentResource, parentResource+".go")
+		if _, err := os.Stat(parentHandlerPath); os.IsNotExist(err) {
+			return fmt.Errorf("parent resource %q not found: %s does not exist.\nGenerate the parent first: lvt gen resource %s ...", parentResource, parentHandlerPath, parentResource)
+		}
+		// Check child has a reference field pointing to the parent table
+		hasRef := false
+		for _, f := range fields {
+			if f.IsReference && f.ReferencedTable == parentResource {
+				hasRef = true
+				break
+			}
+		}
+		if !hasRef {
+			return fmt.Errorf("child resource must have a field referencing parent table %q (e.g., %s_id:references:%s)", parentResource, generator.Singularize(parentResource), parentResource)
+		}
+	}
+
 	// Get module name from go.mod
 	moduleName, err := getModuleName()
 	if err != nil {
@@ -199,7 +225,7 @@ func GenResource(args []string) error {
 	fmt.Println()
 
 	styles := projectConfig.Styles
-	if err := generator.GenerateResource(basePath, moduleName, resourceName, fields, kit, cssFramework, styles, paginationMode, pageSize, editMode); err != nil {
+	if err := generator.GenerateResource(basePath, moduleName, resourceName, fields, kit, cssFramework, styles, paginationMode, pageSize, editMode, parentResource); err != nil {
 		capture.RecordError(telemetry.GenerationError{Phase: "generation", Message: err.Error()})
 		capture.AttributeComponentErrors() // attribute errors on failure path
 		capture.Complete(false, "")
@@ -239,8 +265,16 @@ func GenResource(args []string) error {
 	fmt.Println("  database/schema.sql")
 	fmt.Println("  database/queries.sql")
 	fmt.Println()
-	fmt.Println("Route auto-injected:")
-	fmt.Printf("  http.Handle(\"/%s\", %s.Handler(queries))\n", resourceNameLower, resourceNameLower)
+	if parentResource != "" {
+		fmt.Printf("Embedded in parent: %s\n", parentResource)
+		fmt.Printf("  app/%s/%s.go (modified)\n", parentResource, parentResource)
+		fmt.Printf("  app/%s/%s.tmpl (modified)\n", parentResource, parentResource)
+		fmt.Println()
+		fmt.Println("No separate route — child is rendered on the parent's detail page.")
+	} else {
+		fmt.Println("Route auto-injected:")
+		fmt.Printf("  http.Handle(\"/%s\", %s.Handler(queries))\n", resourceNameLower, resourceNameLower)
+	}
 	fmt.Println()
 	fmt.Println("Next steps:")
 	fmt.Println("  1. Run migration:")

@@ -1,0 +1,102 @@
+[[- $displayField := displayField .NonReferenceFields -]]
+{{/* Embedded [[.ResourceNamePlural]] section — rendered within parent's detail page */}}
+
+{{define "[[.PackageName]]:section"}}
+<div id="[[.PackageName]]-section" style="margin-top: 2rem; border-top: 1px solid #e5e7eb; padding-top: 1.5rem;">
+  <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem;">[[.ResourceNamePlural]] ({{.TotalCount}})</h3>
+
+  {{/* Add Form */}}
+  {{template "[[.PackageName]]:addForm" .}}
+
+  {{/* List */}}
+  {{template "[[.PackageName]]:list" .}}
+</div>
+{{end}}
+
+{{define "[[.PackageName]]:addForm"}}
+<div style="margin-bottom: 1.5rem; padding: 1rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; background: #f9fafb;">
+  <form lvt-submit="[[.ResourceNameLower | singularize]]_add">
+    <div style="display: flex; gap: 0.75rem; align-items: flex-end; flex-wrap: wrap;">
+[[- range .NonReferenceFields]]
+      <div style="flex: 1; min-width: 120px;">
+        <label style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.25rem;">[[.Name | title]]</label>
+[[- if .IsTextarea]]
+        <textarea name="[[.Name]]" rows="2" required style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem;"></textarea>
+[[- else if .IsSelect]]
+        <select name="[[.Name]]" required style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem;">
+          <option value="">Select...</option>
+[[- range .SelectOptions]]
+          <option value="[[.]]">[[. | title]]</option>
+[[- end]]
+        </select>
+[[- else if eq .GoType "bool"]]
+        <label style="display: flex; align-items: center; gap: 0.5rem;">
+          <input type="checkbox" name="[[.Name]]"> [[.Name | title]]
+        </label>
+[[- else if eq .GoType "int64"]]
+        <input type="number" name="[[.Name]]" required style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem;">
+[[- else if eq .GoType "float64"]]
+        <input type="number" step="any" name="[[.Name]]" required style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem;">
+[[- else]]
+        <input type="text" name="[[.Name]]" required style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem;">
+[[- end]]
+      </div>
+[[- end]]
+      <div>
+        <button type="submit" lvt-disable-with="Adding..." style="padding: 0.5rem 1rem; background: #2563eb; color: white; border: none; border-radius: 0.375rem; cursor: pointer;">
+          Add [[.ResourceNameSingular]]
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+{{end}}
+
+{{define "[[.PackageName]]:list"}}
+{{if gt (len .Items) 0}}
+<div style="display: flex; flex-direction: column; gap: 0.5rem;">
+  {{range .Items}}
+  <div data-key="{{.ID}}" style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; background: white;">
+    {{if and $.EditingItemID (eq $.EditingItemID .ID)}}
+      {{/* Inline edit form */}}
+      <form lvt-submit="[[.ResourceNameLower | singularize]]_update" style="display: flex; align-items: center; gap: 0.75rem; flex: 1; flex-wrap: wrap;">
+        <input type="hidden" name="id" value="{{.ID}}">
+[[- range .NonReferenceFields]]
+[[- if .IsTextarea]]
+        <div style="flex: 1; min-width: 120px;">
+          <textarea name="[[.Name]]" rows="2" required style="width: 100%; padding: 0.375rem; border: 1px solid #d1d5db; border-radius: 0.25rem;">{{$.EditingItem.[[ .Name | camelCase]]}}</textarea>
+        </div>
+[[- else if eq .GoType "bool"]]
+        <label style="display: flex; align-items: center; gap: 0.25rem;">
+          <input type="checkbox" name="[[.Name]]" {{if $.EditingItem.[[ .Name | camelCase]]}}checked{{end}}> [[.Name | title]]
+        </label>
+[[- else if eq .GoType "int64"]]
+        <input type="number" name="[[.Name]]" value="{{$.EditingItem.[[ .Name | camelCase]]}}" required style="flex: 1; min-width: 80px; padding: 0.375rem; border: 1px solid #d1d5db; border-radius: 0.25rem;">
+[[- else if eq .GoType "float64"]]
+        <input type="number" step="any" name="[[.Name]]" value="{{$.EditingItem.[[ .Name | camelCase]]}}" required style="flex: 1; min-width: 80px; padding: 0.375rem; border: 1px solid #d1d5db; border-radius: 0.25rem;">
+[[- else]]
+        <input type="text" name="[[.Name]]" value="{{$.EditingItem.[[ .Name | camelCase]]}}" required style="flex: 1; min-width: 120px; padding: 0.375rem; border: 1px solid #d1d5db; border-radius: 0.25rem;">
+[[- end]]
+[[- end]]
+        <button type="submit" style="padding: 0.375rem 0.75rem; background: #16a34a; color: white; border: none; border-radius: 0.25rem; cursor: pointer;">Save</button>
+        <button type="button" lvt-click="[[.ResourceNameLower | singularize]]_cancel_edit" style="padding: 0.375rem 0.75rem; background: #6b7280; color: white; border: none; border-radius: 0.25rem; cursor: pointer;">Cancel</button>
+      </form>
+    {{else}}
+      {{/* Display mode */}}
+      <div style="flex: 1;">
+        {{.[[$displayField.Name | camelCase]]}}
+      </div>
+      <button lvt-click="[[.ResourceNameLower | singularize]]_edit" lvt-data-id="{{.ID}}" style="padding: 0.25rem 0.5rem; font-size: 0.875rem; background: #e5e7eb; border: none; border-radius: 0.25rem; cursor: pointer;">
+        Edit
+      </button>
+      <button lvt-click="[[.ResourceNameLower | singularize]]_delete" lvt-data-id="{{.ID}}" style="padding: 0.25rem 0.5rem; font-size: 0.875rem; background: #fee2e2; color: #dc2626; border: none; border-radius: 0.25rem; cursor: pointer;">
+        Delete
+      </button>
+    {{end}}
+  </div>
+  {{end}}
+</div>
+{{else}}
+<p style="color: #6b7280; font-style: italic;">No [[.ResourceNameLower]]s yet. Add one above.</p>
+{{end}}
+{{end}}
