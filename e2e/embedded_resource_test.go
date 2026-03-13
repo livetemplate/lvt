@@ -122,8 +122,9 @@ func TestEmbeddedResourceGen(t *testing.T) {
 	buildCmd.Env = append(os.Environ(), "GOWORK=off")
 	if output, err := buildCmd.CombinedOutput(); err != nil {
 		t.Logf("Build output: %s", string(output))
-		// Log but don't fail — build may fail in CI without proper module cache
-		t.Log("Note: build failed, likely due to missing module dependencies in test environment")
+		// Skip (not pass) when build fails due to missing module dependencies,
+		// so real generation regressions are still surfaced.
+		t.Skip("Skipping: build failed, likely due to missing module dependencies in test environment")
 	}
 }
 

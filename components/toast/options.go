@@ -63,9 +63,12 @@ func WithIcon(icon string) MessageOption {
 }
 
 // WithAutoDismiss sets the auto-dismiss duration in milliseconds.
-// Set to 0 to disable auto-dismiss.
+// Set to 0 to disable auto-dismiss. Negative values are clamped to 0.
 func WithAutoDismiss(ms int) MessageOption {
 	return func(m *Message) {
+		if ms < 0 {
+			ms = 0
+		}
 		m.AutoDismissMS = ms
 	}
 }

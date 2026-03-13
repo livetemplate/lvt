@@ -67,7 +67,7 @@ func interactiveGen() error {
 	fmt.Println("  lvt gen view dashboard")
 	fmt.Println("  lvt gen auth")
 	fmt.Println()
-	return fmt.Errorf("subcommand required")
+	return nil
 }
 
 func GenResource(args []string) error {

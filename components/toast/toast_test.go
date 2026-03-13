@@ -436,6 +436,12 @@ func TestWithAutoDismissOption(t *testing.T) {
 	if msg.AutoDismissMS != 3000 {
 		t.Errorf("expected AutoDismissMS=3000, got %d", msg.AutoDismissMS)
 	}
+
+	// Negative values should be clamped to 0
+	msg2 := NewMessage(WithAutoDismiss(-100))
+	if msg2.AutoDismissMS != 0 {
+		t.Errorf("expected negative duration clamped to 0, got %d", msg2.AutoDismissMS)
+	}
 }
 
 func TestEmptyContainerRendering(t *testing.T) {
