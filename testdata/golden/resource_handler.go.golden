@@ -410,8 +410,8 @@ func (c *UserController) LoadMore(state UserState, _ *livetemplate.Context) (Use
 	return state, nil
 }
 
-// Mount is called once when a new session is created
-func (c *UserController) Mount(state UserState, _ *livetemplate.Context) (UserState, error) {
+// Mount is called when a new session is created or when page-mode navigation triggers a remount.
+func (c *UserController) Mount(state UserState, ctx *livetemplate.Context) (UserState, error) {
 	return c.loadUsers(state, context.Background())
 }
 

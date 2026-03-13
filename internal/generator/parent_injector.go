@@ -99,16 +99,112 @@ func InjectEmbeddedChild(parentGoPath string, childData ResourceData) error {
 	stateInit := fmt.Sprintf("\n\t\t%s: &%s.EmbeddedState{},", childPlural, childPkg)
 	src = src[:stateClosing] + stateInit + "\n\t" + src[stateClosing:]
 
-	// 6. Add child template files to ParseFiles
-	// Find: ParseFiles("app/parent/parent.tmpl")
-	// Append the child template path
-	parseFilesPattern := fmt.Sprintf(`ParseFiles("app/%s/%s.tmpl")`, parentPkg, parentPkg)
-	childTmplArg := fmt.Sprintf(`, "app/%s/%s.tmpl"`, childPkg, childPkg)
-	if strings.Contains(src, parseFilesPattern) && !strings.Contains(src, fmt.Sprintf(`"app/%s/%s.tmpl"`, childPkg, childPkg)) {
-		src = strings.Replace(src,
-			parseFilesPattern,
-			fmt.Sprintf(`ParseFiles("app/%s/%s.tmpl"%s)`, parentPkg, parentPkg, childTmplArg),
-			1)
+	// 6. Initialize child state in resourceState (page-mode detail view)
+	// Note: The current handler template uses a single shared handler (no resourceState).
+	// These steps are retained for backward compatibility with older generated code.
+	resourceStatePattern := fmt.Sprintf(`resourceState := &%sState{`, parentNameCap)
+	resourceStateIdx := strings.Index(src, resourceStatePattern)
+	if resourceStateIdx != -1 {
+		resourceStateClosing := findClosingBrace(src, resourceStateIdx)
+		if resourceStateClosing != -1 {
+			// Detect indentation of closing brace to match field indentation
+			indent := detectIndent(src, resourceStateClosing)
+			resourceStateInit := fmt.Sprintf("\n%s\t%s: &%s.EmbeddedState{},", indent, childPlural, childPkg)
+			src = src[:resourceStateClosing] + resourceStateInit + "\n" + indent + src[resourceStateClosing:]
+		}
+	}
+
+	// 6b. Load child data in page-mode after the parent item is found
+	// Find the comment "// Mount with custom state for this URL" which follows the item-finding loop,
+	// and inject child loading before it.
+	mountComment := "// Mount with custom state for this URL"
+	mountCommentIdx := strings.Index(src, mountComment)
+	if mountCommentIdx != -1 && resourceStateIdx != -1 {
+		// Detect indentation of the mount comment line to match
+		indent := detectIndent(src, mountCommentIdx)
+		childLoad := fmt.Sprintf("%sresourceState.%s, _ = controller.%sCtrl.Load(resourceState.%s, context.Background(), resourceID)\n\n%s",
+			indent, childPlural, childPlural, childPlural, indent)
+		// Find the start of the mount comment line (after previous newline)
+		lineStart := strings.LastIndex(src[:mountCommentIdx], "\n")
+		if lineStart != -1 {
+			src = src[:lineStart] + "\n" + childLoad + src[mountCommentIdx:]
+		}
+	}
+
+	// 7. Add child template to WithParseFiles inside livetemplate.New()
+	// (renumbered from step 6 after adding resourceState injections above)
+	// The child template must be loaded during New() so that template flattening
+	// can resolve cross-template references (e.g., {{template "comments:section" .Comments}}).
+	// A separate ParseFiles() after Must() is too late — flattening happens inside New().
+	childTmplPath := fmt.Sprintf(`"app/%s/%s.tmpl"`, childPkg, childPkg)
+	parentTmplPath := fmt.Sprintf(`"app/%s/%s.tmpl"`, parentPkg, parentPkg)
+
+	// Check if WithParseFiles already exists (e.g., from a previous child injection)
+	if strings.Contains(src, "livetemplate.WithParseFiles(") {
+		// Append child template to existing WithParseFiles if not already present
+		if !strings.Contains(src, childTmplPath) {
+			withParseFilesEnd := strings.Index(src, "livetemplate.WithParseFiles(")
+			if withParseFilesEnd != -1 {
+				// Find the closing paren of WithParseFiles(...)
+				afterWPF := src[withParseFilesEnd:]
+				closeParen := strings.Index(afterWPF, ")")
+				if closeParen != -1 {
+					insertPos := withParseFilesEnd + closeParen
+					src = src[:insertPos] + ", " + childTmplPath + src[insertPos:]
+				}
+			}
+		}
+	} else {
+		// No WithParseFiles yet — add it as an option inside livetemplate.New()
+		// Insert before the closing "))" of livetemplate.Must(livetemplate.New(...))
+		withParseFiles := fmt.Sprintf("\n\t\tlivetemplate.WithParseFiles(%s, %s),", parentTmplPath, childTmplPath)
+
+		// Find the component templates closing and insert after it
+		componentEnd := strings.Index(src, "livetemplate.WithComponentTemplates(")
+		if componentEnd != -1 {
+			// Find the matching closing ")," for WithComponentTemplates
+			afterComp := src[componentEnd:]
+			// Find closing pattern: "),\n" after the component templates block
+			depth := 0
+			insertAfter := -1
+			for i := 0; i < len(afterComp); i++ {
+				if afterComp[i] == '(' {
+					depth++
+				} else if afterComp[i] == ')' {
+					depth--
+					if depth == 0 {
+						insertAfter = componentEnd + i + 1
+						// Skip the trailing comma if present
+						if insertAfter < len(src) && src[insertAfter] == ',' {
+							insertAfter++
+						}
+						break
+					}
+				}
+			}
+			if insertAfter != -1 {
+				src = src[:insertAfter] + withParseFiles + src[insertAfter:]
+			}
+		} else {
+			// Fallback: insert before the closing "))" of Must(New(...))
+			mustClose := strings.Index(src, "\t))")
+			if mustClose != -1 {
+				src = src[:mustClose] + withParseFiles + "\n" + src[mustClose:]
+			}
+		}
+	}
+
+	// Remove any standalone ParseFiles call that was previously added
+	// (it would fail because flattening happens inside New())
+	standaloneParse := fmt.Sprintf("\tif _, err := baseTmpl.ParseFiles(%s, %s); err != nil {\n\t\tlog.Fatalf(\"Failed to parse template: %%v\", err)\n\t}\n", parentTmplPath, childTmplPath)
+	src = strings.Replace(src, standaloneParse, "", 1)
+	// Also remove the original single-file ParseFiles if present
+	singleParse := fmt.Sprintf("\tif _, err := baseTmpl.ParseFiles(%s); err != nil {\n\t\tlog.Fatalf(\"Failed to parse template: %%v\", err)\n\t}\n", parentTmplPath)
+	src = strings.Replace(src, singleParse, "", 1)
+
+	// Remove unused "log" import if no longer referenced
+	if !strings.Contains(src, "log.") {
+		src = strings.Replace(src, "\t\"log\"\n", "", 1)
 	}
 
 	// 7. Hook into View method to load child data
@@ -242,6 +338,27 @@ func injectStructField(src, structName, fieldLine string) (string, error) {
 	return src, nil
 }
 
+// detectIndent returns the whitespace indentation for the line containing position idx.
+func detectIndent(src string, idx int) string {
+	// Walk backwards to find the start of the line
+	lineStart := strings.LastIndex(src[:idx], "\n")
+	if lineStart == -1 {
+		lineStart = 0
+	} else {
+		lineStart++ // skip the newline itself
+	}
+	// Extract leading whitespace
+	var indent strings.Builder
+	for i := lineStart; i < idx; i++ {
+		if src[i] == '\t' || src[i] == ' ' {
+			indent.WriteByte(src[i])
+		} else {
+			break
+		}
+	}
+	return indent.String()
+}
+
 // findClosingBrace finds the matching } for the first { at or after startIdx.
 func findClosingBrace(src string, startIdx int) int {
 	depth := 0
@@ -287,12 +404,39 @@ func injectChildLoadIntoView(src, parentNameCap, parentSingular, childPlural, ch
 }
 
 // injectChildLoadIntoMount adds child data loading to the Mount method.
+// For page-mode resources, Mount has a detail-view branch (when _resource_id is set)
+// that needs to load child data alongside the parent item.
 func injectChildLoadIntoMount(src, parentNameCap, childPlural, childPkg string) string {
-	// The Mount method typically just calls loadResources. We need to add child loading
-	// after the parent data is loaded, but only if an item is being viewed.
-	// For Mount, the editing ID is typically not set yet, so we don't load children on mount.
-	// Children are loaded when View is triggered.
-	// No modification needed for Mount — children load via View action.
+	mountMethod := fmt.Sprintf("func (c *%sController) Mount(", parentNameCap)
+	mountIdx := strings.Index(src, mountMethod)
+	if mountIdx == -1 {
+		return src
+	}
+
+	// Look for the page-mode detail branch: resourceID := ctx.GetString("_resource_id")
+	// followed by "return state, nil"
+	afterMount := src[mountIdx:]
+	detailBranch := `resourceID := ctx.GetString("_resource_id")`
+	detailIdx := strings.Index(afterMount, detailBranch)
+	if detailIdx == -1 {
+		// No page-mode detail branch in Mount — nothing to inject
+		return src
+	}
+
+	// Find "return state, nil" within this detail branch
+	afterDetail := afterMount[detailIdx:]
+	returnIdx := strings.Index(afterDetail, "return state, nil")
+	if returnIdx == -1 {
+		return src
+	}
+
+	// Calculate absolute position and inject child loading before the return
+	absPos := mountIdx + detailIdx + returnIdx
+	indent := detectIndent(src, absPos)
+	childLoad := fmt.Sprintf("state.%s, _ = c.%sCtrl.Load(state.%s, context.Background(), resourceID)\n%s",
+		childPlural, childPlural, childPlural, indent)
+	src = src[:absPos] + childLoad + src[absPos:]
+
 	return src
 }
 
@@ -310,7 +454,7 @@ func (c *%sController) %sAdd(state %s, ctx *livetemplate.Context) (%s, error) {
 	return state, err
 }
 
-`, childSingular, childPkg, parentNameCap, childSingular+"Add", parentState, parentState,
+`, childSingular, childPkg, parentNameCap, childSingular, parentState, parentState,
 		childPlural, childPlural, childPlural))
 
 	// ChildEdit
@@ -321,7 +465,7 @@ func (c *%sController) %sEdit(state %s, ctx *livetemplate.Context) (%s, error) {
 	return state, err
 }
 
-`, childSingular, childPkg, parentNameCap, childSingular+"Edit", parentState, parentState,
+`, childSingular, childPkg, parentNameCap, childSingular, parentState, parentState,
 		childPlural, childPlural, childPlural))
 
 	// ChildUpdate
@@ -332,7 +476,7 @@ func (c *%sController) %sUpdate(state %s, ctx *livetemplate.Context) (%s, error)
 	return state, err
 }
 
-`, childSingular, childPkg, parentNameCap, childSingular+"Update", parentState, parentState,
+`, childSingular, childPkg, parentNameCap, childSingular, parentState, parentState,
 		childPlural, childPlural, childPlural))
 
 	// ChildDelete
@@ -343,7 +487,7 @@ func (c *%sController) %sDelete(state %s, ctx *livetemplate.Context) (%s, error)
 	return state, err
 }
 
-`, childSingular, childPkg, parentNameCap, childSingular+"Delete", parentState, parentState,
+`, childSingular, childPkg, parentNameCap, childSingular, parentState, parentState,
 		childPlural, childPlural, childPlural))
 
 	// ChildCancelEdit
@@ -353,7 +497,7 @@ func (c *%sController) %sCancelEdit(state %s, ctx *livetemplate.Context) (%s, er
 	state.%s, err = c.%sCtrl.CancelEdit(state.%s, ctx)
 	return state, err
 }
-`, childSingular, childPkg, parentNameCap, childSingular+"CancelEdit", parentState, parentState,
+`, childSingular, childPkg, parentNameCap, childSingular, parentState, parentState,
 		childPlural, childPlural, childPlural))
 
 	return b.String()

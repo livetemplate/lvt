@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -51,7 +52,8 @@ type PostsState struct {
 	Title        string        ` + "`" + `json:"title"` + "`" + `
 	EditingID    string        ` + "`" + `json:"editing_id"` + "`" + `
 	EditingPosts *PostsItem    ` + "`" + `json:"editing_posts"` + "`" + `
-	LastUpdated  string        ` + "`" + `json:"last_updated"` + "`" + `
+	LastUpdated   string        ` + "`" + `json:"last_updated"` + "`" + `
+	IsEditingMode bool          ` + "`" + `json:"is_editing_mode"` + "`" + `
 }
 
 func (c *PostsController) View(state PostsState, ctx *livetemplate.Context) (PostsState, error) {
@@ -60,7 +62,27 @@ func (c *PostsController) View(state PostsState, ctx *livetemplate.Context) (Pos
 	return state, nil
 }
 
-func (c *PostsController) Mount(state PostsState, _ *livetemplate.Context) (PostsState, error) {
+func (c *PostsController) Mount(state PostsState, ctx *livetemplate.Context) (PostsState, error) {
+	// Page mode: check if navigating to a detail URL via _resource_id query param
+	resourceID := ctx.GetString("_resource_id")
+	if resourceID != "" {
+		state.EditingID = resourceID
+		dbCtx := context.Background()
+		postss, err := c.Queries.GetAllPosts(dbCtx)
+		if err != nil {
+			return state, fmt.Errorf("failed to load postss: %w", err)
+		}
+		for _, item := range postss {
+			if item.ID == resourceID {
+				itemCopy := item
+				state.EditingPosts = &itemCopy
+				break
+			}
+		}
+		return state, nil
+	}
+	state.EditingID = ""
+	state.EditingPosts = nil
 	return c.loadPostss(state, context.Background())
 }
 
@@ -89,8 +111,10 @@ func Handler(queries *models.Queries) http.Handler {
 		fmt.Printf("Failed to parse template: %v\n", err)
 	}
 
+	handler := baseTmpl.Handle(controller, livetemplate.AsState(initialState))
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		baseTmpl.Handle(controller, livetemplate.AsState(initialState)).ServeHTTP(w, r)
+		handler.ServeHTTP(w, r)
 	})
 }
 `
@@ -165,10 +189,17 @@ func TestInjectEmbeddedChild_HandlerModifications(t *testing.T) {
 		t.Error("expected child template to be added to ParseFiles")
 	}
 
-	// Verify forwarding methods
+	// Verify forwarding methods have correct names (not doubled like CommentAddAdd)
 	for _, method := range []string{"CommentAdd", "CommentEdit", "CommentUpdate", "CommentDelete", "CommentCancelEdit"} {
-		if !strings.Contains(src, method) {
-			t.Errorf("expected forwarding method %s to be generated", method)
+		sig := fmt.Sprintf("func (c *PostsController) %s(", method)
+		if !strings.Contains(src, sig) {
+			t.Errorf("expected forwarding method signature %q to be generated", sig)
+		}
+		// Verify no doubled names
+		doubled := method + strings.TrimPrefix(method, "Comment")
+		doubledSig := fmt.Sprintf("func (c *PostsController) %s(", doubled)
+		if strings.Contains(src, doubledSig) {
+			t.Errorf("found doubled method name %q — should be %q", doubled, method)
 		}
 	}
 
@@ -176,6 +207,19 @@ func TestInjectEmbeddedChild_HandlerModifications(t *testing.T) {
 	if !strings.Contains(src, `c.CommentsCtrl.Load(state.Comments`) {
 		t.Error("expected child loading in View method")
 	}
+
+	// Verify Mount method loads child data in page-mode detail branch
+	mountMethod := strings.Index(src, `func (c *PostsController) Mount(`)
+	if mountMethod == -1 {
+		t.Fatal("expected Mount method in fixture")
+	}
+	afterMount := src[mountMethod:]
+	if !strings.Contains(afterMount, `c.CommentsCtrl.Load(state.Comments, context.Background(), resourceID)`) {
+		t.Error("expected child loading in Mount page-mode detail branch")
+	}
+
+	// Note: The new handler template uses a single shared handler (no resourceState).
+	// resourceState injection steps are backward-compat no-ops when the pattern is absent.
 }
 
 func TestInjectEmbeddedChild_Idempotent(t *testing.T) {
