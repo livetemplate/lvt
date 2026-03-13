@@ -53,12 +53,13 @@ const (
 
 // Message represents a single toast notification.
 type Message struct {
-	ID          string // Unique identifier for this toast
-	Title       string // Optional title/header
-	Body        string // Main message content
-	Type        Type   // Visual style (info, success, warning, error)
-	Dismissible bool   // Whether user can dismiss the toast
-	Icon        string // Optional icon (HTML or class name)
+	ID            string // Unique identifier for this toast
+	Title         string // Optional title/header
+	Body          string // Main message content
+	Type          Type   // Visual style (info, success, warning, error)
+	Dismissible   bool   // Whether user can dismiss the toast
+	Icon          string // Optional icon (HTML or class name)
+	AutoDismissMS int    // Auto-dismiss after this many milliseconds (0 = no auto-dismiss)
 }
 
 // Container holds and manages multiple toast notifications.
@@ -118,22 +119,25 @@ func (c *Container) Add(msg Message) {
 	}
 }
 
-// AddInfo adds an info toast.
+// DefaultAutoDismissMS is the default auto-dismiss duration for success/info toasts.
+const DefaultAutoDismissMS = 5000
+
+// AddInfo adds an info toast that auto-dismisses after 5 seconds.
 func (c *Container) AddInfo(title, body string) {
-	c.Add(Message{Title: title, Body: body, Type: Info, Dismissible: true})
+	c.Add(Message{Title: title, Body: body, Type: Info, Dismissible: true, AutoDismissMS: DefaultAutoDismissMS})
 }
 
-// AddSuccess adds a success toast.
+// AddSuccess adds a success toast that auto-dismisses after 5 seconds.
 func (c *Container) AddSuccess(title, body string) {
-	c.Add(Message{Title: title, Body: body, Type: Success, Dismissible: true})
+	c.Add(Message{Title: title, Body: body, Type: Success, Dismissible: true, AutoDismissMS: DefaultAutoDismissMS})
 }
 
-// AddWarning adds a warning toast.
+// AddWarning adds a warning toast (no auto-dismiss).
 func (c *Container) AddWarning(title, body string) {
 	c.Add(Message{Title: title, Body: body, Type: Warning, Dismissible: true})
 }
 
-// AddError adds an error toast.
+// AddError adds an error toast (no auto-dismiss).
 func (c *Container) AddError(title, body string) {
 	c.Add(Message{Title: title, Body: body, Type: Error, Dismissible: true})
 }
@@ -207,9 +211,21 @@ func (c *Container) GetPositionClasses() string {
 }
 
 // GetTypeClasses returns CSS classes for a toast type using the style adapter.
-func (c *Container) GetTypeClasses(t Type) string {
+// Accepts Type or string to handle values that may lose their named type
+// after JSON round-trip (e.g., state cloning via marshal/unmarshal).
+func (c *Container) GetTypeClasses(t interface{}) string {
+	var typ Type
+	switch v := t.(type) {
+	case Type:
+		typ = v
+	case string:
+		typ = Type(v)
+	default:
+		typ = Info
+	}
+
 	s := c.Styles()
-	switch t {
+	switch typ {
 	case Success:
 		return s.TypeSuccess
 	case Warning:

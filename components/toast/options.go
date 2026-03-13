@@ -62,6 +62,14 @@ func WithIcon(icon string) MessageOption {
 	}
 }
 
+// WithAutoDismiss sets the auto-dismiss duration in milliseconds.
+// Set to 0 to disable auto-dismiss.
+func WithAutoDismiss(ms int) MessageOption {
+	return func(m *Message) {
+		m.AutoDismissMS = ms
+	}
+}
+
 // NewMessage creates a new toast message with options.
 func NewMessage(opts ...MessageOption) Message {
 	m := Message{

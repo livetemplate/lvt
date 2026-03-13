@@ -11,6 +11,7 @@
     class="{{$c.Styles.Toast}} {{$c.GetTypeClasses .Type}}"
     role="alert"
     data-toast="{{.ID}}"
+    {{if gt .AutoDismissMS 0}}data-auto-dismiss="{{.AutoDismissMS}}"{{end}}
   >
     <div class="{{$c.Styles.ToastInner}}">
       <div class="{{$c.Styles.ToastLayout}}">
