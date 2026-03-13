@@ -2,7 +2,7 @@ module github.com/livetemplate/lvt
 
 go 1.26.0
 
-require github.com/livetemplate/livetemplate v0.8.4-0.20260302081640-7d59bbae8c9d
+require github.com/livetemplate/livetemplate v0.8.4-0.20260312224234-855c13e80cdf
 
 replace github.com/livetemplate/lvt/components => ./components
 
