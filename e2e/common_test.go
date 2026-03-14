@@ -3,6 +3,8 @@
 package e2e
 
 import (
+	"context"
+	"fmt"
 	"time"
 
 	"github.com/chromedp/chromedp"
@@ -47,4 +49,28 @@ func validateNoTemplateExpressions(selector string) chromedp.Action {
 // Local: 20s (faster feedback), CI: 60s for stable operation
 func getBrowserTimeout() time.Duration {
 	return getTimeout("BROWSER_TIMEOUT", 20*time.Second, 120*time.Second)
+}
+
+// clickUntilModalOpens retries clicking a button until a target element becomes
+// visible. This handles the race where the LiveTemplate client library's DOM
+// event handlers haven't attached yet when the click fires.
+func clickUntilModalOpens(buttonSelector, targetSelector string, timeout time.Duration) chromedp.Action {
+	return chromedp.ActionFunc(func(ctx context.Context) error {
+		deadline := time.Now().Add(timeout)
+		for time.Now().Before(deadline) {
+			_ = chromedp.Click(buttonSelector, chromedp.ByQuery).Do(ctx)
+			var visible bool
+			_ = chromedp.Evaluate(fmt.Sprintf(`
+				(() => {
+					const el = document.querySelector(%q);
+					return el !== null && el.offsetParent !== null;
+				})()
+			`, targetSelector), &visible).Do(ctx)
+			if visible {
+				return nil
+			}
+			time.Sleep(200 * time.Millisecond)
+		}
+		return fmt.Errorf("target %q did not become visible after clicking %q for %v", targetSelector, buttonSelector, timeout)
+	})
 }

@@ -94,10 +94,9 @@ func TestDeleteWithMultiplePosts(t *testing.T) {
 			waitForWebSocketReady(5*time.Second),
 			chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
 
-			// Create first post
+			// Create first post — retry modal click until event handlers are attached
 			chromedp.WaitVisible(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery),
-			chromedp.Click(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery),
-			chromedp.WaitVisible(`input[name="title"]`, chromedp.ByQuery),
+			clickUntilModalOpens(`[lvt-modal-open="add-modal"]`, `input[name="title"]`, 15*time.Second),
 			chromedp.SendKeys(`input[name="title"]`, "First Post", chromedp.ByQuery),
 			chromedp.SendKeys(`textarea[name="content"]`, "Content of first post", chromedp.ByQuery),
 			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
@@ -131,10 +130,9 @@ func TestDeleteWithMultiplePosts(t *testing.T) {
 			waitForWebSocketReady(5*time.Second),
 			chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
 
-			// Create second post — use JS click with retry for reliable modal open
+			// Create second post — retry modal click until event handlers are attached
 			chromedp.WaitVisible(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery),
-			chromedp.Click(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery),
-			waitFor(`document.querySelector('input[name="title"]') !== null && document.querySelector('input[name="title"]').offsetParent !== null`, 10*time.Second),
+			clickUntilModalOpens(`[lvt-modal-open="add-modal"]`, `input[name="title"]`, 15*time.Second),
 			chromedp.SendKeys(`input[name="title"]`, "Second Post", chromedp.ByQuery),
 			chromedp.SendKeys(`textarea[name="content"]`, "Content of second post", chromedp.ByQuery),
 			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
