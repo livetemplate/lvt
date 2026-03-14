@@ -138,17 +138,18 @@ func TestProductionTemplate(t *testing.T) {
 		}
 	})
 
-	// Step 6: Test home page renders via chromedp
+	// Step 6: Test home page renders via chromedp (using pooled Docker Chrome)
 	t.Run("HomePageRenders", func(t *testing.T) {
-		ctx, cancel := chromedp.NewContext(context.Background(), chromedp.WithLogf(t.Logf))
+		ctx, _, cleanup := GetPooledChrome(t)
+		defer cleanup()
+
+		ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 		defer cancel()
 
-		ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
-		defer cancel()
-
+		testURL := getTestURL(port)
 		var html string
 		if err := chromedp.Run(ctx,
-			chromedp.Navigate(serverURL),
+			chromedp.Navigate(testURL),
 			chromedp.WaitVisible("body", chromedp.ByQuery),
 			chromedp.OuterHTML("html", &html),
 		); err != nil {

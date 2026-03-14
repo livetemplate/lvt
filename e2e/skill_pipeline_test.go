@@ -154,16 +154,17 @@ func TestSkillPipeline(t *testing.T) {
 		}
 	})
 
-	// Step 11: Verify via chromedp
+	// Step 11: Verify via chromedp (using pooled Docker Chrome)
 	t.Run("BrowserRenders", func(t *testing.T) {
-		ctx, cancel := chromedp.NewContext(context.Background(), chromedp.WithLogf(t.Logf))
-		defer cancel()
-		ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
+		ctx, _, cleanup := GetPooledChrome(t)
+		defer cleanup()
+		ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 		defer cancel()
 
+		testURL := getTestURL(port)
 		var html string
 		if err := chromedp.Run(ctx,
-			chromedp.Navigate(serverURL),
+			chromedp.Navigate(testURL),
 			chromedp.WaitVisible("body", chromedp.ByQuery),
 			chromedp.OuterHTML("html", &html),
 		); err != nil {
