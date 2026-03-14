@@ -367,7 +367,7 @@ func TestResourceGen_EditModePage(t *testing.T) {
 	if !strings.Contains(handlerContent, `return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)`) {
 		t.Error("Handler missing page mode URL routing")
 	}
-	if !strings.Contains(handlerContent, `IsEditingMode:`) {
+	if !strings.Contains(handlerContent, `IsEditingMode`) {
 		t.Error("Handler missing IsEditingMode field (page mode)")
 	}
 

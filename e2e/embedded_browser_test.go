@@ -51,7 +51,7 @@ func TestEmbeddedBrowser_PostsWithComments(t *testing.T) {
 	}
 
 	// Inject framework replace directive so the test app uses local mount.go changes
-	injectFrameworkForTest(t, appDir)
+	hasFramework := injectFrameworkForTest(t, appDir)
 
 	// Step 5: Seed test data — two posts with comments to test navigation
 	t.Log("Seeding test data...")
@@ -163,6 +163,9 @@ func TestEmbeddedBrowser_PostsWithComments(t *testing.T) {
 	// Test 3: CRITICAL — Page-mode navigation shows correct content per URL
 	// Before the mount.go fix, clicking post B after post A would show A's content (stale session state).
 	t.Run("Page Mode Navigation Shows Correct Content", func(t *testing.T) {
+		if !hasFramework {
+			t.Skip("Skipping navigation test: requires local framework with mount fix")
+		}
 		bctx, cancel := createBrowserContext()
 		defer cancel()
 		bctx, timeoutCancel := context.WithTimeout(bctx, getBrowserTimeout())
@@ -344,7 +347,7 @@ func TestToastAutoDismiss(t *testing.T) {
 		t.Fatalf("Failed to run migrations: %v", err)
 	}
 
-	injectFrameworkForTest(t, appDir)
+	_ = injectFrameworkForTest(t, appDir)
 
 	serverPort := allocateTestPort()
 	_ = buildAndRunNative(t, appDir, serverPort)
@@ -406,7 +409,8 @@ func TestToastAutoDismiss(t *testing.T) {
 
 // injectFrameworkForTest adds a replace directive for the livetemplate framework module
 // so that test apps use the local framework with recent changes (e.g., mount.go always-call-Mount fix).
-func injectFrameworkForTest(t *testing.T, appDir string) {
+// Returns true if injection succeeded, false if the framework directory was not found.
+func injectFrameworkForTest(t *testing.T, appDir string) bool {
 	t.Helper()
 
 	// Find the livetemplate framework directory relative to the project.
@@ -430,7 +434,7 @@ func injectFrameworkForTest(t *testing.T, appDir string) {
 	}
 	if frameworkDir == "" {
 		t.Log("⏭️  Framework directory not found, skipping injection")
-		return
+		return false
 	}
 
 	goModPath := filepath.Join(appDir, "go.mod")
@@ -442,7 +446,7 @@ func injectFrameworkForTest(t *testing.T, appDir string) {
 	goModStr := string(goModContent)
 	if strings.Contains(goModStr, "replace github.com/livetemplate/livetemplate") {
 		t.Log("Framework replace directive already present")
-		return
+		return true
 	}
 
 	goModStr += fmt.Sprintf("\nreplace github.com/livetemplate/livetemplate => %s\n", frameworkDir)
@@ -460,4 +464,5 @@ func injectFrameworkForTest(t *testing.T, appDir string) {
 	}
 
 	t.Logf("✅ Framework module injected for test (path: %s)", frameworkDir)
+	return true
 }
