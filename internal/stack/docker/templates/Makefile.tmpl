@@ -1,0 +1,37 @@
+APP_NAME := {{ .ProjectName }}
+PORT := 8080
+
+{{- if eq .Database "sqlite" }}
+.PHONY: build run stop logs clean backup
+{{- else }}
+.PHONY: build run stop logs clean
+{{- end }}
+
+build:
+	docker build -t $(APP_NAME) -f deploy/Dockerfile .
+
+run: build
+	-docker rm -f $(APP_NAME) 2>/dev/null
+	docker run -d \
+		--name $(APP_NAME) \
+		-p $(PORT):8080 \
+{{- if eq .Database "sqlite" }}
+		-v $(APP_NAME)-data:/app/data \
+{{- end }}
+		--env-file deploy/.env \
+		--restart unless-stopped \
+		$(APP_NAME)
+
+stop:
+	-docker rm -f $(APP_NAME)
+
+logs:
+	docker logs -f $(APP_NAME)
+
+clean: stop
+	docker rmi $(APP_NAME)
+{{- if eq .Database "sqlite" }}
+
+backup:
+	docker cp $(APP_NAME):/app/data/app.db ./backup-$$(date +%Y%m%d-%H%M%S).db
+{{- end }}

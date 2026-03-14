@@ -105,18 +105,18 @@ func TestStackValidate_ModifiedFiles(t *testing.T) {
 		t.Fatalf("GenStack() error = %v", err)
 	}
 
-	// Modify a file
+	// Modify a file (use Dockerfile since docker-compose.yml is not generated for simple SQLite config)
 	wd, _ := os.Getwd()
-	dockerComposePath := filepath.Join(wd, "deploy", "docker-compose.yml")
-	content, err := os.ReadFile(dockerComposePath)
+	dockerfilePath := filepath.Join(wd, "deploy", "Dockerfile")
+	content, err := os.ReadFile(dockerfilePath)
 	if err != nil {
-		t.Fatalf("Failed to read docker-compose.yml: %v", err)
+		t.Fatalf("Failed to read Dockerfile: %v", err)
 	}
 
 	// Append something to modify the file
-	err = os.WriteFile(dockerComposePath, append(content, []byte("\n# Modified")...), 0644)
+	err = os.WriteFile(dockerfilePath, append(content, []byte("\n# Modified")...), 0644)
 	if err != nil {
-		t.Fatalf("Failed to write docker-compose.yml: %v", err)
+		t.Fatalf("Failed to write Dockerfile: %v", err)
 	}
 
 	// Validate should still succeed but report modifications

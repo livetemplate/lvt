@@ -94,10 +94,9 @@ func TestDeleteWithMultiplePosts(t *testing.T) {
 			waitForWebSocketReady(5*time.Second),
 			chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
 
-			// Create first post
+			// Create first post — retry modal click until event handlers are attached
 			chromedp.WaitVisible(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery),
-			chromedp.Click(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery),
-			chromedp.WaitVisible(`input[name="title"]`, chromedp.ByQuery),
+			clickUntilModalOpens(`[lvt-modal-open="add-modal"]`, `input[name="title"]`, 15*time.Second),
 			chromedp.SendKeys(`input[name="title"]`, "First Post", chromedp.ByQuery),
 			chromedp.SendKeys(`textarea[name="content"]`, "Content of first post", chromedp.ByQuery),
 			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
@@ -123,7 +122,7 @@ func TestDeleteWithMultiplePosts(t *testing.T) {
 	t.Run("Create_Second_Post", func(t *testing.T) {
 		ctx, cancel := createBrowserContext()
 		defer cancel()
-		ctx, timeoutCancel := context.WithTimeout(ctx, 30*time.Second)
+		ctx, timeoutCancel := context.WithTimeout(ctx, 60*time.Second)
 		defer timeoutCancel()
 
 		err := chromedp.Run(ctx,
@@ -131,10 +130,9 @@ func TestDeleteWithMultiplePosts(t *testing.T) {
 			waitForWebSocketReady(5*time.Second),
 			chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
 
-			// Create second post
+			// Create second post — retry modal click until event handlers are attached
 			chromedp.WaitVisible(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery),
-			chromedp.Click(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery),
-			chromedp.WaitVisible(`input[name="title"]`, chromedp.ByQuery),
+			clickUntilModalOpens(`[lvt-modal-open="add-modal"]`, `input[name="title"]`, 15*time.Second),
 			chromedp.SendKeys(`input[name="title"]`, "Second Post", chromedp.ByQuery),
 			chromedp.SendKeys(`textarea[name="content"]`, "Content of second post", chromedp.ByQuery),
 			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
@@ -148,7 +146,7 @@ func TestDeleteWithMultiplePosts(t *testing.T) {
 						return cells.length > 0 && cells[0].textContent.trim() === 'Second Post';
 					});
 				})()
-			`, 10*time.Second),
+			`, 20*time.Second),
 		)
 		if err != nil {
 			t.Fatalf("Failed to create second post: %v", err)

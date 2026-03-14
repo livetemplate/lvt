@@ -1142,9 +1142,8 @@ func ensureTutorialPostExists(ctx context.Context, baseURL string) error {
 		waitForWebSocketReady(30*time.Second),
 		chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
 		chromedp.WaitVisible(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery),
-		chromedp.Click(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery),
-		waitFor(`document.querySelector('[role="dialog"]') && !document.querySelector('[role="dialog"]').hasAttribute('hidden')`, 10*time.Second),
-		chromedp.WaitVisible(`input[name="title"]`, chromedp.ByQuery),
+		// Retry modal click until event handlers are attached
+		clickUntilModalOpens(`[lvt-modal-open="add-modal"]`, `input[name="title"]`, 15*time.Second),
 		chromedp.Evaluate(`document.querySelector('input[name="title"]').value = ''`, nil),
 		chromedp.Evaluate(`document.querySelector('textarea[name="content"]').value = ''`, nil),
 		chromedp.SendKeys(`input[name="title"]`, title, chromedp.ByQuery),

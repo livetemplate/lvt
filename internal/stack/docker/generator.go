@@ -30,6 +30,9 @@ var readmeTemplate string
 //go:embed templates/litestream.yml.tmpl
 var litestreamTemplate string
 
+//go:embed templates/Makefile.tmpl
+var makefileTemplate string
+
 // Generator implements stack.Generator for Docker
 type Generator struct{}
 
@@ -55,19 +58,28 @@ func (g *Generator) Generate(ctx context.Context, config stack.StackConfig, outp
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
-	// Generate files
+	// Generate core files (always produced)
 	files := map[string]string{
-		"docker-compose.yml": dockerComposeTemplate,
-		"Dockerfile":         dockerfileTemplate,
-		".dockerignore":      dockerignoreTemplate,
-		".env.example":       envExampleTemplate,
-		"README.md":          readmeTemplate,
+		"Dockerfile":    dockerfileTemplate,
+		".dockerignore": dockerignoreTemplate,
+		".env.example":  envExampleTemplate,
+		"README.md":     readmeTemplate,
+	}
+
+	if config.NeedsCompose() {
+		files["docker-compose.yml"] = dockerComposeTemplate
 	}
 
 	for filename, tmplContent := range files {
 		if err := g.generateFile(filepath.Join(outputDir, filename), tmplContent, data); err != nil {
 			return fmt.Errorf("failed to generate %s: %w", filename, err)
 		}
+	}
+
+	// Generate Makefile at project root (not in deploy/)
+	projectDir := filepath.Dir(outputDir)
+	if err := g.generateFile(filepath.Join(projectDir, "Makefile"), makefileTemplate, data); err != nil {
+		return fmt.Errorf("failed to generate Makefile: %w", err)
 	}
 
 	// Generate litestream.yml if needed
@@ -80,7 +92,6 @@ func (g *Generator) Generate(ctx context.Context, config stack.StackConfig, outp
 	// Generate CI/CD workflows if configured
 	if config.CI == stack.CIGitHub {
 		ciGen := github.New()
-		projectDir := filepath.Dir(outputDir)
 		if err := ciGen.GenerateWorkflow(config, projectDir, data); err != nil {
 			return fmt.Errorf("failed to generate CI workflows: %w", err)
 		}
