@@ -1142,9 +1142,29 @@ func ensureTutorialPostExists(ctx context.Context, baseURL string) error {
 		waitForWebSocketReady(30*time.Second),
 		chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
 		chromedp.WaitVisible(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery),
-		chromedp.Click(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery),
-		waitFor(`document.querySelector('[role="dialog"]') && !document.querySelector('[role="dialog"]').hasAttribute('hidden')`, 10*time.Second),
-		chromedp.WaitVisible(`input[name="title"]`, chromedp.ByQuery),
+		// Click the add button and wait for the modal input to become visible.
+		// Use a JS-based click+retry: if client event handlers haven't attached yet,
+		// the first click may be a no-op, so we poll until the modal opens.
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			deadline := time.Now().Add(15 * time.Second)
+			for time.Now().Before(deadline) {
+				// Click the button
+				_ = chromedp.Click(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery).Do(ctx)
+				// Check if modal opened (input visible)
+				var visible bool
+				_ = chromedp.Evaluate(`
+					(() => {
+						const input = document.querySelector('input[name="title"]');
+						return input !== null && input.offsetParent !== null;
+					})()
+				`, &visible).Do(ctx)
+				if visible {
+					return nil
+				}
+				time.Sleep(200 * time.Millisecond)
+			}
+			return fmt.Errorf("add modal did not open after 15s of retrying clicks")
+		}),
 		chromedp.Evaluate(`document.querySelector('input[name="title"]').value = ''`, nil),
 		chromedp.Evaluate(`document.querySelector('textarea[name="content"]').value = ''`, nil),
 		chromedp.SendKeys(`input[name="title"]`, title, chromedp.ByQuery),
