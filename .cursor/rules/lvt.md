@@ -4,85 +4,85 @@ applyTo: "**/*.go"
 
 # LiveTemplate Development Rules for Cursor
 
-When working with LiveTemplate projects, use the `lvt` MCP server tools to generate and manage code. This guide provides rules and patterns optimized for Cursor AI.
+When working with LiveTemplate projects, use `lvt` CLI commands to generate and manage code. This guide provides rules and patterns optimized for Cursor AI.
 
-## MCP Tools Overview
+## CLI Commands Overview
 
-The LiveTemplate MCP server exposes 16 tools across 6 categories:
+The `lvt` CLI provides commands across several categories:
 
 ### Generation (5)
-- `lvt_new` - Create new LiveTemplate app
-- `lvt_gen_resource` - Generate CRUD resource
-- `lvt_gen_view` - Generate view-only page
-- `lvt_gen_auth` - Generate auth system
-- `lvt_gen_schema` - Generate database schema
+- `lvt new` - Create new LiveTemplate app
+- `lvt gen resource` - Generate CRUD resource
+- `lvt gen view` - Generate view-only page
+- `lvt gen auth` - Generate auth system
+- `lvt gen schema` - Generate database schema
 
 ### Database (4)
-- `lvt_migration_up` - Apply migrations
-- `lvt_migration_down` - Rollback migration
-- `lvt_migration_status` - Check status
-- `lvt_migration_create` - Create migration
+- `lvt migration up` - Apply migrations
+- `lvt migration down` - Rollback migration
+- `lvt migration status` - Check status
+- `lvt migration create` - Create migration
 
 ### Inspection (2)
-- `lvt_resource_list` - List resources
-- `lvt_resource_describe` - Describe schema
+- `lvt resource list` - List resources
+- `lvt resource describe` - Describe schema
 
 ### Data (1)
-- `lvt_seed` - Generate test data
+- `lvt seed` - Generate test data
 
 ### Validation (1)
-- `lvt_validate_template` - Validate templates
+- `lvt parse` - Validate templates
 
 ### Config (3)
-- `lvt_env_generate` - Generate .env.example
-- `lvt_kits_list` - List kits
-- `lvt_kits_info` - Kit details
+- `lvt env generate` - Generate .env.example
+- `lvt kits list` - List kits
+- `lvt kits info` - Kit details
 
 ## Development Patterns
 
 ### Pattern 1: New Feature Flow
 ```
 User asks: "Add posts feature"
-→ Use lvt_gen_resource with fields
-→ Use lvt_migration_up
-→ Use lvt_seed for test data
-→ Show user next steps
+-> Use lvt gen resource with fields
+-> Use lvt migration up
+-> Use lvt seed for test data
+-> Show user next steps
 ```
 
 ### Pattern 2: Database First
 ```
 User asks: "What's in the database?"
-→ Use lvt_resource_list
-→ Use lvt_resource_describe for details
-→ Suggest additions based on current schema
+-> Use lvt resource list
+-> Use lvt resource describe for details
+-> Suggest additions based on current schema
 ```
 
 ### Pattern 3: Auth Setup
 ```
 User asks: "Add login"
-→ Check lvt_resource_list for existing auth
-→ If none, use lvt_gen_auth
-→ Use lvt_migration_up
-→ Explain auth flow to user
+-> Check lvt resource list for existing auth
+-> If none, use lvt gen auth
+-> Use lvt migration up
+-> Explain auth flow to user
 ```
 
 ### Pattern 4: Safe Migrations
 ```
 Before any migration:
-→ Use lvt_migration_status first
-→ Show user pending migrations
-→ Get confirmation
-→ Use lvt_migration_up
-→ Verify with lvt_resource_describe
+-> Use lvt migration status first
+-> Show user pending migrations
+-> Get confirmation
+-> Use lvt migration up
+-> Verify with lvt resource describe
 ```
 
 ## File-Specific Rules
 
 ### When editing *.go files in app/
 **DO:**
-- Suggest using lvt_gen_resource for new resources
-- Recommend lvt_gen_view for non-CRUD pages
-- Check existing resources with lvt_resource_list first
+- Suggest using lvt gen resource for new resources
+- Recommend lvt gen view for non-CRUD pages
+- Check existing resources with lvt resource list first
 
 **DON'T:**
 - Manually write boilerplate handlers
@@ -92,17 +92,17 @@ Before any migration:
 ### When editing migration files (*.sql)
 **DO:**
 - Validate syntax before applying
-- Use lvt_migration_status to check state
-- Suggest custom migrations with lvt_migration_create
+- Use lvt migration status to check state
+- Suggest custom migrations with lvt migration create
 
 **DON'T:**
 - Apply migrations without checking status
 - Edit applied migration files
-- Skip sqlc regeneration (happens auto in migration_up)
+- Skip sqlc regeneration (happens auto in migration up)
 
 ### When editing template files (*.tmpl)
 **DO:**
-- Use lvt_validate_template before suggesting changes
+- Use lvt parse before suggesting changes
 - Follow LiveTemplate component patterns
 - Suggest regenerating if structure is broken
 
@@ -114,45 +114,34 @@ Before any migration:
 ## Common Workflows
 
 ### Workflow: Create Blog
-```json
-[
-  {"tool": "lvt_new", "input": {"name": "blog", "kit": "multi"}},
-  {"tool": "lvt_gen_auth", "input": {}},
-  {"tool": "lvt_gen_resource", "input": {
-    "name": "posts",
-    "fields": {"title": "string", "content": "text", "user_id": "references:users"}
-  }},
-  {"tool": "lvt_gen_resource", "input": {
-    "name": "comments",
-    "fields": {"content": "text", "post_id": "references:posts", "user_id": "references:users"}
-  }},
-  {"tool": "lvt_migration_up", "input": {}},
-  {"tool": "lvt_seed", "input": {"resource": "posts", "count": 10}},
-  {"tool": "lvt_seed", "input": {"resource": "comments", "count": 30}}
-]
+```bash
+lvt new blog --kit multi
+cd blog
+lvt gen auth
+lvt gen resource posts title:string content:text user_id:references:users
+lvt gen resource comments content:text post_id:references:posts user_id:references:users
+lvt migration up
+lvt seed posts --count 10
+lvt seed comments --count 30
 ```
 
 ### Workflow: Add Feature to Existing App
-```json
-[
-  {"tool": "lvt_resource_list", "input": {}},
-  {"tool": "lvt_gen_resource", "input": {"name": "tags", "fields": {...}}},
-  {"tool": "lvt_migration_up", "input": {}},
-  {"tool": "lvt_seed", "input": {"resource": "tags", "count": 20}}
-]
+```bash
+lvt resource list
+lvt gen resource tags name:string color:string
+lvt migration up
+lvt seed tags --count 20
 ```
 
 ### Workflow: Development Data Refresh
-```json
-[
-  {"tool": "lvt_seed", "input": {"resource": "posts", "cleanup": true, "count": 50}},
-  {"tool": "lvt_seed", "input": {"resource": "comments", "cleanup": true, "count": 150}}
-]
+```bash
+lvt seed posts --cleanup --count 50
+lvt seed comments --cleanup --count 150
 ```
 
 ## Field Type Reference
 
-When suggesting fields for lvt_gen_resource:
+When suggesting fields for lvt gen resource:
 
 | Go Type | SQL Type | Use For | Example Field |
 |---------|----------|---------|---------------|
@@ -168,16 +157,16 @@ When suggesting fields for lvt_gen_resource:
 
 ### Migration Errors
 ```
-1. Check: lvt_migration_status
+1. Check: lvt migration status
 2. Review error message
-3. Describe: lvt_resource_describe <resource>
+3. Describe: lvt resource describe <resource>
 4. Fix migration file or schema conflict
-5. Retry: lvt_migration_up
+5. Retry: lvt migration up
 ```
 
 ### Template Errors
 ```
-1. Validate: lvt_validate_template
+1. Validate: lvt parse <template>
 2. Review syntax errors
 3. Fix template
 4. Re-validate
@@ -185,7 +174,7 @@ When suggesting fields for lvt_gen_resource:
 
 ### Generation Errors
 ```
-1. Check: lvt_resource_list (name conflicts?)
+1. Check: lvt resource list (name conflicts?)
 2. Verify field syntax
 3. Ensure migrations applied
 4. Retry generation
@@ -194,43 +183,43 @@ When suggesting fields for lvt_gen_resource:
 ## Best Practices
 
 1. **Always check before generating**
-   - Use lvt_resource_list to avoid duplicates
-   - Check lvt_migration_status before migrations
+   - Use lvt resource list to avoid duplicates
+   - Check lvt migration status before migrations
 
 2. **Chain operations logically**
-   - Generate → Migrate → Seed
-   - List → Describe → Generate
+   - Generate -> Migrate -> Seed
+   - List -> Describe -> Generate
 
 3. **Use cleanup for development**
-   - lvt_seed with cleanup: true
+   - lvt seed with --cleanup flag
    - Keeps test data fresh
 
 4. **Generate auth early**
-   - Run lvt_gen_auth first
+   - Run lvt gen auth first
    - Then add resources with user_id references
 
 5. **Validate before deploying**
-   - Use lvt_validate_template on all templates
-   - Check lvt_migration_status
-   - Generate .env.example with lvt_env_generate
+   - Use lvt parse on all templates
+   - Check lvt migration status
+   - Generate .env.example with lvt env generate
 
 ## Quick Reference Commands
 
 ```bash
 # New project
-lvt_new → lvt_gen_auth → lvt_gen_resource → lvt_migration_up
+lvt new -> lvt gen auth -> lvt gen resource -> lvt migration up
 
 # Add feature
-lvt_resource_list → lvt_gen_resource → lvt_migration_up → lvt_seed
+lvt resource list -> lvt gen resource -> lvt migration up -> lvt seed
 
 # Database check
-lvt_migration_status → lvt_resource_list → lvt_resource_describe
+lvt migration status -> lvt resource list -> lvt resource describe
 
 # Dev refresh
-lvt_seed (cleanup: true)
+lvt seed --cleanup
 
 # Pre-deploy
-lvt_migration_status → lvt_validate_template → lvt_env_generate
+lvt migration status -> lvt parse -> lvt env generate
 ```
 
 ## Project Structure Awareness
@@ -243,31 +232,31 @@ project/
 ├── internal/
 │   ├── app/
 │   │   ├── resource/         # Each resource has:
-│   │   │   ├── resource.go   # Handler (suggest lvt_gen_resource)
-│   │   │   ├── resource.tmpl # Template (validate with lvt_validate_template)
+│   │   │   ├── resource.go   # Handler (suggest lvt gen resource)
+│   │   │   ├── resource.tmpl # Template (validate with lvt parse)
 │   │   │   └── resource_test.go # Tests
-│   │   └── auth/            # Auth system (lvt_gen_auth)
+│   │   └── auth/            # Auth system (lvt gen auth)
 │   └── database/
-│       ├── migrations/       # SQL files (lvt_migration_*)
+│       ├── migrations/       # SQL files (lvt migration *)
 │       ├── queries.sql       # Generated queries
 │       └── schema.sql        # Complete schema
 ├── go.mod
-└── .env.example             # Generated by lvt_env_generate
+└── .env.example             # Generated by lvt env generate
 ```
 
-When user asks to modify any of these, suggest appropriate lvt tool instead of manual editing.
+When user asks to modify any of these, suggest appropriate lvt command instead of manual editing.
 
 ## Integration with Cursor Features
 
 ### Composer Mode
-When in Composer, chain multiple MCP tools together:
+When in Composer, chain multiple CLI commands together:
 ```
-"Add blog with auth" →
-  lvt_gen_auth +
-  lvt_gen_resource(posts) +
-  lvt_gen_resource(comments) +
-  lvt_migration_up +
-  lvt_seed (both resources)
+"Add blog with auth" ->
+  lvt gen auth +
+  lvt gen resource posts ... +
+  lvt gen resource comments ... +
+  lvt migration up +
+  lvt seed (both resources)
 ```
 
 ### Agent Mode
@@ -279,7 +268,7 @@ In Agent mode, proactively:
 
 ### Chat Mode
 In Chat, provide:
-- Tool explanations with examples
+- Command explanations with examples
 - Workflow guidance
 - Error troubleshooting
 - Best practice recommendations
@@ -289,29 +278,29 @@ In Chat, provide:
 ### Multi-Resource Generation
 ```
 For "create e-commerce store":
-1. lvt_new (store, multi)
-2. lvt_gen_auth
-3. lvt_gen_resource (categories)
-4. lvt_gen_resource (products with category_id)
-5. lvt_gen_resource (orders with user_id)
-6. lvt_gen_resource (order_items with order_id, product_id)
-7. lvt_migration_up
-8. Seed in order: categories → products → (users from auth) → orders → order_items
+1. lvt new store --kit multi
+2. lvt gen auth
+3. lvt gen resource categories name:string
+4. lvt gen resource products name:string price:float category_id:references:categories
+5. lvt gen resource orders status:string user_id:references:users
+6. lvt gen resource order_items quantity:int order_id:references:orders product_id:references:products
+7. lvt migration up
+8. Seed in order: categories -> products -> orders -> order_items
 ```
 
 ### Custom Migrations
 ```
 For "add indexes":
-1. lvt_migration_create (name: "add_indexes")
+1. lvt migration create add_indexes
 2. Edit generated SQL file manually
-3. lvt_migration_up
-4. lvt_resource_describe to verify
+3. lvt migration up
+4. lvt resource describe to verify
 ```
 
 ### Template Customization
 ```
 For "customize post template":
-1. lvt_validate_template (ensure valid first)
+1. lvt parse (ensure valid first)
 2. Suggest safe modifications
 3. Re-validate after changes
 4. Test in browser
@@ -319,20 +308,17 @@ For "customize post template":
 
 ## Documentation Links
 
-- **Full Tool Reference**: See `docs/MCP_TOOLS.md` for complete tool documentation
 - **Workflow Patterns**: See `docs/WORKFLOWS.md` for 17 detailed workflows
 - **LiveTemplate Docs**: https://github.com/livetemplate/lvt
 
-## MCP Server Setup
+## Setup
 
-Ensure `lvt` MCP server is running for these tools to work:
+Ensure `lvt` is installed:
 
 ```bash
 # Install
 go install github.com/livetemplate/lvt@latest
 
-# Start server
-lvt mcp-server
+# Set up agent integration
+lvt install-agent
 ```
-
-Configure in Cursor settings or use Auto-MCP if available.

@@ -335,7 +335,7 @@ func buildAndRunNative(t *testing.T, appDir string, port int) *exec.Cmd {
 	sqlcPath := filepath.Join(appDir, "database/sqlc.yaml")
 	if _, err := os.Stat(sqlcPath); err == nil {
 		t.Log("Running sqlc generate...")
-		sqlcCmd := exec.Command("go", "run", "github.com/sqlc-dev/sqlc/cmd/sqlc@latest", "generate", "-f", sqlcPath)
+		sqlcCmd := exec.Command("go", "run", sqlcPackage, "generate", "-f", sqlcPath)
 		sqlcCmd.Dir = appDir
 		sqlcCmd.Env = append(os.Environ(), "GOWORK=off")
 		if output, err := sqlcCmd.CombinedOutput(); err != nil {

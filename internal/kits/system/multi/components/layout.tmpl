@@ -56,6 +56,28 @@
         })();
       </script>
 
+      <!-- Auto-dismiss toasts with data-auto-dismiss attribute -->
+      <script>
+        (function() {
+          var timers = {};
+          function setupAutoDismiss(el) {
+            var id = el.getAttribute('data-toast');
+            if (!id || timers[id]) return;
+            var ms = parseInt(el.getAttribute('data-auto-dismiss'), 10);
+            if (!(ms > 0)) return;
+            timers[id] = setTimeout(function() {
+              delete timers[id];
+              var btn = el.querySelector('[lvt-click^="dismiss_toast_"]');
+              if (btn) btn.click();
+            }, ms);
+          }
+          document.querySelectorAll('[data-toast][data-auto-dismiss]').forEach(setupAutoDismiss);
+          new MutationObserver(function() {
+            document.querySelectorAll('[data-toast][data-auto-dismiss]').forEach(setupAutoDismiss);
+          }).observe(document.body, { childList: true, subtree: true });
+        })();
+      </script>
+
       {{template "pageRouting" .}}
     {{end}}
   </body>

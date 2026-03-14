@@ -15,7 +15,7 @@ import (
 	"golang.org/x/text/language"
 )
 
-func GenerateResource(basePath, moduleName, resourceName string, fields []parser.Field, kitName, cssFramework, styles, paginationMode string, pageSize int, editMode string) error {
+func GenerateResource(basePath, moduleName, resourceName string, fields []parser.Field, kitName, cssFramework, styles, paginationMode string, pageSize int, editMode, parentResource string) error {
 	// Defaults
 	if kitName == "" {
 		kitName = "multi"
@@ -99,12 +99,131 @@ func GenerateResource(basePath, moduleName, resourceName string, fields []parser
 		}
 	}
 
+	// Populate embedded/parent fields when --parent is specified
+	if parentResource != "" {
+		parentResource = strings.ToLower(parentResource)
+		parentSingular := singularize(parentResource)
+		data.ParentResource = parentResource
+		data.ParentPackageName = parentResource
+		data.ParentResourceSingular = titleCaser.String(parentSingular)
+		data.IsEmbedded = true
+
+		// Auto-detect parent reference field
+		parentTable := pluralize(parentSingular)
+		for _, f := range fieldData {
+			if f.IsReference && f.ReferencedTable == parentTable {
+				data.ParentReferenceField = f.Name
+				break
+			}
+		}
+		if data.ParentReferenceField == "" {
+			return fmt.Errorf("could not find a reference field for parent table %q in child fields", parentTable)
+		}
+	}
+
 	// Create resource directory
 	resourceDir := filepath.Join(basePath, "app", resourceNameLower)
 	if err := os.MkdirAll(resourceDir, 0755); err != nil {
 		return fmt.Errorf("failed to create resource directory: %w", err)
 	}
 
+	// Embedded mode uses different templates and skips route/home injection
+	if data.IsEmbedded {
+		return generateEmbeddedResource(basePath, resourceDir, resourceNameLower, tableName, data, kitLoader, kitName, kit)
+	}
+
+	return generateStandaloneResource(basePath, resourceDir, resourceNameLower, tableName, moduleName, editMode, appMode, data, kitLoader, kitName, kit)
+}
+
+func generateEmbeddedResource(basePath, resourceDir, resourceNameLower, tableName string, data ResourceData, kitLoader *kits.KitLoader, kitName string, kit *kits.KitInfo) error {
+	// Load embedded-specific templates
+	handlerTmpl, err := kitLoader.LoadKitTemplate(kitName, "resource/embedded_handler.go.tmpl")
+	if err != nil {
+		return fmt.Errorf("failed to read embedded handler template: %w", err)
+	}
+
+	templateTmpl, err := kitLoader.LoadKitTemplate(kitName, "resource/embedded_template.tmpl.tmpl")
+	if err != nil {
+		return fmt.Errorf("failed to read embedded template: %w", err)
+	}
+
+	// Use embedded queries (adds filtered-by-parent query)
+	queriesTmpl, err := kitLoader.LoadKitTemplate(kitName, "resource/embedded_queries.sql.tmpl")
+	if err != nil {
+		return fmt.Errorf("failed to read embedded queries template: %w", err)
+	}
+
+	// Migration and schema are the same as standalone
+	migrationTmpl, err := kitLoader.LoadKitTemplate(kitName, "resource/migration.sql.tmpl")
+	if err != nil {
+		return fmt.Errorf("failed to read migration template: %w", err)
+	}
+
+	schemaTmpl, err := kitLoader.LoadKitTemplate(kitName, "resource/schema.sql.tmpl")
+	if err != nil {
+		return fmt.Errorf("failed to read schema template: %w", err)
+	}
+
+	// Generate embedded handler
+	if err := generateFile(string(handlerTmpl), data, filepath.Join(resourceDir, resourceNameLower+".go"), kit); err != nil {
+		return fmt.Errorf("failed to generate embedded handler: %w", err)
+	}
+
+	// Generate embedded template
+	tmplPath := filepath.Join(resourceDir, resourceNameLower+".tmpl")
+	if err := generateFile(string(templateTmpl), data, tmplPath, kit); err != nil {
+		return fmt.Errorf("failed to generate embedded template: %w", err)
+	}
+	if err := ValidateTemplate(tmplPath); err != nil {
+		return err
+	}
+
+	// Generate migration
+	dbDir := filepath.Join(basePath, "database")
+	migrationsDir := filepath.Join(dbDir, "migrations")
+	if err := os.MkdirAll(migrationsDir, 0755); err != nil {
+		return fmt.Errorf("failed to create migrations directory: %w", err)
+	}
+	timestamp := time.Now()
+	var migrationPath string
+	for {
+		timestampStr := timestamp.Format("20060102150405")
+		migrationPath = filepath.Join(migrationsDir, fmt.Sprintf("%s_create_%s.sql", timestampStr, tableName))
+		matches, _ := filepath.Glob(filepath.Join(migrationsDir, timestampStr+"_*.sql"))
+		if len(matches) == 0 {
+			break
+		}
+		timestamp = timestamp.Add(1 * time.Second)
+	}
+	if err := generateFile(string(migrationTmpl), data, migrationPath, kit); err != nil {
+		return fmt.Errorf("failed to generate migration: %w", err)
+	}
+
+	// Append to schema.sql
+	if err := appendToFile(string(schemaTmpl), data, filepath.Join(dbDir, "schema.sql"), "\n", kit); err != nil {
+		return fmt.Errorf("failed to append to schema: %w", err)
+	}
+
+	// Append to queries.sql (embedded queries include filtered-by-parent)
+	if err := appendToFile(string(queriesTmpl), data, filepath.Join(dbDir, "queries.sql"), "\n", kit); err != nil {
+		return fmt.Errorf("failed to append to queries: %w", err)
+	}
+
+	// Inject child into parent handler and template
+	parentGoPath := filepath.Join(basePath, "app", data.ParentPackageName, data.ParentPackageName+".go")
+	parentTmplPath := filepath.Join(basePath, "app", data.ParentPackageName, data.ParentPackageName+".tmpl")
+	if err := InjectEmbeddedChild(parentGoPath, data); err != nil {
+		return fmt.Errorf("failed to inject child into parent handler: %w", err)
+	}
+	if err := InjectEmbeddedChildTemplate(parentTmplPath, data); err != nil {
+		return fmt.Errorf("failed to inject child into parent template: %w", err)
+	}
+
+	// Skip route injection and home page registration (child is rendered on parent's page)
+	return nil
+}
+
+func generateStandaloneResource(basePath, resourceDir, resourceNameLower, tableName, moduleName, editMode, appMode string, data ResourceData, kitLoader *kits.KitLoader, kitName string, kit *kits.KitInfo) error {
 	// Read templates using kit loader (checks project kits, user kits, then embedded)
 	handlerTmpl, err := kitLoader.LoadKitTemplate(kitName, "resource/handler.go.tmpl")
 	if err != nil {
@@ -112,11 +231,8 @@ func GenerateResource(basePath, moduleName, resourceName string, fields []parser
 	}
 
 	// Load main template based on mode
-	// With template flattening support, we can now use component-based templates
 	var templateTmpl []byte
 	if appMode == "multi" {
-		// Load component-based template for multi-page apps
-		// Template flattening will resolve all {{define}}/{{template}} constructs
 		componentNames := []string{
 			"layout.tmpl",
 			"form.tmpl",
@@ -138,7 +254,6 @@ func GenerateResource(basePath, moduleName, resourceName string, fields []parser
 			fullTemplate += string(compTmpl) + "\n\n"
 		}
 
-		// Load the main template file that uses these components
 		mainTmpl, err := kitLoader.LoadKitTemplate(kitName, "resource/template_components.tmpl.tmpl")
 		if err != nil {
 			return fmt.Errorf("failed to load main template: %w", err)
@@ -147,7 +262,6 @@ func GenerateResource(basePath, moduleName, resourceName string, fields []parser
 
 		templateTmpl = []byte(fullTemplate)
 	} else {
-		// Single mode - use simple template
 		templateTmpl, err = kitLoader.LoadKitTemplate(kitName, "resource/template.tmpl.tmpl")
 		if err != nil {
 			return fmt.Errorf("failed to load template: %w", err)
@@ -188,15 +302,13 @@ func GenerateResource(basePath, moduleName, resourceName string, fields []parser
 		return err
 	}
 
-	// Generate migration file instead of appending to schema.sql
+	// Generate migration file
 	dbDir := filepath.Join(basePath, "database")
 	migrationsDir := filepath.Join(dbDir, "migrations")
 	if err := os.MkdirAll(migrationsDir, 0755); err != nil {
 		return fmt.Errorf("failed to create migrations directory: %w", err)
 	}
 
-	// Generate unique timestamp for migration
-	// Check if file exists and increment timestamp if needed to avoid conflicts
 	timestamp := time.Now()
 	migrationFilename := ""
 	migrationPath := ""
@@ -204,26 +316,20 @@ func GenerateResource(basePath, moduleName, resourceName string, fields []parser
 		timestampStr := timestamp.Format("20060102150405")
 		migrationFilename = fmt.Sprintf("%s_create_%s.sql", timestampStr, tableName)
 		migrationPath = filepath.Join(migrationsDir, migrationFilename)
-
-		// Check if any migration file exists with this timestamp prefix
 		matches, _ := filepath.Glob(filepath.Join(migrationsDir, timestampStr+"_*.sql"))
 		if len(matches) == 0 {
 			break
 		}
-
-		// Increment by 1 second and try again
 		timestamp = timestamp.Add(1 * time.Second)
 	}
 	if err := generateFile(string(migrationTmpl), data, migrationPath, kit); err != nil {
 		return fmt.Errorf("failed to generate migration: %w", err)
 	}
 
-	// Also append to schema.sql for sqlc
 	if err := appendToFile(string(schemaTmpl), data, filepath.Join(dbDir, "schema.sql"), "\n", kit); err != nil {
 		return fmt.Errorf("failed to append to schema: %w", err)
 	}
 
-	// Append to queries.sql
 	if err := appendToFile(string(queriesTmpl), data, filepath.Join(dbDir, "queries.sql"), "\n", kit); err != nil {
 		return fmt.Errorf("failed to append to queries: %w", err)
 	}
@@ -245,7 +351,6 @@ func GenerateResource(basePath, moduleName, resourceName string, fields []parser
 			},
 		}
 
-		// For page mode, also register wildcard route for resource detail URLs
 		if editMode == "page" {
 			routes = append(routes, RouteInfo{
 				Path:        "/" + resourceNameLower + "/",
@@ -257,7 +362,6 @@ func GenerateResource(basePath, moduleName, resourceName string, fields []parser
 
 		for _, route := range routes {
 			if err := InjectRoute(mainGoPath, route); err != nil {
-				// Log warning but don't fail - user can add route manually
 				fmt.Printf("⚠️  Could not auto-inject route %s: %v\n", route.Path, err)
 				fmt.Printf("   Please add manually: http.Handle(\"%s\", %s.Handler(queries))\n",
 					route.Path, resourceNameLower)
@@ -497,6 +601,11 @@ func findMainGo(basePath string) string {
 	}
 
 	return ""
+}
+
+// Singularize is the exported version of singularize for use by other packages.
+func Singularize(word string) string {
+	return singularize(word)
 }
 
 // singularize handles basic English singularization

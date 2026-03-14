@@ -25,7 +25,7 @@ func TestResourceHandlerGolden(t *testing.T) {
 		{Name: "age", Type: "int", GoType: "int64", SQLType: "INTEGER"},
 	}
 
-	if err := generator.GenerateResource(tmpDir, "testmodule", "User", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal"); err != nil {
+	if err := generator.GenerateResource(tmpDir, "testmodule", "User", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", ""); err != nil {
 		t.Fatalf("Failed to generate resource: %v", err)
 	}
 
@@ -94,7 +94,7 @@ func TestResourceHandlerUnstyledImport(t *testing.T) {
 		{Name: "name", Type: "string", GoType: "string", SQLType: "TEXT"},
 	}
 
-	if err := generator.GenerateResource(tmpDir, "testmodule", "Item", fields, "multi", "tailwind", "unstyled", "infinite", 20, "modal"); err != nil {
+	if err := generator.GenerateResource(tmpDir, "testmodule", "Item", fields, "multi", "tailwind", "unstyled", "infinite", 20, "modal", ""); err != nil {
 		t.Fatalf("Failed to generate resource: %v", err)
 	}
 
@@ -126,7 +126,7 @@ func TestResourceHandlerInvalidStyles(t *testing.T) {
 		{Name: "name", Type: "string", GoType: "string", SQLType: "TEXT"},
 	}
 
-	err := generator.GenerateResource(tmpDir, "testmodule", "Item", fields, "multi", "tailwind", "bootstrap", "infinite", 20, "modal")
+	err := generator.GenerateResource(tmpDir, "testmodule", "Item", fields, "multi", "tailwind", "bootstrap", "infinite", 20, "modal", "")
 	if err == nil {
 		t.Fatal("Expected error for invalid styles adapter, got nil")
 	}
@@ -196,7 +196,7 @@ func TestResourceTemplateGolden(t *testing.T) {
 		{Name: "published", Type: "bool", GoType: "bool", SQLType: "BOOLEAN"},
 	}
 
-	if err := generator.GenerateResource(tmpDir, "testmodule", "Post", fields, "multi", "tailwind", "tailwind", "prev-next", 10, "modal"); err != nil {
+	if err := generator.GenerateResource(tmpDir, "testmodule", "Post", fields, "multi", "tailwind", "tailwind", "prev-next", 10, "modal", ""); err != nil {
 		t.Fatalf("Failed to generate resource: %v", err)
 	}
 

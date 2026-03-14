@@ -1,11 +1,6 @@
 # Aider configuration for LiveTemplate projects
-
-# MCP Server Integration
-# Uncomment and configure if your Aider version supports MCP
-# mcp_servers:
-#   - name: lvt
-#     command: lvt
-#     args: [mcp-server]
+# Use `lvt` CLI commands directly for code generation and management.
+# Run `lvt install-agent` to set up agent integration.
 
 # Model settings
 # model: gpt-4

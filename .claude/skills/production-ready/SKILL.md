@@ -208,14 +208,12 @@ openssl rand -hex 32  # For CSRF_SECRET
 - [ ] CI/CD pipeline set up (optional)
 - [ ] Rollback strategy documented
 
-### Step 5: Add Health Check Endpoint
+### Step 5: Health Check Endpoints
 
-Add to main.go:
+Generated apps already include K8s-compatible health endpoints:
 ```go
-http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteString(`{"status":"ok"}`)
-})
+http.HandleFunc("/health/live", healthLiveHandler)   // Liveness probe - always 200
+http.HandleFunc("/health/ready", healthReadyHandler)  // Readiness probe - checks dependencies
 ```
 
 ### Step 6: Update README

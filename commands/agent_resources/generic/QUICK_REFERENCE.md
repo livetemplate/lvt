@@ -1,95 +1,78 @@
 # LiveTemplate Quick Reference for AI Assistants
 
-## MCP Server Setup
+## Setup
 
 ```bash
 # Install
 go install github.com/livetemplate/lvt@latest
 
-# Start MCP server
-lvt mcp-server
+# Set up AI agent integration
+lvt install-agent
 ```
 
-## 16 Available Tools
+## Available CLI Commands
 
 ### Generation (5)
-- `lvt_new` - Create app (name, kit, css)
-- `lvt_gen_resource` - Add CRUD (name, fields)
-- `lvt_gen_view` - Add page (name)
-- `lvt_gen_auth` - Add authentication
-- `lvt_gen_schema` - Add DB schema (table, fields)
+- `lvt new` - Create app (name, kit, css)
+- `lvt gen resource` - Add CRUD (name, fields)
+- `lvt gen view` - Add page (name)
+- `lvt gen auth` - Add authentication
+- `lvt gen schema` - Add DB schema (table, fields)
 
 ### Database (4)
-- `lvt_migration_up` - Apply migrations
-- `lvt_migration_down` - Rollback
-- `lvt_migration_status` - Check status
-- `lvt_migration_create` - Create migration (name)
+- `lvt migration up` - Apply migrations
+- `lvt migration down` - Rollback
+- `lvt migration status` - Check status
+- `lvt migration create` - Create migration (name)
 
 ### Development (7)
-- `lvt_seed` - Generate data (resource, count, cleanup)
-- `lvt_resource_list` - List resources
-- `lvt_resource_describe` - Show schema (resource)
-- `lvt_validate_template` - Validate (template_file)
-- `lvt_env_generate` - Generate .env.example
-- `lvt_kits_list` - List kits
-- `lvt_kits_info` - Kit details (name)
+- `lvt seed` - Generate data (resource, count, cleanup)
+- `lvt resource list` - List resources
+- `lvt resource describe` - Show schema (resource)
+- `lvt parse` - Validate template (template_file)
+- `lvt env generate` - Generate .env.example
+- `lvt kits list` - List kits
+- `lvt kits info` - Kit details (name)
 
 ## Field Types
 
 ```
-string  → TEXT         (title, name, email)
-text    → TEXT         (content, description)
-int     → INTEGER      (quantity, count)
-bool    → BOOLEAN      (published, active)
-float   → REAL         (price, rating)
-time    → DATETIME     (created_at, due_date)
-references:table → FK  (user_id, post_id)
+string  -> TEXT         (title, name, email)
+text    -> TEXT         (content, description)
+int     -> INTEGER      (quantity, count)
+bool    -> BOOLEAN      (published, active)
+float   -> REAL         (price, rating)
+time    -> DATETIME     (created_at, due_date)
+references:table -> FK  (user_id, post_id)
 ```
 
 ## Common Patterns
 
 ### New Project
 ```
-lvt_new → lvt_gen_auth → lvt_gen_resource → lvt_migration_up → lvt_seed
+lvt new -> lvt gen auth -> lvt gen resource -> lvt migration up -> lvt seed
 ```
 
 ### Add Feature
 ```
-lvt_resource_list → lvt_gen_resource → lvt_migration_up → lvt_seed
+lvt resource list -> lvt gen resource -> lvt migration up -> lvt seed
 ```
 
 ### Database Check
 ```
-lvt_migration_status → lvt_resource_list → lvt_resource_describe
+lvt migration status -> lvt resource list -> lvt resource describe
 ```
 
 ### Pre-Deploy
 ```
-lvt_migration_status → lvt_validate_template → lvt_env_generate
+lvt migration status -> lvt parse -> lvt env generate
 ```
 
 ## Example: Create Blog
 
-```json
-// MCP calls
-lvt_new({name: "blog", kit: "multi"})
-lvt_gen_auth({})
-lvt_gen_resource({
-  name: "posts",
-  fields: {
-    title: "string",
-    content: "text",
-    user_id: "references:users",
-    published: "bool"
-  }
-})
-lvt_migration_up({})
-lvt_seed({resource: "posts", count: 10})
-```
-
 ```bash
-# CLI equivalent
 lvt new blog --kit multi
+cd blog
 lvt gen auth
 lvt gen resource posts title:string content:text user_id:references:users published:bool
 lvt migration up
@@ -98,27 +81,26 @@ lvt seed posts --count 10
 
 ## Best Practices
 
-1. **Check before migrate**: `lvt_migration_status` → `lvt_migration_up`
-2. **Auth first**: `lvt_gen_auth` before resources with user_id
-3. **Use cleanup**: `lvt_seed` with `cleanup: true` for fresh data
-4. **Validate templates**: `lvt_validate_template` before deploy
-5. **List before generate**: `lvt_resource_list` to avoid duplicates
+1. **Check before migrate**: `lvt migration status` then `lvt migration up`
+2. **Auth first**: `lvt gen auth` before resources with user_id
+3. **Use cleanup**: `lvt seed --cleanup` for fresh data
+4. **Validate templates**: `lvt parse` before deploy
+5. **List before generate**: `lvt resource list` to avoid duplicates
 
 ## Error Handling
 
 ### Migration fails
 ```
-lvt_migration_status → Review → lvt_resource_describe → Fix → lvt_migration_up
+lvt migration status -> Review -> lvt resource describe -> Fix -> lvt migration up
 ```
 
 ### Template invalid
 ```
-lvt_validate_template → Fix → Re-validate
+lvt parse -> Fix -> Re-validate
 ```
 
 ## Documentation
 
-- **Complete Tool Docs**: `docs/MCP_TOOLS.md`
 - **Workflows**: `docs/WORKFLOWS.md`
 - **Generic Guide**: `agents/generic/README.md`
 

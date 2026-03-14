@@ -80,6 +80,9 @@ func TestContainer_AddInfo(t *testing.T) {
 	if c.Messages[0].Type != Info {
 		t.Error("expected Info type")
 	}
+	if c.Messages[0].AutoDismissMS != DefaultAutoDismissMS {
+		t.Errorf("expected AutoDismissMS=%d for info, got %d", DefaultAutoDismissMS, c.Messages[0].AutoDismissMS)
+	}
 }
 
 func TestContainer_AddSuccess(t *testing.T) {
@@ -88,6 +91,9 @@ func TestContainer_AddSuccess(t *testing.T) {
 
 	if c.Messages[0].Type != Success {
 		t.Error("expected Success type")
+	}
+	if c.Messages[0].AutoDismissMS != DefaultAutoDismissMS {
+		t.Errorf("expected AutoDismissMS=%d for success, got %d", DefaultAutoDismissMS, c.Messages[0].AutoDismissMS)
 	}
 }
 
@@ -98,6 +104,9 @@ func TestContainer_AddWarning(t *testing.T) {
 	if c.Messages[0].Type != Warning {
 		t.Error("expected Warning type")
 	}
+	if c.Messages[0].AutoDismissMS != 0 {
+		t.Errorf("expected AutoDismissMS=0 for warning, got %d", c.Messages[0].AutoDismissMS)
+	}
 }
 
 func TestContainer_AddError(t *testing.T) {
@@ -106,6 +115,9 @@ func TestContainer_AddError(t *testing.T) {
 
 	if c.Messages[0].Type != Error {
 		t.Error("expected Error type")
+	}
+	if c.Messages[0].AutoDismissMS != 0 {
+		t.Errorf("expected AutoDismissMS=0 for error, got %d", c.Messages[0].AutoDismissMS)
 	}
 }
 
@@ -224,6 +236,29 @@ func TestGetTypeClasses(t *testing.T) {
 		classes := c.GetTypeClasses(tc.typ)
 		if !strings.Contains(classes, tc.contains) {
 			t.Errorf("Type %s: expected classes to contain '%s', got '%s'", tc.typ, tc.contains, classes)
+		}
+	}
+}
+
+func TestGetTypeClasses_StringInput(t *testing.T) {
+	// After JSON round-trip, Type values may arrive as plain strings.
+	// GetTypeClasses must handle both Type and string inputs.
+	tests := []struct {
+		input    interface{}
+		contains string
+	}{
+		{"info", "blue"},
+		{"success", "green"},
+		{"warning", "yellow"},
+		{"error", "red"},
+		{42, "blue"}, // unknown type defaults to Info
+	}
+
+	c := New("test", WithStyled(true))
+	for _, tc := range tests {
+		classes := c.GetTypeClasses(tc.input)
+		if !strings.Contains(classes, tc.contains) {
+			t.Errorf("Input %v: expected classes to contain '%s', got '%s'", tc.input, tc.contains, classes)
 		}
 	}
 }
@@ -352,6 +387,60 @@ func TestUnstyledTemplateRendering(t *testing.T) {
 	// But should still have functional attributes
 	if !strings.Contains(html, `role="alert"`) {
 		t.Error("unstyled template should have role=alert")
+	}
+}
+
+func TestAutoDismissRendering(t *testing.T) {
+	ts := Templates()
+	tmpl, err := template.New("test").ParseFS(ts.FS, ts.Pattern)
+	if err != nil {
+		t.Fatalf("failed to parse templates: %v", err)
+	}
+
+	c := New("test", WithStyled(true))
+	c.AddSuccess("Done", "Item created")
+
+	var buf strings.Builder
+	err = tmpl.ExecuteTemplate(&buf, "lvt:toast:container:v1", c)
+	if err != nil {
+		t.Fatalf("failed to execute template: %v", err)
+	}
+
+	html := buf.String()
+	if !strings.Contains(html, `data-auto-dismiss="5000"`) {
+		t.Error("expected data-auto-dismiss attribute on success toast")
+	}
+
+	// Error toast should NOT have auto-dismiss
+	c2 := New("test2", WithStyled(true))
+	c2.AddError("Oops", "Something went wrong")
+
+	buf.Reset()
+	err = tmpl.ExecuteTemplate(&buf, "lvt:toast:container:v1", c2)
+	if err != nil {
+		t.Fatalf("failed to execute template: %v", err)
+	}
+
+	html2 := buf.String()
+	if strings.Contains(html2, "data-auto-dismiss") {
+		t.Error("error toast should NOT have data-auto-dismiss attribute")
+	}
+}
+
+func TestWithAutoDismissOption(t *testing.T) {
+	msg := NewMessage(
+		WithTitle("Custom"),
+		WithBody("Custom dismiss"),
+		WithAutoDismiss(3000),
+	)
+	if msg.AutoDismissMS != 3000 {
+		t.Errorf("expected AutoDismissMS=3000, got %d", msg.AutoDismissMS)
+	}
+
+	// Negative values should be clamped to 0
+	msg2 := NewMessage(WithAutoDismiss(-100))
+	if msg2.AutoDismissMS != 0 {
+		t.Errorf("expected negative duration clamped to 0, got %d", msg2.AutoDismissMS)
 	}
 }
 

@@ -47,6 +47,28 @@ type ResourceData struct {
 	Components           ComponentUsage // Which UI components this resource uses
 	Styles               string         // Style adapter: "tailwind", "unstyled"
 	StylesImportPath     string         // computed import path for style adapter (empty if no components need it)
+
+	// Embedded child resource fields (set when --parent is used)
+	ParentResource         string // Parent resource name, lowercase plural (e.g., "posts"). Empty = standalone.
+	ParentPackageName      string // Parent package name (e.g., "posts")
+	ParentResourceSingular string // Parent resource singular capitalized (e.g., "Post")
+	ParentReferenceField   string // FK field referencing parent (e.g., "post_id"), auto-detected
+	IsEmbedded             bool   // True when generating as embedded child
+}
+
+// NonReferenceFields returns fields excluding the parent reference field.
+// Used in embedded templates to omit the parent FK from forms.
+func (d ResourceData) NonReferenceFields() []FieldData {
+	if d.ParentReferenceField == "" {
+		return d.Fields
+	}
+	var result []FieldData
+	for _, f := range d.Fields {
+		if f.Name != d.ParentReferenceField {
+			result = append(result, f)
+		}
+	}
+	return result
 }
 
 type FieldData struct {
@@ -76,6 +98,12 @@ var funcMap = template.FuncMap{
 	"upper":        strings.ToUpper,
 	"camelCase":    toCamelCase,
 	"displayField": getDisplayField,
+	"singularize":  singularizeForTemplate,
+}
+
+// singularizeForTemplate wraps singularize for use in templates.
+func singularizeForTemplate(s string) string {
+	return singularize(strings.ToLower(s))
 }
 
 // toCamelCase converts snake_case to CamelCase following Go conventions
@@ -102,8 +130,8 @@ func toCamelCase(s string) string {
 	return strings.Join(parts, "")
 }
 
-// getDisplayField returns the primary display field from a list of fields
-// Priority: title > name > id > first field
+// getDisplayField returns the primary display field from a list of fields.
+// Priority: title > name > first non-reference string field > first non-reference field > first field
 func getDisplayField(fields []FieldData) FieldData {
 	if len(fields) == 0 {
 		return FieldData{Name: "id", GoType: "string"}
@@ -123,13 +151,20 @@ func getDisplayField(fields []FieldData) FieldData {
 		}
 	}
 
-	// Check for "id" field third
+	// Prefer the first non-reference string field (most likely human-readable)
 	for _, field := range fields {
-		if strings.ToLower(field.Name) == "id" {
+		if !field.IsReference && field.GoType == "string" {
 			return field
 		}
 	}
 
-	// Default to first field
+	// Fall back to first non-reference field
+	for _, field := range fields {
+		if !field.IsReference {
+			return field
+		}
+	}
+
+	// Last resort: first field
 	return fields[0]
 }

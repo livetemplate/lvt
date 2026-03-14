@@ -669,6 +669,19 @@ func ProtectResources(projectRoot, _ string, resources []ResourceEntry) error {
 
 	mainContent := string(content)
 
+	// Detect whether main.go uses explicit mux or default mux.
+	// The identifier "mux" is used by all generated templates (main.go.tmpl),
+	// so this detection is reliable for generated code. User-renamed variables
+	// (e.g., "router") would need manual route wrapping.
+	handleFunc := "http.Handle"
+	muxPatterns := []string{"mux.Handle(", "mux := http.NewServeMux()"}
+	for _, p := range muxPatterns {
+		if strings.Contains(mainContent, p) {
+			handleFunc = "mux.Handle"
+			break
+		}
+	}
+
 	// Add auth controller creation if not present
 	// Check for both := and = declarations, and auth.NewUserController usage
 	authControllerDeclRe := regexp.MustCompile(`authController\s*(?::=|=)`)
@@ -692,11 +705,11 @@ func ProtectResources(projectRoot, _ string, resources []ResourceEntry) error {
 		// Find where to insert the auth controller - after the auth routes
 		// Look for the last auth route to insert after
 		authRoutePatterns := []string{
-			`http.Handle("/auth"`,
-			`http.Handle("/auth/logout"`,
-			`http.Handle("/auth/magic"`,
-			`http.Handle("/auth/reset"`,
-			`http.Handle("/auth/confirm"`,
+			handleFunc + `("/auth"`,
+			handleFunc + `("/auth/logout"`,
+			handleFunc + `("/auth/magic"`,
+			handleFunc + `("/auth/reset"`,
+			handleFunc + `("/auth/confirm"`,
 		}
 
 		var lastAuthRouteEnd int
@@ -739,9 +752,10 @@ func ProtectResources(projectRoot, _ string, resources []ResourceEntry) error {
 		packageName := strings.ToLower(resource.Name)
 		path := resource.Path
 
-		// Pattern to match: http.Handle("/path", packagename.Handler(queries))
+		// Pattern to match: http.Handle("/path", packagename.Handler(queries)) or mux.Handle(...)
 		// Need to handle both existing and new patterns
-		pattern := fmt.Sprintf(`http\.Handle\("%s"\s*,\s*%s\.Handler\(queries\)\)`, regexp.QuoteMeta(path), regexp.QuoteMeta(packageName))
+		escapedHandleFunc := regexp.QuoteMeta(handleFunc)
+		pattern := fmt.Sprintf(`%s\("%s"\s*,\s*%s\.Handler\(queries\)\)`, escapedHandleFunc, regexp.QuoteMeta(path), regexp.QuoteMeta(packageName))
 		re := regexp.MustCompile(pattern)
 
 		// Check if already wrapped (any controller variable name followed by .RequireAuth)
@@ -751,7 +765,7 @@ func ProtectResources(projectRoot, _ string, resources []ResourceEntry) error {
 		}
 
 		if re.MatchString(mainContent) {
-			replacement := fmt.Sprintf(`http.Handle("%s", authController.RequireAuth(%s.Handler(queries)))`, path, packageName)
+			replacement := fmt.Sprintf(`%s("%s", authController.RequireAuth(%s.Handler(queries)))`, handleFunc, path, packageName)
 			mainContent = re.ReplaceAllString(mainContent, replacement)
 		}
 	}

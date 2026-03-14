@@ -93,7 +93,6 @@ var agentConfigs = map[string]AgentConfig{
 		NextSteps: []string{
 			"See lvt-agent/README.md for integration guide",
 			"Adapt to your LLM's tool format",
-			"Use lvt mcp-server for MCP-enabled LLMs",
 		},
 	},
 }

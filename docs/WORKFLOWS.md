@@ -1,6 +1,6 @@
 # LiveTemplate Common Workflows
 
-This guide provides step-by-step workflows for common development tasks using LiveTemplate MCP tools. Each workflow is designed to be executable by AI assistants through the MCP protocol.
+This guide provides step-by-step workflows for common development tasks using LiveTemplate CLI commands. Each workflow is designed to be executable by AI assistants.
 
 ## Table of Contents
 
@@ -815,6 +815,6 @@ lvt_resource_list → lvt_resource_describe → lvt_migration_status
 
 ## Support
 
-For detailed tool documentation, see [MCP_TOOLS.md](./MCP_TOOLS.md).
+For detailed CLI documentation, run `lvt --help`.
 
 For issues: https://github.com/livetemplate/lvt/issues

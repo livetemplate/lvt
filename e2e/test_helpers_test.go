@@ -18,6 +18,9 @@ import (
 	"github.com/livetemplate/lvt/internal/serve"
 )
 
+// sqlcPackage is the pinned sqlc version used by all e2e tests for reproducible CI builds.
+const sqlcPackage = "github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0"
+
 // Port allocation for parallel tests
 var (
 	portMutex    sync.Mutex
@@ -53,7 +56,7 @@ func runSqlc(t *testing.T, appDir string) {
 	sqlcPath := filepath.Join(appDir, "database/sqlc.yaml")
 	if _, err := os.Stat(sqlcPath); err == nil {
 		t.Log("Running sqlc generate...")
-		sqlcCmd := exec.Command("go", "run", "github.com/sqlc-dev/sqlc/cmd/sqlc@latest", "generate", "-f", sqlcPath)
+		sqlcCmd := exec.Command("go", "run", sqlcPackage, "generate", "-f", sqlcPath)
 		sqlcCmd.Dir = appDir
 		sqlcCmd.Env = append(os.Environ(), "GOWORK=off")
 		if output, err := sqlcCmd.CombinedOutput(); err != nil {

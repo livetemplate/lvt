@@ -106,98 +106,6 @@ Never update tests to pass without also updating documentation.
 
 For full E2E browser testing, see the regular e2e test suite.
 
-## MCP Server Testing
-
-### Overview
-
-The MCP (Model Context Protocol) server provides tool-based access to lvt functionality for AI agents like Claude Desktop. These tests ensure all MCP tools work correctly.
-
-### MCP Server Tests (`commands/mcp_server_test.go`)
-
-Tests the MCP server lifecycle, tool registration, and helper flags:
-
-#### Core Server Tests (5 tests)
-1. **Server Initialization** - Verifies MCP server can be created
-2. **Tool Registration** - Tests all 11 registration functions work without panicking
-3. **All Tools Registration** - Verifies all 16 tools can be registered together
-4. **Context Cancellation** - Tests server context handling
-5. **Input/Output Structures** - Validates all tool input and output structs are defined
-
-#### Flag Tests (6 tests)
-6. **Help Flag** - Tests `--help` and `-h` flags display setup instructions
-7. **Setup Flag** - Tests `--setup` interactive wizard (skipped in automated tests)
-8. **List Tools Flag** - Tests `--list-tools` shows all 16 tools
-9. **Version Flag** - Tests `--version` shows MCP protocol version
-10. **Invalid Flag** - Tests handling of invalid flags
-11. **Multiple Flags** - Tests that first flag takes precedence
-
-### MCP Tool Tests (`commands/mcp_tools_test.go`)
-
-Comprehensive tests for all 16 MCP tools:
-
-#### Core Generation Tools (5 tools)
-- `lvt_new` - Create new apps with different configurations
-- `lvt_gen_resource` - Generate CRUD resources with fields
-- `lvt_gen_view` - Generate view-only handlers
-- `lvt_gen_auth` - Generate authentication systems
-- `lvt_gen_schema` - Generate database schema only
-
-#### Migration Tools (4 tools)
-- `lvt_migration_up` - Run pending migrations
-- `lvt_migration_down` - Rollback last migration
-- `lvt_migration_status` - Show migration status
-- `lvt_migration_create` - Create new migration files
-
-#### Resource Inspection Tools (2 tools)
-- `lvt_resource_list` - List all available resources
-- `lvt_resource_describe` - Show detailed schema for a resource
-
-#### Data Management Tools (1 tool)
-- `lvt_seed` - Generate test data for resources
-
-#### Template Tools (1 tool)
-- `lvt_validate_template` - Validate and analyze template files
-
-#### Environment Tools (1 tool)
-- `lvt_env_generate` - Generate .env.example with detected config
-
-#### Kits Tools (2 tools)
-- `lvt_kits_list` - List available CSS framework kits
-- `lvt_kits_info` - Show detailed kit information
-
-### Running MCP Tests
-
-```bash
-# Run all MCP server tests
-go test -v -run TestMCPServer ./commands
-
-# Run all MCP tool tests
-go test -v -run TestMCPTool ./commands
-
-# Run specific tool test
-go test -v -run TestMCPTool_LvtNew ./commands
-
-# Run with short mode (skips long-running tests)
-go test -short -run TestMCPTool ./commands
-```
-
-### What MCP Tests Validate
-
-Each tool test verifies:
-- ✅ Valid inputs produce successful results
-- ✅ Files and directories are created correctly
-- ✅ Commands execute without errors
-- ✅ Output structures are properly defined
-- ✅ Integration with underlying commands works
-
-### MCP Test Environment
-
-MCP tests use isolated environments:
-- Each test gets a fresh temp directory
-- Apps run `go mod tidy` during creation (same as real usage)
-- Tests clean up automatically
-- No shared state between tests
-
 ## Agent Test Harness Extensions
 
 ### Supported Commands
@@ -326,18 +234,13 @@ This is tested in `TestInstallAgent_AiderAgent` which verifies the rename happen
 The comprehensive AI agent usage guide covers all integration approaches:
 
 #### Multi-LLM Support (5 LLM types)
-- **Claude Desktop / Claude Code** - 22 skills with workflow orchestration (includes brainstorming)
-- **GitHub Copilot** - VS Code integration with MCP tools
+- **Claude Code** - 22 skills with workflow orchestration (includes brainstorming)
+- **GitHub Copilot** - VS Code integration
 - **Cursor AI** - Composer/Agent mode with file-specific rules
 - **Aider CLI** - Terminal-based pair programming
 - **Generic** - Custom LLMs, ChatGPT, Claude API, local models
 
-#### Integration Approaches (2 methods)
-- **MCP Server** - Global tool access (16 tools)
-- **Agent Installation** - Project-specific guidance
-
 #### Documentation Coverage
-- ✅ Complete MCP tool reference with JSON schemas
 - ✅ All 22 Claude skills documented by category (Core: 14, Workflow: 4, Maintenance: 3, Meta: 1)
 - ✅ Keyword-gating explanation for skill activation
 - ✅ Brainstorming skill for interactive planning
@@ -350,34 +253,7 @@ The comprehensive AI agent usage guide covers all integration approaches:
 #### What Gets Tested
 The documentation examples are validated through:
 - Multi-LLM agent installation tests (10 tests in `commands/install_agent_multi_llm_test.go`)
-- MCP server flag tests (6 tests in `commands/mcp_server_test.go`)
-- MCP tool tests (16 tools in `commands/mcp_tools_test.go`)
 - Agent workflow tests (planned - see Future Enhancements)
-
-### Interactive MCP Setup
-
-The `lvt mcp-server --setup` command provides an interactive wizard:
-
-#### Features Tested
-- ✅ Multi-LLM selection menu (5 options)
-- ✅ Platform-specific config paths (macOS, Linux, Windows)
-- ✅ LLM-specific setup instructions
-- ✅ Agent vs MCP recommendations
-- ✅ Graceful fallback for invalid choices
-
-#### Setup Options
-1. **Claude Desktop / Claude Code** - MCP server config with platform detection
-2. **VS Code with Copilot** - Agent installation recommendation
-3. **Cursor AI** - Agent installation with Composer guidance
-4. **Aider CLI** - Both agent and optional MCP config
-5. **Other MCP clients** - Generic MCP setup instructions
-
-#### Test Coverage
-Interactive setup is tested in `TestMCPServer_SetupFlag` (skipped in automated tests due to user input requirement). Manual testing covers:
-- All 5 LLM choice paths
-- Platform detection accuracy
-- Config path correctness
-- Instruction completeness
 
 ## Current Gaps
 
@@ -449,7 +325,6 @@ Potential additions:
 - WebSocket connection testing
 - Performance benchmarks
 - Screenshot comparisons
-- MCP protocol compliance tests
 - Concurrent tool invocation tests
 - Agent workflow integration tests
 - Cross-LLM compatibility tests

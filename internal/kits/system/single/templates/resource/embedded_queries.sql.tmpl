@@ -1,0 +1,27 @@
+-- name: GetAll[[.ResourceNamePlural]] :many
+SELECT * FROM [[.TableName]]
+ORDER BY created_at DESC;
+
+-- name: Get[[.ResourceNameSingular]]ByID :one
+SELECT * FROM [[.TableName]]
+WHERE id = ?
+LIMIT 1;
+
+-- name: Get[[.ResourceNamePlural]]By[[.ParentReferenceField | camelCase]] :many
+SELECT * FROM [[.TableName]]
+WHERE [[.ParentReferenceField]] = ?
+ORDER BY created_at DESC;
+
+-- name: Create[[.ResourceNameSingular]] :one
+INSERT INTO [[.TableName]] (id[[range .Fields]], [[.Name]][[end]], created_at)
+VALUES (?[[range .Fields]], ?[[end]], ?)
+RETURNING *;
+
+-- name: Update[[.ResourceNameSingular]] :exec
+UPDATE [[.TableName]]
+SET [[range $i, $f := .NonReferenceFields]][[if $i]], [[end]][[$f.Name]] = ?[[end]]
+WHERE id = ?;
+
+-- name: Delete[[.ResourceNameSingular]] :exec
+DELETE FROM [[.TableName]]
+WHERE id = ?;

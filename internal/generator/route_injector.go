@@ -34,8 +34,15 @@ func InjectRoute(mainGoPath string, route RouteInfo) error {
 		return fmt.Errorf("failed to read main.go: %w", err)
 	}
 
+	// Detect whether main.go uses explicit mux (mux.Handle) or default mux (http.Handle)
+	fullContent := strings.Join(lines, "\n")
+	handlePrefix := "http.Handle"
+	if strings.Contains(fullContent, "mux.Handle(") || strings.Contains(fullContent, "mux := http.NewServeMux()") {
+		handlePrefix = "mux.Handle"
+	}
+
 	// Check if route already exists (check for the pattern, but ignore comments)
-	routePattern := fmt.Sprintf(`http.Handle("%s", %s)`, route.Path, route.HandlerCall)
+	routePattern := fmt.Sprintf(`%s("%s", %s)`, handlePrefix, route.Path, route.HandlerCall)
 	for _, line := range lines {
 		trimmedLine := strings.TrimSpace(line)
 		// Skip comments
@@ -133,7 +140,7 @@ func InjectRoute(mainGoPath string, route RouteInfo) error {
 	}
 
 	// Insert route (with proper indentation)
-	routeLine := fmt.Sprintf(`	http.Handle("%s", %s)`, route.Path, route.HandlerCall)
+	routeLine := fmt.Sprintf("\t%s(\"%s\", %s)", handlePrefix, route.Path, route.HandlerCall)
 	lines = insertLine(lines, routeInsertIndex, routeLine)
 
 	// Write back
@@ -332,9 +339,15 @@ func WrapExistingRoutesWithAuth(mainGoPath string, structName string) error {
 	}
 
 	// Find resource routes that need wrapping
-	// Pattern: http.Handle("/something", something.Handler(queries))
+	// Pattern: http.Handle("/something", something.Handler(queries)) or mux.Handle(...)
 	// Exclude: auth routes, home route, health route
 	lines := strings.Split(mainContent, "\n")
+
+	// Detect mux vs http.Handle prefix
+	wrapHandlePrefix := "http.Handle"
+	if strings.Contains(mainContent, "mux.Handle(") || strings.Contains(mainContent, "mux := http.NewServeMux()") {
+		wrapHandlePrefix = "mux.Handle"
+	}
 
 	// Routes to exclude from protection
 	excludedPaths := map[string]bool{
@@ -346,10 +359,13 @@ func WrapExistingRoutesWithAuth(mainGoPath string, structName string) error {
 		"/auth/reset":             true,
 		"/auth/confirm":           true,
 		"/health":                 true,
+		"/health/live":            true,
+		"/health/ready":           true,
 		"/livetemplate-client.js": true,
 	}
 
 	// Find routes that need wrapping
+	handleMatchPrefix := wrapHandlePrefix + "(\""
 	var routesToWrap []int
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
@@ -359,8 +375,8 @@ func WrapExistingRoutesWithAuth(mainGoPath string, structName string) error {
 			continue
 		}
 
-		// Match http.Handle("/path", handler.Handler(queries))
-		if strings.HasPrefix(trimmed, "http.Handle(\"") && strings.Contains(line, ".Handler(queries)") {
+		// Match http.Handle("/path", handler.Handler(queries)) or mux.Handle(...)
+		if strings.HasPrefix(trimmed, handleMatchPrefix) && strings.Contains(line, ".Handler(queries)") {
 			// Extract the path
 			start := strings.Index(trimmed, "\"") + 1
 			end := strings.Index(trimmed[start:], "\"")
@@ -422,16 +438,16 @@ func WrapExistingRoutesWithAuth(mainGoPath string, structName string) error {
 			trimmed := strings.TrimSpace(line)
 
 			// Find the handler call
-			// Pattern: http.Handle("/path", handler.Handler(queries))
-			handlePrefix := "http.Handle(\""
-			handleStart := strings.Index(trimmed, handlePrefix)
+			// Pattern: http.Handle("/path", handler.Handler(queries)) or mux.Handle(...)
+			wrHandlePrefix := handleMatchPrefix
+			handleStart := strings.Index(trimmed, wrHandlePrefix)
 			if handleStart == -1 {
 				newLines = append(newLines, line)
 				continue
 			}
 
 			// Find the closing of the path
-			pathStart := handleStart + len(handlePrefix)
+			pathStart := handleStart + len(wrHandlePrefix)
 			pathEnd := strings.Index(trimmed[pathStart:], "\"")
 			if pathEnd == -1 {
 				newLines = append(newLines, line)
@@ -453,7 +469,7 @@ func WrapExistingRoutesWithAuth(mainGoPath string, structName string) error {
 			handler := trimmed[handlerStart:handlerEnd]
 
 			// Build the wrapped line
-			wrappedLine := fmt.Sprintf("\thttp.Handle(\"%s\", authController.RequireAuth(%s))", path, handler)
+			wrappedLine := fmt.Sprintf("\t%s(\"%s\", authController.RequireAuth(%s))", wrapHandlePrefix, path, handler)
 			newLines = append(newLines, wrappedLine)
 		} else {
 			newLines = append(newLines, line)

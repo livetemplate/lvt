@@ -29,7 +29,7 @@ func TestGeneratedCodeSyntax(t *testing.T) {
 		{Name: "email", Type: "string", GoType: "string", SQLType: "TEXT"},
 	}
 
-	if err := generator.GenerateResource(tmpDir, "testmodule", "User", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal"); err != nil {
+	if err := generator.GenerateResource(tmpDir, "testmodule", "User", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", ""); err != nil {
 		t.Fatalf("Failed to generate resource: %v", err)
 	}
 
@@ -109,7 +109,7 @@ func TestGeneratedFilesExist(t *testing.T) {
 		{Name: "title", Type: "string", GoType: "string", SQLType: "TEXT"},
 	}
 
-	if err := generator.GenerateResource(appDir, "testapp", "Post", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal"); err != nil {
+	if err := generator.GenerateResource(appDir, "testapp", "Post", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", ""); err != nil {
 		t.Fatalf("Failed to generate resource: %v", err)
 	}
 
@@ -165,7 +165,7 @@ func TestForeignKeyGeneration(t *testing.T) {
 		{Name: "content", Type: "string", GoType: "string", SQLType: "TEXT"},
 	}
 
-	if err := generator.GenerateResource(tmpDir, "testmodule", "Post", parentFields, "multi", "tailwind", "tailwind", "infinite", 20, "modal"); err != nil {
+	if err := generator.GenerateResource(tmpDir, "testmodule", "Post", parentFields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", ""); err != nil {
 		t.Fatalf("Failed to generate parent resource: %v", err)
 	}
 
@@ -184,7 +184,7 @@ func TestForeignKeyGeneration(t *testing.T) {
 		{Name: "text", Type: "string", GoType: "string", SQLType: "TEXT"},
 	}
 
-	if err := generator.GenerateResource(tmpDir, "testmodule", "Comment", childFields, "multi", "tailwind", "tailwind", "infinite", 20, "modal"); err != nil {
+	if err := generator.GenerateResource(tmpDir, "testmodule", "Comment", childFields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", ""); err != nil {
 		t.Fatalf("Failed to generate child resource: %v", err)
 	}
 
@@ -300,7 +300,7 @@ func TestGeneratedAppFullFlow(t *testing.T) {
 		{Name: "content", Type: "text", GoType: "string", SQLType: "TEXT"},
 		{Name: "published", Type: "bool", GoType: "bool", SQLType: "BOOLEAN"},
 	}
-	if err := generator.GenerateResource(appDir, appName, "Post", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal"); err != nil {
+	if err := generator.GenerateResource(appDir, appName, "Post", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", ""); err != nil {
 		t.Fatalf("Failed to generate resource: %v", err)
 	}
 	t.Log("✅ Resource generated")

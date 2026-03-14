@@ -1,11 +1,11 @@
 package commands
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/livetemplate/lvt/internal/config"
@@ -53,47 +53,21 @@ func Gen(args []string) error {
 }
 
 func interactiveGen() error {
-	fmt.Println("What would you like to generate?")
+	fmt.Println("Usage: lvt gen <subcommand> [args...]")
 	fmt.Println()
-	fmt.Println("  1. Resource - Full CRUD with database (handler + template + migration + queries)")
-	fmt.Println("  2. View     - UI only, no database (handler + template)")
-	fmt.Println("  3. Schema   - Database tables only (migration + schema + queries)")
-	fmt.Println("  4. Auth     - Authentication system (handler + middleware + migrations + E2E tests)")
+	fmt.Println("Subcommands:")
+	fmt.Println("  resource <name> <field:type>...       Generate full CRUD with database")
+	fmt.Println("  view <name>                           Generate view-only handler (no database)")
+	fmt.Println("  schema <table> <field:type>...        Generate database schema only")
+	fmt.Println("  auth [StructName] [table_name]        Generate authentication system")
+	fmt.Println("  stack <target>                        Generate deployment stack configuration")
 	fmt.Println()
-	fmt.Print("Enter your choice (1-4): ")
-
-	reader := bufio.NewReader(os.Stdin)
-	choice, err := reader.ReadString('\n')
-	if err != nil {
-		return fmt.Errorf("failed to read input: %w", err)
-	}
-
-	choice = strings.TrimSpace(choice)
-
-	switch choice {
-	case "1":
-		fmt.Println("\nGenerating resource...")
-		fmt.Println("You can also use: lvt gen resource <name> <field:type>...")
-		fmt.Println()
-		return fmt.Errorf("interactive resource generation not yet implemented - use: lvt gen resource <name> <field:type>...")
-	case "2":
-		fmt.Println("\nGenerating view...")
-		fmt.Println("You can also use: lvt gen view <name>")
-		fmt.Println()
-		return fmt.Errorf("interactive view generation not yet implemented - use: lvt gen view <name>")
-	case "3":
-		fmt.Println("\nGenerating schema...")
-		fmt.Println("You can also use: lvt gen schema <table> <field:type>...")
-		fmt.Println()
-		return fmt.Errorf("interactive schema generation not yet implemented - use: lvt gen schema <table> <field:type>...")
-	case "4":
-		fmt.Println("\nGenerating auth system...")
-		fmt.Println("You can also use: lvt gen auth [StructName] [table_name] [flags...]")
-		fmt.Println()
-		return fmt.Errorf("interactive auth generation not yet implemented - use: lvt gen auth")
-	default:
-		return fmt.Errorf("invalid choice: %s", choice)
-	}
+	fmt.Println("Examples:")
+	fmt.Println("  lvt gen resource posts title content:text published:bool")
+	fmt.Println("  lvt gen view dashboard")
+	fmt.Println("  lvt gen auth")
+	fmt.Println()
+	return nil
 }
 
 func GenResource(args []string) error {
@@ -133,6 +107,7 @@ func GenResource(args []string) error {
 	pageSize := 20               // default
 	editMode := "modal"          // default
 	skipValidation := false
+	parentResource := ""
 	var filteredArgs []string
 	for i := 0; i < len(args); i++ {
 		if args[i] == "--pagination" && i+1 < len(args) {
@@ -148,6 +123,9 @@ func GenResource(args []string) error {
 			i++ // skip next arg
 		} else if args[i] == "--skip-validation" {
 			skipValidation = true
+		} else if args[i] == "--parent" && i+1 < len(args) {
+			parentResource = args[i+1]
+			i++ // skip next arg
 		} else {
 			filteredArgs = append(filteredArgs, args[i])
 		}
@@ -188,6 +166,27 @@ func GenResource(args []string) error {
 		return err
 	}
 
+	// Validate --parent flag
+	if parentResource != "" {
+		parentResource = strings.ToLower(parentResource)
+		// Check parent handler exists
+		parentHandlerPath := filepath.Join(basePath, "app", parentResource, parentResource+".go")
+		if _, err := os.Stat(parentHandlerPath); os.IsNotExist(err) {
+			return fmt.Errorf("parent resource %q not found: %s does not exist.\nGenerate the parent first: lvt gen resource %s ...", parentResource, parentHandlerPath, parentResource)
+		}
+		// Check child has a reference field pointing to the parent table
+		hasRef := false
+		for _, f := range fields {
+			if f.IsReference && f.ReferencedTable == parentResource {
+				hasRef = true
+				break
+			}
+		}
+		if !hasRef {
+			return fmt.Errorf("child resource must have a field referencing parent table %q (e.g., %s_id:references:%s)", parentResource, generator.Singularize(parentResource), parentResource)
+		}
+	}
+
 	// Get module name from go.mod
 	moduleName, err := getModuleName()
 	if err != nil {
@@ -226,7 +225,7 @@ func GenResource(args []string) error {
 	fmt.Println()
 
 	styles := projectConfig.Styles
-	if err := generator.GenerateResource(basePath, moduleName, resourceName, fields, kit, cssFramework, styles, paginationMode, pageSize, editMode); err != nil {
+	if err := generator.GenerateResource(basePath, moduleName, resourceName, fields, kit, cssFramework, styles, paginationMode, pageSize, editMode, parentResource); err != nil {
 		capture.RecordError(telemetry.GenerationError{Phase: "generation", Message: err.Error()})
 		capture.AttributeComponentErrors() // attribute errors on failure path
 		capture.Complete(false, "")
@@ -266,8 +265,16 @@ func GenResource(args []string) error {
 	fmt.Println("  database/schema.sql")
 	fmt.Println("  database/queries.sql")
 	fmt.Println()
-	fmt.Println("Route auto-injected:")
-	fmt.Printf("  http.Handle(\"/%s\", %s.Handler(queries))\n", resourceNameLower, resourceNameLower)
+	if parentResource != "" {
+		fmt.Printf("Embedded in parent: %s\n", parentResource)
+		fmt.Printf("  app/%s/%s.go (modified)\n", parentResource, parentResource)
+		fmt.Printf("  app/%s/%s.tmpl (modified)\n", parentResource, parentResource)
+		fmt.Println()
+		fmt.Println("No separate route — child is rendered on the parent's detail page.")
+	} else {
+		fmt.Println("Route auto-injected:")
+		fmt.Printf("  http.Handle(\"/%s\", %s.Handler(queries))\n", resourceNameLower, resourceNameLower)
+	}
 	fmt.Println()
 	fmt.Println("Next steps:")
 	fmt.Println("  1. Run migration:")

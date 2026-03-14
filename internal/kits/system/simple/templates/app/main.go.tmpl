@@ -1,9 +1,12 @@
 package main
 
 import (
-	"log"
+	"context"
+	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/livetemplate/livetemplate"
@@ -45,7 +48,12 @@ func formatTime() string {
 }
 
 func main() {
-	log.Println("[[.AppName]] starting...")
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: getLogLevel(),
+	}))
+	slog.SetDefault(logger)
+
+	slog.Info("[[.AppName]] starting...")
 
 	// Controller is a singleton that holds dependencies
 	controller := &AppController{}
@@ -60,7 +68,8 @@ func main() {
 	// Create template - auto-discovers [[.AppName]].tmpl
 	tmpl, err := livetemplate.New("[[.AppName]]", livetemplate.WithDevMode([[.DevMode]]))
 	if err != nil {
-		log.Fatalf("Failed to create template: %v", err)
+		slog.Error("Failed to create template", "error", err)
+		os.Exit(1)
 	}
 
 	// Mount handler with Controller+State pattern
@@ -69,39 +78,98 @@ func main() {
 	// Serve client library
 	http.HandleFunc("/livetemplate-client.js", serveClientLibrary)
 
-	// Health check endpoint
+	// Health endpoint
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
+		w.Write([]byte(`{"status":"healthy"}`))
 	})
 
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
-	log.Printf("Server starting on http://localhost:%s", port)
 
-	err = http.ListenAndServe(":"+port, nil)
-	if err != nil {
-		log.Fatalf("Server failed to start: %v", err)
+	srv := &http.Server{
+		Addr:         ":" + port,
+		Handler:      recoveryMiddleware(http.DefaultServeMux),
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	// Graceful shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		slog.Info("Server listening", "address", "http://localhost:"+port)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			slog.Error("Server error", "error", err)
+			os.Exit(1)
+		}
+	}()
+
+	<-quit
+	slog.Info("Shutting down server...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		slog.Error("Server forced to shutdown", "error", err)
+		os.Exit(1)
+	}
+
+	slog.Info("Server exited cleanly")
+}
+
+func getLogLevel() slog.Level {
+	level := os.Getenv("LOG_LEVEL")
+	switch level {
+	case "debug":
+		return slog.LevelDebug
+	case "warn":
+		return slog.LevelWarn
+	case "error":
+		return slog.LevelError
+	default:
+		return slog.LevelInfo
 	}
 }
 
-func serveClientLibrary(w http.ResponseWriter, r *http.Request) {
-	paths := []string{
-		"livetemplate-client.js",
-		"../client/dist/livetemplate-client.browser.js",
-		"../../client/dist/livetemplate-client.browser.js",
-	}
+// recoveryMiddleware catches panics and returns 500 instead of crashing.
+func recoveryMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if err := recover(); err != nil {
+				slog.Error("Panic recovered", "error", err, "path", r.URL.Path)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
+}
 
-	for _, path := range paths {
-		content, err := os.ReadFile(path)
+func serveClientLibrary(w http.ResponseWriter, r *http.Request) {
+	// Environment override for local development
+	if libPath := os.Getenv("CLIENT_LIB_PATH"); libPath != "" {
+		content, err := os.ReadFile(libPath)
 		if err == nil {
 			w.Header().Set("Content-Type", "application/javascript")
 			w.Write(content)
 			return
 		}
+		slog.Warn("CLIENT_LIB_PATH set but file not found", "path", libPath)
 	}
 
-	http.Error(w, "Client library not found. For production, use CDN: https://cdn.jsdelivr.net/npm/@livetemplate/client/dist/livetemplate-client.browser.js", http.StatusNotFound)
+	// Try local copy (for development/testing)
+	if content, err := os.ReadFile("livetemplate-client.js"); err == nil {
+		w.Header().Set("Content-Type", "application/javascript")
+		w.Write(content)
+		return
+	}
+
+	// Not found locally — CDN is used in templates
+	http.Error(w, "Client library not found locally. Templates load from CDN.", http.StatusNotFound)
 }

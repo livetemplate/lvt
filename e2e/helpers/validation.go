@@ -10,6 +10,9 @@ import (
 	"testing"
 )
 
+// sqlcPackage is the pinned sqlc version for reproducible CI builds.
+const sqlcPackage = "github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0"
+
 // envWithGOWORKOff returns a copy of the current environment with GOWORK
 // reliably set to "off", filtering out any pre-existing GOWORK entries to
 // avoid platform-dependent duplicate-key behavior.
@@ -49,7 +52,7 @@ func ValidateCompilation(t *testing.T, appDir string, opts ...ValidationOptions)
 	if _, err := os.Stat(sqlcPath); err == nil {
 		if hasQueries(filepath.Join(appDir, "database/queries.sql")) {
 			t.Log("Running sqlc generate...")
-			sqlcCmd := exec.Command("go", "run", "github.com/sqlc-dev/sqlc/cmd/sqlc@latest", "generate", "-f", sqlcPath)
+			sqlcCmd := exec.Command("go", "run", sqlcPackage, "generate", "-f", sqlcPath)
 			sqlcCmd.Dir = appDir
 			sqlcCmd.Env = env
 			if output, err := sqlcCmd.CombinedOutput(); err != nil {

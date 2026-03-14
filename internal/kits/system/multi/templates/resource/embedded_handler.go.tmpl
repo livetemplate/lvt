@@ -1,0 +1,186 @@
+package [[.PackageName]]
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/go-playground/validator/v10"
+	"github.com/livetemplate/livetemplate"
+	"[[.ModuleName]]/database/models"
+)
+
+var validate = validator.New()
+
+type [[.ResourceName]]Item = models.[[.ResourceNameSingular]]
+
+type AddInput struct {
+[[- range .NonReferenceFields]]
+[[- if eq .GoType "bool"]]
+	[[.Name | camelCase]] [[.GoType]] `json:"[[.Name]]"`
+[[- else if .IsSelect]]
+	[[.Name | camelCase]] [[.GoType]] `json:"[[.Name]]" validate:"required"`
+[[- else if eq .GoType "string"]]
+	[[.Name | camelCase]] [[.GoType]] `json:"[[.Name]]" validate:"required,min=1"`
+[[- else]]
+	[[.Name | camelCase]] [[.GoType]] `json:"[[.Name]]" validate:"required"`
+[[- end]]
+[[- end]]
+}
+
+type UpdateInput struct {
+	ID string `json:"id" validate:"required"`
+[[- range .NonReferenceFields]]
+[[- if eq .GoType "bool"]]
+	[[.Name | camelCase]] [[.GoType]] `json:"[[.Name]]"`
+[[- else if .IsSelect]]
+	[[.Name | camelCase]] [[.GoType]] `json:"[[.Name]]" validate:"required"`
+[[- else if eq .GoType "string"]]
+	[[.Name | camelCase]] [[.GoType]] `json:"[[.Name]]" validate:"required,min=1"`
+[[- else]]
+	[[.Name | camelCase]] [[.GoType]] `json:"[[.Name]]" validate:"required"`
+[[- end]]
+[[- end]]
+}
+
+type IDInput struct {
+	ID string `json:"id" validate:"required"`
+}
+
+// EmbeddedState holds the state for [[.ResourceNamePlural]] embedded in a parent resource's detail page.
+type EmbeddedState struct {
+	Items          [][[.ResourceName]]Item `json:"items"`
+	ParentID       string              `json:"parent_id"`
+	EditingItemID  string              `json:"editing_item_id" lvt:"transient"`
+	EditingItem    *[[.ResourceName]]Item  `json:"editing_item" lvt:"transient"`
+	TotalCount     int                 `json:"total_count"`
+}
+
+// EmbeddedController provides CRUD operations for [[.ResourceNamePlural]] scoped to a parent resource.
+type EmbeddedController struct {
+	Queries *models.Queries
+}
+
+// NewEmbeddedController creates a new EmbeddedController.
+func NewEmbeddedController(queries *models.Queries) *EmbeddedController {
+	return &EmbeddedController{Queries: queries}
+}
+
+// Templates returns the template file paths needed by this embedded resource.
+func Templates() []string {
+	return []string{"app/[[.PackageName]]/[[.PackageName]].tmpl"}
+}
+
+// Load fetches all [[.ResourceNamePlural]] for the given parent ID.
+func (c *EmbeddedController) Load(state *EmbeddedState, ctx context.Context, parentID string) (*EmbeddedState, error) {
+	if state == nil {
+		state = &EmbeddedState{}
+	}
+	state.ParentID = parentID
+
+	items, err := c.Queries.Get[[.ResourceNamePlural]]By[[.ParentReferenceField | camelCase]](ctx, parentID)
+	if err != nil {
+		return state, fmt.Errorf("failed to load [[.ResourceNameLower]]s: %w", err)
+	}
+
+	state.Items = items
+	state.TotalCount = len(items)
+	return state, nil
+}
+
+// Add creates a new [[.ResourceNameSingular]] for the given parent.
+func (c *EmbeddedController) Add(state *EmbeddedState, ltCtx *livetemplate.Context, parentID string) (*EmbeddedState, error) {
+	dbCtx := context.Background()
+
+	var input AddInput
+	if err := ltCtx.BindAndValidate(&input, validate); err != nil {
+		return state, err
+	}
+
+	now := time.Now()
+	id := fmt.Sprintf("[[.ResourceNameLower]]-%d", now.UnixNano())
+
+	_, err := c.Queries.Create[[.ResourceNameSingular]](dbCtx, models.Create[[.ResourceNameSingular]]Params{
+		ID:        id,
+		[[.ParentReferenceField | camelCase]]: parentID,
+[[- range .NonReferenceFields]]
+		[[.Name | camelCase]]: input.[[.Name | camelCase]],
+[[- end]]
+		CreatedAt: now,
+	})
+	if err != nil {
+		return state, fmt.Errorf("failed to create [[.ResourceNameLower]]: %w", err)
+	}
+
+	return c.Load(state, dbCtx, parentID)
+}
+
+// Edit sets the editing state for a [[.ResourceNameSingular]].
+func (c *EmbeddedController) Edit(state *EmbeddedState, ltCtx *livetemplate.Context) (*EmbeddedState, error) {
+	var input IDInput
+	if err := ltCtx.BindAndValidate(&input, validate); err != nil {
+		return state, err
+	}
+
+	for _, item := range state.Items {
+		if item.ID == input.ID {
+			state.EditingItemID = input.ID
+			itemCopy := item
+			state.EditingItem = &itemCopy
+			break
+		}
+	}
+
+	return state, nil
+}
+
+// Update saves changes to an existing [[.ResourceNameSingular]].
+func (c *EmbeddedController) Update(state *EmbeddedState, ltCtx *livetemplate.Context, parentID string) (*EmbeddedState, error) {
+	dbCtx := context.Background()
+
+	var input UpdateInput
+	if err := ltCtx.BindAndValidate(&input, validate); err != nil {
+		return state, err
+	}
+
+	err := c.Queries.Update[[.ResourceNameSingular]](dbCtx, models.Update[[.ResourceNameSingular]]Params{
+		ID: input.ID,
+[[- range .NonReferenceFields]]
+		[[.Name | camelCase]]: input.[[.Name | camelCase]],
+[[- end]]
+	})
+	if err != nil {
+		return state, fmt.Errorf("failed to update [[.ResourceNameLower]]: %w", err)
+	}
+
+	state.EditingItemID = ""
+	state.EditingItem = nil
+
+	return c.Load(state, dbCtx, parentID)
+}
+
+// Delete removes a [[.ResourceNameSingular]].
+func (c *EmbeddedController) Delete(state *EmbeddedState, ltCtx *livetemplate.Context, parentID string) (*EmbeddedState, error) {
+	dbCtx := context.Background()
+
+	var input IDInput
+	if err := ltCtx.BindAndValidate(&input, validate); err != nil {
+		return state, err
+	}
+
+	if err := c.Queries.Delete[[.ResourceNameSingular]](dbCtx, input.ID); err != nil {
+		return state, fmt.Errorf("failed to delete [[.ResourceNameLower]]: %w", err)
+	}
+
+	state.EditingItemID = ""
+	state.EditingItem = nil
+
+	return c.Load(state, dbCtx, parentID)
+}
+
+// CancelEdit clears the editing state.
+func (c *EmbeddedController) CancelEdit(state *EmbeddedState, _ *livetemplate.Context) (*EmbeddedState, error) {
+	state.EditingItemID = ""
+	state.EditingItem = nil
+	return state, nil
+}

@@ -368,7 +368,7 @@ func (m genResourceModel) generateResource() tea.Msg {
 	if cfg, err := config.LoadProjectConfig(m.basePath); err == nil && cfg.Styles != "" {
 		styles = cfg.Styles
 	}
-	if err := generator.GenerateResource(m.basePath, m.moduleName, resourceNameLower, fields, appMode, cssFramework, styles, paginationMode, pageSize, editMode); err != nil {
+	if err := generator.GenerateResource(m.basePath, m.moduleName, resourceNameLower, fields, appMode, cssFramework, styles, paginationMode, pageSize, editMode, ""); err != nil {
 		m.err = err
 		m.stage = 1
 		return m
