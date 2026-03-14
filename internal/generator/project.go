@@ -234,34 +234,12 @@ go test ./...
 		return fmt.Errorf("failed to create .lvtresources: %w", err)
 	}
 
-	// Create .gitignore with .env excluded
-	gitignore := "# Environment variables\n.env\n\n# SQLite databases\n*.db\n*.db-journal\n*.db-wal\n*.db-shm\n\n# Binary\n" + appName + "\n"
-	if err := os.WriteFile(filepath.Join(appName, ".gitignore"), []byte(gitignore), 0644); err != nil {
-		return fmt.Errorf("failed to create .gitignore: %w", err)
+	// Create .gitignore and .env.example (database-aware)
+	if err := writeGitignore(appName, appName, true); err != nil {
+		return err
 	}
-
-	// Create .env.example with baseline env vars
-	envExample := `# LiveTemplate App Environment Variables
-# Copy this file to .env and fill in your actual values:
-#   cp .env.example .env
-
-# Server port (default: 8080)
-PORT=8080
-
-# Application environment (development, production)
-APP_ENV=development
-
-# Log level (debug, info, warn, error)
-LOG_LEVEL=info
-
-# SQLite database file path
-DATABASE_PATH=app.db
-
-# LiveTemplate client library path (for local development only)
-# CLIENT_LIB_PATH=./livetemplate-client.js
-`
-	if err := os.WriteFile(filepath.Join(appName, ".env.example"), []byte(envExample), 0644); err != nil {
-		return fmt.Errorf("failed to create .env.example: %w", err)
+	if err := writeEnvExample(appName, appName, true); err != nil {
+		return err
 	}
 
 	return nil
@@ -353,30 +331,68 @@ lvt new myapp --kit multi
 		return fmt.Errorf("failed to save project config: %w", err)
 	}
 
-	// Create .gitignore with .env excluded
-	gitignore := "# Environment variables\n.env\n\n# Binary\n" + appName + "\n"
-	if err := os.WriteFile(filepath.Join(appName, ".gitignore"), []byte(gitignore), 0644); err != nil {
-		return fmt.Errorf("failed to create .gitignore: %w", err)
+	// Create .gitignore and .env.example (no database for simple kit)
+	if err := writeGitignore(appName, appName, false); err != nil {
+		return err
+	}
+	if err := writeEnvExample(appName, appName, false); err != nil {
+		return err
 	}
 
-	// Create .env.example with baseline env vars
-	envExample := `# LiveTemplate App Environment Variables
+	return nil
+}
+
+// writeGitignore creates a .gitignore file. When hasDatabase is true, SQLite
+// ignore patterns are included.
+func writeGitignore(dir, appName string, hasDatabase bool) error {
+	var sb strings.Builder
+	sb.WriteString("# Environment variables\n.env\n\n")
+	if hasDatabase {
+		sb.WriteString("# SQLite databases\n*.db\n*.db-journal\n*.db-wal\n*.db-shm\n\n")
+	}
+	sb.WriteString("# Binary\n")
+	sb.WriteString(appName)
+	sb.WriteString("\n")
+	if err := os.WriteFile(filepath.Join(dir, ".gitignore"), []byte(sb.String()), 0644); err != nil {
+		return fmt.Errorf("failed to create .gitignore: %w", err)
+	}
+	return nil
+}
+
+// writeEnvExample creates a .env.example file. When hasDatabase is true,
+// APP_ENV and DATABASE_PATH entries are included.
+func writeEnvExample(dir, _ string, hasDatabase bool) error {
+	var sb strings.Builder
+	sb.WriteString(`# LiveTemplate App Environment Variables
 # Copy this file to .env and fill in your actual values:
 #   cp .env.example .env
 
 # Server port (default: 8080)
 PORT=8080
 
-# Log level (debug, info, warn, error)
+`)
+	if hasDatabase {
+		sb.WriteString(`# Application environment (development, production)
+APP_ENV=development
+
+`)
+	}
+	sb.WriteString(`# Log level (debug, info, warn, error)
 LOG_LEVEL=info
 
-# LiveTemplate client library path (for local development only)
+`)
+	if hasDatabase {
+		sb.WriteString(`# SQLite database file path
+DATABASE_PATH=app.db
+
+`)
+	}
+	sb.WriteString(`# LiveTemplate client library path (for local development only)
 # CLIENT_LIB_PATH=./livetemplate-client.js
-`
-	if err := os.WriteFile(filepath.Join(appName, ".env.example"), []byte(envExample), 0644); err != nil {
+`)
+	if err := os.WriteFile(filepath.Join(dir, ".env.example"), []byte(sb.String()), 0644); err != nil {
 		return fmt.Errorf("failed to create .env.example: %w", err)
 	}
-
 	return nil
 }
 

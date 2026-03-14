@@ -211,7 +211,7 @@ func buildAndRunProdApp(t *testing.T, appDir string, port int) (*exec.Cmd, strin
 	// Run sqlc generate (skip failures for empty query files in bare apps)
 	sqlcPath := filepath.Join(appDir, "database/sqlc.yaml")
 	if _, err := os.Stat(sqlcPath); err == nil {
-		sqlcCmd := exec.Command("go", "run", "github.com/sqlc-dev/sqlc/cmd/sqlc@latest", "generate", "-f", sqlcPath)
+		sqlcCmd := exec.Command("go", "run", sqlcPackage, "generate", "-f", sqlcPath)
 		sqlcCmd.Dir = appDir
 		sqlcCmd.Env = append(os.Environ(), "GOWORK=off")
 		if output, err := sqlcCmd.CombinedOutput(); err != nil {

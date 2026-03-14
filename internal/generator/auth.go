@@ -669,10 +669,17 @@ func ProtectResources(projectRoot, _ string, resources []ResourceEntry) error {
 
 	mainContent := string(content)
 
-	// Detect whether main.go uses explicit mux or default mux
+	// Detect whether main.go uses explicit mux or default mux.
+	// The identifier "mux" is used by all generated templates (main.go.tmpl),
+	// so this detection is reliable for generated code. User-renamed variables
+	// (e.g., "router") would need manual route wrapping.
 	handleFunc := "http.Handle"
-	if strings.Contains(mainContent, "mux.Handle(") || strings.Contains(mainContent, "mux := http.NewServeMux()") {
-		handleFunc = "mux.Handle"
+	muxPatterns := []string{"mux.Handle(", "mux := http.NewServeMux()"}
+	for _, p := range muxPatterns {
+		if strings.Contains(mainContent, p) {
+			handleFunc = "mux.Handle"
+			break
+		}
 	}
 
 	// Add auth controller creation if not present

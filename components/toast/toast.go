@@ -212,7 +212,9 @@ func (c *Container) GetPositionClasses() string {
 
 // GetTypeClasses returns CSS classes for a toast type using the style adapter.
 // Accepts Type or string to handle values that may lose their named type
-// after JSON round-trip (e.g., state cloning via marshal/unmarshal).
+// after JSON round-trip (e.g., state cloning via marshal/unmarshal in
+// mount.go:cloneStateTyped). The alternative — normalizing at deserialization
+// — would require framework-level changes to the generic state cloner.
 func (c *Container) GetTypeClasses(t interface{}) string {
 	var typ Type
 	switch v := t.(type) {

@@ -69,7 +69,7 @@ func TestSkillPipeline(t *testing.T) {
 
 	// Run sqlc
 	sqlcPath := filepath.Join(appDir, "database/sqlc.yaml")
-	sqlcCmd := exec.Command("go", "run", "github.com/sqlc-dev/sqlc/cmd/sqlc@latest", "generate", "-f", sqlcPath)
+	sqlcCmd := exec.Command("go", "run", sqlcPackage, "generate", "-f", sqlcPath)
 	sqlcCmd.Dir = appDir
 	sqlcCmd.Env = append(os.Environ(), "GOWORK=off")
 	if output, err := sqlcCmd.CombinedOutput(); err != nil {
