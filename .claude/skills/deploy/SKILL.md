@@ -51,120 +51,80 @@ LiveTemplate apps are standard Go binaries with SQLite databases, making them ea
 
 ## Docker Deployment
 
-### 1. Create Dockerfile
+### Important: CGO is NOT required
 
-```dockerfile
-# Build stage
-FROM golang:1.26-alpine AS builder
+LiveTemplate apps use `modernc.org/sqlite`, a pure Go SQLite implementation. This means:
+- `CGO_ENABLED=0` works perfectly — no C compiler needed
+- No `gcc`, `musl-dev`, or `sqlite-dev` packages required
+- Cross-compilation works without special tooling
+- Docker images are smaller and faster to build
 
-WORKDIR /app
+### 1. Generate Docker Stack
 
-# Copy go mod files
-COPY go.mod go.sum ./
-RUN go mod download
-
-# Copy source code
-COPY . .
-
-# Build binary
-RUN CGO_ENABLED=1 GOOS=linux go build -o /myapp cmd/myapp/main.go
-
-# Runtime stage
-FROM alpine:latest
-
-# Install SQLite (required for CGO)
-RUN apk --no-cache add ca-certificates sqlite-libs
-
-WORKDIR /root/
-
-# Copy binary from builder
-COPY --from=builder /myapp .
-
-# Copy database directory (optional, for bundled data)
-# COPY app.db .
-
-# Copy migrations (needed if embedding migration runner)
-COPY database/migrations ./database/migrations
-
-# Copy template files (if not embedded in binary)
-COPY app ./app
-
-# Copy static files and client library
-COPY static ./static
-COPY client ./client
-
-# Expose port
-EXPOSE 8080
-
-# Run binary
-CMD ["./myapp"]
-```
-
-### 2. Create .dockerignore
-
-```
-# .dockerignore
-app.db
-*.log
-.git
-.env
-tmp/
-dist/
-*.test
-coverage.out
-```
-
-### 3. Build and Run
+Use the built-in generator to create optimized Docker deployment files:
 
 ```bash
-# Build image
-docker build -t myapp:latest .
+# Simple (SQLite, no backup) — generates Dockerfile + Makefile
+lvt gen stack docker
 
-# Run container
-docker run -p 8080:8080 \
-  -v $(pwd)/data:/root/data \
-  -e DATABASE_PATH=/root/data/app.db \
-  myapp:latest
+# With PostgreSQL — generates Dockerfile + docker-compose.yml + Makefile
+lvt gen stack docker --db postgres
 
-# Run with environment variables
-docker run -p 8080:8080 \
-  -v $(pwd)/data:/root/data \
-  -e DATABASE_PATH=/root/data/app.db \
-  -e PORT=8080 \
-  -e ENV=production \
-  myapp:latest
+# With Litestream backup to S3
+lvt gen stack docker --backup litestream --storage s3
+
+# Full stack with postgres, Redis, CI
+lvt gen stack docker --db postgres --redis upstash --ci github
+```
+
+The generator creates:
+- `deploy/Dockerfile` — optimized multi-stage build with `CGO_ENABLED=0`
+- `deploy/.dockerignore` — excludes build artifacts and sensitive files
+- `deploy/.env.example` — environment variable template
+- `deploy/README.md` — deployment documentation
+- `Makefile` — convenient build/run/stop commands
+- `deploy/docker-compose.yml` — only when multiple services are needed (postgres, litestream, redis)
+
+### 2. Build and Run (Simple — SQLite)
+
+```bash
+# Build Docker image
+make build
+
+# Run container with volume persistence
+make run
+
+# View logs
+make logs
+
+# Stop container
+make stop
+
+# Backup SQLite database
+make backup
+```
+
+### 3. Build and Run (Complex — Postgres/Litestream)
+
+```bash
+# Start all services
+cd deploy && docker compose up -d
+
+# View logs
+cd deploy && docker compose logs -f app
+
+# Stop all services
+cd deploy && docker compose down
 ```
 
 ### 4. Docker Compose
 
-```yaml
-# docker-compose.yml
-version: '3.8'
+Docker Compose is only generated when your stack needs multiple services:
+- PostgreSQL database
+- Litestream backup
+- Redis
 
-services:
-  app:
-    build: .
-    ports:
-      - "8080:8080"
-    volumes:
-      - ./data:/root/data
-    environment:
-      - DATABASE_PATH=/root/data/app.db
-      - PORT=8080
-      - ENV=production
-    restart: unless-stopped
-```
-
-```bash
-# Start with compose
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Stop
-docker-compose down
-```
+For simple SQLite apps, use the Makefile targets instead.
 
 ## Fly.io Deployment
 
@@ -411,9 +371,8 @@ Simple deployment to DigitalOcean, Linode, AWS EC2, etc.
 ### 1. Build Binary
 
 ```bash
-# Build for Linux (if developing on macOS)
-GOOS=linux GOARCH=amd64 CGO_ENABLED=1 \
-  go build -o myapp cmd/myapp/main.go
+# Build for Linux (pure Go, no CGO needed)
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o myapp cmd/myapp/main.go
 
 # Or build on the server itself
 ssh user@server
@@ -720,10 +679,8 @@ func main() {
 
 **Option B: Copy files in Docker:**
 ```dockerfile
-# Already shown in Dockerfile above
-COPY app ./app
-COPY static ./static
-COPY client ./client
+# Already handled by the generated Dockerfile
+COPY --from=builder /app/app ./app
 ```
 
 **Verify static files are served:**
@@ -733,18 +690,6 @@ curl http://localhost:8080/static/livetemplate-client.browser.js
 ```
 
 ## Common Deployment Mistakes
-
-### ❌ Missing CGO_ENABLED for SQLite
-
-```bash
-# WRONG - SQLite won't work
-CGO_ENABLED=0 go build ./cmd/myapp
-
-# CORRECT
-CGO_ENABLED=1 go build ./cmd/myapp
-```
-
-**Why wrong:** SQLite requires CGO. Without it, database operations fail.
 
 ### ❌ Not Persisting Database
 
@@ -824,29 +769,6 @@ server.ListenAndServe(":" + port, nil)
 
 **Why wrong:** Environment-specific paths break in production.
 
-### ❌ Cross-Compiling with CGO
-
-```bash
-# WRONG - cross-compilation with CGO doesn't work simply
-GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build ./cmd/myapp
-# Error: C compiler not found or wrong architecture
-```
-
-```bash
-# CORRECT - use Docker for cross-platform builds
-docker build -t myapp:latest .
-
-# OR - build on target platform
-ssh server
-go build ./cmd/myapp
-
-# OR - use cross-compilation tools (advanced)
-# Install cross-compiler: brew install FiloSottile/musl-cross/musl-cross
-CC=x86_64-linux-musl-gcc GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build ./cmd/myapp
-```
-
-**Why wrong:** SQLite requires CGO, which needs platform-specific C compilers. Docker multi-stage builds handle this automatically.
-
 ## Deployment Checklist
 
 **Before deploying:**
@@ -858,10 +780,9 @@ CC=x86_64-linux-musl-gcc GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build ./cmd/my
 - [ ] Health check endpoint added
 - [ ] Logs configured (structured JSON)
 - [ ] .env file created (not committed)
-- [ ] Dockerfile tested locally
+- [ ] Docker build tested locally (`make build`)
 - [ ] Static files/templates embedded or copied
 - [ ] Client library accessible
-- [ ] CGO enabled for SQLite (`CGO_ENABLED=1`)
 - [ ] Reverse proxy configured (if needed)
 
 **After deploying:**
@@ -878,14 +799,17 @@ CC=x86_64-linux-musl-gcc GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build ./cmd/my
 
 **I want to...** | **Best Option** | **Command**
 ---|---|---
+Generate Docker stack | lvt CLI | `lvt gen stack docker`
+Build image | Makefile | `make build`
+Run container | Makefile | `make run`
 Deploy quickly | Fly.io | `fly launch && fly deploy`
-Containerize | Docker | `docker build -t myapp .`
 Use existing VPS | systemd | `systemctl enable myapp`
 Auto-scale | Fly.io or K8s | `fly autoscale set min=1 max=5`
 Global distribution | Fly.io | `fly regions add iad lhr`
-Test locally | Docker Compose | `docker-compose up`
-Backup database | Cron + SQLite | `sqlite3 app.db .backup`
+Multi-service (postgres) | Docker Compose | `cd deploy && docker compose up`
+Backup database | Makefile or Cron | `make backup` or `sqlite3 app.db .backup`
 Run migrations | goose | `goose -dir database/migrations sqlite3 app.db up`
+Cross-compile | go build | `CGO_ENABLED=0 GOOS=linux go build ./cmd/myapp`
 
 ## Recommended: Fly.io for SQLite Apps
 
@@ -909,7 +833,9 @@ fly open
 
 ## Remember
 
-✓ Enable CGO for SQLite builds (`CGO_ENABLED=1`)
+✓ LiveTemplate uses `modernc.org/sqlite` — pure Go, no CGO needed
+✓ Use `lvt gen stack docker` to generate optimized deployment files
+✓ Use `make build` / `make run` for simple deployments
 ✓ Use volumes/mounts for database persistence
 ✓ Run migrations with `lvt migration up` (dev) or `goose` (production)
 ✓ Configure environment variables (never hardcode)
@@ -918,7 +844,7 @@ fly open
 ✓ Test Docker builds locally before deploying
 ✓ SQLite = single writer (use replicas=1 in K8s)
 ✓ Embed or copy static files/templates/client library
-✓ Use Docker for cross-platform builds (CGO cross-compilation is complex)
+✓ Cross-compilation works without special tooling (`CGO_ENABLED=0`)
 
 ✗ Don't deploy without testing build
 ✗ Don't forget database persistence
@@ -928,4 +854,3 @@ fly open
 ✗ Don't hardcode paths or ports
 ✗ Don't commit .env files or secrets
 ✗ Don't deploy without backup strategy
-✗ Don't try simple cross-compilation with CGO (use Docker)

@@ -85,6 +85,13 @@ type StackConfig struct {
 	Registry    RegistryType
 }
 
+// NeedsCompose returns true when the stack needs multiple services.
+func (c *StackConfig) NeedsCompose() bool {
+	return c.Database == DatabasePostgres ||
+		c.Backup == BackupLitestream ||
+		c.Redis != RedisNone
+}
+
 func (c *StackConfig) Validate() error {
 	validProviders := map[Provider]bool{
 		ProviderDocker: true, ProviderFly: true,

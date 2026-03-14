@@ -193,6 +193,16 @@ func GenStack(args []string) error {
 		return fmt.Errorf("failed to track generated files: %w", err)
 	}
 
+	// Track root-level generated files (e.g. Makefile)
+	makefilePath := filepath.Join(wd, "Makefile")
+	if _, err := os.Stat(makefilePath); err == nil {
+		checksum, err := calculateFileChecksum(makefilePath)
+		if err != nil {
+			return fmt.Errorf("failed to calculate checksum for Makefile: %w", err)
+		}
+		tracking.AddFile("Makefile", checksum)
+	}
+
 	// Write tracking file
 	if err := tracking.Write(trackingPath); err != nil {
 		return fmt.Errorf("failed to write tracking file: %w", err)
@@ -214,7 +224,7 @@ func GenStack(args []string) error {
 
 	switch config.Provider {
 	case stack.ProviderDocker:
-		fmt.Println("  3. Run: docker-compose up")
+		fmt.Println("  3. Run: make build && make run")
 	case stack.ProviderFly:
 		fmt.Println("  3. Run: fly launch (or fly deploy for existing apps)")
 	case stack.ProviderDigitalOcean:

@@ -98,6 +98,59 @@ func TestStackConfig_Validate(t *testing.T) {
 	}
 }
 
+func TestStackConfig_NeedsCompose(t *testing.T) {
+	tests := []struct {
+		name   string
+		config StackConfig
+		want   bool
+	}{
+		{
+			name:   "sqlite only — no compose needed",
+			config: StackConfig{Database: DatabaseSQLite, Backup: BackupNone, Redis: RedisNone},
+			want:   false,
+		},
+		{
+			name:   "no database — no compose needed",
+			config: StackConfig{Database: DatabaseNone, Backup: BackupNone, Redis: RedisNone},
+			want:   false,
+		},
+		{
+			name:   "postgres — compose needed",
+			config: StackConfig{Database: DatabasePostgres, Backup: BackupNone, Redis: RedisNone},
+			want:   true,
+		},
+		{
+			name:   "sqlite with litestream — compose needed",
+			config: StackConfig{Database: DatabaseSQLite, Backup: BackupLitestream, Redis: RedisNone},
+			want:   true,
+		},
+		{
+			name:   "sqlite with redis upstash — compose needed",
+			config: StackConfig{Database: DatabaseSQLite, Backup: BackupNone, Redis: RedisUpstash},
+			want:   true,
+		},
+		{
+			name:   "sqlite with redis fly — compose needed",
+			config: StackConfig{Database: DatabaseSQLite, Backup: BackupNone, Redis: RedisFly},
+			want:   true,
+		},
+		{
+			name:   "postgres with litestream and redis — compose needed",
+			config: StackConfig{Database: DatabasePostgres, Backup: BackupLitestream, Redis: RedisUpstash},
+			want:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.config.NeedsCompose()
+			if got != tt.want {
+				t.Errorf("NeedsCompose() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestStackConfig_ToTemplateData(t *testing.T) {
 	config := StackConfig{
 		Provider:    ProviderK8s,
