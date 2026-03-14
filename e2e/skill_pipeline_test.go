@@ -222,4 +222,3 @@ func TestSkillPipeline(t *testing.T) {
 		}
 	})
 }
-

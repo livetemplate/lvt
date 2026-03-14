@@ -118,8 +118,8 @@ func TestProductionTemplate(t *testing.T) {
 
 		expectedHeaders := map[string]string{
 			"X-Content-Type-Options": "nosniff",
-			"X-Xss-Protection":      "1; mode=block",
-			"X-Frame-Options":       "DENY",
+			"X-Xss-Protection":       "1; mode=block",
+			"X-Frame-Options":        "DENY",
 		}
 
 		for header, expected := range expectedHeaders {
