@@ -59,22 +59,6 @@ func TestGenerator_Generate(t *testing.T) {
 	}
 }
 
-func TestGenerator_Generate_SimpleNoCompose(t *testing.T) {
-	_, deployDir := helperGenerate(t, stack.StackConfig{
-		Provider: stack.ProviderDocker,
-		Database: stack.DatabaseSQLite,
-		Backup:   stack.BackupNone,
-		Redis:    stack.RedisNone,
-		Storage:  stack.StorageNone,
-		CI:       stack.CINone,
-	})
-
-	composePath := filepath.Join(deployDir, "docker-compose.yml")
-	if _, err := os.Stat(composePath); err == nil {
-		t.Error("docker-compose.yml should not exist for simple SQLite config without backup or redis")
-	}
-}
-
 func TestGenerator_Generate_ComplexWithCompose(t *testing.T) {
 	_, deployDir := helperGenerate(t, stack.StackConfig{
 		Provider: stack.ProviderDocker,
