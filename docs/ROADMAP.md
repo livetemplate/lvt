@@ -6,7 +6,7 @@
 
 LVT is already strong in code generation, authentication, real-time UI (WebSockets), database migrations (goose/sqlc), E2E testing (chromedp), deployment stacks, and developer experience (hot reload, AI agent integration, 20+ UI components).
 
-However, **18 features** common across mature frameworks are missing or incomplete. These are organized into 4 milestones, from production blockers to developer experience improvements.
+However, **19 features** common across mature frameworks are missing or incomplete. These are organized into 4 milestones, from production blockers to developer experience improvements.
 
 ---
 
@@ -16,7 +16,7 @@ However, **18 features** common across mature frameworks are missing or incomple
 |--------------------------|------|---------|---------|------------|--------|
 | Code Generation          | ✅   | ✅      | ✅      | ✅         | ✅     |
 | Authentication           | ✅   | ✅      | ✅      | ✅         | ✅     |
-| Real-time UI             | ✅   | ✅      | ✅      | ✅         | ❌     |
+| Real-time UI             | ✅   | ✅      | ✅      | ✅         | ⚠️     |
 | Database Migrations      | ✅   | ✅      | ✅      | ✅         | ✅     |
 | E2E Testing              | ✅   | ✅      | ✅      | ✅         | ✅     |
 | Deployment Stacks        | ✅   | ✅      | ✅      | ✅         | ⚠️     |
@@ -30,7 +30,7 @@ However, **18 features** common across mature frameworks are missing or incomple
 | Caching                  | ❌   | ✅      | ✅      | ✅         | ✅     |
 | Admin Panel              | ❌   | ✅      | ❌      | ✅         | ✅     |
 | Request Logging          | ⚠️   | ✅      | ✅      | ✅         | ✅     |
-| Rate Limiting            | ❌   | ✅      | ⚠️     | ✅         | ✅     |
+| Rate Limiting            | ❌   | ✅      | ⚠️ (Plug.Throttle) | ✅ | ✅ |
 | Middleware Pipeline      | ⚠️   | ✅      | ✅      | ✅         | ✅     |
 | i18n / Localization      | ❌   | ✅      | ✅      | ✅         | ✅     |
 | Full-Text Search         | ❌   | ⚠️     | ❌      | ✅         | ✅     |
@@ -41,11 +41,14 @@ However, **18 features** common across mature frameworks are missing or incomple
 
 **Legend**: ✅ Built-in / First-class | ⚠️ Partial / Basic | ❌ Missing
 
+> **Package convention**: `pkg/` contains packages copied into generated applications (cookie, email, flash, password, token). `internal/` contains lvt CLI internals. Roadmap items follow this convention — new runtime packages go in `pkg/`, new CLI/generator packages go in `internal/`.
+
 ---
 
 ## Milestone 1: Unblock Production Use
 
 **Goal**: Address the features that currently prevent lvt applications from being deployed to production with confidence.
+**Estimated effort**: L (large) — 3 features, each requiring new packages, generator changes, and tests.
 
 ### 1.1 Background Job / Task Queue System
 
@@ -123,6 +126,7 @@ However, **18 features** common across mature frameworks are missing or incomple
 ## Milestone 2: Feature Parity with Major Frameworks
 
 **Goal**: Reach feature parity with the core capabilities that every major framework provides out of the box.
+**Estimated effort**: XL (extra large) — 3 features with significant scope (file uploads, RBAC, API layer).
 
 ### 2.1 File Upload & Storage
 
@@ -177,6 +181,8 @@ However, **18 features** common across mature frameworks are missing or incomple
 
 **Priority**: High — modern applications need APIs for mobile clients, third-party integrations, SPAs, and internal microservices.
 
+**Depends on**: Existing auth system for bearer token authentication. Should integrate with Rate Limiting (3.3) and Middleware Pipeline (3.4) once available.
+
 **What competitors offer**:
 - Rails: `respond_to` format blocks, API-only mode, ActiveModel Serializers, Jbuilder
 - Laravel: API resources, API-only scaffolding, Sanctum/Passport for API auth
@@ -200,6 +206,7 @@ However, **18 features** common across mature frameworks are missing or incomple
 ## Milestone 3: Production Hardening
 
 **Goal**: Add the infrastructure features needed for reliable, observable, and secure production deployments.
+**Estimated effort**: L (large) — 4 features, mostly middleware and infrastructure packages.
 
 ### 3.1 Request Logging Middleware
 
@@ -247,7 +254,9 @@ However, **18 features** common across mature frameworks are missing or incomple
 
 ### 3.3 Rate Limiting
 
-**Priority**: Medium — protects against abuse, brute force attacks, and ensures fair resource usage.
+**Priority**: High — protects against brute force attacks on auth endpoints (login, password reset, magic links), abuse, and ensures fair resource usage. Arguably a production blocker given that auth is already generated.
+
+**Depends on**: Auth middleware (existing). Should be applied to auth endpoints immediately and integrated into Middleware Pipeline (3.4) for general use.
 
 **What competitors offer**:
 - Laravel: Built-in RateLimiter facade with named limiters, per-route configuration
@@ -289,10 +298,13 @@ However, **18 features** common across mature frameworks are missing or incomple
 ## Milestone 4: Developer Experience & Maturity
 
 **Goal**: Quality-of-life features that improve developer productivity and bring lvt to the level of polish expected from mature frameworks.
+**Estimated effort**: XL (extra large) — 7 features spanning admin UI, search, i18n, asset pipeline, and more.
 
 ### 4.1 Admin Panel Generator
 
 **Priority**: Medium — every application needs data management. Auto-generated admin reduces boilerplate significantly.
+
+**Depends on**: Authorization / RBAC (2.2) — admin panel requires role-based access control to restrict to admin users.
 
 **What competitors offer**:
 - Django: Auto-generated admin from models (Django's killer feature — register model, get full CRUD)
@@ -387,7 +399,27 @@ However, **18 features** common across mature frameworks are missing or incomple
 
 ---
 
-### 4.6 Database Console
+### 4.6 Asset Pipeline
+
+**Priority**: Low-Medium — lvt currently relies on CDN-hosted CSS frameworks (Tailwind, Pico) with no local asset compilation step. A basic asset pipeline would enable custom CSS/JS bundling and optimized production builds.
+
+**What competitors offer**:
+- Rails: Propshaft (default in Rails 8), import maps for zero-build JavaScript
+- Laravel: Vite integration for JS/CSS bundling, asset versioning
+- Phoenix: esbuild integration, Tailwind plugin, asset digest for cache-busting
+- Django: collectstatic, django-compressor, whitenoise for static serving
+
+**Acceptance Criteria**:
+- [ ] Static asset serving middleware with proper cache headers
+- [ ] CSS framework integration (download Tailwind CSS for offline use)
+- [ ] Asset fingerprinting/digest for cache-busting in production
+- [ ] Optional esbuild or Tailwind CLI integration for local builds
+- [ ] `lvt build` command to compile and minify assets for production
+- [ ] Generated apps include static file handling in deployment config
+
+---
+
+### 4.7 Database Console
 
 **Priority**: Low — quality-of-life improvement for development and debugging.
 
@@ -410,12 +442,10 @@ However, **18 features** common across mature frameworks are missing or incomple
 ## Sources
 
 - [Rails 8.0 Release Notes](https://guides.rubyonrails.org/8_0_release_notes.html)
-- [Rails 8 & 8.1 New Features](https://rubyroidlabs.com/blog/2025/11/rails-8-8-1-new-features/)
 - [Phoenix LiveView Documentation](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.html)
 - [Phoenix 1.8.0 Release Blog](https://www.phoenixframework.org/blog/phoenix-1-8-released)
 - [Laravel 12 Release Notes](https://laravel.com/docs/12.x/releases)
-- [Best Full-Stack Web Frameworks 2026](https://wasp.sh/resources/2026/02/24/best-frameworks-web-dev-2026)
 - [Top Go Web Frameworks 2025](https://blog.logrocket.com/top-go-frameworks-2025/)
 - [Go Web Frameworks Comparison](https://www.monocubed.com/blog/golang-web-frameworks/)
-- [Returning to Rails in 2026](https://sesamedisk.com/returning-to-rails-in-2026-modern-web-framework/)
+- [Django Channels Documentation](https://channels.readthedocs.io/en/stable/)
 - [Django vs Next.js Comparison](https://stackshare.io/stackups/django-vs-next-js)
