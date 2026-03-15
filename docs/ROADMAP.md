@@ -36,7 +36,7 @@ Additionally, several features often listed as "missing" are already partially o
 | File Uploads & Storage   | ❌   | ✅      | ✅      | ✅         | ✅     |
 | API / JSON Endpoints     | ❌   | ✅      | ✅      | ✅         | ✅     |
 | Caching                  | ❌   | ✅      | ✅      | ✅         | ✅     |
-| Rate Limiting            | ❌   | ✅      | ⚠️     | ✅         | ✅     |
+| Rate Limiting            | ❌   | ✅      | ⚠️ (Plug.Throttle) | ✅ | ✅ |
 | Admin Panel              | ❌   | ✅      | ❌      | ✅         | ✅     |
 | i18n / Localization      | ❌   | ✅      | ✅      | ✅         | ✅     |
 | Full-Text Search         | ❌   | ⚠️     | ❌      | ✅         | ✅     |
@@ -99,7 +99,7 @@ Additionally, several features often listed as "missing" are already partially o
 - [ ] Per-IP and per-user rate limiting strategies
 - [ ] Configurable time windows and request thresholds
 - [ ] Returns HTTP 429 (Too Many Requests) with `Retry-After` header
-- [ ] SQLite-backed rate limit storage (no Redis dependency)
+- [ ] Rate limit storage: in-memory with `sync/atomic` counters for single-instance deployments (the common case); optional SQLite persistence for durability across restarts. No Redis dependency
 - [ ] Automatic rate limiting on auth endpoints (login, registration, password reset, magic links)
 - [ ] Allowlist/blocklist support for IPs
 - [ ] Integration with generated app's middleware chain
@@ -132,7 +132,7 @@ Additionally, several features often listed as "missing" are already partially o
 ## Milestone 2: Feature Parity with Major Frameworks
 
 **Goal**: Reach feature parity with the core capabilities that every major framework provides out of the box.
-**Estimated effort**: XL (extra large) — 4 features including the job queue system.
+**Estimated effort**: XL (extra large) — 4 features including the job queue system. This is now the heaviest milestone by effort, with Background Jobs moving here from Milestone 1.
 
 ### 2.1 Background Job / Task Queue System
 
@@ -284,13 +284,15 @@ Additionally, several features often listed as "missing" are already partially o
 
 ### 3.3 Request Logging Enhancements
 
-**Priority**: Low — the core logging middleware is already production-ready with structured `slog` output. These are polish items for teams with advanced observability needs.
+**Priority**: Low — the core logging middleware is already production-ready with structured `slog` output.
 
-**Current state**: ~95% complete. Generated apps log method, path, status, duration, remote_addr, user_agent with configurable log level via `LOG_LEVEL` env var.
+**Current state**: ~95% complete. Generated apps (single/multi kits) log method, path, status, duration, remote_addr, user_agent with configurable log level via `LOG_LEVEL` env var.
 
-**Remaining work**:
-- [ ] Request ID generation and propagation (X-Request-ID header)
-- [ ] Sensitive data redaction in request/response logging (passwords, tokens)
+**Security / correctness** (should not be deferred):
+- [ ] Sensitive data redaction in request/response logging (passwords, tokens, session cookies)
+- [ ] Request ID generation and propagation (X-Request-ID header) for distributed tracing
+
+**Observability polish**:
 - [ ] Slow request detection and warning (configurable threshold)
 - [ ] Access log format option (Apache/Nginx compatible) for reverse proxy compatibility
 
