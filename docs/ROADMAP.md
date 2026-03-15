@@ -7,12 +7,12 @@
 LVT is already strong in code generation, authentication, real-time UI (WebSockets), database migrations (goose/sqlc), E2E testing (chromedp), deployment stacks, and developer experience (hot reload, AI agent integration, 20+ UI components).
 
 Additionally, several features often listed as "missing" are already partially or mostly implemented:
-- **Request logging** — generated apps include structured `slog` middleware with method, path, status, duration, remote_addr, user_agent, and configurable log level.
-- **Form validation** — generated handlers use `go-playground/validator/v10` with `BindAndValidate`, covering required fields, min-length, and select validation.
-- **Middleware pipeline** — generated apps compose `securityHeaders(recovery(logging(mux)))` plus auth middleware with `RequireAuth`, `RequireConfirmed`, and `OptionalAuth`.
-- **Email sending** — `EmailSender` interface, `ConsoleEmailSender`, `NoopEmailSender`, and environment variable scaffolding all exist; only the SMTP transport is missing.
+- **Request logging** — generated apps (single/multi kits) include structured `slog` request logging middleware with method, path, status, duration, remote_addr, user_agent, and configurable log level. The simple kit includes structured logging and panic recovery but not per-request HTTP logging.
+- **Form validation** — generated handlers use `go-playground/validator/v10` with `BindAndValidate`, covering required fields and min-length rules. Select fields enforce `required` but not allowed-value validation.
+- **Middleware pipeline** — generated apps (single/multi kits) compose `securityHeaders(recovery(logging(mux)))` plus auth middleware with `RequireAuth`, `RequireConfirmed`, and `OptionalAuth`.
+- **Email sending** — `EmailSender` interface, `ConsoleEmailSender`, and `NoopEmailSender` exist in `pkg/email/`. SMTP environment variable scaffolding (`SMTP_HOST`, `SMTP_PORT`, etc.) is handled by `lvt env generate`. Only the SMTP transport implementation is missing.
 
-**16 features** remain missing or need meaningful work. These are organized into 4 milestones, prioritized by what unblocks production use fastest.
+**17 features** remain missing or need meaningful work. These are organized into 4 milestones, prioritized by what unblocks production use fastest.
 
 ---
 
@@ -27,7 +27,7 @@ Additionally, several features often listed as "missing" are already partially o
 | E2E Testing              | ✅   | ✅      | ✅      | ✅         | ✅     |
 | Deployment Stacks        | ✅   | ✅      | ✅      | ✅         | ⚠️     |
 | Hot Reload               | ✅   | ✅      | ✅      | ✅         | ⚠️     |
-| Request Logging          | ✅   | ✅      | ✅      | ✅         | ✅     |
+| Request Logging          | ⚠️   | ✅      | ✅      | ✅         | ✅     |
 | Form Validation          | ⚠️   | ✅      | ✅      | ✅         | ✅     |
 | Middleware Pipeline      | ⚠️   | ✅      | ✅      | ✅         | ✅     |
 | Email Sending            | ⚠️   | ✅      | ✅      | ✅         | ✅     |
@@ -60,7 +60,7 @@ Additionally, several features often listed as "missing" are already partially o
 
 **Priority**: Critical — auth features (magic links, password reset) already generate emails but use `ConsoleEmailSender` (stdout only). Production auth is unusable without a real email transport.
 
-**Current state**: ~40% complete. The `EmailSender` interface, `ConsoleEmailSender`, `NoopEmailSender`, and env var scaffolding (`SMTP_HOST`, `SMTP_PORT`, etc.) all exist in `pkg/email/`. Generated auth code already uses the interface via dependency injection. Only the SMTP transport implementation is missing.
+**Current state**: ~40% complete. The `EmailSender` interface, `ConsoleEmailSender`, and `NoopEmailSender` exist in `pkg/email/`. SMTP env var scaffolding (`SMTP_HOST`, `SMTP_PORT`, etc.) is handled by `lvt env generate` (in `commands/env.go`). Generated auth code already uses the interface via dependency injection. Only the SMTP transport implementation is missing.
 
 **What competitors offer**:
 - Rails: Action Mailer with SMTP, Mailgun, SendGrid, SES adapters + email preview in dev
@@ -70,12 +70,13 @@ Additionally, several features often listed as "missing" are already partially o
 
 **Acceptance Criteria**:
 - [ ] `SMTPEmailSender` implementation in `pkg/email/` using `net/smtp`
-- [ ] TLS/STARTTLS support and authentication (Plain, Login)
+- [ ] TLS/STARTTLS support and authentication (PLAIN, CRAM-MD5 via stdlib; LOGIN via custom `smtp.Auth`)
 - [ ] HTML and plain-text email body support (multipart MIME)
 - [ ] Connection timeout and error handling with meaningful error messages
 - [ ] At least one cloud provider adapter (e.g., SendGrid HTTP API)
 - [ ] Email preview mode for development (render to browser instead of sending)
 - [ ] Configuration via existing environment variables (`SMTP_HOST`, `SMTP_PORT`, etc.)
+- [ ] `lvt env generate` updated to auto-detect email config requirements from generated auth features
 - [ ] Integration tests with mock SMTP server
 - [ ] Documentation with setup examples for common providers
 
@@ -84,6 +85,8 @@ Additionally, several features often listed as "missing" are already partially o
 ### 1.2 Rate Limiting
 
 **Priority**: Critical — auth endpoints (login, password reset, magic links) are already generated but have no brute-force protection. This is a security blocker for any production deployment with authentication enabled.
+
+**Depends on**: Auth middleware (existing). Should be applied to auth endpoints immediately and integrated into Middleware Pipeline (3.2) for general use.
 
 **What competitors offer**:
 - Laravel: Built-in RateLimiter facade with named limiters, per-route configuration
