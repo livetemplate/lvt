@@ -114,8 +114,17 @@ func verifyAppBuildsAndRuns(t *testing.T, appDir string, hasQueries bool) {
 		fmt.Sprintf("PORT=%d", port),
 		"TEST_MODE=1",
 	)
-	serverCmd.Stdout = os.Stderr
-	serverCmd.Stderr = os.Stderr
+
+	// Write server output to a log file to avoid data races on os.Stderr
+	// (runLvtCommandWithOutput temporarily redirects os.Stderr in parallel tests)
+	serverLogPath := filepath.Join(appDir, "server.log")
+	serverLog, err := os.Create(serverLogPath)
+	if err != nil {
+		t.Fatalf("Failed to create server log file: %v", err)
+	}
+	t.Cleanup(func() { serverLog.Close() })
+	serverCmd.Stdout = serverLog
+	serverCmd.Stderr = serverLog
 
 	if err := serverCmd.Start(); err != nil {
 		t.Fatalf("Failed to start server: %v", err)
