@@ -292,7 +292,10 @@ func TestGenerator_Generate_MultiRegion(t *testing.T) {
 }
 
 func TestGenerator_Generate_WithProjectDir(t *testing.T) {
-	// Test the explicit ProjectDir path (vs. the filepath.Dir fallback)
+	// Test the explicit ProjectDir path (vs. the filepath.Dir fallback).
+	// deployDir is intentionally two levels below projectRoot so that
+	// filepath.Dir(deployDir) != projectRoot, verifying that the generator
+	// uses config.ProjectDir rather than deriving the root itself.
 	tmpDir := t.TempDir()
 	projectRoot := filepath.Join(tmpDir, "myproject")
 	deployDir := filepath.Join(projectRoot, "nested", "deploy")

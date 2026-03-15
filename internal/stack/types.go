@@ -93,8 +93,10 @@ type StackConfig struct {
 }
 
 // ResolveProjectDir returns ProjectDir if set, otherwise derives it from
-// outputDir by taking its parent directory (filepath.Dir). This centralises
-// the fallback logic that was previously duplicated across all generators.
+// outputDir by taking its parent directory (filepath.Dir). The fallback
+// assumes outputDir is exactly one level below the project root (e.g.,
+// <project>/deploy). Callers should prefer setting ProjectDir explicitly
+// to avoid relying on this assumption.
 func (c *StackConfig) ResolveProjectDir(outputDir string) string {
 	if c.ProjectDir != "" {
 		return c.ProjectDir

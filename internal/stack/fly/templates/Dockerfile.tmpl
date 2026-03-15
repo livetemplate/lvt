@@ -24,11 +24,7 @@ RUN if [ -f main.go ]; then \
 # Runtime stage
 FROM alpine:3.21
 
-{{- if eq .Backup "litestream" }}
-RUN apk --no-cache add ca-certificates tzdata wget
-{{- else }}
-RUN apk --no-cache add ca-certificates tzdata
-{{- end }}
+RUN apk --no-cache add ca-certificates tzdata{{ if eq .Backup "litestream" }} wget{{ end }}
 {{- if eq .Backup "litestream" }}
 
 # Install Litestream with architecture-specific checksum verification
