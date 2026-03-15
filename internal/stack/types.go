@@ -83,6 +83,10 @@ type StackConfig struct {
 	MultiRegion bool
 	Ingress     IngressType
 	Registry    RegistryType
+	// ProjectDir is the project root directory. When set, generators use it
+	// instead of deriving the root via filepath.Dir(outputDir). This makes
+	// the contract explicit and avoids assumptions about directory depth.
+	ProjectDir string
 }
 
 // NeedsCompose returns true when the stack needs multiple services.

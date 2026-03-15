@@ -107,6 +107,9 @@ func GenStack(args []string) error {
 		return fmt.Errorf("stack already exists (use --force to overwrite)\n\nRun 'lvt stack info' to see current stack configuration")
 	}
 
+	// Set project root so generators don't need to derive it
+	config.ProjectDir = wd
+
 	// Create output directory
 	outputDir := filepath.Join(wd, "deploy")
 	if err := os.MkdirAll(outputDir, 0755); err != nil {

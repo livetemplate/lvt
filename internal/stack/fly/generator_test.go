@@ -83,12 +83,18 @@ func TestGenerator_FlyToml_Content(t *testing.T) {
 		{"data destination", `destination = "/data"`},
 		{"initial volume size", `initial_size = "1GB"`},
 		{"env database path", `DATABASE_PATH = "/data/app.db"`},
+		{"sqlite memory 256mb", `memory = "256mb"`},
 	}
 
 	for _, c := range checks {
 		if !bytes.Contains(content, []byte(c.contains)) {
 			t.Errorf("fly.toml missing %s: expected to contain %q", c.name, c.contains)
 		}
+	}
+
+	// SQLite should NOT have 512mb
+	if bytes.Contains(content, []byte(`memory = "512mb"`)) {
+		t.Error("SQLite fly.toml should use 256mb, not 512mb")
 	}
 }
 
@@ -150,6 +156,11 @@ func TestGenerator_Dockerfile_NoCGO(t *testing.T) {
 	}
 	if !bytes.Contains(content, []byte("COPY --from=builder /app/app ./app")) {
 		t.Error("Dockerfile must COPY app/ templates specifically")
+	}
+
+	// Builder stage must ensure database/migrations exists to prevent COPY failures
+	if !bytes.Contains(content, []byte("mkdir -p database/migrations")) {
+		t.Error("Dockerfile builder stage must mkdir -p database/migrations for safety")
 	}
 
 	// Must NOT have the broad copy-then-delete pattern
@@ -243,6 +254,11 @@ func TestGenerator_Generate_Postgres(t *testing.T) {
 	// Should NOT have DATABASE_PATH
 	if bytes.Contains(flyToml, []byte("DATABASE_PATH")) {
 		t.Error("PostgreSQL config should not have DATABASE_PATH")
+	}
+
+	// PostgreSQL should get 512mb memory
+	if !bytes.Contains(flyToml, []byte(`memory = "512mb"`)) {
+		t.Error("PostgreSQL fly.toml should use 512mb memory")
 	}
 }
 

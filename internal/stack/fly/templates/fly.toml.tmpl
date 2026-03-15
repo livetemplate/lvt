@@ -50,4 +50,8 @@ primary_region = "iad"
 [[vm]]
   cpu_kind = "shared"
   cpus = 1
+{{- if eq .Database "sqlite" }}
+  memory = "256mb"
+{{- else }}
   memory = "512mb"
+{{- end }}

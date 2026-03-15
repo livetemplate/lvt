@@ -11,6 +11,9 @@ RUN go mod download
 
 COPY . .
 
+# Ensure database/migrations exists so COPY in runtime stage never fails
+RUN mkdir -p database/migrations
+
 # Build binary — auto-detect simple kit (main.go in root) vs multi kit (cmd/)
 RUN if [ -f main.go ]; then \
       CGO_ENABLED=0 GOOS=linux go build -o main .; \
@@ -48,7 +51,7 @@ WORKDIR /app
 COPY --from=builder /app/main .
 COPY --from=builder /app/app ./app
 {{- if ne .Database "none" }}
-# Requires database/schema.sql and database/migrations/ in the project
+# Copy database schema and migrations (builder stage ensures migrations/ exists)
 COPY --from=builder /app/database/schema.sql ./database/schema.sql
 COPY --from=builder /app/database/migrations ./database/migrations
 {{- end }}
