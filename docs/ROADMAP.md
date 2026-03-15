@@ -74,12 +74,14 @@ Additionally, several features often listed as "missing" are already partially o
 - [ ] HTML and plain-text email body support (multipart MIME)
 - [ ] Connection timeout and error handling with meaningful error messages
 - [ ] At least one cloud provider adapter (e.g., SendGrid HTTP API)
-- [ ] Connection pooling / reuse for SMTP connections (deferred from initial implementation if needed, but important for high-volume senders)
 - [ ] Email preview mode for development (render to browser instead of sending)
 - [ ] Configuration via existing environment variables (`SMTP_HOST`, `SMTP_PORT`, etc.)
 - [ ] `lvt env generate` updated to auto-detect email config requirements from generated auth features
 - [ ] Integration tests with mock SMTP server
 - [ ] Documentation with setup examples for common providers
+
+**Future enhancements** (track in follow-up issues):
+- Connection pooling / reuse for SMTP connections (important for high-volume senders)
 
 ---
 
@@ -100,7 +102,7 @@ Additionally, several features often listed as "missing" are already partially o
 - [ ] Per-IP and per-user rate limiting strategies
 - [ ] Configurable time windows and request thresholds
 - [ ] Returns HTTP 429 (Too Many Requests) with `Retry-After` header
-- [ ] Rate limit storage: in-memory with `sync/atomic` counters for single-instance deployments (the common case); optional SQLite persistence for durability across restarts. No Redis dependency
+- [ ] Rate limit storage: in-memory with `sync/atomic` counters for development; SQLite persistence required for production (survives restarts, prevents brute-force bypass via crash-loop). No Redis dependency
 - [ ] Automatic rate limiting on auth endpoints (login, registration, password reset, magic links)
 - [ ] Allowlist/blocklist support for IPs
 - [ ] Integration with generated app's middleware chain
@@ -289,7 +291,7 @@ Additionally, several features often listed as "missing" are already partially o
 
 **Current state**: ~95% complete. Generated apps (single/multi kits) log method, path, status, duration, remote_addr, user_agent with configurable log level via `LOG_LEVEL` env var.
 
-**Security / correctness** (should not be deferred):
+**Security / correctness** (should not be deferred — consider implementing alongside Rate Limiting in M1 or Middleware Pipeline in M3):
 - [ ] Sensitive data redaction in request/response logging (passwords, tokens, session cookies)
 - [ ] Request ID generation and propagation (X-Request-ID header) for distributed tracing
 
