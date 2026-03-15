@@ -52,15 +52,20 @@ func (g *Generator) Generate(ctx context.Context, config stack.StackConfig, outp
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
-	// Generate files
-	files := map[string]string{
-		"fly.toml":     flyTomlTemplate,
+	// Generate fly.toml at project root (Fly CLI expects it there)
+	projectDir := filepath.Dir(outputDir)
+	if err := g.generateFile(filepath.Join(projectDir, "fly.toml"), flyTomlTemplate, data); err != nil {
+		return fmt.Errorf("failed to generate fly.toml: %w", err)
+	}
+
+	// Generate remaining files in deploy/ directory
+	deployFiles := map[string]string{
 		"Dockerfile":   dockerfileTemplate,
 		".env.example": envExampleTemplate,
 		"README.md":    readmeTemplate,
 	}
 
-	for filename, tmplContent := range files {
+	for filename, tmplContent := range deployFiles {
 		if err := g.generateFile(filepath.Join(outputDir, filename), tmplContent, data); err != nil {
 			return fmt.Errorf("failed to generate %s: %w", filename, err)
 		}

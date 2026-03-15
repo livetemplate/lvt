@@ -193,14 +193,16 @@ func GenStack(args []string) error {
 		return fmt.Errorf("failed to track generated files: %w", err)
 	}
 
-	// Track root-level generated files (e.g. Makefile)
-	makefilePath := filepath.Join(wd, "Makefile")
-	if _, err := os.Stat(makefilePath); err == nil {
-		checksum, err := calculateFileChecksum(makefilePath)
-		if err != nil {
-			return fmt.Errorf("failed to calculate checksum for Makefile: %w", err)
+	// Track root-level generated files (e.g. Makefile, fly.toml)
+	for _, rootFile := range []string{"Makefile", "fly.toml"} {
+		rootPath := filepath.Join(wd, rootFile)
+		if _, err := os.Stat(rootPath); err == nil {
+			checksum, err := calculateFileChecksum(rootPath)
+			if err != nil {
+				return fmt.Errorf("failed to calculate checksum for %s: %w", rootFile, err)
+			}
+			tracking.AddFile(rootFile, checksum)
 		}
-		tracking.AddFile("Makefile", checksum)
 	}
 
 	// Write tracking file
@@ -226,7 +228,9 @@ func GenStack(args []string) error {
 	case stack.ProviderDocker:
 		fmt.Println("  3. Run: make build && make run")
 	case stack.ProviderFly:
-		fmt.Println("  3. Run: fly launch (or fly deploy for existing apps)")
+		fmt.Println("  3. Run: fly launch --no-deploy (creates app + volume)")
+		fmt.Println("  4. Set secrets: fly secrets set BASE_URL=https://<app-name>.fly.dev")
+		fmt.Println("  5. Deploy: fly deploy --local-only")
 	case stack.ProviderDigitalOcean:
 		fmt.Println("  3. Run: doctl apps create --spec deploy/app.yaml")
 	case stack.ProviderK8s:
