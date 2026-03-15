@@ -74,6 +74,7 @@ Additionally, several features often listed as "missing" are already partially o
 - [ ] HTML and plain-text email body support (multipart MIME)
 - [ ] Connection timeout and error handling with meaningful error messages
 - [ ] At least one cloud provider adapter (e.g., SendGrid HTTP API)
+- [ ] Connection pooling / reuse for SMTP connections (deferred from initial implementation if needed, but important for high-volume senders)
 - [ ] Email preview mode for development (render to browser instead of sending)
 - [ ] Configuration via existing environment variables (`SMTP_HOST`, `SMTP_PORT`, etc.)
 - [ ] `lvt env generate` updated to auto-detect email config requirements from generated auth features
@@ -284,7 +285,7 @@ Additionally, several features often listed as "missing" are already partially o
 
 ### 3.3 Request Logging Enhancements
 
-**Priority**: Low — the core logging middleware is already production-ready with structured `slog` output.
+**Priority**: Low (observability polish) / Medium (security items below) — the core logging middleware is already production-ready with structured `slog` output.
 
 **Current state**: ~95% complete. Generated apps (single/multi kits) log method, path, status, duration, remote_addr, user_agent with configurable log level via `LOG_LEVEL` env var.
 
