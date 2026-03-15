@@ -6,7 +6,13 @@
 
 LVT is already strong in code generation, authentication, real-time UI (WebSockets), database migrations (goose/sqlc), E2E testing (chromedp), deployment stacks, and developer experience (hot reload, AI agent integration, 20+ UI components).
 
-However, **19 features** common across mature frameworks are missing or incomplete. These are organized into 4 milestones, from production blockers to developer experience improvements.
+Additionally, several features often listed as "missing" are already partially or mostly implemented:
+- **Request logging** — generated apps include structured `slog` middleware with method, path, status, duration, remote_addr, user_agent, and configurable log level.
+- **Form validation** — generated handlers use `go-playground/validator/v10` with `BindAndValidate`, covering required fields, min-length, and select validation.
+- **Middleware pipeline** — generated apps compose `securityHeaders(recovery(logging(mux)))` plus auth middleware with `RequireAuth`, `RequireConfirmed`, and `OptionalAuth`.
+- **Email sending** — `EmailSender` interface, `ConsoleEmailSender`, `NoopEmailSender`, and environment variable scaffolding all exist; only the SMTP transport is missing.
+
+**16 features** remain missing or need meaningful work. These are organized into 4 milestones, prioritized by what unblocks production use fastest.
 
 ---
 
@@ -21,17 +27,17 @@ However, **19 features** common across mature frameworks are missing or incomple
 | E2E Testing              | ✅   | ✅      | ✅      | ✅         | ✅     |
 | Deployment Stacks        | ✅   | ✅      | ✅      | ✅         | ⚠️     |
 | Hot Reload               | ✅   | ✅      | ✅      | ✅         | ⚠️     |
+| Request Logging          | ✅   | ✅      | ✅      | ✅         | ✅     |
+| Form Validation          | ⚠️   | ✅      | ✅      | ✅         | ✅     |
+| Middleware Pipeline      | ⚠️   | ✅      | ✅      | ✅         | ✅     |
+| Email Sending            | ⚠️   | ✅      | ✅      | ✅         | ✅     |
 | Authorization / RBAC     | ❌   | ✅      | ⚠️     | ✅         | ✅     |
 | Background Jobs          | ❌   | ✅      | ✅      | ✅         | ✅     |
-| Email Sending            | ⚠️   | ✅      | ✅      | ✅         | ✅     |
 | File Uploads & Storage   | ❌   | ✅      | ✅      | ✅         | ✅     |
-| Form Validation          | ⚠️   | ✅      | ✅      | ✅         | ✅     |
 | API / JSON Endpoints     | ❌   | ✅      | ✅      | ✅         | ✅     |
 | Caching                  | ❌   | ✅      | ✅      | ✅         | ✅     |
+| Rate Limiting            | ❌   | ✅      | ⚠️     | ✅         | ✅     |
 | Admin Panel              | ❌   | ✅      | ❌      | ✅         | ✅     |
-| Request Logging          | ⚠️   | ✅      | ✅      | ✅         | ✅     |
-| Rate Limiting            | ❌   | ✅      | ⚠️ (Plug.Throttle) | ✅ | ✅ |
-| Middleware Pipeline      | ⚠️   | ✅      | ✅      | ✅         | ✅     |
 | i18n / Localization      | ❌   | ✅      | ✅      | ✅         | ✅     |
 | Full-Text Search         | ❌   | ⚠️     | ❌      | ✅         | ✅     |
 | WebSocket Channels       | ⚠️   | ✅      | ✅      | ✅         | ❌     |
@@ -48,18 +54,92 @@ However, **19 features** common across mature frameworks are missing or incomple
 ## Milestone 1: Unblock Production Use
 
 **Goal**: Address the features that currently prevent lvt applications from being deployed to production with confidence.
-**Estimated effort**: L (large) — 3 features, each requiring new packages, generator changes, and tests.
+**Estimated effort**: M-L (medium-large) — 3 features, two building on existing infrastructure.
 
-### 1.1 Background Job / Task Queue System
+### 1.1 Production Email Sender
 
-**Priority**: Critical — every real application needs async work (email delivery, image processing, report generation, webhook dispatch, data cleanup).
+**Priority**: Critical — auth features (magic links, password reset) already generate emails but use `ConsoleEmailSender` (stdout only). Production auth is unusable without a real email transport.
+
+**Current state**: ~40% complete. The `EmailSender` interface, `ConsoleEmailSender`, `NoopEmailSender`, and env var scaffolding (`SMTP_HOST`, `SMTP_PORT`, etc.) all exist in `pkg/email/`. Generated auth code already uses the interface via dependency injection. Only the SMTP transport implementation is missing.
 
 **What competitors offer**:
-- Rails 8: Solid Queue (database-backed, zero external dependencies), Active Job unified API, job continuations (8.1)
+- Rails: Action Mailer with SMTP, Mailgun, SendGrid, SES adapters + email preview in dev
+- Laravel: Built-in Mail with drivers for SMTP, Mailgun, SES, Postmark, Resend
+- Django: `django.core.mail` with SMTP backend + third-party providers
+- Phoenix: Swoosh library with 10+ provider adapters
+
+**Acceptance Criteria**:
+- [ ] `SMTPEmailSender` implementation in `pkg/email/` using `net/smtp`
+- [ ] TLS/STARTTLS support and authentication (Plain, Login)
+- [ ] HTML and plain-text email body support (multipart MIME)
+- [ ] Connection timeout and error handling with meaningful error messages
+- [ ] At least one cloud provider adapter (e.g., SendGrid HTTP API)
+- [ ] Email preview mode for development (render to browser instead of sending)
+- [ ] Configuration via existing environment variables (`SMTP_HOST`, `SMTP_PORT`, etc.)
+- [ ] Integration tests with mock SMTP server
+- [ ] Documentation with setup examples for common providers
+
+---
+
+### 1.2 Rate Limiting
+
+**Priority**: Critical — auth endpoints (login, password reset, magic links) are already generated but have no brute-force protection. This is a security blocker for any production deployment with authentication enabled.
+
+**What competitors offer**:
+- Laravel: Built-in RateLimiter facade with named limiters, per-route configuration
+- Rails: Rack::Attack middleware (throttle, blocklist, safelist)
+- Django: DRF throttling (user-based, IP-based, scoped)
+
+**Acceptance Criteria**:
+- [ ] Rate limiting middleware in `pkg/ratelimit/`
+- [ ] Per-route rate limit configuration
+- [ ] Per-IP and per-user rate limiting strategies
+- [ ] Configurable time windows and request thresholds
+- [ ] Returns HTTP 429 (Too Many Requests) with `Retry-After` header
+- [ ] SQLite-backed rate limit storage (no Redis dependency)
+- [ ] Automatic rate limiting on auth endpoints (login, registration, password reset, magic links)
+- [ ] Allowlist/blocklist support for IPs
+- [ ] Integration with generated app's middleware chain
+
+---
+
+### 1.3 Form Validation Enhancements
+
+**Priority**: High — the core validation pipeline works (`go-playground/validator/v10` with `BindAndValidate`), but gaps in error display, cross-field validation, and smart rule generation reduce the production-readiness of generated forms.
+
+**Current state**: ~60% complete. Generated handlers already validate with `required`, `min=N` tags. Validation errors are bound to handler context. The gap is not "build a validation system" but "make the existing one complete."
+
+**What competitors offer**:
+- Rails: Active Model Validations (presence, format, length, uniqueness, numericality, custom)
+- Laravel: 90+ built-in validation rules, form requests, custom error messages
+- Django: Form/Model validation, clean methods, field validators
+- Phoenix: Ecto changesets with validate_required, validate_format, validate_length, etc.
+
+**Acceptance Criteria**:
+- [ ] Smart validation tag generation from field types (e.g., `email:string` → `validate:"required,email"`, `age:integer` → `validate:"required,min=0"`)
+- [ ] Generated templates display inline field-level error messages with clear styling
+- [ ] Cross-field validation support (e.g., password confirmation)
+- [ ] Custom validator registration for user-defined rules
+- [ ] Uniqueness validation with database check
+- [ ] Client-side validation attributes generated in HTML (e.g., `required`, `minlength`, `type="email"`)
+- [ ] Friendly error message formatting (not raw validator output)
+
+---
+
+## Milestone 2: Feature Parity with Major Frameworks
+
+**Goal**: Reach feature parity with the core capabilities that every major framework provides out of the box.
+**Estimated effort**: XL (extra large) — 4 features including the job queue system.
+
+### 2.1 Background Job / Task Queue System
+
+**Priority**: High — needed for async email delivery, image processing, report generation, webhook dispatch, and data cleanup. Not blocking existing features, but essential for non-trivial applications.
+
+**What competitors offer**:
+- Rails 8: Solid Queue (database-backed, zero external dependencies), Active Job unified API
 - Laravel 12: Built-in queue with failover driver, batch processing, job chaining, retry logic
 - Django: Celery (mature, Redis/RabbitMQ-backed)
 - Phoenix: OTP processes, GenServer, Task.Supervisor — concurrency is first-class in Elixir
-- Beego: Built-in task scheduler for cron jobs
 
 **Acceptance Criteria**:
 - [ ] Database-backed job queue table (SQLite-compatible, no Redis dependency)
@@ -75,60 +155,7 @@ However, **19 features** common across mature frameworks are missing or incomple
 
 ---
 
-### 1.2 Production Email Sender
-
-**Priority**: Critical — auth features (magic links, password reset) already generate emails but use `ConsoleEmailSender` (stdout only). These features are unusable in production.
-
-**What competitors offer**:
-- Rails: Action Mailer with SMTP, Mailgun, SendGrid, SES adapters + email preview in dev
-- Laravel: Built-in Mail with drivers for SMTP, Mailgun, SES, Postmark, Resend
-- Django: `django.core.mail` with SMTP backend + third-party providers
-- Phoenix: Swoosh library with 10+ provider adapters
-
-**Acceptance Criteria**:
-- [ ] SMTP email sender implementation in `pkg/email/`
-- [ ] Adapter interface for third-party providers (SendGrid, SES, Resend)
-- [ ] At least one cloud provider adapter implemented (e.g., SendGrid)
-- [ ] Email preview mode for development (render to browser instead of sending)
-- [ ] HTML and plain-text email template support
-- [ ] Configuration via environment variables (`SMTP_HOST`, `SMTP_PORT`, etc.)
-- [ ] `lvt env generate` updated to detect email config requirements
-- [ ] Connection pooling / reuse for SMTP connections
-- [ ] Error handling with meaningful error messages on delivery failure
-- [ ] Documentation with setup examples for common providers
-
----
-
-### 1.3 Server-Side Form Validation
-
-**Priority**: Critical — database constraints alone provide poor UX. Users need field-level validation with friendly error messages before data hits the database.
-
-**What competitors offer**:
-- Rails: Active Model Validations (presence, format, length, uniqueness, numericality, custom)
-- Laravel: 90+ built-in validation rules, form requests, custom error messages
-- Django: Form/Model validation, clean methods, field validators
-- Phoenix: Ecto changesets with validate_required, validate_format, validate_length, etc.
-
-**Acceptance Criteria**:
-- [ ] Validation package in `pkg/validate/` with common rules (required, email, min/max length, numeric range, regex pattern, URL, in-list)
-- [ ] Validation rules auto-generated from resource field types (e.g., `email:string` → email format rule, `age:integer` → numeric rule)
-- [ ] Custom validator support (user-defined validation functions)
-- [ ] Validation errors returned as structured data to templates
-- [ ] Generated templates display inline field-level error messages
-- [ ] Validation runs in handlers before database operations
-- [ ] `--validate` flag or automatic validation in `lvt gen resource`
-- [ ] Uniqueness validation with database check
-- [ ] Cross-field validation support (e.g., password confirmation)
-- [ ] Client-side validation attributes generated in HTML (e.g., `required`, `minlength`)
-
----
-
-## Milestone 2: Feature Parity with Major Frameworks
-
-**Goal**: Reach feature parity with the core capabilities that every major framework provides out of the box.
-**Estimated effort**: XL (extra large) — 3 features with significant scope (file uploads, RBAC, API layer).
-
-### 2.1 File Upload & Storage
+### 2.2 File Upload & Storage
 
 **Priority**: High — almost every real application needs file uploads (profile photos, documents, attachments). This is table-stakes.
 
@@ -153,7 +180,7 @@ However, **19 features** common across mature frameworks are missing or incomple
 
 ---
 
-### 2.2 Authorization / Role-Based Access Control
+### 2.3 Authorization / Role-Based Access Control
 
 **Priority**: High — authentication without authorization is incomplete. Real apps need "who can do what."
 
@@ -177,11 +204,11 @@ However, **19 features** common across mature frameworks are missing or incomple
 
 ---
 
-### 2.3 API / JSON Endpoints
+### 2.4 API / JSON Endpoints
 
 **Priority**: High — modern applications need APIs for mobile clients, third-party integrations, SPAs, and internal microservices.
 
-**Depends on**: Existing auth system for bearer token authentication. Should integrate with Rate Limiting (3.3) and Middleware Pipeline (3.4) once available.
+**Depends on**: Existing auth system for bearer token authentication. Should integrate with Rate Limiting (1.2) and Middleware Pipeline (3.2) once available.
 
 **What competitors offer**:
 - Rails: `respond_to` format blocks, API-only mode, ActiveModel Serializers, Jbuilder
@@ -206,31 +233,9 @@ However, **19 features** common across mature frameworks are missing or incomple
 ## Milestone 3: Production Hardening
 
 **Goal**: Add the infrastructure features needed for reliable, observable, and secure production deployments.
-**Estimated effort**: L (large) — 4 features, mostly middleware and infrastructure packages.
+**Estimated effort**: L (large) — 3 features, mostly middleware and infrastructure packages.
 
-### 3.1 Request Logging Middleware
-
-**Priority**: Medium-High — production applications need visibility into request traffic for debugging, performance monitoring, and audit trails.
-
-**What competitors offer**:
-- Rails: Tagged logging, Active Support instrumentation, request logging with timing
-- Laravel: Logging channels (stack, daily, Slack, Sentry), Telescope for debugging
-- Django: Python logging integration, django-debug-toolbar
-- Beego: Built-in monitoring for performance and memory tracking
-
-**Acceptance Criteria**:
-- [ ] Request logging middleware in generated app (method, path, status code, response time, request ID)
-- [ ] Structured JSON log output compatible with log aggregation tools (ELK, Datadog, etc.)
-- [ ] Configurable log level (debug, info, warn, error)
-- [ ] Request ID generation and propagation (X-Request-ID header)
-- [ ] Sensitive data redaction (passwords, tokens, etc.)
-- [ ] Access log format option (Apache/Nginx compatible)
-- [ ] Slow request detection and warning (configurable threshold)
-- [ ] Integration with existing `slog` structured logging
-
----
-
-### 3.2 Caching Layer
+### 3.1 Caching Layer
 
 **Priority**: Medium-High — database queries, rendered templates, and computed data all benefit from caching as applications scale.
 
@@ -252,32 +257,11 @@ However, **19 features** common across mature frameworks are missing or incomple
 
 ---
 
-### 3.3 Rate Limiting
+### 3.2 Composable Middleware Pipeline
 
-**Priority**: High — protects against brute force attacks on auth endpoints (login, password reset, magic links), abuse, and ensures fair resource usage. Arguably a production blocker given that auth is already generated.
+**Priority**: Medium — generated apps already compose middleware (`securityHeaders → recovery → logging → mux` plus auth), but lack named middleware groups for different route scopes (web vs API, public vs authenticated).
 
-**Depends on**: Auth middleware (existing). Should be applied to auth endpoints immediately and integrated into Middleware Pipeline (3.4) for general use.
-
-**What competitors offer**:
-- Laravel: Built-in RateLimiter facade with named limiters, per-route configuration
-- Rails: Rack::Attack middleware (throttle, blocklist, safelist)
-- Django: DRF throttling (user-based, IP-based, scoped)
-
-**Acceptance Criteria**:
-- [ ] Rate limiting middleware in `pkg/ratelimit/`
-- [ ] Per-route rate limit configuration
-- [ ] Per-IP and per-user rate limiting strategies
-- [ ] Configurable time windows and request thresholds
-- [ ] Returns HTTP 429 (Too Many Requests) with `Retry-After` header
-- [ ] SQLite-backed rate limit storage (no Redis dependency)
-- [ ] Automatic rate limiting on auth endpoints (login, registration, password reset)
-- [ ] Allowlist/blocklist support for IPs
-
----
-
-### 3.4 Composable Middleware Pipeline
-
-**Priority**: Medium — real applications need different middleware stacks for different route groups (web vs API, public vs authenticated).
+**Current state**: ~70% complete. The composition pattern and individual middleware (logging, recovery, security headers, auth) are solid. The gap is route-group-scoped middleware stacks.
 
 **What competitors offer**:
 - Rails: `before_action`, `around_action`, controller concerns with scoping
@@ -295,6 +279,20 @@ However, **19 features** common across mature frameworks are missing or incomple
 
 ---
 
+### 3.3 Request Logging Enhancements
+
+**Priority**: Low — the core logging middleware is already production-ready with structured `slog` output. These are polish items for teams with advanced observability needs.
+
+**Current state**: ~95% complete. Generated apps log method, path, status, duration, remote_addr, user_agent with configurable log level via `LOG_LEVEL` env var.
+
+**Remaining work**:
+- [ ] Request ID generation and propagation (X-Request-ID header)
+- [ ] Sensitive data redaction in request/response logging (passwords, tokens)
+- [ ] Slow request detection and warning (configurable threshold)
+- [ ] Access log format option (Apache/Nginx compatible) for reverse proxy compatibility
+
+---
+
 ## Milestone 4: Developer Experience & Maturity
 
 **Goal**: Quality-of-life features that improve developer productivity and bring lvt to the level of polish expected from mature frameworks.
@@ -304,7 +302,7 @@ However, **19 features** common across mature frameworks are missing or incomple
 
 **Priority**: Medium — every application needs data management. Auto-generated admin reduces boilerplate significantly.
 
-**Depends on**: Authorization / RBAC (2.2) — admin panel requires role-based access control to restrict to admin users.
+**Depends on**: Authorization / RBAC (2.3) — admin panel requires role-based access control to restrict to admin users.
 
 **What competitors offer**:
 - Django: Auto-generated admin from models (Django's killer feature — register model, get full CRUD)
@@ -342,7 +340,9 @@ However, **19 features** common across mature frameworks are missing or incomple
 
 ### 4.3 WebSocket Channels / PubSub
 
-**Priority**: Medium — lvt already has WebSocket support but lacks topic-based broadcasting for multi-user features (chat, notifications, collaborative editing).
+**Priority**: Medium — lvt already has a solid WebSocket manager (gorilla/websocket with client management, broadcasting, ping/pong), but it only broadcasts to all clients. Topic-based routing is needed for multi-user features.
+
+**Current state**: ~75% complete. `WebSocketManager` with client registration, broadcast, JSON messaging, and proper cleanup all work. The gap is channel/topic routing.
 
 **What competitors offer**:
 - Phoenix: Channels with topics, presence tracking, distributed PubSub across nodes
@@ -363,13 +363,15 @@ However, **19 features** common across mature frameworks are missing or incomple
 
 **Priority**: Medium — recurring tasks (cleanup, reports, data sync) need scheduling without external cron.
 
+**Depends on**: Background Job Queue (2.1) — scheduler is built on top of the job queue.
+
 **What competitors offer**:
 - Laravel: Task Scheduling (`schedule:run` — define schedules in code, run via single cron entry)
 - Rails: whenever gem + Solid Queue recurring jobs
 - Beego: Built-in task scheduler
 
 **Acceptance Criteria**:
-- [ ] Scheduler built on top of job queue (Milestone 1.1)
+- [ ] Scheduler built on top of job queue (Milestone 2.1)
 - [ ] `lvt gen task <name> --schedule "<cron>"` command to scaffold recurring tasks
 - [ ] Cron expression support (e.g., `"0 * * * *"` for hourly)
 - [ ] Named interval shortcuts (e.g., `@daily`, `@hourly`, `@every 5m`)
