@@ -209,7 +209,7 @@ func GenStack(args []string) error {
 			}
 			tracking.AddFile(rootFile, checksum)
 		} else if rootFile == "fly.toml" && config.Provider == stack.ProviderFly {
-			return fmt.Errorf("fly.toml not found at %s; expected at project root after Fly stack generation", filepath.Join(wd, "fly.toml"))
+			return fmt.Errorf("fly.toml not found at %s after Fly stack generation", filepath.Join(wd, "fly.toml"))
 		}
 	}
 

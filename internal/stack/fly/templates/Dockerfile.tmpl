@@ -5,7 +5,8 @@ WORKDIR /app
 
 RUN apk add --no-cache git
 
-# go.sum* glob tolerates projects where go.sum does not yet exist
+# go.sum* glob tolerates projects where go.sum does not yet exist.
+# Module tidying is intentionally omitted — run it locally before building.
 COPY go.mod go.sum* ./
 RUN go mod download
 
@@ -44,6 +45,7 @@ RUN ARCH=$(uname -m) && \
 
 WORKDIR /app
 
+# LiveTemplate apps store runtime assets (templates, static files) in app/
 COPY --from=builder /app/main .
 COPY --from=builder /app/app ./app
 {{- if ne .Database "none" }}
