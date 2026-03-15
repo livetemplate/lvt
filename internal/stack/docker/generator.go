@@ -77,7 +77,7 @@ func (g *Generator) Generate(ctx context.Context, config stack.StackConfig, outp
 	}
 
 	// Generate Makefile at project root (not in deploy/)
-	projectDir := filepath.Dir(outputDir)
+	projectDir := config.ResolveProjectDir(outputDir)
 	if err := g.generateFile(filepath.Join(projectDir, "Makefile"), makefileTemplate, data); err != nil {
 		return fmt.Errorf("failed to generate Makefile: %w", err)
 	}

@@ -1,6 +1,9 @@
 package stack
 
-import "fmt"
+import (
+	"fmt"
+	"path/filepath"
+)
 
 // Package stack provides types and configuration for deployment stack generation.
 // It supports multiple cloud providers (Docker, Fly.io, DigitalOcean, Kubernetes)
@@ -83,6 +86,22 @@ type StackConfig struct {
 	MultiRegion bool
 	Ingress     IngressType
 	Registry    RegistryType
+	// ProjectDir is the project root directory. When set, generators use it
+	// instead of deriving the root via filepath.Dir(outputDir). This makes
+	// the contract explicit and avoids assumptions about directory depth.
+	ProjectDir string
+}
+
+// ResolveProjectDir returns ProjectDir if set, otherwise derives it from
+// outputDir by taking its parent directory (filepath.Dir). The fallback
+// assumes outputDir is exactly one level below the project root (e.g.,
+// <project>/deploy). Callers should prefer setting ProjectDir explicitly
+// to avoid relying on this assumption.
+func (c StackConfig) ResolveProjectDir(outputDir string) string {
+	if c.ProjectDir != "" {
+		return c.ProjectDir
+	}
+	return filepath.Dir(outputDir)
 }
 
 // NeedsCompose returns true when the stack needs multiple services.

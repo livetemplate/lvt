@@ -107,6 +107,9 @@ func GenStack(args []string) error {
 		return fmt.Errorf("stack already exists (use --force to overwrite)\n\nRun 'lvt stack info' to see current stack configuration")
 	}
 
+	// Set project root so generators don't need to derive it
+	config.ProjectDir = wd
+
 	// Create output directory
 	outputDir := filepath.Join(wd, "deploy")
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
@@ -193,14 +196,21 @@ func GenStack(args []string) error {
 		return fmt.Errorf("failed to track generated files: %w", err)
 	}
 
-	// Track root-level generated files (e.g. Makefile)
-	makefilePath := filepath.Join(wd, "Makefile")
-	if _, err := os.Stat(makefilePath); err == nil {
-		checksum, err := calculateFileChecksum(makefilePath)
-		if err != nil {
-			return fmt.Errorf("failed to calculate checksum for Makefile: %w", err)
+	// Track root-level generated files (e.g. Makefile, fly.toml).
+	// Not every provider generates every file — Makefile is Docker-only,
+	// fly.toml is Fly-only — so missing files are silently skipped unless
+	// a provider-specific guard below requires the file to exist.
+	for _, rootFile := range []string{"Makefile", "fly.toml"} {
+		rootPath := filepath.Join(wd, rootFile)
+		if _, err := os.Stat(rootPath); err == nil {
+			checksum, err := calculateFileChecksum(rootPath)
+			if err != nil {
+				return fmt.Errorf("failed to calculate checksum for %s: %w", rootFile, err)
+			}
+			tracking.AddFile(rootFile, checksum)
+		} else if rootFile == "fly.toml" && config.Provider == stack.ProviderFly {
+			return fmt.Errorf("fly.toml not found at %s after Fly stack generation", rootPath)
 		}
-		tracking.AddFile("Makefile", checksum)
 	}
 
 	// Write tracking file
@@ -226,7 +236,10 @@ func GenStack(args []string) error {
 	case stack.ProviderDocker:
 		fmt.Println("  3. Run: make build && make run")
 	case stack.ProviderFly:
-		fmt.Println("  3. Run: fly launch (or fly deploy for existing apps)")
+		fmt.Println("  3. Ensure go.sum is committed and up-to-date (run: go mod tidy)")
+		fmt.Println("  4. Run: fly launch --no-deploy (creates app + volume)")
+		fmt.Println("  5. Set secrets: fly secrets set BASE_URL=https://<app-name>.fly.dev")
+		fmt.Println("  6. Deploy: fly deploy --local-only")
 	case stack.ProviderDigitalOcean:
 		fmt.Println("  3. Run: doctl apps create --spec deploy/app.yaml")
 	case stack.ProviderK8s:
