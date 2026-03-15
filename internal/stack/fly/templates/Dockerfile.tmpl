@@ -5,8 +5,10 @@ WORKDIR /app
 
 RUN apk add --no-cache git
 
-# Module tidying is intentionally omitted — run it locally before building.
-COPY go.mod go.sum ./
+# go.sum* glob tolerates freshly-generated projects where go.sum
+# does not yet exist; go mod download will still succeed since go.mod
+# alone is sufficient to resolve the module graph.
+COPY go.mod go.sum* ./
 RUN go mod download
 
 COPY . .
