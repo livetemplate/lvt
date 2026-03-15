@@ -5,7 +5,7 @@ WORKDIR /app
 
 RUN apk add --no-cache git
 
-COPY go.mod go.sum ./
+COPY go.mod go.sum* ./
 RUN go mod download
 
 COPY . .
@@ -20,14 +20,24 @@ RUN if [ -f main.go ]; then \
 # Runtime stage
 FROM alpine:3.21
 
+{{- if eq .Backup "litestream" }}
+RUN apk --no-cache add ca-certificates tzdata wget
+{{- else }}
 RUN apk --no-cache add ca-certificates tzdata
+{{- end }}
 {{- if eq .Backup "litestream" }}
 
-# Install Litestream with checksum verification
+# Install Litestream with architecture-specific checksum verification
 RUN ARCH=$(uname -m) && \
-    if [ "$ARCH" = "aarch64" ]; then LS_ARCH="arm64"; else LS_ARCH="amd64"; fi && \
+    if [ "$ARCH" = "aarch64" ]; then \
+      LS_ARCH="arm64"; \
+      LS_HASH="9585f5a508516bd66af2b2376bab4de256a5ef8e2b73ec760559e679628f2d59"; \
+    else \
+      LS_ARCH="amd64"; \
+      LS_HASH="eb75a3de5cab03875cdae9f5f539e6aedadd66607003d9b1e7a9077948818ba0"; \
+    fi && \
     wget https://github.com/benbjohnson/litestream/releases/download/v0.3.13/litestream-v0.3.13-linux-${LS_ARCH}.tar.gz && \
-    echo "eb75a3de5cab03875cdae9f5f539e6aedadd66607003d9b1e7a9077948818ba0  litestream-v0.3.13-linux-${LS_ARCH}.tar.gz" | sha256sum -c - && \
+    echo "${LS_HASH}  litestream-v0.3.13-linux-${LS_ARCH}.tar.gz" | sha256sum -c - && \
     tar -C /usr/local/bin -xzf litestream-v0.3.13-linux-${LS_ARCH}.tar.gz && \
     rm litestream-v0.3.13-linux-${LS_ARCH}.tar.gz
 {{- end }}

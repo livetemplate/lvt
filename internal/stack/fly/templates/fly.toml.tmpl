@@ -12,6 +12,7 @@ primary_region = "iad"
 [mounts]
   source = "{{ .ProjectName }}_data"
   destination = "/data"
+  initial_size = "1GB"
 {{- end }}
 {{- if .MultiRegion }}
 
@@ -49,8 +50,4 @@ primary_region = "iad"
 [[vm]]
   cpu_kind = "shared"
   cpus = 1
-{{- if eq .Database "sqlite" }}
   memory = "512mb"
-{{- else }}
-  memory = "512mb"
-{{- end }}

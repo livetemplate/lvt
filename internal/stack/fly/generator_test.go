@@ -81,6 +81,7 @@ func TestGenerator_FlyToml_Content(t *testing.T) {
 		{"auto stop format", `auto_stop_machines = "stop"`},
 		{"mounts for sqlite", `[mounts]`},
 		{"data destination", `destination = "/data"`},
+		{"initial volume size", `initial_size = "1GB"`},
 		{"env database path", `DATABASE_PATH = "/data/app.db"`},
 	}
 
@@ -186,9 +187,18 @@ func TestGenerator_Generate_WithLitestream(t *testing.T) {
 		t.Fatalf("Failed to read Dockerfile: %v", err)
 	}
 
-	expectedChecksum := "eb75a3de5cab03875cdae9f5f539e6aedadd66607003d9b1e7a9077948818ba0"
-	if !bytes.Contains(content, []byte(expectedChecksum)) {
-		t.Error("Dockerfile does not contain expected SHA256 checksum for Litestream v0.3.13")
+	// Litestream path must include wget in apk install
+	if !bytes.Contains(content, []byte("apk --no-cache add ca-certificates tzdata wget")) {
+		t.Error("Dockerfile with Litestream must install wget for downloading Litestream binary")
+	}
+
+	amd64Checksum := "eb75a3de5cab03875cdae9f5f539e6aedadd66607003d9b1e7a9077948818ba0"
+	arm64Checksum := "9585f5a508516bd66af2b2376bab4de256a5ef8e2b73ec760559e679628f2d59"
+	if !bytes.Contains(content, []byte(amd64Checksum)) {
+		t.Error("Dockerfile does not contain expected amd64 SHA256 checksum for Litestream v0.3.13")
+	}
+	if !bytes.Contains(content, []byte(arm64Checksum)) {
+		t.Error("Dockerfile does not contain expected arm64 SHA256 checksum for Litestream v0.3.13")
 	}
 	if !bytes.Contains(content, []byte("sha256sum -c -")) {
 		t.Error("Dockerfile does not contain SHA256 verification command")

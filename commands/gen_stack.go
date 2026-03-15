@@ -202,6 +202,8 @@ func GenStack(args []string) error {
 				return fmt.Errorf("failed to calculate checksum for %s: %w", rootFile, err)
 			}
 			tracking.AddFile(rootFile, checksum)
+		} else if rootFile == "fly.toml" && config.Provider == stack.ProviderFly {
+			fmt.Fprintf(os.Stderr, "Warning: fly.toml not found at project root after Fly stack generation\n")
 		}
 	}
 

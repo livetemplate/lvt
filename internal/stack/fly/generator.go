@@ -52,7 +52,9 @@ func (g *Generator) Generate(ctx context.Context, config stack.StackConfig, outp
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
-	// Generate fly.toml at project root (Fly CLI expects it there)
+	// Generate fly.toml at project root (Fly CLI expects it there).
+	// Note: this assumes outputDir is exactly one level deep (e.g., <project>/deploy).
+	// The caller (gen_stack.go) always passes <cwd>/deploy, so this holds.
 	projectDir := filepath.Dir(outputDir)
 	if err := g.generateFile(filepath.Join(projectDir, "fly.toml"), flyTomlTemplate, data); err != nil {
 		return fmt.Errorf("failed to generate fly.toml: %w", err)
