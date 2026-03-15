@@ -206,6 +206,9 @@ func TestGenerator_Generate_WithLitestream(t *testing.T) {
 	if !bytes.Contains(content, []byte("litestream replicate")) {
 		t.Error("Dockerfile should use litestream replicate as CMD")
 	}
+	if !bytes.Contains(content, []byte("COPY deploy/litestream.yml /etc/litestream.yml")) {
+		t.Error("Dockerfile should COPY deploy/litestream.yml to /etc/litestream.yml")
+	}
 }
 
 func TestGenerator_Generate_Postgres(t *testing.T) {

@@ -5,6 +5,7 @@ WORKDIR /app
 
 RUN apk add --no-cache git
 
+# go.sum* glob tolerates projects where go.sum does not yet exist
 COPY go.mod go.sum* ./
 RUN go mod download
 
@@ -47,6 +48,7 @@ WORKDIR /app
 COPY --from=builder /app/main .
 COPY --from=builder /app/app ./app
 {{- if ne .Database "none" }}
+# Requires database/schema.sql and database/migrations/ in the project
 COPY --from=builder /app/database/schema.sql ./database/schema.sql
 COPY --from=builder /app/database/migrations ./database/migrations
 {{- end }}
