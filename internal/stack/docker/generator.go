@@ -77,10 +77,7 @@ func (g *Generator) Generate(ctx context.Context, config stack.StackConfig, outp
 	}
 
 	// Generate Makefile at project root (not in deploy/)
-	projectDir := config.ProjectDir
-	if projectDir == "" {
-		projectDir = filepath.Dir(outputDir)
-	}
+	projectDir := config.ResolveProjectDir(outputDir)
 	if err := g.generateFile(filepath.Join(projectDir, "Makefile"), makefileTemplate, data); err != nil {
 		return fmt.Errorf("failed to generate Makefile: %w", err)
 	}
@@ -95,8 +92,7 @@ func (g *Generator) Generate(ctx context.Context, config stack.StackConfig, outp
 	// Generate CI/CD workflows if configured
 	if config.CI == stack.CIGitHub {
 		ciGen := github.New()
-		ciDir := projectDir // reuse the already-resolved projectDir
-		if err := ciGen.GenerateWorkflow(config, ciDir, data); err != nil {
+		if err := ciGen.GenerateWorkflow(config, projectDir, data); err != nil {
 			return fmt.Errorf("failed to generate CI workflows: %w", err)
 		}
 	}

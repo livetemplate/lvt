@@ -98,10 +98,7 @@ func (g *Generator) Generate(ctx context.Context, config stack.StackConfig, outp
 	// Generate CI/CD workflows if configured
 	if config.CI == stack.CIGitHub {
 		ciGen := github.New()
-		projectDir := config.ProjectDir
-		if projectDir == "" {
-			projectDir = filepath.Dir(outputDir)
-		}
+		projectDir := config.ResolveProjectDir(outputDir)
 		if err := ciGen.GenerateWorkflow(config, projectDir, data); err != nil {
 			return fmt.Errorf("failed to generate CI workflows: %w", err)
 		}

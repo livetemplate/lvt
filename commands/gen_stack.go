@@ -206,7 +206,7 @@ func GenStack(args []string) error {
 			}
 			tracking.AddFile(rootFile, checksum)
 		} else if rootFile == "fly.toml" && config.Provider == stack.ProviderFly {
-			fmt.Fprintf(os.Stderr, "Warning: fly.toml not found at project root after Fly stack generation\n")
+			return fmt.Errorf("fly.toml not found at project root after Fly stack generation — this is a bug in the generator")
 		}
 	}
 

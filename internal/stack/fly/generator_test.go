@@ -158,9 +158,9 @@ func TestGenerator_Dockerfile_NoCGO(t *testing.T) {
 		t.Error("Dockerfile must COPY app/ templates specifically")
 	}
 
-	// Builder stage must ensure database/migrations exists to prevent COPY failures
-	if !bytes.Contains(content, []byte("mkdir -p database/migrations")) {
-		t.Error("Dockerfile builder stage must mkdir -p database/migrations for safety")
+	// Builder stage must ensure directories exist to prevent COPY failures
+	if !bytes.Contains(content, []byte("mkdir -p database/migrations app")) {
+		t.Error("Dockerfile builder stage must mkdir -p database/migrations app for safety")
 	}
 
 	// Must NOT have the broad copy-then-delete pattern
@@ -288,5 +288,44 @@ func TestGenerator_Generate_MultiRegion(t *testing.T) {
 
 	if !bytes.Contains(content, []byte("Multi-region")) {
 		t.Error("Multi-region config should contain multi-region comment")
+	}
+}
+
+func TestGenerator_Generate_WithProjectDir(t *testing.T) {
+	// Test the explicit ProjectDir path (vs. the filepath.Dir fallback)
+	tmpDir := t.TempDir()
+	projectRoot := filepath.Join(tmpDir, "myproject")
+	deployDir := filepath.Join(projectRoot, "nested", "deploy")
+
+	if err := os.MkdirAll(projectRoot, 0755); err != nil {
+		t.Fatalf("mkdir project root: %v", err)
+	}
+
+	config := stack.StackConfig{
+		Provider:   stack.ProviderFly,
+		Database:   stack.DatabaseSQLite,
+		Backup:     stack.BackupNone,
+		Redis:      stack.RedisNone,
+		Storage:    stack.StorageNone,
+		CI:         stack.CINone,
+		ProjectDir: projectRoot, // explicitly set
+	}
+
+	gen := New()
+	if err := gen.Generate(context.Background(), config, deployDir); err != nil {
+		t.Fatalf("Generate() error = %v", err)
+	}
+
+	// fly.toml should be at ProjectDir, not filepath.Dir(deployDir)
+	if _, err := os.Stat(filepath.Join(projectRoot, "fly.toml")); os.IsNotExist(err) {
+		t.Error("Expected fly.toml at ProjectDir (project root)")
+	}
+
+	// It should NOT be at filepath.Dir(deployDir) which is nested/
+	nestedDir := filepath.Dir(deployDir)
+	if nestedDir != projectRoot {
+		if _, err := os.Stat(filepath.Join(nestedDir, "fly.toml")); err == nil {
+			t.Error("fly.toml should NOT be at filepath.Dir(outputDir) when ProjectDir is set")
+		}
 	}
 }

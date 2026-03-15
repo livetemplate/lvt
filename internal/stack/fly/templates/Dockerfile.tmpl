@@ -11,8 +11,8 @@ RUN go mod download
 
 COPY . .
 
-# Ensure database/migrations exists so COPY in runtime stage never fails
-RUN mkdir -p database/migrations
+# Ensure directories exist so COPY in runtime stage never fails
+RUN mkdir -p database/migrations app
 
 # Build binary — auto-detect simple kit (main.go in root) vs multi kit (cmd/)
 RUN if [ -f main.go ]; then \
