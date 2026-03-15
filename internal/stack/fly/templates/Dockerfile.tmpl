@@ -67,7 +67,7 @@ ENV PORT=8080
 EXPOSE 8080
 {{- if eq .Backup "litestream" }}
 
-CMD litestream replicate -config /etc/litestream.yml -exec "./main"
+CMD ["litestream", "replicate", "-config", "/etc/litestream.yml", "-exec", "./main"]
 {{- else }}
 
 CMD ["./main"]

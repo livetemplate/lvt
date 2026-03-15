@@ -196,7 +196,10 @@ func GenStack(args []string) error {
 		return fmt.Errorf("failed to track generated files: %w", err)
 	}
 
-	// Track root-level generated files (e.g. Makefile, fly.toml)
+	// Track root-level generated files (e.g. Makefile, fly.toml).
+	// Not every provider generates every file — Makefile is Docker-only,
+	// fly.toml is Fly-only — so missing files are silently skipped unless
+	// a provider-specific guard below requires the file to exist.
 	for _, rootFile := range []string{"Makefile", "fly.toml"} {
 		rootPath := filepath.Join(wd, rootFile)
 		if _, err := os.Stat(rootPath); err == nil {

@@ -97,7 +97,7 @@ type StackConfig struct {
 // assumes outputDir is exactly one level below the project root (e.g.,
 // <project>/deploy). Callers should prefer setting ProjectDir explicitly
 // to avoid relying on this assumption.
-func (c *StackConfig) ResolveProjectDir(outputDir string) string {
+func (c StackConfig) ResolveProjectDir(outputDir string) string {
 	if c.ProjectDir != "" {
 		return c.ProjectDir
 	}
