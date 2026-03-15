@@ -158,9 +158,12 @@ func TestGenerator_Dockerfile_NoCGO(t *testing.T) {
 		t.Error("Dockerfile must COPY app/ templates specifically")
 	}
 
-	// Builder stage must ensure directories exist to prevent COPY failures
+	// Builder stage must ensure directories and files exist to prevent COPY failures
 	if !bytes.Contains(content, []byte("mkdir -p database/migrations app")) {
 		t.Error("Dockerfile builder stage must mkdir -p database/migrations app for safety")
+	}
+	if !bytes.Contains(content, []byte("touch database/schema.sql")) {
+		t.Error("Dockerfile builder stage must touch database/schema.sql for safety")
 	}
 
 	// Must NOT have the broad copy-then-delete pattern
