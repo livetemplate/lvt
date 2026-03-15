@@ -5,9 +5,8 @@ WORKDIR /app
 
 RUN apk add --no-cache git
 
-# go.sum* glob tolerates projects where go.sum does not yet exist.
 # Module tidying is intentionally omitted — run it locally before building.
-COPY go.mod go.sum* ./
+COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
