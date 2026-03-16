@@ -196,7 +196,7 @@ func generateEnvContent(features map[string]bool) string {
 		b.WriteString("# Email Configuration\n")
 		b.WriteString("# ============================================================================\n")
 		b.WriteString("\n")
-		b.WriteString("# Email provider (smtp, console, or custom)\n")
+		b.WriteString("# Email provider (console, smtp, or noop)\n")
 		b.WriteString("# Use 'console' for development (prints to terminal)\n")
 		b.WriteString("EMAIL_PROVIDER=console\n")
 		b.WriteString("\n")
@@ -208,7 +208,7 @@ func generateEnvContent(features map[string]bool) string {
 		b.WriteString("# SMTP_USER=your-email@gmail.com\n")
 		b.WriteString("# SMTP_PASS=your-app-password\n")
 		b.WriteString("#\n")
-		b.WriteString("# Sender email address (displayed in emails)\n")
+		b.WriteString("# Sender email address (required when EMAIL_PROVIDER=smtp)\n")
 		b.WriteString("# EMAIL_FROM=noreply@yourdomain.com\n")
 		b.WriteString("# EMAIL_FROM_NAME=Your App Name\n")
 		b.WriteString("\n")
@@ -726,15 +726,17 @@ func getRequiredVars(features map[string]bool) []string {
 // getVarReason returns a human-readable reason why a variable is required
 func getVarReason(key string, features map[string]bool) string {
 	reasons := map[string]string{
-		"APP_ENV":        "application environment",
-		"DATABASE_PATH":  "database configuration",
-		"SESSION_SECRET": "session security (auth enabled)",
-		"CSRF_SECRET":    "CSRF protection (auth enabled)",
-		"EMAIL_PROVIDER": "email functionality (auth with email features)",
-		"SMTP_HOST":      "SMTP email sending",
-		"SMTP_PORT":      "SMTP email sending",
-		"SMTP_USER":      "SMTP email sending",
-		"SMTP_PASS":      "SMTP email sending",
+		"APP_ENV":         "application environment",
+		"DATABASE_PATH":   "database configuration",
+		"SESSION_SECRET":  "session security (auth enabled)",
+		"CSRF_SECRET":     "CSRF protection (auth enabled)",
+		"EMAIL_PROVIDER":  "email functionality (auth with email features)",
+		"SMTP_HOST":       "SMTP email sending",
+		"SMTP_PORT":       "SMTP email sending",
+		"SMTP_USER":       "SMTP email sending",
+		"SMTP_PASS":       "SMTP email sending",
+		"EMAIL_FROM":      "sender address for outgoing emails",
+		"EMAIL_FROM_NAME": "sender display name (optional, not required)",
 	}
 
 	if reason, ok := reasons[key]; ok {
@@ -768,14 +770,14 @@ func validateValues(envVars map[string]string, features map[string]bool) error {
 
 	// Validate EMAIL_PROVIDER
 	if emailProvider, ok := envVars["EMAIL_PROVIDER"]; ok {
-		validProviders := []string{"console", "smtp"}
+		validProviders := []string{"console", "smtp", "noop"}
 		if !contains(validProviders, emailProvider) {
 			return fmt.Errorf("EMAIL_PROVIDER must be one of: %s", strings.Join(validProviders, ", "))
 		}
 
 		// If SMTP, check required SMTP vars
 		if emailProvider == "smtp" {
-			smtpVars := []string{"SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASS"}
+			smtpVars := []string{"SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASS", "EMAIL_FROM"}
 			for _, key := range smtpVars {
 				if _, ok := envVars[key]; !ok {
 					return fmt.Errorf("%s required when EMAIL_PROVIDER=smtp", key)

@@ -728,6 +728,7 @@ func main() {
 	http.Handle("/auth", auth.Handler(queries))
 
 	// Create auth controller for protecting routes
+	// Console email sender prints magic links to server logs (for development)
 	emailSender := email.NewConsoleEmailSender()
 	baseURL := "http://localhost:" + getPort()
 	authController := auth.NewUserController(queries, emailSender, baseURL)

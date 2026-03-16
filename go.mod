@@ -18,6 +18,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/pressly/goose/v3 v3.26.0
 	github.com/stretchr/testify v1.11.0
+	github.com/wneessen/go-mail v0.7.2
 	golang.org/x/crypto v0.47.0
 	golang.org/x/mod v0.33.0
 	golang.org/x/net v0.49.0

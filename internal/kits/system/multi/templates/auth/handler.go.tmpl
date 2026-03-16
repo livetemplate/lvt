@@ -18,8 +18,8 @@ package auth
 //
 // Configuration:
 //   - Set BASE_URL environment variable for email links (default: http://localhost:8080)
-//   - By default, emails are logged to console. Replace email.NewConsoleEmailSender()
-//     in Handler() with your production email sender.
+//   - Set EMAIL_PROVIDER=smtp and configure SMTP_* env vars for production email sending.
+//   - Default EMAIL_PROVIDER is "console" (logs emails to stdout for development).
 //
 // For protected routes, use the auth middleware or GetCurrentUser:
 //
@@ -726,21 +726,26 @@ func (c *{{.StructName}}Controller) GetCurrentUser(r *http.Request) (*models.{{.
 	return &user, nil
 }
 
-// Handler creates an http.Handler for the auth LiveTemplate view
-// It sets up the controller and returns a handler that can be registered with http.Handle
-func Handler(queries *models.Queries) http.Handler {
-	// Get base URL from environment, or use default for development
+// newController creates an auth controller from environment configuration.
+// Each handler factory calls this independently at registration time.
+//
+// By default, emails are logged to console (EMAIL_PROVIDER=console).
+// For production, set EMAIL_PROVIDER=smtp and configure SMTP_* env vars,
+// then replace NewConsoleEmailSender() with email.NewSMTPEmailSender().
+// See github.com/livetemplate/lvt/pkg/email for SMTP configuration.
+func newController(queries *models.Queries) *{{.StructName}}Controller {
 	baseURL := "http://localhost:8080"
 	if envURL := os.Getenv("BASE_URL"); envURL != "" {
 		baseURL = envURL
 	}
-
-	// Use console email sender by default (logs emails to console)
-	// Replace with production email sender in your deployment
 	emailSender := email.NewConsoleEmailSender()
+	return New{{.StructName}}Controller(queries, emailSender, baseURL)
+}
 
-	// Create controller with dependencies
-	controller := New{{.StructName}}Controller(queries, emailSender, baseURL)
+// Handler creates an http.Handler for the auth LiveTemplate view
+// It sets up the controller and returns a handler that can be registered with http.Handle
+func Handler(queries *models.Queries) http.Handler {
+	controller := newController(queries)
 
 	// Parse the template
 	baseTmpl := livetemplate.Must(livetemplate.New("auth",
@@ -816,61 +821,31 @@ func Handler(queries *models.Queries) http.Handler {
 
 // LogoutHandler returns an http.Handler for the logout endpoint
 func LogoutHandler(queries *models.Queries) http.Handler {
-	baseURL := "http://localhost:8080"
-	if envURL := os.Getenv("BASE_URL"); envURL != "" {
-		baseURL = envURL
-	}
-	emailSender := email.NewConsoleEmailSender()
-	controller := New{{.StructName}}Controller(queries, emailSender, baseURL)
-	return http.HandlerFunc(controller.HandleLogout)
+	return http.HandlerFunc(newController(queries).HandleLogout)
 }
 
 {{- if .EnableMagicLink }}
 // MagicLinkHandler returns an http.Handler for magic link verification
 func MagicLinkHandler(queries *models.Queries) http.Handler {
-	baseURL := "http://localhost:8080"
-	if envURL := os.Getenv("BASE_URL"); envURL != "" {
-		baseURL = envURL
-	}
-	emailSender := email.NewConsoleEmailSender()
-	controller := New{{.StructName}}Controller(queries, emailSender, baseURL)
-	return http.HandlerFunc(controller.HandleMagicLinkVerify)
+	return http.HandlerFunc(newController(queries).HandleMagicLinkVerify)
 }
 {{- end }}
 
 {{- if .EnablePasswordReset }}
 // ResetPasswordHandler returns an http.Handler for password reset
 func ResetPasswordHandler(queries *models.Queries) http.Handler {
-	baseURL := "http://localhost:8080"
-	if envURL := os.Getenv("BASE_URL"); envURL != "" {
-		baseURL = envURL
-	}
-	emailSender := email.NewConsoleEmailSender()
-	controller := New{{.StructName}}Controller(queries, emailSender, baseURL)
-	return http.HandlerFunc(controller.HandleResetPassword)
+	return http.HandlerFunc(newController(queries).HandleResetPassword)
 }
 {{- end }}
 
 {{- if .EnableEmailConfirm }}
 // ConfirmEmailHandler returns an http.Handler for email confirmation
 func ConfirmEmailHandler(queries *models.Queries) http.Handler {
-	baseURL := "http://localhost:8080"
-	if envURL := os.Getenv("BASE_URL"); envURL != "" {
-		baseURL = envURL
-	}
-	emailSender := email.NewConsoleEmailSender()
-	controller := New{{.StructName}}Controller(queries, emailSender, baseURL)
-	return http.HandlerFunc(controller.HandleConfirmEmail)
+	return http.HandlerFunc(newController(queries).HandleConfirmEmail)
 }
 {{- end }}
 
 // PasswordLoginHandler returns an http.Handler for password-based login
 func PasswordLoginHandler(queries *models.Queries) http.Handler {
-	baseURL := "http://localhost:8080"
-	if envURL := os.Getenv("BASE_URL"); envURL != "" {
-		baseURL = envURL
-	}
-	emailSender := email.NewConsoleEmailSender()
-	controller := New{{.StructName}}Controller(queries, emailSender, baseURL)
-	return http.HandlerFunc(controller.HandlePasswordLogin)
+	return http.HandlerFunc(newController(queries).HandlePasswordLogin)
 }
