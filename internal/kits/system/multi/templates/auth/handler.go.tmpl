@@ -38,7 +38,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 
 	"{{.ModuleName}}/database/models"
@@ -729,37 +728,18 @@ func (c *{{.StructName}}Controller) GetCurrentUser(r *http.Request) (*models.{{.
 
 // newController creates a shared auth controller with email sender and base URL
 // from environment configuration. Called once per handler factory at startup.
+//
+// By default, emails are logged to console (EMAIL_PROVIDER=console).
+// For production, set EMAIL_PROVIDER=smtp and configure SMTP_* env vars,
+// then replace NewConsoleEmailSender() with email.NewSMTPEmailSender().
+// See github.com/livetemplate/lvt/pkg/email for SMTP configuration.
 func newController(queries *models.Queries) *{{.StructName}}Controller {
 	baseURL := "http://localhost:8080"
 	if envURL := os.Getenv("BASE_URL"); envURL != "" {
 		baseURL = envURL
 	}
-	var sender email.EmailSender
-	switch os.Getenv("EMAIL_PROVIDER") {
-	case "smtp":
-		sender = email.NewSMTPEmailSender(email.SMTPConfig{
-			Host:     os.Getenv("SMTP_HOST"),
-			Port:     smtpPort(),
-			Username: os.Getenv("SMTP_USER"),
-			Password: os.Getenv("SMTP_PASS"),
-			From:     os.Getenv("EMAIL_FROM"),
-			FromName: os.Getenv("EMAIL_FROM_NAME"),
-		})
-	case "noop":
-		sender = email.NewNoopEmailSender()
-	default:
-		sender = email.NewConsoleEmailSender()
-	}
-	return New{{.StructName}}Controller(queries, sender, baseURL)
-}
-
-func smtpPort() int {
-	if p := os.Getenv("SMTP_PORT"); p != "" {
-		if v, err := strconv.Atoi(p); err == nil {
-			return v
-		}
-	}
-	return 587
+	emailSender := email.NewConsoleEmailSender()
+	return New{{.StructName}}Controller(queries, emailSender, baseURL)
 }
 
 // Handler creates an http.Handler for the auth LiveTemplate view
