@@ -137,6 +137,12 @@ func InjectComponentsForTest(t *testing.T, appDir string) {
 	goModStr := string(goModContent)
 	modified := false
 
+	// Add replace directive for main lvt module (use local version for unreleased pkg/ changes)
+	if !strings.Contains(goModStr, "replace github.com/livetemplate/lvt ") {
+		goModStr += "\nreplace github.com/livetemplate/lvt => " + projectRoot + "\n"
+		modified = true
+	}
+
 	if !strings.Contains(goModStr, "github.com/livetemplate/lvt/components") {
 		goModStr += "\nrequire github.com/livetemplate/lvt/components v0.0.0\n"
 		goModStr += "\nreplace github.com/livetemplate/lvt/components => ./components\n"
