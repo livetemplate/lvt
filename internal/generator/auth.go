@@ -689,7 +689,9 @@ func ProtectResources(projectRoot, _ string, resources []ResourceEntry) error {
 		// Add email and log imports if not present
 		emailImport := `"github.com/livetemplate/lvt/pkg/email"`
 		logImport := `"log"`
-		if !strings.Contains(mainContent, emailImport) || !strings.Contains(mainContent, logImport) {
+		// Use quoted check to avoid false positives (e.g. "log/slog", "catalog")
+		hasLog := strings.Contains(mainContent, "\t\"log\"\n") || strings.Contains(mainContent, "\t\"log\"\r\n")
+		if !strings.Contains(mainContent, emailImport) || !hasLog {
 			importStart := strings.Index(mainContent, "import (")
 			if importStart == -1 {
 				return fmt.Errorf("could not find import block in main.go - expected 'import (' format")
@@ -700,7 +702,7 @@ func ProtectResources(projectRoot, _ string, resources []ResourceEntry) error {
 			}
 			insertPos := importStart + importEndRel
 			var newImports string
-			if !strings.Contains(mainContent, logImport) {
+			if !hasLog {
 				newImports += "\n\t" + logImport
 			}
 			if !strings.Contains(mainContent, emailImport) {

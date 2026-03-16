@@ -196,7 +196,7 @@ func generateEnvContent(features map[string]bool) string {
 		b.WriteString("# Email Configuration\n")
 		b.WriteString("# ============================================================================\n")
 		b.WriteString("\n")
-		b.WriteString("# Email provider (smtp, console, or custom)\n")
+		b.WriteString("# Email provider (console, smtp, or noop)\n")
 		b.WriteString("# Use 'console' for development (prints to terminal)\n")
 		b.WriteString("EMAIL_PROVIDER=console\n")
 		b.WriteString("\n")
@@ -770,7 +770,7 @@ func validateValues(envVars map[string]string, features map[string]bool) error {
 
 	// Validate EMAIL_PROVIDER
 	if emailProvider, ok := envVars["EMAIL_PROVIDER"]; ok {
-		validProviders := []string{"console", "smtp"}
+		validProviders := []string{"console", "smtp", "noop"}
 		if !contains(validProviders, emailProvider) {
 			return fmt.Errorf("EMAIL_PROVIDER must be one of: %s", strings.Join(validProviders, ", "))
 		}

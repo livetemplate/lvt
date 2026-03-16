@@ -726,29 +726,24 @@ func (c *{{.StructName}}Controller) GetCurrentUser(r *http.Request) (*models.{{.
 	return &user, nil
 }
 
-// newEmailSender initializes the email sender from EMAIL_PROVIDER environment variable.
-// Defaults to console (stdout) if EMAIL_PROVIDER is not set.
-func newEmailSender() email.EmailSender {
+// newController creates a shared auth controller with email sender and base URL
+// from environment configuration. Called once per handler factory at startup.
+func newController(queries *models.Queries) *{{.StructName}}Controller {
+	baseURL := "http://localhost:8080"
+	if envURL := os.Getenv("BASE_URL"); envURL != "" {
+		baseURL = envURL
+	}
 	sender, err := email.NewEmailSenderFromEnv()
 	if err != nil {
 		log.Fatalf("Failed to initialize email sender: %v", err)
 	}
-	return sender
+	return New{{.StructName}}Controller(queries, sender, baseURL)
 }
 
 // Handler creates an http.Handler for the auth LiveTemplate view
 // It sets up the controller and returns a handler that can be registered with http.Handle
 func Handler(queries *models.Queries) http.Handler {
-	// Get base URL from environment, or use default for development
-	baseURL := "http://localhost:8080"
-	if envURL := os.Getenv("BASE_URL"); envURL != "" {
-		baseURL = envURL
-	}
-
-	emailSender := newEmailSender()
-
-	// Create controller with dependencies
-	controller := New{{.StructName}}Controller(queries, emailSender, baseURL)
+	controller := newController(queries)
 
 	// Parse the template
 	baseTmpl := livetemplate.Must(livetemplate.New("auth",
@@ -824,61 +819,31 @@ func Handler(queries *models.Queries) http.Handler {
 
 // LogoutHandler returns an http.Handler for the logout endpoint
 func LogoutHandler(queries *models.Queries) http.Handler {
-	baseURL := "http://localhost:8080"
-	if envURL := os.Getenv("BASE_URL"); envURL != "" {
-		baseURL = envURL
-	}
-	emailSender := newEmailSender()
-	controller := New{{.StructName}}Controller(queries, emailSender, baseURL)
-	return http.HandlerFunc(controller.HandleLogout)
+	return http.HandlerFunc(newController(queries).HandleLogout)
 }
 
 {{- if .EnableMagicLink }}
 // MagicLinkHandler returns an http.Handler for magic link verification
 func MagicLinkHandler(queries *models.Queries) http.Handler {
-	baseURL := "http://localhost:8080"
-	if envURL := os.Getenv("BASE_URL"); envURL != "" {
-		baseURL = envURL
-	}
-	emailSender := newEmailSender()
-	controller := New{{.StructName}}Controller(queries, emailSender, baseURL)
-	return http.HandlerFunc(controller.HandleMagicLinkVerify)
+	return http.HandlerFunc(newController(queries).HandleMagicLinkVerify)
 }
 {{- end }}
 
 {{- if .EnablePasswordReset }}
 // ResetPasswordHandler returns an http.Handler for password reset
 func ResetPasswordHandler(queries *models.Queries) http.Handler {
-	baseURL := "http://localhost:8080"
-	if envURL := os.Getenv("BASE_URL"); envURL != "" {
-		baseURL = envURL
-	}
-	emailSender := newEmailSender()
-	controller := New{{.StructName}}Controller(queries, emailSender, baseURL)
-	return http.HandlerFunc(controller.HandleResetPassword)
+	return http.HandlerFunc(newController(queries).HandleResetPassword)
 }
 {{- end }}
 
 {{- if .EnableEmailConfirm }}
 // ConfirmEmailHandler returns an http.Handler for email confirmation
 func ConfirmEmailHandler(queries *models.Queries) http.Handler {
-	baseURL := "http://localhost:8080"
-	if envURL := os.Getenv("BASE_URL"); envURL != "" {
-		baseURL = envURL
-	}
-	emailSender := newEmailSender()
-	controller := New{{.StructName}}Controller(queries, emailSender, baseURL)
-	return http.HandlerFunc(controller.HandleConfirmEmail)
+	return http.HandlerFunc(newController(queries).HandleConfirmEmail)
 }
 {{- end }}
 
 // PasswordLoginHandler returns an http.Handler for password-based login
 func PasswordLoginHandler(queries *models.Queries) http.Handler {
-	baseURL := "http://localhost:8080"
-	if envURL := os.Getenv("BASE_URL"); envURL != "" {
-		baseURL = envURL
-	}
-	emailSender := newEmailSender()
-	controller := New{{.StructName}}Controller(queries, emailSender, baseURL)
-	return http.HandlerFunc(controller.HandlePasswordLogin)
+	return http.HandlerFunc(newController(queries).HandlePasswordLogin)
 }

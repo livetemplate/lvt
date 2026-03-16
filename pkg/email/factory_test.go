@@ -1,13 +1,12 @@
 package email
 
 import (
-	"os"
 	"strings"
 	"testing"
 )
 
 func TestNewEmailSenderFromEnv_DefaultConsole(t *testing.T) {
-	os.Unsetenv("EMAIL_PROVIDER")
+	t.Setenv("EMAIL_PROVIDER", "")
 	sender, err := NewEmailSenderFromEnv()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -56,7 +55,7 @@ func TestNewEmailSenderFromEnv_SMTP(t *testing.T) {
 func TestNewEmailSenderFromEnv_SMTP_DefaultPort(t *testing.T) {
 	t.Setenv("EMAIL_PROVIDER", "smtp")
 	t.Setenv("SMTP_HOST", "smtp.example.com")
-	os.Unsetenv("SMTP_PORT")
+	t.Setenv("SMTP_PORT", "")
 	t.Setenv("EMAIL_FROM", "test@example.com")
 	sender, err := NewEmailSenderFromEnv()
 	if err != nil {
@@ -73,7 +72,7 @@ func TestNewEmailSenderFromEnv_SMTP_DefaultPort(t *testing.T) {
 
 func TestNewEmailSenderFromEnv_SMTP_MissingHost(t *testing.T) {
 	t.Setenv("EMAIL_PROVIDER", "smtp")
-	os.Unsetenv("SMTP_HOST")
+	t.Setenv("SMTP_HOST", "")
 	t.Setenv("EMAIL_FROM", "test@example.com")
 	_, err := NewEmailSenderFromEnv()
 	if err == nil {
@@ -87,7 +86,7 @@ func TestNewEmailSenderFromEnv_SMTP_MissingHost(t *testing.T) {
 func TestNewEmailSenderFromEnv_SMTP_MissingFrom(t *testing.T) {
 	t.Setenv("EMAIL_PROVIDER", "smtp")
 	t.Setenv("SMTP_HOST", "smtp.example.com")
-	os.Unsetenv("EMAIL_FROM")
+	t.Setenv("EMAIL_FROM", "")
 	_, err := NewEmailSenderFromEnv()
 	if err == nil {
 		t.Fatal("expected error for missing EMAIL_FROM")
