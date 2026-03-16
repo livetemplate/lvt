@@ -686,12 +686,10 @@ func ProtectResources(projectRoot, _ string, resources []ResourceEntry) error {
 	// Check for both := and = declarations, and auth.NewUserController usage
 	authControllerDeclRe := regexp.MustCompile(`authController\s*(?::=|=)`)
 	if !authControllerDeclRe.MatchString(mainContent) && !strings.Contains(mainContent, "auth.NewUserController") {
-		// Add email and log imports if not present
+		// Add email import if not present
 		emailImport := `"github.com/livetemplate/lvt/pkg/email"`
-		logImport := `"log"`
-		// Use quoted check to avoid false positives (e.g. "log/slog", "catalog")
-		hasLog := strings.Contains(mainContent, "\t\"log\"\n") || strings.Contains(mainContent, "\t\"log\"\r\n")
-		if !strings.Contains(mainContent, emailImport) || !hasLog {
+		if !strings.Contains(mainContent, emailImport) {
+			// Find the import block end
 			importStart := strings.Index(mainContent, "import (")
 			if importStart == -1 {
 				return fmt.Errorf("could not find import block in main.go - expected 'import (' format")
@@ -701,14 +699,7 @@ func ProtectResources(projectRoot, _ string, resources []ResourceEntry) error {
 				return fmt.Errorf("could not find end of import block in main.go")
 			}
 			insertPos := importStart + importEndRel
-			var newImports string
-			if !hasLog {
-				newImports += "\n\t" + logImport
-			}
-			if !strings.Contains(mainContent, emailImport) {
-				newImports += "\n\n\t" + emailImport
-			}
-			mainContent = mainContent[:insertPos] + newImports + mainContent[insertPos:]
+			mainContent = mainContent[:insertPos] + "\n\n\t" + emailImport + mainContent[insertPos:]
 		}
 
 		// Find where to insert the auth controller - after the auth routes
@@ -748,11 +739,8 @@ func ProtectResources(projectRoot, _ string, resources []ResourceEntry) error {
 		authControllerCode := fmt.Sprintf(`
 
 	// Create auth controller for protecting routes
-	// Email sender is configured via EMAIL_PROVIDER env var (default: console)
-	emailSender, err := email.NewEmailSenderFromEnv()
-	if err != nil {
-		log.Fatalf("Failed to initialize email sender: %%v", err)
-	}
+	// Console email sender prints magic links to server logs (for development)
+	emailSender := email.NewConsoleEmailSender()
 	%s
 	authController := auth.NewUserController(queries, emailSender, baseURL)
 `, baseURLCode)

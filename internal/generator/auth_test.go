@@ -692,9 +692,9 @@ func main() {
 		t.Error("main.go should have authController creation with email sender")
 	}
 
-	// Check that email sender is configured via env
-	if !strings.Contains(mainGoStr, `email.NewEmailSenderFromEnv()`) {
-		t.Error("main.go should use NewEmailSenderFromEnv()")
+	// Check that email sender is configured
+	if !strings.Contains(mainGoStr, `email.NewConsoleEmailSender()`) {
+		t.Error("main.go should have console email sender")
 	}
 
 	// Check that auth routes are NOT wrapped (they should remain public)
@@ -715,7 +715,6 @@ func TestProtectResources_Idempotent(t *testing.T) {
 	mainGoContent := `package main
 
 import (
-	"log"
 	"net/http"
 	"testapp/app/auth"
 	"testapp/app/posts"
@@ -729,11 +728,8 @@ func main() {
 	http.Handle("/auth", auth.Handler(queries))
 
 	// Create auth controller for protecting routes
-	// Email sender is configured via EMAIL_PROVIDER env var (default: console)
-	emailSender, err := email.NewEmailSenderFromEnv()
-	if err != nil {
-		log.Fatalf("Failed to initialize email sender: %v", err)
-	}
+	// Console email sender prints magic links to server logs (for development)
+	emailSender := email.NewConsoleEmailSender()
 	baseURL := "http://localhost:" + getPort()
 	authController := auth.NewUserController(queries, emailSender, baseURL)
 	http.Handle("/posts", authController.RequireAuth(posts.Handler(queries)))

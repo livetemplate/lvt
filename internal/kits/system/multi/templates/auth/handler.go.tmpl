@@ -38,6 +38,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"{{.ModuleName}}/database/models"
@@ -733,11 +734,32 @@ func newController(queries *models.Queries) *{{.StructName}}Controller {
 	if envURL := os.Getenv("BASE_URL"); envURL != "" {
 		baseURL = envURL
 	}
-	sender, err := email.NewEmailSenderFromEnv()
-	if err != nil {
-		log.Fatalf("Failed to initialize email sender: %v", err)
+	var sender email.EmailSender
+	switch os.Getenv("EMAIL_PROVIDER") {
+	case "smtp":
+		sender = email.NewSMTPEmailSender(email.SMTPConfig{
+			Host:     os.Getenv("SMTP_HOST"),
+			Port:     smtpPort(),
+			Username: os.Getenv("SMTP_USER"),
+			Password: os.Getenv("SMTP_PASS"),
+			From:     os.Getenv("EMAIL_FROM"),
+			FromName: os.Getenv("EMAIL_FROM_NAME"),
+		})
+	case "noop":
+		sender = email.NewNoopEmailSender()
+	default:
+		sender = email.NewConsoleEmailSender()
 	}
 	return New{{.StructName}}Controller(queries, sender, baseURL)
+}
+
+func smtpPort() int {
+	if p := os.Getenv("SMTP_PORT"); p != "" {
+		if v, err := strconv.Atoi(p); err == nil {
+			return v
+		}
+	}
+	return 587
 }
 
 // Handler creates an http.Handler for the auth LiveTemplate view
