@@ -208,7 +208,7 @@ func generateEnvContent(features map[string]bool) string {
 		b.WriteString("# SMTP_USER=your-email@gmail.com\n")
 		b.WriteString("# SMTP_PASS=your-app-password\n")
 		b.WriteString("#\n")
-		b.WriteString("# Sender email address (displayed in emails)\n")
+		b.WriteString("# Sender email address (required when EMAIL_PROVIDER=smtp)\n")
 		b.WriteString("# EMAIL_FROM=noreply@yourdomain.com\n")
 		b.WriteString("# EMAIL_FROM_NAME=Your App Name\n")
 		b.WriteString("\n")
@@ -736,7 +736,7 @@ func getVarReason(key string, features map[string]bool) string {
 		"SMTP_USER":       "SMTP email sending",
 		"SMTP_PASS":       "SMTP email sending",
 		"EMAIL_FROM":      "sender address for outgoing emails",
-		"EMAIL_FROM_NAME": "sender display name (optional)",
+		"EMAIL_FROM_NAME": "sender display name (optional, not required)",
 	}
 
 	if reason, ok := reasons[key]; ok {

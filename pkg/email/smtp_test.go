@@ -1,6 +1,7 @@
 package email
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -57,5 +58,21 @@ func TestNewSMTPEmailSender_ConfigFields(t *testing.T) {
 	}
 	if sender.config.FromName != "My App" {
 		t.Errorf("expected from name My App, got %s", sender.config.FromName)
+	}
+}
+
+func TestSMTPEmailSender_Send_DialError(t *testing.T) {
+	sender := NewSMTPEmailSender(SMTPConfig{
+		Host:    "localhost",
+		Port:    1, // nothing listening
+		From:    "test@example.com",
+		Timeout: 1 * time.Second,
+	})
+	err := sender.Send("user@example.com", "Test", "Body")
+	if err == nil {
+		t.Fatal("expected error when dialing unreachable host")
+	}
+	if !strings.Contains(err.Error(), "email:") {
+		t.Errorf("error should be wrapped with 'email:' prefix, got: %v", err)
 	}
 }

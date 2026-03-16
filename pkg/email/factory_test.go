@@ -110,6 +110,20 @@ func TestNewEmailSenderFromEnv_SMTP_InvalidPort(t *testing.T) {
 	}
 }
 
+func TestNewEmailSenderFromEnv_SMTP_PortOutOfRange(t *testing.T) {
+	t.Setenv("EMAIL_PROVIDER", "smtp")
+	t.Setenv("SMTP_HOST", "smtp.example.com")
+	t.Setenv("SMTP_PORT", "99999")
+	t.Setenv("EMAIL_FROM", "test@example.com")
+	_, err := NewEmailSenderFromEnv()
+	if err == nil {
+		t.Fatal("expected error for out-of-range SMTP_PORT")
+	}
+	if !strings.Contains(err.Error(), "out of range") {
+		t.Errorf("error should mention out of range, got: %v", err)
+	}
+}
+
 func TestNewEmailSenderFromEnv_UnknownProvider(t *testing.T) {
 	t.Setenv("EMAIL_PROVIDER", "sendgrid")
 	_, err := NewEmailSenderFromEnv()

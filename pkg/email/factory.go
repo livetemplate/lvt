@@ -33,6 +33,9 @@ func NewSMTPEmailSenderFromEnv() (*SMTPEmailSender, error) {
 	if err != nil {
 		return nil, fmt.Errorf("email: invalid SMTP_PORT %q: %w", portStr, err)
 	}
+	if port < 1 || port > 65535 {
+		return nil, fmt.Errorf("email: SMTP_PORT %d out of range (1-65535)", port)
+	}
 
 	from := os.Getenv("EMAIL_FROM")
 	if from == "" {

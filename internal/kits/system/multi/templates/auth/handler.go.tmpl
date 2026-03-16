@@ -726,8 +726,8 @@ func (c *{{.StructName}}Controller) GetCurrentUser(r *http.Request) (*models.{{.
 	return &user, nil
 }
 
-// newController creates a shared auth controller with email sender and base URL
-// from environment configuration. Called once per handler factory at startup.
+// newController creates an auth controller from environment configuration.
+// Each handler factory calls this independently at registration time.
 //
 // By default, emails are logged to console (EMAIL_PROVIDER=console).
 // For production, set EMAIL_PROVIDER=smtp and configure SMTP_* env vars,

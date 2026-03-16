@@ -19,6 +19,9 @@ type SMTPConfig struct {
 }
 
 // SMTPEmailSender sends emails via SMTP using the go-mail library.
+// Each Send() call opens a new connection, which is appropriate for
+// low-volume transactional email (auth flows). For high-volume use,
+// consider connection pooling or a dedicated email service.
 type SMTPEmailSender struct {
 	config SMTPConfig
 }
