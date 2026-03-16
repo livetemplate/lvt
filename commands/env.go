@@ -735,6 +735,8 @@ func getVarReason(key string, features map[string]bool) string {
 		"SMTP_PORT":      "SMTP email sending",
 		"SMTP_USER":      "SMTP email sending",
 		"SMTP_PASS":      "SMTP email sending",
+		"EMAIL_FROM":      "sender address for outgoing emails",
+		"EMAIL_FROM_NAME": "sender display name (optional)",
 	}
 
 	if reason, ok := reasons[key]; ok {
@@ -775,7 +777,7 @@ func validateValues(envVars map[string]string, features map[string]bool) error {
 
 		// If SMTP, check required SMTP vars
 		if emailProvider == "smtp" {
-			smtpVars := []string{"SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASS"}
+			smtpVars := []string{"SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASS", "EMAIL_FROM"}
 			for _, key := range smtpVars {
 				if _, ok := envVars[key]; !ok {
 					return fmt.Errorf("%s required when EMAIL_PROVIDER=smtp", key)
