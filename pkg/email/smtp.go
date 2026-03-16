@@ -52,6 +52,9 @@ func (s *SMTPEmailSender) Send(to, subject, body string) error {
 	msg.Subject(subject)
 	msg.SetBodyString(mail.TypeTextPlain, body)
 
+	// TLSOpportunistic upgrades to TLS when available but allows plaintext fallback.
+	// This supports dev SMTP tools (Mailpit, MailHog) that don't offer TLS.
+	// For strict TLS enforcement in production, use mail.TLSMandatory instead.
 	client, err := mail.NewClient(s.config.Host,
 		mail.WithPort(s.config.Port),
 		mail.WithSMTPAuth(mail.SMTPAuthAutoDiscover),
