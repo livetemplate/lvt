@@ -281,6 +281,10 @@ func serveClientLibrary(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Client library not found locally. Templates load from CDN.", http.StatusNotFound)
 }
 
+// TODO(#247): Replace inline rate limiter with pkg/ratelimit after next release.
+// The inline version is a simplified single-mutex copy; the library adds sharding,
+// eviction logging, configurable sweep/stale intervals, and proper Close().
+
 // ipLimiter tracks a per-IP token bucket and its LRU position.
 type ipLimiter struct {
 	ip       string
@@ -382,6 +386,8 @@ func newRateLimiter(ctx context.Context, rps float64, burst, maxIPs int, deny ht
 }
 
 // getClientIP extracts the client IP, trusting proxy headers only from private/loopback peers.
+// This is correct when deployed behind a single trusted reverse proxy (nginx, Caddy, cloud LB).
+// In multi-tenant private networks, consider configuring trusted proxy CIDRs explicitly.
 func getClientIP(r *http.Request) string {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {

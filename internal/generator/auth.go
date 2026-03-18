@@ -364,11 +364,12 @@ func GenerateAuth(projectRoot string, authConfig *AuthConfig) error {
 		}
 
 		// Add email confirmation route if enabled
+		// No rate limiting: confirmation tokens are single-use from a known inbox
 		if authConfig.EnableEmailConfirm {
 			routes = append(routes, RouteInfo{
 				Path:        "/auth/confirm",
 				PackageName: "auth",
-				HandlerCall: "auth.ConfirmEmailHandler(queries, authRL)",
+				HandlerCall: "auth.ConfirmEmailHandler(queries)",
 				ImportPath:  authConfig.ModuleName + "/app/auth",
 			})
 		}

@@ -852,8 +852,9 @@ func ResetPasswordHandler(queries *models.Queries, authRL func(http.Handler) htt
 
 {{- if .EnableEmailConfirm }}
 // ConfirmEmailHandler returns an http.Handler for email confirmation.
-func ConfirmEmailHandler(queries *models.Queries, authRL func(http.Handler) http.Handler) http.Handler {
-	return withMiddleware(http.HandlerFunc(newController(queries).HandleConfirmEmail), authRL)
+// No rate limiting: confirmation tokens are single-use and clicked from a known inbox.
+func ConfirmEmailHandler(queries *models.Queries) http.Handler {
+	return http.HandlerFunc(newController(queries).HandleConfirmEmail)
 }
 {{- end }}
 

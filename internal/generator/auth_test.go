@@ -646,7 +646,7 @@ import (
 func main() {
 	queries := &models.Queries{}
 	http.Handle("/", home.Handler(queries))
-	http.Handle("/auth/confirm", auth.ConfirmEmailHandler(queries, authRL))
+	http.Handle("/auth/confirm", auth.ConfirmEmailHandler(queries))
 	http.Handle("/auth/reset", auth.ResetPasswordHandler(queries, authRL))
 	http.Handle("/auth/magic", auth.MagicLinkHandler(queries, authRL))
 	http.Handle("/auth/logout", auth.LogoutHandler(queries))

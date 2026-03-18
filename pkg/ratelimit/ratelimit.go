@@ -405,6 +405,8 @@ func newShardedLimiter(ctx context.Context, cfg *Config, numShards int) (func(ht
 // GetClientIP extracts the client IP from the request.
 // It only trusts X-Forwarded-For / X-Real-IP when the immediate peer is a
 // loopback or private address (i.e., behind a reverse proxy).
+// This is correct when deployed behind a single trusted reverse proxy.
+// In multi-tenant private networks, consider configuring trusted proxy CIDRs explicitly.
 func GetClientIP(r *http.Request) string {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
