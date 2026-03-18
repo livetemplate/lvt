@@ -415,7 +415,7 @@ func GetClientIP(r *http.Request) string {
 	if trustedProxy {
 		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
 			clientIP := xff
-			if i := strings.IndexByte(xff, ','); i > 0 {
+			if i := strings.IndexByte(xff, ','); i >= 0 {
 				clientIP = xff[:i]
 			}
 			if ip := net.ParseIP(strings.TrimSpace(clientIP)); ip != nil {

@@ -392,7 +392,7 @@ func getClientIP(r *http.Request) string {
 	if trustedProxy {
 		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
 			clientIP := xff
-			if i := strings.IndexByte(xff, ','); i > 0 {
+			if i := strings.IndexByte(xff, ','); i >= 0 {
 				clientIP = xff[:i]
 			}
 			if ip := net.ParseIP(strings.TrimSpace(clientIP)); ip != nil {
@@ -416,9 +416,12 @@ func getClientIP(r *http.Request) string {
 // getEnvFloat reads an env var as float64, returning defaultVal if unset or invalid.
 func getEnvFloat(key string, defaultVal float64) float64 {
 	if v := os.Getenv(key); v != "" {
-		if f, err := strconv.ParseFloat(v, 64); err == nil {
-			return f
+		f, err := strconv.ParseFloat(v, 64)
+		if err != nil {
+			slog.Warn("Invalid float env var, using default", "key", key, "value", v, "default", defaultVal)
+			return defaultVal
 		}
+		return f
 	}
 	return defaultVal
 }
@@ -426,9 +429,12 @@ func getEnvFloat(key string, defaultVal float64) float64 {
 // getEnvInt reads an env var as int, returning defaultVal if unset or invalid.
 func getEnvInt(key string, defaultVal int) int {
 	if v := os.Getenv(key); v != "" {
-		if n, err := strconv.Atoi(v); err == nil {
-			return n
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			slog.Warn("Invalid int env var, using default", "key", key, "value", v, "default", defaultVal)
+			return defaultVal
 		}
+		return n
 	}
 	return defaultVal
 }
