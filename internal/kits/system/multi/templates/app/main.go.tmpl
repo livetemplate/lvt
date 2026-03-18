@@ -296,9 +296,11 @@ func newRateLimiter(ctx context.Context, rps float64, burst, maxIPs int, deny ht
 		maxIPs = 10000
 	}
 	if burst < 1 {
+		slog.Warn("Rate limit burst clamped to minimum", "configured", burst, "effective", 1)
 		burst = 1
 	}
 	if rps < 0 {
+		slog.Warn("Rate limit RPS clamped to minimum", "configured", rps, "effective", 0)
 		rps = 0
 	}
 	if deny == nil {

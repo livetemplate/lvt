@@ -439,8 +439,8 @@ func injectAuthRateLimiter(mainGoPath string) error {
 
 	mainContent := string(content)
 
-	// Check if already injected (look for variable declaration pattern)
-	authRLDeclRe := regexp.MustCompile(`\bauthRL\s*:?=`)
+	// Check if already injected (look for the specific variable declaration)
+	authRLDeclRe := regexp.MustCompile(`\bauthRL\s*:=\s*newRateLimiter`)
 	if authRLDeclRe.MatchString(mainContent) {
 		return nil
 	}

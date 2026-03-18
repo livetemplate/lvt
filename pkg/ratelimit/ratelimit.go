@@ -129,9 +129,11 @@ func New(ctx context.Context, opts ...Option) *RateLimiter {
 		cfg.MaxIPs = 10000
 	}
 	if cfg.Burst < 1 {
+		slog.Warn("rate limiter burst clamped to minimum", "configured", cfg.Burst, "effective", 1)
 		cfg.Burst = 1
 	}
 	if cfg.RPS < 0 {
+		slog.Warn("rate limiter RPS clamped to minimum", "configured", cfg.RPS, "effective", 0)
 		cfg.RPS = 0
 	}
 	if cfg.SweepInterval <= 0 {
