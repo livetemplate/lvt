@@ -307,6 +307,9 @@ func newRateLimiter(ctx context.Context, rps float64, burst, maxIPs int, deny ht
 		slog.Warn("Rate limit RPS clamped to minimum", "configured", rps, "effective", 0)
 		rps = 0
 	}
+	if rps == 0 {
+		slog.Warn("Rate limit RPS is 0 — only burst tokens are allowed, no refill", "burst", burst)
+	}
 	if deny == nil {
 		deny = func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Retry-After", "1")

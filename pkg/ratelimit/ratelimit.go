@@ -95,7 +95,7 @@ func defaultDenyHandler(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Retry-After", "1")
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusTooManyRequests)
-	w.Write([]byte("rate limit exceeded"))
+	_, _ = w.Write([]byte("rate limit exceeded"))
 }
 
 // ipLimiter tracks a per-IP token bucket and its position in the LRU list.
@@ -135,6 +135,9 @@ func New(ctx context.Context, opts ...Option) *RateLimiter {
 	if cfg.RPS < 0 {
 		slog.Warn("rate limiter RPS clamped to minimum", "configured", cfg.RPS, "effective", 0)
 		cfg.RPS = 0
+	}
+	if cfg.RPS == 0 {
+		slog.Warn("rate limiter RPS is 0 — only burst tokens are allowed, no refill", "burst", cfg.Burst)
 	}
 	if cfg.SweepInterval <= 0 {
 		cfg.SweepInterval = 5 * time.Minute
