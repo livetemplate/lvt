@@ -128,6 +128,21 @@ func New(ctx context.Context, opts ...Option) *RateLimiter {
 	if cfg.MaxIPs <= 0 {
 		cfg.MaxIPs = 10000
 	}
+	if cfg.Burst < 1 {
+		cfg.Burst = 1
+	}
+	if cfg.RPS < 0 {
+		cfg.RPS = 0
+	}
+	if cfg.SweepInterval <= 0 {
+		cfg.SweepInterval = 5 * time.Minute
+	}
+	if cfg.StaleThreshold <= 0 {
+		cfg.StaleThreshold = 10 * time.Minute
+	}
+	if cfg.EvictLogInterval <= 0 {
+		cfg.EvictLogInterval = 30 * time.Second
+	}
 
 	ctx, cancel := context.WithCancel(ctx)
 
@@ -257,7 +272,8 @@ type shard struct {
 	_            [64]byte // pad to 128 bytes (2 cache lines)
 }
 
-// Compile-time assertion: shard struct must be exactly 128 bytes.
+// Compile-time assertion: shard struct must not exceed 128 bytes.
+// If the struct grows, adjust the padding to maintain cache-line alignment.
 const _ = uint(128 - unsafe.Sizeof(shard{}))
 
 type shardedLimiter struct {
@@ -405,13 +421,12 @@ func GetClientIP(r *http.Request) string {
 			if ip := net.ParseIP(strings.TrimSpace(clientIP)); ip != nil {
 				return ip.String()
 			}
-			return strings.TrimSpace(clientIP)
+			// Malformed header — fall back to peer IP below
 		}
 		if xri := r.Header.Get("X-Real-IP"); xri != "" {
 			if ip := net.ParseIP(strings.TrimSpace(xri)); ip != nil {
 				return ip.String()
 			}
-			return strings.TrimSpace(xri)
 		}
 	}
 

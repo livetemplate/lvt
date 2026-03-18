@@ -439,17 +439,20 @@ func injectAuthRateLimiter(mainGoPath string) error {
 
 	mainContent := string(content)
 
-	// Check if already injected (look for the variable declaration, not just any usage)
-	if strings.Contains(mainContent, "authRL :=") || strings.Contains(mainContent, "authRL=") {
+	// Check if already injected (look for variable declaration pattern)
+	authRLDeclRe := regexp.MustCompile(`\bauthRL\s*:?=`)
+	if authRLDeclRe.MatchString(mainContent) {
 		return nil
 	}
 
-	// Find the first line referencing authRL (the first auth handler call)
-	// to insert the authRL declaration before it.
-	authRLIdx := strings.Index(mainContent, "authRL)")
-	if authRLIdx == -1 {
+	// Find the first auth handler call that uses authRL as a parameter.
+	// Use a specific pattern to avoid matching comments or unrelated code.
+	authHandlerRe := regexp.MustCompile(`auth\.\w+Handler\(queries,\s*authRL\)`)
+	loc := authHandlerRe.FindStringIndex(mainContent)
+	if loc == nil {
 		return fmt.Errorf("no auth handler calls with authRL found in main.go")
 	}
+	authRLIdx := loc[0]
 
 	// Find the start of the line containing the first authRL usage
 	lineStart := strings.LastIndex(mainContent[:authRLIdx], "\n")

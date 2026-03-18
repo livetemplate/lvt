@@ -99,9 +99,6 @@ func main() {
 
 	slog.Info("Shutting down server...")
 
-	// Stop background goroutines (rate limiter cleanup)
-	appCancel()
-
 	// Give outstanding requests time to complete
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -298,6 +295,12 @@ func newRateLimiter(ctx context.Context, rps float64, burst, maxIPs int, deny ht
 	if maxIPs <= 0 {
 		maxIPs = 10000
 	}
+	if burst < 1 {
+		burst = 1
+	}
+	if rps < 0 {
+		rps = 0
+	}
 	if deny == nil {
 		deny = func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Retry-After", "1")
@@ -395,13 +398,12 @@ func getClientIP(r *http.Request) string {
 			if ip := net.ParseIP(strings.TrimSpace(clientIP)); ip != nil {
 				return ip.String()
 			}
-			return strings.TrimSpace(clientIP)
+			// Malformed header — fall back to peer IP below
 		}
 		if xri := r.Header.Get("X-Real-IP"); xri != "" {
 			if ip := net.ParseIP(strings.TrimSpace(xri)); ip != nil {
 				return ip.String()
 			}
-			return strings.TrimSpace(xri)
 		}
 	}
 
