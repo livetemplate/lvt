@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"container/list"
 	"context"
 	"fmt"
 	"log/slog"
@@ -9,11 +10,16 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
+	"sync"
 	"syscall"
 	"time"
 
 	"[[.ModuleName]]/app/home"
 	"[[.ModuleName]]/database"
+
+	"golang.org/x/time/rate"
 )
 
 func main() {
@@ -49,13 +55,24 @@ func main() {
 	// Serve LiveTemplate client library
 	http.HandleFunc("/livetemplate-client.js", serveClientLibrary)
 
+	// Application context for background goroutines (rate limiter cleanup, etc.)
+	appCtx, appCancel := context.WithCancel(context.Background())
+	defer appCancel()
+
 	// TODO: Add routes here (added automatically by `lvt gen`)
 	// Example: http.Handle("/users", users.Handler(queries))
 
+	// Global rate limiter: prevents general abuse (configurable via env vars)
+	globalRL := newRateLimiter(appCtx,
+		getEnvFloat("RATE_LIMIT_RPS", 100),
+		getEnvInt("RATE_LIMIT_BURST", 200),
+		getEnvInt("RATE_LIMIT_MAX_IPS", 10000),
+		nil)
+
 	// Wrap the default mux with middleware
-	handler := securityHeadersMiddleware(
+	handler := globalRL(securityHeadersMiddleware(
 		recoveryMiddleware(
-			loggingMiddleware(http.DefaultServeMux)))
+			loggingMiddleware(http.DefaultServeMux))))
 
 	// Create server with production-ready settings
 	srv := &http.Server{
@@ -81,6 +98,9 @@ func main() {
 	<-quit
 
 	slog.Info("Shutting down server...")
+
+	// Stop background goroutines (rate limiter cleanup)
+	appCancel()
 
 	// Give outstanding requests time to complete
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -262,4 +282,151 @@ func serveClientLibrary(w http.ResponseWriter, r *http.Request) {
 
 	// Not found locally — CDN is used in templates
 	http.Error(w, "Client library not found locally. Templates load from CDN.", http.StatusNotFound)
+}
+
+// ipLimiter tracks a per-IP token bucket and its LRU position.
+type ipLimiter struct {
+	ip       string
+	limiter  *rate.Limiter
+	lastSeen time.Time
+}
+
+// newRateLimiter creates a per-IP rate limiting middleware with LRU eviction.
+// deny is called when a request is rate-limited; pass nil for a default 429 response.
+// A background goroutine cleans up stale entries; it exits when ctx is cancelled.
+func newRateLimiter(ctx context.Context, rps float64, burst, maxIPs int, deny http.HandlerFunc) func(http.Handler) http.Handler {
+	if maxIPs <= 0 {
+		maxIPs = 10000
+	}
+	if deny == nil {
+		deny = func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Retry-After", "1")
+			http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
+		}
+	}
+
+	var (
+		items = make(map[string]*list.Element)
+		order = list.New()
+		mu    sync.Mutex
+	)
+
+	// Cleanup goroutine removes IPs unseen for 10+ minutes
+	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				mu.Lock()
+				now := time.Now()
+				for e := order.Back(); e != nil; {
+					lim := e.Value.(*ipLimiter)
+					prev := e.Prev()
+					if now.Sub(lim.lastSeen) > 10*time.Minute {
+						order.Remove(e)
+						delete(items, lim.ip)
+					}
+					e = prev
+				}
+				mu.Unlock()
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ip := getClientIP(r)
+			now := time.Now()
+
+			mu.Lock()
+			elem, exists := items[ip]
+			if exists {
+				order.MoveToFront(elem)
+				elem.Value.(*ipLimiter).lastSeen = now
+			} else {
+				// Evict least recently used if at capacity
+				if order.Len() >= maxIPs {
+					back := order.Back()
+					if back != nil {
+						evicted := back.Value.(*ipLimiter)
+						order.Remove(back)
+						delete(items, evicted.ip)
+					}
+				}
+				lim := &ipLimiter{
+					ip:       ip,
+					limiter:  rate.NewLimiter(rate.Limit(rps), burst),
+					lastSeen: now,
+				}
+				elem = order.PushFront(lim)
+				items[ip] = elem
+			}
+			lim := elem.Value.(*ipLimiter).limiter
+			mu.Unlock()
+
+			if !lim.Allow() {
+				deny(w, r)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// getClientIP extracts the client IP, trusting proxy headers only from private/loopback peers.
+func getClientIP(r *http.Request) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		host = r.RemoteAddr
+	}
+
+	peerIP := net.ParseIP(host)
+	trustedProxy := peerIP != nil && (peerIP.IsLoopback() || peerIP.IsPrivate())
+
+	if trustedProxy {
+		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+			clientIP := xff
+			if i := strings.IndexByte(xff, ','); i > 0 {
+				clientIP = xff[:i]
+			}
+			if ip := net.ParseIP(strings.TrimSpace(clientIP)); ip != nil {
+				return ip.String()
+			}
+			return strings.TrimSpace(clientIP)
+		}
+		if xri := r.Header.Get("X-Real-IP"); xri != "" {
+			if ip := net.ParseIP(strings.TrimSpace(xri)); ip != nil {
+				return ip.String()
+			}
+			return strings.TrimSpace(xri)
+		}
+	}
+
+	if peerIP != nil {
+		return peerIP.String()
+	}
+	return host
+}
+
+// getEnvFloat reads an env var as float64, returning defaultVal if unset or invalid.
+func getEnvFloat(key string, defaultVal float64) float64 {
+	if v := os.Getenv(key); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil {
+			return f
+		}
+	}
+	return defaultVal
+}
+
+// getEnvInt reads an env var as int, returning defaultVal if unset or invalid.
+func getEnvInt(key string, defaultVal int) int {
+	if v := os.Getenv(key); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			return n
+		}
+	}
+	return defaultVal
 }

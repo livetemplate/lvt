@@ -217,6 +217,30 @@ func generateEnvContent(features map[string]bool) string {
 		b.WriteString("\n")
 	}
 
+	// Rate limiting configuration (always available since it's built into the server)
+	b.WriteString("# ============================================================================\n")
+	b.WriteString("# Rate Limiting Configuration\n")
+	b.WriteString("# ============================================================================\n")
+	b.WriteString("\n")
+	b.WriteString("# Global rate limit (requests per second per IP, default: 100)\n")
+	b.WriteString("# RATE_LIMIT_RPS=100\n")
+	b.WriteString("\n")
+	b.WriteString("# Global rate limit burst (max requests in a burst, default: 200)\n")
+	b.WriteString("# RATE_LIMIT_BURST=200\n")
+	b.WriteString("\n")
+	b.WriteString("# Maximum tracked IPs (LRU eviction when full, default: 10000)\n")
+	b.WriteString("# RATE_LIMIT_MAX_IPS=10000\n")
+	b.WriteString("\n")
+
+	if features["auth"] {
+		b.WriteString("# Auth rate limit (requests per second per IP, default: 0.1 = 6 req/min)\n")
+		b.WriteString("# RATE_LIMIT_AUTH_RPS=0.1\n")
+		b.WriteString("\n")
+		b.WriteString("# Auth rate limit burst (max requests in a burst, default: 5)\n")
+		b.WriteString("# RATE_LIMIT_AUTH_BURST=5\n")
+		b.WriteString("\n")
+	}
+
 	// Production-specific
 	b.WriteString("# ============================================================================\n")
 	b.WriteString("# Production Settings\n")
@@ -726,17 +750,22 @@ func getRequiredVars(features map[string]bool) []string {
 // getVarReason returns a human-readable reason why a variable is required
 func getVarReason(key string, features map[string]bool) string {
 	reasons := map[string]string{
-		"APP_ENV":         "application environment",
-		"DATABASE_PATH":   "database configuration",
-		"SESSION_SECRET":  "session security (auth enabled)",
-		"CSRF_SECRET":     "CSRF protection (auth enabled)",
-		"EMAIL_PROVIDER":  "email functionality (auth with email features)",
-		"SMTP_HOST":       "SMTP email sending",
-		"SMTP_PORT":       "SMTP email sending",
-		"SMTP_USER":       "SMTP email sending",
-		"SMTP_PASS":       "SMTP email sending",
-		"EMAIL_FROM":      "sender address for outgoing emails",
-		"EMAIL_FROM_NAME": "sender display name (optional, not required)",
+		"APP_ENV":              "application environment",
+		"DATABASE_PATH":        "database configuration",
+		"SESSION_SECRET":       "session security (auth enabled)",
+		"CSRF_SECRET":          "CSRF protection (auth enabled)",
+		"EMAIL_PROVIDER":       "email functionality (auth with email features)",
+		"SMTP_HOST":            "SMTP email sending",
+		"SMTP_PORT":            "SMTP email sending",
+		"SMTP_USER":            "SMTP email sending",
+		"SMTP_PASS":            "SMTP email sending",
+		"EMAIL_FROM":           "sender address for outgoing emails",
+		"EMAIL_FROM_NAME":      "sender display name (optional, not required)",
+		"RATE_LIMIT_RPS":       "global rate limit (requests per second per IP)",
+		"RATE_LIMIT_BURST":     "global rate limit burst size",
+		"RATE_LIMIT_MAX_IPS":   "maximum tracked IPs for rate limiting",
+		"RATE_LIMIT_AUTH_RPS":  "auth rate limit (requests per second per IP)",
+		"RATE_LIMIT_AUTH_BURST": "auth rate limit burst size",
 	}
 
 	if reason, ok := reasons[key]; ok {
