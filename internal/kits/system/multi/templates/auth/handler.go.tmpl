@@ -101,6 +101,7 @@ var errorMessages = map[string]string{
 	"invalid_token":           "Invalid or expired token",
 	"expired_token":           "Token has expired",
 	"confirm_failed":          "Failed to confirm email",
+	"rate_limited":            "Too many requests. Please wait a moment and try again.",
 }
 
 var successMessages = map[string]string{
@@ -742,9 +743,10 @@ func newController(queries *models.Queries) *{{.StructName}}Controller {
 	return New{{.StructName}}Controller(queries, emailSender, baseURL)
 }
 
-// Handler creates an http.Handler for the auth LiveTemplate view
-// It sets up the controller and returns a handler that can be registered with http.Handle
-func Handler(queries *models.Queries) http.Handler {
+// Handler creates an http.Handler for the auth LiveTemplate view.
+// authRL is an optional rate limiting middleware applied to this handler.
+// Pass nil to disable auth-specific rate limiting.
+func Handler(queries *models.Queries, authRL func(http.Handler) http.Handler) http.Handler {
 	controller := newController(queries)
 
 	// Parse the template
@@ -756,7 +758,7 @@ func Handler(queries *models.Queries) http.Handler {
 	}
 
 	// Return handler that clones template per-request
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Handle error/success query params by setting flash cookies and redirecting to clean URL
 		errCode := r.URL.Query().Get("error")
 		successCode := r.URL.Query().Get("success")
@@ -817,35 +819,46 @@ func Handler(queries *models.Queries) http.Handler {
 
 		tmpl.Handle(controller, livetemplate.AsState(state)).ServeHTTP(w, r)
 	})
+
+	return withMiddleware(h, authRL)
 }
 
-// LogoutHandler returns an http.Handler for the logout endpoint
+// withMiddleware wraps a handler with optional middleware. Returns h unchanged if mw is nil.
+func withMiddleware(h http.Handler, mw func(http.Handler) http.Handler) http.Handler {
+	if mw != nil {
+		return mw(h)
+	}
+	return h
+}
+
+// LogoutHandler returns an http.Handler for the logout endpoint.
 func LogoutHandler(queries *models.Queries) http.Handler {
 	return http.HandlerFunc(newController(queries).HandleLogout)
 }
 
 {{- if .EnableMagicLink }}
-// MagicLinkHandler returns an http.Handler for magic link verification
-func MagicLinkHandler(queries *models.Queries) http.Handler {
-	return http.HandlerFunc(newController(queries).HandleMagicLinkVerify)
+// MagicLinkHandler returns an http.Handler for magic link verification.
+func MagicLinkHandler(queries *models.Queries, authRL func(http.Handler) http.Handler) http.Handler {
+	return withMiddleware(http.HandlerFunc(newController(queries).HandleMagicLinkVerify), authRL)
 }
 {{- end }}
 
 {{- if .EnablePasswordReset }}
-// ResetPasswordHandler returns an http.Handler for password reset
-func ResetPasswordHandler(queries *models.Queries) http.Handler {
-	return http.HandlerFunc(newController(queries).HandleResetPassword)
+// ResetPasswordHandler returns an http.Handler for password reset.
+func ResetPasswordHandler(queries *models.Queries, authRL func(http.Handler) http.Handler) http.Handler {
+	return withMiddleware(http.HandlerFunc(newController(queries).HandleResetPassword), authRL)
 }
 {{- end }}
 
 {{- if .EnableEmailConfirm }}
-// ConfirmEmailHandler returns an http.Handler for email confirmation
+// ConfirmEmailHandler returns an http.Handler for email confirmation.
+// No rate limiting: confirmation tokens are single-use and clicked from a known inbox.
 func ConfirmEmailHandler(queries *models.Queries) http.Handler {
 	return http.HandlerFunc(newController(queries).HandleConfirmEmail)
 }
 {{- end }}
 
-// PasswordLoginHandler returns an http.Handler for password-based login
-func PasswordLoginHandler(queries *models.Queries) http.Handler {
-	return http.HandlerFunc(newController(queries).HandlePasswordLogin)
+// PasswordLoginHandler returns an http.Handler for password-based login.
+func PasswordLoginHandler(queries *models.Queries, authRL func(http.Handler) http.Handler) http.Handler {
+	return withMiddleware(http.HandlerFunc(newController(queries).HandlePasswordLogin), authRL)
 }

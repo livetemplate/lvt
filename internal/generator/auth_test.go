@@ -647,10 +647,10 @@ func main() {
 	queries := &models.Queries{}
 	http.Handle("/", home.Handler(queries))
 	http.Handle("/auth/confirm", auth.ConfirmEmailHandler(queries))
-	http.Handle("/auth/reset", auth.ResetPasswordHandler(queries))
-	http.Handle("/auth/magic", auth.MagicLinkHandler(queries))
+	http.Handle("/auth/reset", auth.ResetPasswordHandler(queries, authRL))
+	http.Handle("/auth/magic", auth.MagicLinkHandler(queries, authRL))
 	http.Handle("/auth/logout", auth.LogoutHandler(queries))
-	http.Handle("/auth", auth.Handler(queries))
+	http.Handle("/auth", auth.Handler(queries, authRL))
 	http.Handle("/posts", posts.Handler(queries))
 	http.Handle("/comments", comments.Handler(queries))
 }
@@ -725,7 +725,7 @@ import (
 
 func main() {
 	queries := &models.Queries{}
-	http.Handle("/auth", auth.Handler(queries))
+	http.Handle("/auth", auth.Handler(queries, authRL))
 
 	// Create auth controller for protecting routes
 	// Console email sender prints magic links to server logs (for development)
@@ -789,7 +789,7 @@ import (
 
 func main() {
 	queries := &models.Queries{}
-	http.Handle("/auth", auth.Handler(queries))
+	http.Handle("/auth", auth.Handler(queries, authRL))
 	http.Handle("/posts", posts.Handler(queries))
 }
 `
@@ -947,7 +947,7 @@ import (
 
 func main() {
 	queries := &models.Queries{}
-	http.Handle("/auth", auth.Handler(queries))
+	http.Handle("/auth", auth.Handler(queries, authRL))
 	http.Handle("/posts", posts.Handler(queries))
 }
 `
@@ -1003,7 +1003,7 @@ import (
 
 func main() {
 	queries := &models.Queries{}
-	http.Handle("/auth", auth.Handler(queries))
+	http.Handle("/auth", auth.Handler(queries, authRL))
 	http.Handle("/posts", posts.Handler(queries))
 }
 

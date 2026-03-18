@@ -109,7 +109,7 @@ func InjectRoute(mainGoPath string, route RouteInfo) error {
 	//   - Resources: "packageName.Handler(queries)" - requires database
 	//   - Views: "packageName.Handler()" - no database
 	// We check for the suffix "(queries)" to reliably detect resource handlers
-	needsQueries := strings.HasSuffix(route.HandlerCall, "(queries)")
+	needsQueries := strings.HasSuffix(route.HandlerCall, "(queries)") || strings.Contains(route.HandlerCall, "(queries,")
 
 	for i, line := range lines {
 		if needsQueries && strings.Contains(line, "_, err := database.InitDB(dbPath)") {

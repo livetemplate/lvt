@@ -217,6 +217,30 @@ func generateEnvContent(features map[string]bool) string {
 		b.WriteString("\n")
 	}
 
+	// Rate limiting configuration (always available since it's built into the server)
+	b.WriteString("# ============================================================================\n")
+	b.WriteString("# Rate Limiting Configuration\n")
+	b.WriteString("# ============================================================================\n")
+	b.WriteString("\n")
+	b.WriteString("# Global rate limit (requests per second per IP, default: 100)\n")
+	b.WriteString("# RATE_LIMIT_RPS=100\n")
+	b.WriteString("\n")
+	b.WriteString("# Global rate limit burst (max requests in a burst, default: 200)\n")
+	b.WriteString("# RATE_LIMIT_BURST=200\n")
+	b.WriteString("\n")
+	b.WriteString("# Maximum tracked IPs (LRU eviction when full, default: 10000)\n")
+	b.WriteString("# RATE_LIMIT_MAX_IPS=10000\n")
+	b.WriteString("\n")
+
+	if features["auth"] {
+		b.WriteString("# Auth rate limit (requests per second per IP, default: 0.1 = 6 req/min)\n")
+		b.WriteString("# RATE_LIMIT_AUTH_RPS=0.1\n")
+		b.WriteString("\n")
+		b.WriteString("# Auth rate limit burst (max requests in a burst, default: 5)\n")
+		b.WriteString("# RATE_LIMIT_AUTH_BURST=5\n")
+		b.WriteString("\n")
+	}
+
 	// Production-specific
 	b.WriteString("# ============================================================================\n")
 	b.WriteString("# Production Settings\n")

@@ -304,6 +304,7 @@ func GenerateAuth(projectRoot string, authConfig *AuthConfig) error {
 			"github.com/google/uuid@latest",
 			"github.com/chromedp/chromedp@latest", // For E2E tests
 			"github.com/livetemplate/lvt@latest",  // Auth utilities (password, email)
+			"golang.org/x/time@latest",            // Rate limiting
 		}
 		if authConfig.EnablePassword {
 			dependencies = append(dependencies, "golang.org/x/crypto@latest")
@@ -325,15 +326,28 @@ func GenerateAuth(projectRoot string, authConfig *AuthConfig) error {
 	// Inject auth routes into main.go
 	mainGoPath := findMainGo(projectRoot)
 	if mainGoPath != "" {
+		// Check if main.go supports rate limiting (has newRateLimiter from updated template).
+		// Older apps generated before rate limiting was added won't have these functions.
+		mainContent, _ := os.ReadFile(mainGoPath)
+		hasRateLimiting := strings.Contains(string(mainContent), "func newRateLimiter")
+
+		// Build handler calls — use authRL parameter only when rate limiting is available
+		handlerWithRL := func(handler string) string {
+			if hasRateLimiting {
+				return handler + "(queries, authRL)"
+			}
+			return handler + "(queries)"
+		}
+
 		// Main auth route (LiveTemplate handler)
 		routes := []RouteInfo{
 			{
 				Path:        "/auth",
 				PackageName: "auth",
-				HandlerCall: "auth.Handler(queries)",
+				HandlerCall: handlerWithRL("auth.Handler"),
 				ImportPath:  authConfig.ModuleName + "/app/auth",
 			},
-			// Logout route
+			// Logout route (no rate limiting — already authenticated)
 			{
 				Path:        "/auth/logout",
 				PackageName: "auth",
@@ -347,7 +361,7 @@ func GenerateAuth(projectRoot string, authConfig *AuthConfig) error {
 			routes = append(routes, RouteInfo{
 				Path:        "/auth/magic",
 				PackageName: "auth",
-				HandlerCall: "auth.MagicLinkHandler(queries)",
+				HandlerCall: handlerWithRL("auth.MagicLinkHandler"),
 				ImportPath:  authConfig.ModuleName + "/app/auth",
 			})
 		}
@@ -357,12 +371,13 @@ func GenerateAuth(projectRoot string, authConfig *AuthConfig) error {
 			routes = append(routes, RouteInfo{
 				Path:        "/auth/reset",
 				PackageName: "auth",
-				HandlerCall: "auth.ResetPasswordHandler(queries)",
+				HandlerCall: handlerWithRL("auth.ResetPasswordHandler"),
 				ImportPath:  authConfig.ModuleName + "/app/auth",
 			})
 		}
 
 		// Add email confirmation route if enabled
+		// No rate limiting: confirmation tokens are single-use from a known inbox
 		if authConfig.EnableEmailConfirm {
 			routes = append(routes, RouteInfo{
 				Path:        "/auth/confirm",
@@ -378,16 +393,27 @@ func GenerateAuth(projectRoot string, authConfig *AuthConfig) error {
 			routes = append(routes, RouteInfo{
 				Path:        "/auth/login",
 				PackageName: "auth",
-				HandlerCall: "auth.PasswordLoginHandler(queries)",
+				HandlerCall: handlerWithRL("auth.PasswordLoginHandler"),
 				ImportPath:  authConfig.ModuleName + "/app/auth",
 			})
 		}
 
+		routesInjected := 0
 		for _, route := range routes {
 			if err := InjectRoute(mainGoPath, route); err != nil {
 				// Log warning but don't fail - user can add route manually
 				fmt.Printf("⚠️  Could not auto-inject route %s: %v\n", route.Path, err)
-				fmt.Printf("   Please add manually: http.Handle(\"%s\", auth.Handler(queries))\n", route.Path)
+				fmt.Printf("   Please add manually: %s\n", route.HandlerCall)
+			} else {
+				routesInjected++
+			}
+		}
+
+		// Inject auth rate limiter creation before auth routes.
+		// Only attempt if routes were injected with authRL references.
+		if hasRateLimiting && routesInjected > 0 {
+			if err := injectAuthRateLimiter(mainGoPath); err != nil {
+				return fmt.Errorf("failed to inject auth rate limiter: %w", err)
 			}
 		}
 
@@ -413,6 +439,72 @@ func GenerateAuth(projectRoot string, authConfig *AuthConfig) error {
 			fmt.Printf("⚠️  Could not update home page for auth: %v\n", err)
 			fmt.Println("   You may need to manually add login/logout buttons to your home page")
 		}
+	}
+
+	return nil
+}
+
+// injectAuthRateLimiter injects the auth rate limiter variable declaration into main.go.
+// It adds `authRL` right before the first auth route, along with a deny handler that
+// redirects to /auth with a rate_limited error.
+//
+// The injected code uses newRateLimiter (defined inline in main.go.tmpl) with
+// configurable env vars for auth-specific rate limiting (default: 0.1 rps, burst 5).
+func injectAuthRateLimiter(mainGoPath string) error {
+	content, err := os.ReadFile(mainGoPath)
+	if err != nil {
+		return fmt.Errorf("failed to read main.go: %w", err)
+	}
+
+	mainContent := string(content)
+
+	// Check if already injected (look for the specific variable declaration)
+	authRLDeclRe := regexp.MustCompile(`\bauthRL\s*:=\s*newRateLimiter`)
+	if authRLDeclRe.MatchString(mainContent) {
+		return nil
+	}
+
+	// Find the first auth handler call that uses authRL as a parameter.
+	// Use a specific pattern to avoid matching comments or unrelated code.
+	authHandlerRe := regexp.MustCompile(`auth\.\w+Handler\(queries,\s*authRL\)`)
+	loc := authHandlerRe.FindStringIndex(mainContent)
+	if loc == nil {
+		return fmt.Errorf("no auth handler calls with authRL found in main.go")
+	}
+	authRLIdx := loc[0]
+
+	// Find the start of the line containing the first authRL usage
+	lineStart := strings.LastIndex(mainContent[:authRLIdx], "\n")
+	if lineStart == -1 {
+		lineStart = 0
+	} else {
+		lineStart++ // skip the newline
+	}
+
+	authRLCode := `	// Auth rate limiter: prevents brute force on login/register/reset endpoints
+	// Default: 0.1 rps (6 req/min) with burst of 5 per IP
+	authDeny := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Retry-After", "60")
+		if strings.Contains(r.Header.Get("Accept"), "application/json") {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusTooManyRequests)
+			w.Write([]byte(` + "`" + `{"error":"rate limit exceeded"}` + "`" + `))
+			return
+		}
+		http.Redirect(w, r, "/auth?error=rate_limited", http.StatusSeeOther)
+	}
+	authRL := newRateLimiter(appCtx,
+		getEnvFloat("RATE_LIMIT_AUTH_RPS", 0.1),
+		getEnvInt("RATE_LIMIT_AUTH_BURST", 5),
+		getEnvInt("RATE_LIMIT_MAX_IPS", 10000),
+		authDeny)
+
+`
+
+	mainContent = mainContent[:lineStart] + authRLCode + mainContent[lineStart:]
+
+	if err := os.WriteFile(mainGoPath, []byte(mainContent), 0644); err != nil {
+		return fmt.Errorf("failed to write main.go: %w", err)
 	}
 
 	return nil
