@@ -320,8 +320,8 @@ func TestActiveEntrySurvivesCleanup(t *testing.T) {
 }
 
 func TestShardedBoundary(t *testing.T) {
-	// MaxIPs=16 hits the sharded path (>= defaultNumShards)
-	wrapped := wrapHandler(t, WithRate(100), WithBurst(100), WithMaxIPs(16))
+	// MaxIPs=64 hits the sharded path (>= defaultNumShards * 4)
+	wrapped := wrapHandler(t, WithRate(100), WithBurst(100), WithMaxIPs(64))
 
 	for i := 0; i < 20; i++ {
 		ip := fmt.Sprintf("192.168.%d.%d", i/256, i%256)

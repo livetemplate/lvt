@@ -385,18 +385,23 @@ func GenerateAuth(projectRoot string, authConfig *AuthConfig) error {
 			})
 		}
 
+		routesInjected := 0
 		for _, route := range routes {
 			if err := InjectRoute(mainGoPath, route); err != nil {
 				// Log warning but don't fail - user can add route manually
 				fmt.Printf("⚠️  Could not auto-inject route %s: %v\n", route.Path, err)
 				fmt.Printf("   Please add manually: http.Handle(\"%s\", auth.Handler(queries, authRL))\n", route.Path)
+			} else {
+				routesInjected++
 			}
 		}
 
-		// Inject auth rate limiter creation before auth routes
-		if err := injectAuthRateLimiter(mainGoPath); err != nil {
-			fmt.Printf("⚠️  Could not inject auth rate limiter: %v\n", err)
-			fmt.Println("   You may need to manually add the authRL rate limiter to main.go")
+		// Inject auth rate limiter creation before auth routes.
+		// Only attempt if routes were successfully injected (they reference authRL).
+		if routesInjected > 0 {
+			if err := injectAuthRateLimiter(mainGoPath); err != nil {
+				return fmt.Errorf("failed to inject auth rate limiter: %w", err)
+			}
 		}
 
 		// Wrap existing resource routes with RequireAuth middleware

@@ -153,7 +153,10 @@ func New(ctx context.Context, opts ...Option) *RateLimiter {
 
 	rl := &RateLimiter{cancel: cancel}
 
-	if cfg.MaxIPs < defaultNumShards {
+	// Use sharding only when there are enough IPs to distribute meaningfully
+	// (at least 4 IPs per shard). Below that, single-mutex avoids tiny shards.
+	shardingThreshold := defaultNumShards * 4 // 64
+	if cfg.MaxIPs < shardingThreshold {
 		rl.mw, rl.done = newSingleMutexLimiter(ctx, &cfg)
 	} else {
 		rl.mw, rl.done = newShardedLimiter(ctx, &cfg, defaultNumShards)
