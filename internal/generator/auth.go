@@ -326,12 +326,25 @@ func GenerateAuth(projectRoot string, authConfig *AuthConfig) error {
 	// Inject auth routes into main.go
 	mainGoPath := findMainGo(projectRoot)
 	if mainGoPath != "" {
+		// Check if main.go supports rate limiting (has newRateLimiter from updated template).
+		// Older apps generated before rate limiting was added won't have these functions.
+		mainContent, _ := os.ReadFile(mainGoPath)
+		hasRateLimiting := strings.Contains(string(mainContent), "func newRateLimiter")
+
+		// Build handler calls — use authRL parameter only when rate limiting is available
+		handlerWithRL := func(handler string) string {
+			if hasRateLimiting {
+				return handler + "(queries, authRL)"
+			}
+			return handler + "(queries)"
+		}
+
 		// Main auth route (LiveTemplate handler)
 		routes := []RouteInfo{
 			{
 				Path:        "/auth",
 				PackageName: "auth",
-				HandlerCall: "auth.Handler(queries, authRL)",
+				HandlerCall: handlerWithRL("auth.Handler"),
 				ImportPath:  authConfig.ModuleName + "/app/auth",
 			},
 			// Logout route (no rate limiting — already authenticated)
@@ -348,7 +361,7 @@ func GenerateAuth(projectRoot string, authConfig *AuthConfig) error {
 			routes = append(routes, RouteInfo{
 				Path:        "/auth/magic",
 				PackageName: "auth",
-				HandlerCall: "auth.MagicLinkHandler(queries, authRL)",
+				HandlerCall: handlerWithRL("auth.MagicLinkHandler"),
 				ImportPath:  authConfig.ModuleName + "/app/auth",
 			})
 		}
@@ -358,7 +371,7 @@ func GenerateAuth(projectRoot string, authConfig *AuthConfig) error {
 			routes = append(routes, RouteInfo{
 				Path:        "/auth/reset",
 				PackageName: "auth",
-				HandlerCall: "auth.ResetPasswordHandler(queries, authRL)",
+				HandlerCall: handlerWithRL("auth.ResetPasswordHandler"),
 				ImportPath:  authConfig.ModuleName + "/app/auth",
 			})
 		}
@@ -380,7 +393,7 @@ func GenerateAuth(projectRoot string, authConfig *AuthConfig) error {
 			routes = append(routes, RouteInfo{
 				Path:        "/auth/login",
 				PackageName: "auth",
-				HandlerCall: "auth.PasswordLoginHandler(queries, authRL)",
+				HandlerCall: handlerWithRL("auth.PasswordLoginHandler"),
 				ImportPath:  authConfig.ModuleName + "/app/auth",
 			})
 		}
@@ -390,15 +403,15 @@ func GenerateAuth(projectRoot string, authConfig *AuthConfig) error {
 			if err := InjectRoute(mainGoPath, route); err != nil {
 				// Log warning but don't fail - user can add route manually
 				fmt.Printf("⚠️  Could not auto-inject route %s: %v\n", route.Path, err)
-				fmt.Printf("   Please add manually: http.Handle(\"%s\", auth.Handler(queries, authRL))\n", route.Path)
+				fmt.Printf("   Please add manually: %s\n", route.HandlerCall)
 			} else {
 				routesInjected++
 			}
 		}
 
 		// Inject auth rate limiter creation before auth routes.
-		// Only attempt if routes were successfully injected (they reference authRL).
-		if routesInjected > 0 {
+		// Only attempt if routes were injected with authRL references.
+		if hasRateLimiting && routesInjected > 0 {
 			if err := injectAuthRateLimiter(mainGoPath); err != nil {
 				return fmt.Errorf("failed to inject auth rate limiter: %w", err)
 			}
