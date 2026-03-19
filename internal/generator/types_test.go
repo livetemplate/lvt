@@ -1,6 +1,10 @@
 package generator
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/livetemplate/lvt/internal/parser"
+)
 
 func TestGetDisplayField(t *testing.T) {
 	tests := []struct {
@@ -72,5 +76,71 @@ func TestGetDisplayField(t *testing.T) {
 				t.Errorf("getDisplayField() = %q, want %q", got.Name, tt.wantName)
 			}
 		})
+	}
+}
+
+func TestFieldDataFromFieldsCopiesMetadata(t *testing.T) {
+	fields := []parser.Field{
+		{
+			Name:   "email",
+			GoType: "string",
+			Metadata: parser.FieldMetadata{
+				ValidateTag:   "required,email",
+				HTMLInputType: "email",
+				HTMLMinLength: 3,
+			},
+		},
+		{
+			Name:   "secret",
+			GoType: "string",
+			Metadata: parser.FieldMetadata{
+				ValidateTag:   "required,min=8",
+				HTMLInputType: "password",
+				HTMLMinLength: 8,
+				IsPassword:    true,
+			},
+		},
+		{
+			Name:   "price",
+			GoType: "float64",
+			Metadata: parser.FieldMetadata{
+				ValidateTag:   "required",
+				HTMLInputType: "number",
+				HTMLStep:      "0.01",
+			},
+		},
+	}
+
+	fd := FieldDataFromFields(fields)
+
+	if len(fd) != 3 {
+		t.Fatalf("expected 3 FieldData, got %d", len(fd))
+	}
+
+	// email
+	if fd[0].ValidateTag != "required,email" {
+		t.Errorf("email ValidateTag = %q, want %q", fd[0].ValidateTag, "required,email")
+	}
+	if fd[0].HTMLInputType != "email" {
+		t.Errorf("email HTMLInputType = %q, want %q", fd[0].HTMLInputType, "email")
+	}
+	if fd[0].HTMLMinLength != 3 {
+		t.Errorf("email HTMLMinLength = %d, want 3", fd[0].HTMLMinLength)
+	}
+
+	// password
+	if fd[1].ValidateTag != "required,min=8" {
+		t.Errorf("password ValidateTag = %q, want %q", fd[1].ValidateTag, "required,min=8")
+	}
+	if !fd[1].IsPassword {
+		t.Error("password IsPassword should be true")
+	}
+	if fd[1].HTMLMinLength != 8 {
+		t.Errorf("password HTMLMinLength = %d, want 8", fd[1].HTMLMinLength)
+	}
+
+	// float
+	if fd[2].HTMLStep != "0.01" {
+		t.Errorf("float HTMLStep = %q, want %q", fd[2].HTMLStep, "0.01")
 	}
 }

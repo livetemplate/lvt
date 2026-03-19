@@ -87,6 +87,36 @@ func TestParseFields(t *testing.T) {
 			input:   []string{"status:select:,,"},
 			wantErr: true, // 0 valid options
 		},
+		{
+			name:  "email field type",
+			input: []string{"email:email"},
+			want:  1,
+		},
+		{
+			name:  "url field type",
+			input: []string{"website:url"},
+			want:  1,
+		},
+		{
+			name:  "phone field type",
+			input: []string{"phone:phone"},
+			want:  1,
+		},
+		{
+			name:  "tel field type",
+			input: []string{"phone:tel"},
+			want:  1,
+		},
+		{
+			name:  "password field type",
+			input: []string{"secret:password"},
+			want:  1,
+		},
+		{
+			name:  "mixed fields with new types",
+			input: []string{"name:string", "email:email", "phone:phone", "website:url", "secret:password"},
+			want:  5,
+		},
 	}
 
 	for _, tt := range tests {
@@ -194,6 +224,11 @@ func TestMapType(t *testing.T) {
 		{"float64", "float64", "REAL", false, false},
 		{"time", "time.Time", "DATETIME", false, false},
 		{"datetime", "time.Time", "DATETIME", false, false},
+		{"email", "string", "TEXT", false, false},
+		{"url", "string", "TEXT", false, false},
+		{"phone", "string", "TEXT", false, false},
+		{"tel", "string", "TEXT", false, false},
+		{"password", "string", "TEXT", false, false},
 		{"uuid", "", "", false, true},
 		{"unknown", "", "", false, true},
 	}
@@ -221,6 +256,90 @@ func TestMapType(t *testing.T) {
 				t.Errorf("got isTextarea %v, want %v", isTextarea, tt.wantTextarea)
 			}
 		})
+	}
+}
+
+func TestGetFieldMetadata(t *testing.T) {
+	tests := []struct {
+		fieldType     string
+		wantValidate  string
+		wantInputType string
+		wantMinLen    int
+		wantPassword  bool
+		wantStep      string
+	}{
+		{"email", "required,email", "email", 3, false, ""},
+		{"url", "required,url", "url", 0, false, ""},
+		{"phone", "required", "tel", 0, false, ""},
+		{"tel", "required", "tel", 0, false, ""},
+		{"password", "required,min=8", "password", 8, true, ""},
+		{"string", "required,min=3", "text", 3, false, ""},
+		{"str", "required,min=3", "text", 3, false, ""},
+		{"int", "required", "number", 0, false, ""},
+		{"bool", "", "checkbox", 0, false, ""},
+		{"float", "required", "number", 0, false, "0.01"},
+		{"text", "required,min=3", "text", 3, false, ""},
+		{"unknown_type", "", "text", 0, false, ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.fieldType, func(t *testing.T) {
+			m := GetFieldMetadata(tt.fieldType)
+			if m.ValidateTag != tt.wantValidate {
+				t.Errorf("ValidateTag = %q, want %q", m.ValidateTag, tt.wantValidate)
+			}
+			if m.HTMLInputType != tt.wantInputType {
+				t.Errorf("HTMLInputType = %q, want %q", m.HTMLInputType, tt.wantInputType)
+			}
+			if m.HTMLMinLength != tt.wantMinLen {
+				t.Errorf("HTMLMinLength = %d, want %d", m.HTMLMinLength, tt.wantMinLen)
+			}
+			if m.IsPassword != tt.wantPassword {
+				t.Errorf("IsPassword = %v, want %v", m.IsPassword, tt.wantPassword)
+			}
+			if m.HTMLStep != tt.wantStep {
+				t.Errorf("HTMLStep = %q, want %q", m.HTMLStep, tt.wantStep)
+			}
+		})
+	}
+}
+
+func TestParseFieldsMetadata(t *testing.T) {
+	fields, err := ParseFields([]string{"email:email", "secret:password", "website:url", "phone:tel"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(fields) != 4 {
+		t.Fatalf("expected 4 fields, got %d", len(fields))
+	}
+
+	// email field
+	if fields[0].Metadata.ValidateTag != "required,email" {
+		t.Errorf("email ValidateTag = %q, want %q", fields[0].Metadata.ValidateTag, "required,email")
+	}
+	if fields[0].Metadata.HTMLInputType != "email" {
+		t.Errorf("email HTMLInputType = %q, want %q", fields[0].Metadata.HTMLInputType, "email")
+	}
+
+	// password field
+	if fields[1].Metadata.ValidateTag != "required,min=8" {
+		t.Errorf("password ValidateTag = %q, want %q", fields[1].Metadata.ValidateTag, "required,min=8")
+	}
+	if !fields[1].Metadata.IsPassword {
+		t.Error("password field should have IsPassword=true")
+	}
+	if fields[1].Metadata.HTMLMinLength != 8 {
+		t.Errorf("password HTMLMinLength = %d, want 8", fields[1].Metadata.HTMLMinLength)
+	}
+
+	// url field
+	if fields[2].Metadata.ValidateTag != "required,url" {
+		t.Errorf("url ValidateTag = %q, want %q", fields[2].Metadata.ValidateTag, "required,url")
+	}
+
+	// tel field
+	if fields[3].Metadata.HTMLInputType != "tel" {
+		t.Errorf("tel HTMLInputType = %q, want %q", fields[3].Metadata.HTMLInputType, "tel")
 	}
 }
 

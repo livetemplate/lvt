@@ -16,31 +16,29 @@ type [[.ResourceName]]Item = models.[[.ResourceNameSingular]]
 
 type AddInput struct {
 [[- range .NonReferenceFields]]
-[[- if eq .GoType "bool"]]
-	[[.Name | camelCase]] [[.GoType]] `json:"[[.Name]]"`
-[[- else if .IsSelect]]
-	[[.Name | camelCase]] [[.GoType]] `json:"[[.Name]]" validate:"required"`
-[[- else if eq .GoType "string"]]
-	[[.Name | camelCase]] [[.GoType]] `json:"[[.Name]]" validate:"required,min=1"`
+[[- if .ValidateTag]]
+	[[.Name | camelCase]] [[.GoType]] `json:"[[.Name]]" validate:"[[.ValidateTag]]"`
 [[- else]]
-	[[.Name | camelCase]] [[.GoType]] `json:"[[.Name]]" validate:"required"`
+	[[.Name | camelCase]] [[.GoType]] `json:"[[.Name]]"`
 [[- end]]
 [[- end]]
+[[- range .NonReferenceFields]][[- if .IsPassword]]
+	[[.Name | camelCase]]Confirmation string `json:"[[.Name]]_confirmation" validate:"required,eqfield=[[.Name | camelCase]]"`
+[[- end]][[- end]]
 }
 
 type UpdateInput struct {
 	ID string `json:"id" validate:"required"`
 [[- range .NonReferenceFields]]
-[[- if eq .GoType "bool"]]
-	[[.Name | camelCase]] [[.GoType]] `json:"[[.Name]]"`
-[[- else if .IsSelect]]
-	[[.Name | camelCase]] [[.GoType]] `json:"[[.Name]]" validate:"required"`
-[[- else if eq .GoType "string"]]
-	[[.Name | camelCase]] [[.GoType]] `json:"[[.Name]]" validate:"required,min=1"`
+[[- if .ValidateTag]]
+	[[.Name | camelCase]] [[.GoType]] `json:"[[.Name]]" validate:"[[.ValidateTag]]"`
 [[- else]]
-	[[.Name | camelCase]] [[.GoType]] `json:"[[.Name]]" validate:"required"`
+	[[.Name | camelCase]] [[.GoType]] `json:"[[.Name]]"`
 [[- end]]
 [[- end]]
+[[- range .NonReferenceFields]][[- if .IsPassword]]
+	[[.Name | camelCase]]Confirmation string `json:"[[.Name]]_confirmation" validate:"required,eqfield=[[.Name | camelCase]]"`
+[[- end]][[- end]]
 }
 
 type IDInput struct {

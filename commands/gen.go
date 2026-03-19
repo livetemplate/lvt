@@ -587,6 +587,7 @@ func parseFieldsWithInference(fieldArgs []string) ([]parser.Field, error) {
 			GoType:     goType,
 			SQLType:    sqlType,
 			IsTextarea: isTextarea,
+			Metadata:   parser.GetFieldMetadata(typ),
 		}
 
 		// Parse reference metadata if it's a reference type
@@ -599,6 +600,7 @@ func parseFieldsWithInference(fieldArgs []string) ([]parser.Field, error) {
 			field.IsReference = true
 			field.ReferencedTable = parts[1]
 			field.OnDelete = "CASCADE" // Default
+			field.Metadata = parser.FieldMetadata{ValidateTag: "required", HTMLInputType: "text"}
 
 			// Check for custom on_delete action
 			if len(parts) > 2 {
