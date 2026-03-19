@@ -101,7 +101,7 @@ func ParseFields(args []string) ([]Field, error) {
 			GoType:     goType,
 			SQLType:    sqlType,
 			IsTextarea: isTextarea,
-			Metadata:   GetFieldMetadata(typ, goType),
+			Metadata:   GetFieldMetadata(typ),
 		}
 
 		if strings.HasPrefix(strings.ToLower(fullType), "references:") {
@@ -113,6 +113,7 @@ func ParseFields(args []string) ([]Field, error) {
 
 			field.IsReference = true
 			field.ReferencedTable = parts[1]
+			field.Metadata = FieldMetadata{ValidateTag: "required", HTMLInputType: "text"}
 
 			// Default to CASCADE
 			field.OnDelete = "CASCADE"
@@ -170,6 +171,12 @@ var fieldTypeTable = map[string]fieldTypeInfo{
 	"password":  {GoType: "string", SQLType: "TEXT", Metadata: FieldMetadata{ValidateTag: "required,min=8", HTMLInputType: "password", HTMLMinLength: 8, IsPassword: true}},
 }
 
+// supportedTypes returns a comma-separated list of primary supported type names.
+func supportedTypes() string {
+	// Show primary names (not aliases) in a logical order
+	return "string, text, int, bool, float, time, email, url, phone, tel, password"
+}
+
 // MapType maps a user-provided type to Go and SQL types.
 // Also handles references syntax: references:table_name[:on_delete_action]
 // Returns: goType, sqlType, isTextarea, error
@@ -180,13 +187,13 @@ func MapType(typ string) (goType, sqlType string, isTextarea bool, err error) {
 
 	info, ok := fieldTypeTable[strings.ToLower(typ)]
 	if !ok {
-		return "", "", false, fmt.Errorf("unsupported type '%s' (supported: string, text, int, bool, float, time, email, url, phone, password, references:table)", typ)
+		return "", "", false, fmt.Errorf("unsupported type '%s' (supported: %s, references:table)", typ, supportedTypes())
 	}
 	return info.GoType, info.SQLType, info.IsTextarea, nil
 }
 
 // GetFieldMetadata returns validation and HTML metadata for a given field type.
-func GetFieldMetadata(fieldType, goType string) FieldMetadata {
+func GetFieldMetadata(fieldType string) FieldMetadata {
 	if info, ok := fieldTypeTable[strings.ToLower(fieldType)]; ok {
 		return info.Metadata
 	}

@@ -81,7 +81,8 @@
 [[- else if eq .GoType "float64"]]
         <input type="number"[[if .HTMLStep]] step="[[.HTMLStep]]"[[else]] step="any"[[end]] name="[[.Name]]" value="{{$.EditingItem.[[ .Name | camelCase]]}}" required style="flex: 1; min-width: 80px; padding: 0.375rem; border: 1px solid #d1d5db; border-radius: 0.25rem;">
 [[- else if .IsPassword]]
-        <input type="password" name="[[.Name]]" placeholder="Enter new [[.Name]]"[[if gt .HTMLMinLength 0]] minlength="[[.HTMLMinLength]]"[[end]] required style="flex: 1; min-width: 120px; padding: 0.375rem; border: 1px solid #d1d5db; border-radius: 0.25rem;">
+        <input type="password" name="[[.Name]]" placeholder="Enter new [[.Name]]"[[if gt .HTMLMinLength 0]] minlength="[[.HTMLMinLength]]"[[end]][[if gt .HTMLMaxLength 0]] maxlength="[[.HTMLMaxLength]]"[[end]] required style="flex: 1; min-width: 120px; padding: 0.375rem; border: 1px solid #d1d5db; border-radius: 0.25rem;">
+        <input type="password" name="[[.Name]]_confirmation" placeholder="Confirm [[.Name]]"[[if gt .HTMLMinLength 0]] minlength="[[.HTMLMinLength]]"[[end]] required style="flex: 1; min-width: 120px; padding: 0.375rem; border: 1px solid #d1d5db; border-radius: 0.25rem;">
 [[- else]]
         <input type="[[.HTMLInputType]]" name="[[.Name]]" value="{{$.EditingItem.[[ .Name | camelCase]]}}"[[if gt .HTMLMinLength 0]] minlength="[[.HTMLMinLength]]"[[end]][[if gt .HTMLMaxLength 0]] maxlength="[[.HTMLMaxLength]]"[[end]] required style="flex: 1; min-width: 120px; padding: 0.375rem; border: 1px solid #d1d5db; border-radius: 0.25rem;">
 [[- end]]

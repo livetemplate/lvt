@@ -73,16 +73,16 @@ func (d ResourceData) NonReferenceFields() []FieldData {
 }
 
 type FieldData struct {
-	Name            string
-	GoType          string
-	SQLType         string
-	IsReference     bool
-	ReferencedTable string
-	OnDelete        string
-	IsTextarea      bool     // true if field should render as textarea
-	IsSelect        bool     // true if field should render as <select>
-	SelectOptions   []string // options for select fields
-	parser.FieldMetadata     // validation + HTML rendering metadata (embedded)
+	Name                 string
+	GoType               string
+	SQLType              string
+	IsReference          bool
+	ReferencedTable      string
+	OnDelete             string
+	IsTextarea           bool     // true if field should render as textarea
+	IsSelect             bool     // true if field should render as <select>
+	SelectOptions        []string // options for select fields
+	parser.FieldMetadata          // validation + HTML rendering metadata (embedded)
 }
 
 type AppData struct {

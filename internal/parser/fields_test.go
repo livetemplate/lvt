@@ -262,29 +262,29 @@ func TestMapType(t *testing.T) {
 func TestGetFieldMetadata(t *testing.T) {
 	tests := []struct {
 		fieldType     string
-		goType        string
 		wantValidate  string
 		wantInputType string
 		wantMinLen    int
 		wantPassword  bool
 		wantStep      string
 	}{
-		{"email", "string", "required,email", "email", 3, false, ""},
-		{"url", "string", "required,url", "url", 0, false, ""},
-		{"phone", "string", "required", "tel", 0, false, ""},
-		{"tel", "string", "required", "tel", 0, false, ""},
-		{"password", "string", "required,min=8", "password", 8, true, ""},
-		{"string", "string", "required,min=3", "text", 3, false, ""},
-		{"str", "string", "required,min=3", "text", 3, false, ""},
-		{"int", "int64", "required", "number", 0, false, ""},
-		{"bool", "bool", "", "checkbox", 0, false, ""},
-		{"float", "float64", "required", "number", 0, false, "0.01"},
-		{"text", "string", "required,min=3", "text", 3, false, ""},
+		{"email", "required,email", "email", 3, false, ""},
+		{"url", "required,url", "url", 0, false, ""},
+		{"phone", "required", "tel", 0, false, ""},
+		{"tel", "required", "tel", 0, false, ""},
+		{"password", "required,min=8", "password", 8, true, ""},
+		{"string", "required,min=3", "text", 3, false, ""},
+		{"str", "required,min=3", "text", 3, false, ""},
+		{"int", "required", "number", 0, false, ""},
+		{"bool", "", "checkbox", 0, false, ""},
+		{"float", "required", "number", 0, false, "0.01"},
+		{"text", "required,min=3", "text", 3, false, ""},
+		{"unknown_type", "", "text", 0, false, ""},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.fieldType, func(t *testing.T) {
-			m := GetFieldMetadata(tt.fieldType, tt.goType)
+			m := GetFieldMetadata(tt.fieldType)
 			if m.ValidateTag != tt.wantValidate {
 				t.Errorf("ValidateTag = %q, want %q", m.ValidateTag, tt.wantValidate)
 			}
