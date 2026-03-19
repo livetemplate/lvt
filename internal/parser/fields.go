@@ -8,6 +8,16 @@ import (
 	"golang.org/x/text/language"
 )
 
+// FieldMetadata holds validation and HTML rendering metadata derived from the field type.
+type FieldMetadata struct {
+	ValidateTag   string // e.g. "required,email", "required,min=8"
+	HTMLInputType string // e.g. "email", "url", "tel", "password", "text", "number"
+	HTMLMinLength int    // 0 = not set
+	HTMLMaxLength int    // 0 = not set
+	HTMLStep      string // e.g. "0.01" for floats
+	IsPassword    bool   // suppress value echo in edit forms
+}
+
 type Field struct {
 	Name            string
 	Type            string
@@ -19,6 +29,7 @@ type Field struct {
 	IsTextarea      bool     // true if field should render as textarea
 	IsSelect        bool     // true if field should render as <select>
 	SelectOptions   []string // options for select fields
+	Metadata        FieldMetadata
 }
 
 // ParseFields parses field definitions in the format "name:type name2:type2"
@@ -66,6 +77,10 @@ func ParseFields(args []string) ([]Field, error) {
 				SQLType:       "TEXT",
 				IsSelect:      true,
 				SelectOptions: options,
+				Metadata: FieldMetadata{
+					ValidateTag:   "required",
+					HTMLInputType: "text",
+				},
 			})
 			continue
 		}
@@ -86,6 +101,7 @@ func ParseFields(args []string) ([]Field, error) {
 			GoType:     goType,
 			SQLType:    sqlType,
 			IsTextarea: isTextarea,
+			Metadata:   GetFieldMetadata(typ, goType),
 		}
 
 		if strings.HasPrefix(strings.ToLower(fullType), "references:") {
@@ -122,34 +138,59 @@ func ParseFields(args []string) ([]Field, error) {
 	return fields, nil
 }
 
-// MapType maps a user-provided type to Go and SQL types
+// fieldTypeInfo holds the combined type mapping and metadata for a field type.
+type fieldTypeInfo struct {
+	GoType     string
+	SQLType    string
+	IsTextarea bool
+	Metadata   FieldMetadata
+}
+
+// fieldTypeTable is the single source of truth for field type → Go/SQL/metadata mapping.
+var fieldTypeTable = map[string]fieldTypeInfo{
+	"string":    {GoType: "string", SQLType: "TEXT", Metadata: FieldMetadata{ValidateTag: "required,min=3", HTMLInputType: "text", HTMLMinLength: 3}},
+	"str":       {GoType: "string", SQLType: "TEXT", Metadata: FieldMetadata{ValidateTag: "required,min=3", HTMLInputType: "text", HTMLMinLength: 3}},
+	"text":      {GoType: "string", SQLType: "TEXT", IsTextarea: true, Metadata: FieldMetadata{ValidateTag: "required,min=3", HTMLInputType: "text", HTMLMinLength: 3}},
+	"textarea":  {GoType: "string", SQLType: "TEXT", IsTextarea: true, Metadata: FieldMetadata{ValidateTag: "required,min=3", HTMLInputType: "text", HTMLMinLength: 3}},
+	"longtext":  {GoType: "string", SQLType: "TEXT", IsTextarea: true, Metadata: FieldMetadata{ValidateTag: "required,min=3", HTMLInputType: "text", HTMLMinLength: 3}},
+	"int":       {GoType: "int64", SQLType: "INTEGER", Metadata: FieldMetadata{ValidateTag: "required", HTMLInputType: "number"}},
+	"integer":   {GoType: "int64", SQLType: "INTEGER", Metadata: FieldMetadata{ValidateTag: "required", HTMLInputType: "number"}},
+	"bool":      {GoType: "bool", SQLType: "BOOLEAN", Metadata: FieldMetadata{HTMLInputType: "checkbox"}},
+	"boolean":   {GoType: "bool", SQLType: "BOOLEAN", Metadata: FieldMetadata{HTMLInputType: "checkbox"}},
+	"float":     {GoType: "float64", SQLType: "REAL", Metadata: FieldMetadata{ValidateTag: "required", HTMLInputType: "number", HTMLStep: "0.01"}},
+	"float64":   {GoType: "float64", SQLType: "REAL", Metadata: FieldMetadata{ValidateTag: "required", HTMLInputType: "number", HTMLStep: "0.01"}},
+	"decimal":   {GoType: "float64", SQLType: "REAL", Metadata: FieldMetadata{ValidateTag: "required", HTMLInputType: "number", HTMLStep: "0.01"}},
+	"time":      {GoType: "time.Time", SQLType: "DATETIME", Metadata: FieldMetadata{ValidateTag: "required", HTMLInputType: "datetime-local"}},
+	"datetime":  {GoType: "time.Time", SQLType: "DATETIME", Metadata: FieldMetadata{ValidateTag: "required", HTMLInputType: "datetime-local"}},
+	"timestamp": {GoType: "time.Time", SQLType: "DATETIME", Metadata: FieldMetadata{ValidateTag: "required", HTMLInputType: "datetime-local"}},
+	"email":     {GoType: "string", SQLType: "TEXT", Metadata: FieldMetadata{ValidateTag: "required,email", HTMLInputType: "email", HTMLMinLength: 3}},
+	"url":       {GoType: "string", SQLType: "TEXT", Metadata: FieldMetadata{ValidateTag: "required,url", HTMLInputType: "url"}},
+	"phone":     {GoType: "string", SQLType: "TEXT", Metadata: FieldMetadata{ValidateTag: "required", HTMLInputType: "tel"}},
+	"tel":       {GoType: "string", SQLType: "TEXT", Metadata: FieldMetadata{ValidateTag: "required", HTMLInputType: "tel"}},
+	"password":  {GoType: "string", SQLType: "TEXT", Metadata: FieldMetadata{ValidateTag: "required,min=8", HTMLInputType: "password", HTMLMinLength: 8, IsPassword: true}},
+}
+
+// MapType maps a user-provided type to Go and SQL types.
 // Also handles references syntax: references:table_name[:on_delete_action]
 // Returns: goType, sqlType, isTextarea, error
 func MapType(typ string) (goType, sqlType string, isTextarea bool, err error) {
-	// Check if it's a reference type
 	if strings.HasPrefix(strings.ToLower(typ), "references:") {
-		// Format: references:table_name[:on_delete_action]
-		// We return TEXT type to match our primary key type
-		// The reference metadata is handled separately
 		return "string", "TEXT", false, nil
 	}
 
-	switch strings.ToLower(typ) {
-	case "string", "str":
-		return "string", "TEXT", false, nil
-	case "text", "textarea", "longtext":
-		return "string", "TEXT", true, nil
-	case "int", "integer":
-		return "int64", "INTEGER", false, nil
-	case "bool", "boolean":
-		return "bool", "BOOLEAN", false, nil
-	case "float", "float64", "decimal":
-		return "float64", "REAL", false, nil
-	case "time", "datetime", "timestamp":
-		return "time.Time", "DATETIME", false, nil
-	default:
-		return "", "", false, fmt.Errorf("unsupported type '%s' (supported: string, text, int, bool, float, time, references:table)", typ)
+	info, ok := fieldTypeTable[strings.ToLower(typ)]
+	if !ok {
+		return "", "", false, fmt.Errorf("unsupported type '%s' (supported: string, text, int, bool, float, time, email, url, phone, password, references:table)", typ)
 	}
+	return info.GoType, info.SQLType, info.IsTextarea, nil
+}
+
+// GetFieldMetadata returns validation and HTML metadata for a given field type.
+func GetFieldMetadata(fieldType, goType string) FieldMetadata {
+	if info, ok := fieldTypeTable[strings.ToLower(fieldType)]; ok {
+		return info.Metadata
+	}
+	return FieldMetadata{HTMLInputType: "text"}
 }
 
 // FieldsToGoStruct generates Go struct field declarations

@@ -34,7 +34,7 @@
 [[- end]]
       </select>
 [[- else if eq .GoType "string"]]
-      <input[[if ne (inputClass $.CSSFramework) ""]] class="[[inputClass $.CSSFramework]]"[[end]] type="text" name="[[.Name]]" placeholder="Enter [[.Name]]" required {{if .lvt.HasError "[[.Name]]"}}aria-invalid="true"{{end}}>
+      <input[[if ne (inputClass $.CSSFramework) ""]] class="[[inputClass $.CSSFramework]]"[[end]] type="[[.HTMLInputType]]" name="[[.Name]]" placeholder="Enter [[.Name]]"[[if gt .HTMLMinLength 0]] minlength="[[.HTMLMinLength]]"[[end]][[if gt .HTMLMaxLength 0]] maxlength="[[.HTMLMaxLength]]"[[end]] required {{if .lvt.HasError "[[.Name]]"}}aria-invalid="true"{{end}}>
 [[- else if eq .GoType "int64"]]
       <input[[if ne (inputClass $.CSSFramework) ""]] class="[[inputClass $.CSSFramework]]"[[end]] type="number" name="[[.Name]]" placeholder="Enter [[.Name]]" required {{if .lvt.HasError "[[.Name]]"}}aria-invalid="true"{{end}}>
 [[- else if eq .GoType "bool"]]
@@ -43,12 +43,21 @@
         [[.Name | title]]
       </label>
 [[- else if eq .GoType "float64"]]
-      <input[[if ne (inputClass $.CSSFramework) ""]] class="[[inputClass $.CSSFramework]]"[[end]] type="number" step="0.01" name="[[.Name]]" placeholder="Enter [[.Name]]" required {{if .lvt.HasError "[[.Name]]"}}aria-invalid="true"{{end}}>
+      <input[[if ne (inputClass $.CSSFramework) ""]] class="[[inputClass $.CSSFramework]]"[[end]] type="number"[[if .HTMLStep]] step="[[.HTMLStep]]"[[end]] name="[[.Name]]" placeholder="Enter [[.Name]]" required {{if .lvt.HasError "[[.Name]]"}}aria-invalid="true"{{end}}>
 [[- end]]
       {{if .lvt.HasError "[[.Name]]"}}
       <small style="color: #c00; font-size: 0.875rem;">{{.lvt.Error "[[.Name]]"}}</small>
       {{end}}
     </div>
+[[- if .IsPassword]]
+    <div[[if ne (fieldClass $.CSSFramework) ""]] class="[[fieldClass $.CSSFramework]]"[[end]]>
+      <label[[if ne (labelClass $.CSSFramework) ""]] class="[[labelClass $.CSSFramework]]"[[end]]>Confirm [[.Name | title]]</label>
+      <input[[if ne (inputClass $.CSSFramework) ""]] class="[[inputClass $.CSSFramework]]"[[end]] type="password" name="[[.Name]]_confirmation" placeholder="Confirm [[.Name]]" required[[if gt .HTMLMinLength 0]] minlength="[[.HTMLMinLength]]"[[end]] {{if .lvt.HasError "[[.Name]]_confirmation"}}aria-invalid="true"{{end}}>
+      {{if .lvt.HasError "[[.Name]]_confirmation"}}
+      <small style="color: #c00; font-size: 0.875rem;">{{.lvt.Error "[[.Name]]_confirmation"}}</small>
+      {{end}}
+    </div>
+[[- end]]
 [[- end]]
     <div[[if ne (fieldClass .CSSFramework) ""]] class="[[fieldClass .CSSFramework]]"[[end]]>
       <button[[if ne (buttonClass .CSSFramework "primary") ""]] class="[[buttonClass .CSSFramework "primary"]]"[[end]] style="margin-right: 8px; padding: 0.5rem 1rem; font-size: 1rem; min-width: 100px;" type="submit" lvt-disable-with="Adding...">Add [[.ResourceName]]</button>
@@ -84,7 +93,11 @@
 [[- end]]
       </select>
 [[- else if eq .GoType "string"]]
-      <input[[if ne (inputClass $.CSSFramework) ""]] class="[[inputClass $.CSSFramework]]"[[end]] type="text" name="[[.Name]]" placeholder="Enter [[.Name]]" value="{{.Editing[[$.ResourceName]].[[.Name | camelCase]]}}" required {{if .lvt.HasError "[[.Name]]"}}aria-invalid="true"{{end}}>
+[[- if .IsPassword]]
+      <input[[if ne (inputClass $.CSSFramework) ""]] class="[[inputClass $.CSSFramework]]"[[end]] type="password" name="[[.Name]]" placeholder="Enter new [[.Name]]"[[if gt .HTMLMinLength 0]] minlength="[[.HTMLMinLength]]"[[end]][[if gt .HTMLMaxLength 0]] maxlength="[[.HTMLMaxLength]]"[[end]] required {{if .lvt.HasError "[[.Name]]"}}aria-invalid="true"{{end}}>
+[[- else]]
+      <input[[if ne (inputClass $.CSSFramework) ""]] class="[[inputClass $.CSSFramework]]"[[end]] type="[[.HTMLInputType]]" name="[[.Name]]" placeholder="Enter [[.Name]]" value="{{.Editing[[$.ResourceName]].[[.Name | camelCase]]}}"[[if gt .HTMLMinLength 0]] minlength="[[.HTMLMinLength]]"[[end]][[if gt .HTMLMaxLength 0]] maxlength="[[.HTMLMaxLength]]"[[end]] required {{if .lvt.HasError "[[.Name]]"}}aria-invalid="true"{{end}}>
+[[- end]]
 [[- else if eq .GoType "int64"]]
       <input[[if ne (inputClass $.CSSFramework) ""]] class="[[inputClass $.CSSFramework]]"[[end]] type="number" name="[[.Name]]" placeholder="Enter [[.Name]]" value="{{.Editing[[$.ResourceName]].[[.Name | camelCase]]}}" required {{if .lvt.HasError "[[.Name]]"}}aria-invalid="true"{{end}}>
 [[- else if eq .GoType "bool"]]
@@ -93,12 +106,21 @@
         [[.Name | title]]
       </label>
 [[- else if eq .GoType "float64"]]
-      <input[[if ne (inputClass $.CSSFramework) ""]] class="[[inputClass $.CSSFramework]]"[[end]] type="number" step="0.01" name="[[.Name]]" placeholder="Enter [[.Name]]" value="{{.Editing[[$.ResourceName]].[[.Name | camelCase]]}}" required {{if .lvt.HasError "[[.Name]]"}}aria-invalid="true"{{end}}>
+      <input[[if ne (inputClass $.CSSFramework) ""]] class="[[inputClass $.CSSFramework]]"[[end]] type="number"[[if .HTMLStep]] step="[[.HTMLStep]]"[[end]] name="[[.Name]]" placeholder="Enter [[.Name]]" value="{{.Editing[[$.ResourceName]].[[.Name | camelCase]]}}" required {{if .lvt.HasError "[[.Name]]"}}aria-invalid="true"{{end}}>
 [[- end]]
       {{if .lvt.HasError "[[.Name]]"}}
       <small style="color: #c00; font-size: 0.875rem;">{{.lvt.Error "[[.Name]]"}}</small>
       {{end}}
     </div>
+[[- if .IsPassword]]
+    <div[[if ne (fieldClass $.CSSFramework) ""]] class="[[fieldClass $.CSSFramework]]"[[end]]>
+      <label[[if ne (labelClass $.CSSFramework) ""]] class="[[labelClass $.CSSFramework]]"[[end]]>Confirm [[.Name | title]]</label>
+      <input[[if ne (inputClass $.CSSFramework) ""]] class="[[inputClass $.CSSFramework]]"[[end]] type="password" name="[[.Name]]_confirmation" placeholder="Confirm [[.Name]]" required[[if gt .HTMLMinLength 0]] minlength="[[.HTMLMinLength]]"[[end]] {{if .lvt.HasError "[[.Name]]_confirmation"}}aria-invalid="true"{{end}}>
+      {{if .lvt.HasError "[[.Name]]_confirmation"}}
+      <small style="color: #c00; font-size: 0.875rem;">{{.lvt.Error "[[.Name]]_confirmation"}}</small>
+      {{end}}
+    </div>
+[[- end]]
 [[- end]]
     <div[[if ne (fieldClass .CSSFramework) ""]] class="[[fieldClass .CSSFramework]]"[[end]] style="display: flex; gap: 8px; margin-top: 1.5rem;">
       <button[[if ne (buttonClass .CSSFramework "primary") ""]] class="[[buttonClass .CSSFramework "primary"]]"[[end]] type="submit" lvt-disable-with="Updating...">Save</button>

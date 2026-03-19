@@ -24,6 +24,7 @@ func FieldDataFromFields(fields []parser.Field) []FieldData {
 			IsTextarea:      f.IsTextarea,
 			IsSelect:        f.IsSelect,
 			SelectOptions:   f.SelectOptions,
+			FieldMetadata:   f.Metadata,
 		}
 	}
 	return fd
@@ -81,6 +82,7 @@ type FieldData struct {
 	IsTextarea      bool     // true if field should render as textarea
 	IsSelect        bool     // true if field should render as <select>
 	SelectOptions   []string // options for select fields
+	parser.FieldMetadata     // validation + HTML rendering metadata (embedded)
 }
 
 type AppData struct {

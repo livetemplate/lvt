@@ -21,8 +21,8 @@ func TestResourceHandlerGolden(t *testing.T) {
 	}
 
 	fields := []parser.Field{
-		{Name: "name", Type: "string", GoType: "string", SQLType: "TEXT"},
-		{Name: "age", Type: "int", GoType: "int64", SQLType: "INTEGER"},
+		{Name: "name", Type: "string", GoType: "string", SQLType: "TEXT", Metadata: parser.GetFieldMetadata("string", "string")},
+		{Name: "age", Type: "int", GoType: "int64", SQLType: "INTEGER", Metadata: parser.GetFieldMetadata("int", "int64")},
 	}
 
 	if err := generator.GenerateResource(tmpDir, "testmodule", "User", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", ""); err != nil {
@@ -91,7 +91,7 @@ func TestResourceHandlerUnstyledImport(t *testing.T) {
 	}
 
 	fields := []parser.Field{
-		{Name: "name", Type: "string", GoType: "string", SQLType: "TEXT"},
+		{Name: "name", Type: "string", GoType: "string", SQLType: "TEXT", Metadata: parser.GetFieldMetadata("string", "string")},
 	}
 
 	if err := generator.GenerateResource(tmpDir, "testmodule", "Item", fields, "multi", "tailwind", "unstyled", "infinite", 20, "modal", ""); err != nil {
@@ -123,7 +123,7 @@ func TestResourceHandlerInvalidStyles(t *testing.T) {
 	}
 
 	fields := []parser.Field{
-		{Name: "name", Type: "string", GoType: "string", SQLType: "TEXT"},
+		{Name: "name", Type: "string", GoType: "string", SQLType: "TEXT", Metadata: parser.GetFieldMetadata("string", "string")},
 	}
 
 	err := generator.GenerateResource(tmpDir, "testmodule", "Item", fields, "multi", "tailwind", "bootstrap", "infinite", 20, "modal", "")
@@ -192,8 +192,8 @@ func TestResourceTemplateGolden(t *testing.T) {
 	}
 
 	fields := []parser.Field{
-		{Name: "title", Type: "string", GoType: "string", SQLType: "TEXT"},
-		{Name: "published", Type: "bool", GoType: "bool", SQLType: "BOOLEAN"},
+		{Name: "title", Type: "string", GoType: "string", SQLType: "TEXT", Metadata: parser.GetFieldMetadata("string", "string")},
+		{Name: "published", Type: "bool", GoType: "bool", SQLType: "BOOLEAN", Metadata: parser.GetFieldMetadata("bool", "bool")},
 	}
 
 	if err := generator.GenerateResource(tmpDir, "testmodule", "Post", fields, "multi", "tailwind", "tailwind", "prev-next", 10, "modal", ""); err != nil {
