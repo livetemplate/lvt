@@ -1,0 +1,75 @@
+-- River job queue tables
+CREATE TABLE IF NOT EXISTS river_migration (
+    line TEXT NOT NULL,
+    version INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (line, version)
+);
+
+CREATE TABLE IF NOT EXISTS river_job (
+    id INTEGER PRIMARY KEY,
+    args BLOB NOT NULL DEFAULT '{}',
+    attempt INTEGER NOT NULL DEFAULT 0,
+    attempted_at TIMESTAMP,
+    attempted_by BLOB,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    errors BLOB,
+    finalized_at TIMESTAMP,
+    kind TEXT NOT NULL,
+    max_attempts INTEGER NOT NULL,
+    metadata BLOB NOT NULL DEFAULT (json('{}')),
+    priority INTEGER NOT NULL DEFAULT 1,
+    queue TEXT NOT NULL DEFAULT 'default',
+    state TEXT NOT NULL DEFAULT 'available',
+    scheduled_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    tags BLOB NOT NULL DEFAULT (json('[]')),
+    unique_key BLOB,
+    unique_states INTEGER
+);
+
+CREATE INDEX IF NOT EXISTS river_job_kind ON river_job (kind);
+CREATE INDEX IF NOT EXISTS river_job_prioritized_fetching_index ON river_job (state, queue, priority, scheduled_at, id);
+
+CREATE TABLE IF NOT EXISTS river_leader (
+    elected_at TIMESTAMP NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    leader_id TEXT NOT NULL,
+    name TEXT PRIMARY KEY NOT NULL DEFAULT 'default',
+    CONSTRAINT name_length CHECK (length(name) > 0 AND length(name) < 128),
+    CONSTRAINT leader_id_length CHECK (length(leader_id) > 0 AND length(leader_id) < 128)
+);
+
+CREATE TABLE IF NOT EXISTS river_queue (
+    name TEXT PRIMARY KEY NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    metadata BLOB NOT NULL DEFAULT (json('{}')),
+    paused_at TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS river_client (
+    id TEXT PRIMARY KEY NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    metadata BLOB NOT NULL DEFAULT (json('{}')),
+    paused_at TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS river_client_queue (
+    river_client_id TEXT NOT NULL REFERENCES river_client (id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    max_workers INTEGER NOT NULL DEFAULT 0,
+    metadata BLOB NOT NULL DEFAULT (json('{}')),
+    num_jobs_completed INTEGER NOT NULL DEFAULT 0,
+    num_jobs_running INTEGER NOT NULL DEFAULT 0,
+    updated_at TIMESTAMP NOT NULL,
+    PRIMARY KEY (river_client_id, name)
+);
+
+INSERT OR IGNORE INTO river_migration (line, version) VALUES ('main', 1);
+INSERT OR IGNORE INTO river_migration (line, version) VALUES ('main', 2);
+INSERT OR IGNORE INTO river_migration (line, version) VALUES ('main', 3);
+INSERT OR IGNORE INTO river_migration (line, version) VALUES ('main', 4);
+INSERT OR IGNORE INTO river_migration (line, version) VALUES ('main', 5);
+INSERT OR IGNORE INTO river_migration (line, version) VALUES ('main', 6);

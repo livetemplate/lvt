@@ -1,0 +1,15 @@
+package jobs
+
+import (
+	"github.com/riverqueue/river"
+)
+
+// SetupWorkers registers all job workers with River.
+// New workers are added here by `lvt gen job`.
+func SetupWorkers() *river.Workers {
+	workers := river.NewWorkers()
+
+	// Register job workers below (added by `lvt gen job`)
+
+	return workers
+}
