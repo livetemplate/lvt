@@ -108,6 +108,13 @@ func singularizeForTemplate(s string) string {
 	return singularize(strings.ToLower(s))
 }
 
+// ToCamelCase converts snake_case to CamelCase following Go conventions.
+// Common initialisms like ID, URL, HTTP are kept in all caps.
+// Exported for use by CLI commands that need consistent naming.
+func ToCamelCase(s string) string {
+	return toCamelCase(s)
+}
+
 // toCamelCase converts snake_case to CamelCase following Go conventions
 // Common initialisms like ID, URL, HTTP are kept in all caps
 func toCamelCase(s string) string {

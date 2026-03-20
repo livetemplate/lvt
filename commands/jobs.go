@@ -105,15 +105,7 @@ func GenJob(args []string) error {
 	fmt.Println("  2. Enqueue jobs from your handlers:")
 	fmt.Println()
 	fmt.Printf("     // In any handler with access to riverClient:\n")
-	// Convert snake_case to CamelCase for display
-	parts := strings.Split(jobName, "_")
-	for i, p := range parts {
-		if len(p) > 0 {
-			parts[i] = strings.ToUpper(p[:1]) + p[1:]
-		}
-	}
-	camelName := strings.Join(parts, "")
-	fmt.Printf("     riverClient.Insert(ctx, jobs.%sArgs{...}, nil)\n", camelName)
+	fmt.Printf("     riverClient.Insert(ctx, jobs.%sArgs{...}, nil)\n", generator.ToCamelCase(jobName))
 
 	return nil
 }

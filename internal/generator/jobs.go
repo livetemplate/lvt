@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -153,16 +154,13 @@ func GenerateJob(projectRoot string, moduleName string, jobName string) error {
 		return fmt.Errorf("failed to parse handler template: %w", err)
 	}
 
-	file, err := os.Create(jobPath)
-	if err != nil {
-		return fmt.Errorf("failed to create %s.go: %w", jobName, err)
-	}
-
-	if err := tmpl.Execute(file, jobConfig); err != nil {
-		file.Close()
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, jobConfig); err != nil {
 		return fmt.Errorf("failed to execute handler template: %w", err)
 	}
-	file.Close()
+	if err := os.WriteFile(jobPath, buf.Bytes(), 0644); err != nil {
+		return fmt.Errorf("failed to write %s.go: %w", jobName, err)
+	}
 
 	// 2. Register worker in app/jobs/worker.go
 	if err := injectWorkerRegistration(workerPath, jobNameCamel); err != nil {
@@ -172,7 +170,7 @@ func GenerateJob(projectRoot string, moduleName string, jobName string) error {
 	return nil
 }
 
-// writeTemplateFile loads a kit template and writes it to the output path.
+// writeTemplateFile loads a kit template, executes it, and writes the result atomically.
 func writeTemplateFile(kitLoader *kits.KitLoader, kitName, templatePath, outputPath string, data interface{}) error {
 	content, err := kitLoader.LoadKitTemplate(kitName, templatePath)
 	if err != nil {
@@ -184,13 +182,12 @@ func writeTemplateFile(kitLoader *kits.KitLoader, kitName, templatePath, outputP
 		return err
 	}
 
-	file, err := os.Create(outputPath)
-	if err != nil {
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
 		return err
 	}
-	defer file.Close()
 
-	return tmpl.Execute(file, data)
+	return os.WriteFile(outputPath, buf.Bytes(), 0644)
 }
 
 // appendTemplateFile loads a kit template and appends it to the output file.
@@ -238,8 +235,7 @@ func injectJobWorker(mainGoPath string, moduleName string) error {
 		return nil // Already injected
 	}
 
-	// Find injection point: after database.InitDB call, before route registrations
-	// Look for the database init line
+	// Find injection point: after appCtx creation (needed by River client)
 	lines := strings.Split(mainStr, "\n")
 	var result []string
 	injected := false
@@ -247,10 +243,12 @@ func injectJobWorker(mainGoPath string, moduleName string) error {
 	for _, line := range lines {
 		result = append(result, line)
 
-		// Inject after the database initialization block
-		// Look for the line that closes the database error check (the closing brace after InitDB)
-		if !injected && strings.Contains(line, "defer database.CloseDB()") {
-			// Insert River setup after this line
+		// Inject after appCtx creation — River needs the context for Start/Stop
+		if !injected && strings.Contains(line, "appCtx, appCancel := context.WithCancel") {
+			// Find the next line (defer appCancel()) and include it
+			continue
+		}
+		if !injected && strings.Contains(line, "defer appCancel()") {
 			riverSetup := []string{
 				"",
 				"\t// Background job processing (River)",
@@ -286,38 +284,23 @@ func injectJobWorker(mainGoPath string, moduleName string) error {
 	}
 
 	if !injected {
-		return fmt.Errorf("could not find injection point in main.go (expected 'defer database.CloseDB()')")
+		return fmt.Errorf("could not find injection point in main.go (expected 'appCtx, appCancel := context.WithCancel')")
 	}
 
-	// Inject imports
+	// Inject imports using existing helper
 	resultStr := strings.Join(result, "\n")
 
-	// Add River imports
-	riverImports := fmt.Sprintf("\t\"%s/app/jobs\"\n", moduleName) +
-		"\t\"github.com/riverqueue/river\"\n" +
-		"\t\"github.com/riverqueue/river/riverdriver/riversqlite\""
-
-	// Find the import block and add our imports
-	if idx := strings.Index(resultStr, "\"database/sql\""); idx != -1 {
-		// Insert after "database/sql" import
-		insertPos := idx + len("\"database/sql\"")
-		resultStr = resultStr[:insertPos] + "\n" + riverImports + resultStr[insertPos:]
-	} else if idx := strings.Index(resultStr, "_ \"modernc.org/sqlite\""); idx != -1 {
-		// Insert before the sqlite import
-		resultStr = resultStr[:idx] + riverImports + "\n\t" + resultStr[idx:]
-	} else {
-		// Fallback: find first import line and add after it
-		importIdx := strings.Index(resultStr, "import (")
-		if importIdx == -1 {
-			return fmt.Errorf("could not find import block in main.go")
+	imports := []string{
+		fmt.Sprintf("\t\"database/sql\""),
+		fmt.Sprintf("\t\"%s/app/jobs\"", moduleName),
+		"\t\"github.com/riverqueue/river\"",
+		"\t\"github.com/riverqueue/river/riverdriver/riversqlite\"",
+	}
+	for _, imp := range imports {
+		resultStr, err = injectImport(resultStr, imp)
+		if err != nil {
+			return fmt.Errorf("failed to inject import %s: %w", imp, err)
 		}
-		// Find the next newline after "import ("
-		nextNewline := strings.Index(resultStr[importIdx:], "\n")
-		if nextNewline == -1 {
-			return fmt.Errorf("malformed import block in main.go")
-		}
-		insertPos := importIdx + nextNewline + 1
-		resultStr = resultStr[:insertPos] + "\t" + riverImports + "\n" + resultStr[insertPos:]
 	}
 
 	return os.WriteFile(mainGoPath, []byte(resultStr), 0644)
