@@ -275,8 +275,13 @@ func injectJobWorker(mainGoPath string, moduleName string) error {
 				"\t\tslog.Error(\"Failed to start job workers\", \"error\", err)",
 				"\t\tos.Exit(1)",
 				"\t}",
-				"\tdefer riverClient.Stop(appCtx)",
-				"\t_ = riverClient // Available for enqueueing jobs in handlers",
+				"\tdefer func() {",
+				"\t\tstopCtx, stopCancel := context.WithTimeout(context.Background(), 30*time.Second)",
+				"\t\tdefer stopCancel()",
+				"\t\t_ = riverClient.Stop(stopCtx)",
+				"\t}()",
+				"\tjobs.SetClient(riverClient)",
+				"\tslog.Info(\"Background job worker started\")",
 			}
 			result = append(result, riverSetup...)
 			injected = true
@@ -291,7 +296,8 @@ func injectJobWorker(mainGoPath string, moduleName string) error {
 	resultStr := strings.Join(result, "\n")
 
 	imports := []string{
-		fmt.Sprintf("\t\"database/sql\""),
+		"\t\"database/sql\"",
+		"\t\"time\"",
 		fmt.Sprintf("\t\"%s/app/jobs\"", moduleName),
 		"\t\"github.com/riverqueue/river\"",
 		"\t\"github.com/riverqueue/river/riverdriver/riversqlite\"",

@@ -216,6 +216,81 @@ func TestGenerateMultipleJobs(t *testing.T) {
 	}
 }
 
+func TestInjectJobWorker(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create a minimal main.go that matches the generated template structure
+	mainGoContent := `package main
+
+import (
+	"context"
+	"log/slog"
+	"os"
+
+	"testmodule/database"
+)
+
+func main() {
+	dbPath := "app.db"
+	_, err := database.InitDB(dbPath)
+	if err != nil {
+		slog.Error("Failed to initialize database", "error", err)
+		os.Exit(1)
+	}
+	defer database.CloseDB()
+
+	appCtx, appCancel := context.WithCancel(context.Background())
+	defer appCancel()
+
+	// Routes go here
+	slog.Info("Server starting")
+}
+`
+	mainGoPath := filepath.Join(tmpDir, "main.go")
+	if err := os.WriteFile(mainGoPath, []byte(mainGoContent), 0644); err != nil {
+		t.Fatalf("Failed to create main.go: %v", err)
+	}
+
+	if err := injectJobWorker(mainGoPath, "testmodule"); err != nil {
+		t.Fatalf("injectJobWorker failed: %v", err)
+	}
+
+	result, err := os.ReadFile(mainGoPath)
+	if err != nil {
+		t.Fatalf("Failed to read modified main.go: %v", err)
+	}
+	resultStr := string(result)
+
+	// Verify River setup was injected
+	checks := []string{
+		"river.NewClient",
+		"riversqlite.New",
+		"jobs.SetupWorkers()",
+		"riverClient.Start(appCtx)",
+		"riverClient.Stop(stopCtx)",
+		"jobs.SetClient(riverClient)",
+		"\"database/sql\"",
+		"\"github.com/riverqueue/river\"",
+		"\"testmodule/app/jobs\"",
+	}
+	for _, check := range checks {
+		if !strings.Contains(resultStr, check) {
+			t.Errorf("main.go missing expected content: %s", check)
+		}
+	}
+
+	// Verify idempotency — second call should be no-op
+	if err := injectJobWorker(mainGoPath, "testmodule"); err != nil {
+		t.Fatalf("Second injectJobWorker call failed: %v", err)
+	}
+
+	// Verify no duplicate injection
+	count := strings.Count(resultStr, "river.NewClient")
+	if count != 1 {
+		t.Errorf("Expected 1 river.NewClient occurrence, got %d", count)
+	}
+}
+
 // setupTestProject creates a minimal project structure for testing.
 func setupTestProject(t *testing.T, dir string) {
 	t.Helper()
@@ -238,11 +313,9 @@ func setupTestProject(t *testing.T, dir string) {
 		t.Fatalf("Failed to create schema.sql: %v", err)
 	}
 
-	// Create lvt.yaml (project config)
-	lvtConfig := `kit: multi
-module: testmodule
-`
-	if err := os.WriteFile(filepath.Join(dir, "lvt.yaml"), []byte(lvtConfig), 0644); err != nil {
-		t.Fatalf("Failed to create lvt.yaml: %v", err)
+	// Create .lvtrc (project config)
+	lvtConfig := "kit=multi\nmodule=testmodule\n"
+	if err := os.WriteFile(filepath.Join(dir, ".lvtrc"), []byte(lvtConfig), 0644); err != nil {
+		t.Fatalf("Failed to create .lvtrc: %v", err)
 	}
 }
