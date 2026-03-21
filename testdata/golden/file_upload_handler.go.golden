@@ -218,6 +218,10 @@ func (c *GalleryController) Update(state GalleryState, ctx *livetemplate.Context
 		if err := c.Store.Save(dbCtx, key, f); err != nil {
 			return state, fmt.Errorf("failed to save file: %w", err)
 		}
+		// Delete old file from storage if replaced
+		if photoVal != "" {
+			_ = c.Store.Delete(dbCtx, photoVal)
+		}
 		photoVal = c.Store.URL(key)
 		photoFilename = entry.ClientName
 		photoContentType = entry.ClientType
@@ -238,6 +242,10 @@ func (c *GalleryController) Update(state GalleryState, ctx *livetemplate.Context
 		key := fmt.Sprintf("galleries/%s/%s", input.ID, safeName)
 		if err := c.Store.Save(dbCtx, key, f); err != nil {
 			return state, fmt.Errorf("failed to save file: %w", err)
+		}
+		// Delete old file from storage if replaced
+		if docVal != "" {
+			_ = c.Store.Delete(dbCtx, docVal)
 		}
 		docVal = c.Store.URL(key)
 		docFilename = entry.ClientName
