@@ -28,10 +28,20 @@ import (
 [[- if .Components.UseUpload]]
 	"github.com/livetemplate/lvt/pkg/storage"
 [[- end]]
+[[- if .WithAuthz]]
+	"github.com/livetemplate/lvt/pkg/authz"
+	"github.com/livetemplate/lvt/pkg/cookie"
+[[- end]]
 	"[[.ModuleName]]/database/models"
 )
 
 var validate = validator.New()
+[[- if .WithAuthz]]
+
+func init() {
+	authz.Register("[[.TableName]]", &authz.DefaultPolicy{})
+}
+[[- end]]
 
 type [[.ResourceName]]Item = models.[[.ResourceNameSingular]]
 
@@ -172,6 +182,9 @@ func (c *[[.ResourceName]]Controller) Add(state [[.ResourceName]]State, ctx *liv
 		[[printf "%s_content_type" .Name | camelCase]]: [[.Name]]ContentType,
 		[[printf "%s_size" .Name | camelCase]]:         [[.Name]]Size,
 [[- end]]
+[[- if .WithAuthz]]
+		CreatedBy: ctx.UserID(),
+[[- end]]
 		CreatedAt: now,
 	})
 	if err != nil {
@@ -198,6 +211,21 @@ func (c *[[.ResourceName]]Controller) Edit(state [[.ResourceName]]State, ctx *li
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
 		return state, err
 	}
+
+[[- if .WithAuthz]]
+	// Check authorization
+	if item, err := c.Queries.Get[[.ResourceNameSingular]]ByID(dbCtx, input.ID); err == nil {
+		user := authz.UserFrom(ctx.UserID(), c.getUserRole(dbCtx, ctx.UserID()))
+		if !authz.Can(user, authz.ActionUpdate, "[[.TableName]]", authz.OwnedBy(item.CreatedBy)) {
+[[- if .Components.UseToast]]
+			state.Toasts.AddError("Forbidden", "You don't have permission to edit this [[.ResourceNameLower]]")
+			return state, nil
+[[- else]]
+			return state, fmt.Errorf("forbidden: you don't have permission to edit this [[.ResourceNameLower]]")
+[[- end]]
+		}
+	}
+[[- end]]
 
 	// Find the item to edit
 	[[.ResourceNameLower]]s, err := c.Queries.GetAll[[.ResourceNamePlural]](dbCtx)
@@ -385,6 +413,21 @@ func (c *[[.ResourceName]]Controller) RequestDelete(state [[.ResourceName]]State
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
 		return state, err
 	}
+
+[[- if .WithAuthz]]
+	// Check authorization
+	if item, err := c.Queries.Get[[.ResourceNameSingular]]ByID(context.Background(), input.ID); err == nil {
+		user := authz.UserFrom(ctx.UserID(), c.getUserRole(context.Background(), ctx.UserID()))
+		if !authz.Can(user, authz.ActionDelete, "[[.TableName]]", authz.OwnedBy(item.CreatedBy)) {
+[[- if .Components.UseToast]]
+			state.Toasts.AddError("Forbidden", "You don't have permission to delete this [[.ResourceNameLower]]")
+			return state, nil
+[[- else]]
+			return state, fmt.Errorf("forbidden: you don't have permission to delete this [[.ResourceNameLower]]")
+[[- end]]
+		}
+	}
+[[- end]]
 
 	state.PendingDeleteID = input.ID
 	state.DeleteConfirm.Show()
@@ -738,6 +781,20 @@ func applyPagedNavigation(state [[.ResourceName]]State) [[.ResourceName]]State {
 func formatTime() string {
 	return time.Now().Format("2006-01-02 15:04:05")
 }
+[[- if .WithAuthz]]
+
+// getUserRole loads the user's role from the database.
+func (c *[[.ResourceName]]Controller) getUserRole(ctx context.Context, userID string) string {
+	if userID == "" {
+		return ""
+	}
+	user, err := c.Queries.GetUserByID(ctx, userID)
+	if err != nil {
+		return ""
+	}
+	return user.Role
+}
+[[- end]]
 
 // Handler creates an http.Handler for this resource
 [[- if .Components.UseUpload]]
@@ -797,6 +854,15 @@ func Handler(queries *models.Queries) http.Handler {
 			MaxFileSize: 10 << 20, // 10 MB
 			AutoUpload: true,
 		}),
+[[- end]]
+[[- if .WithAuthz]]
+		livetemplate.WithAuthenticator(authz.NewCookieAuthenticator("users_token", func(ctx context.Context, token string) (string, error) {
+			row, err := controller.Queries.GetUserToken(ctx, models.GetUserTokenParams{Token: token, Now: time.Now()})
+			if err != nil {
+				return "", err
+			}
+			return row.UserID, nil
+		})),
 [[- end]]
 	))
 	if _, err := baseTmpl.ParseFiles("app/[[.ResourceNameLower]]/[[.ResourceNameLower]].tmpl"); err != nil {

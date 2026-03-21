@@ -8,8 +8,8 @@ WHERE id = ?
 LIMIT 1;
 
 -- name: Create[[.ResourceNameSingular]] :one
-INSERT INTO [[.TableName]] (id[[range .Fields]][[if .IsFile]], [[.Name]], [[.Name]]_filename, [[.Name]]_content_type, [[.Name]]_size[[else]], [[.Name]][[end]][[end]], created_at)
-VALUES (?[[range .Fields]][[if .IsFile]], ?, ?, ?, ?[[else]], ?[[end]][[end]], ?)
+INSERT INTO [[.TableName]] (id[[range .Fields]][[if .IsFile]], [[.Name]], [[.Name]]_filename, [[.Name]]_content_type, [[.Name]]_size[[else]], [[.Name]][[end]][[end]][[if .WithAuthz]], created_by[[end]], created_at)
+VALUES (?[[range .Fields]][[if .IsFile]], ?, ?, ?, ?[[else]], ?[[end]][[end]][[if .WithAuthz]], ?[[end]], ?)
 RETURNING *;
 
 -- name: Update[[.ResourceNameSingular]] :exec

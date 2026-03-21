@@ -29,7 +29,7 @@ func TestGeneratedCodeSyntax(t *testing.T) {
 		{Name: "email", Type: "string", GoType: "string", SQLType: "TEXT"},
 	}
 
-	if err := generator.GenerateResource(tmpDir, "testmodule", "User", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", ""); err != nil {
+	if err := generator.GenerateResource(tmpDir, "testmodule", "User", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "", false); err != nil {
 		t.Fatalf("Failed to generate resource: %v", err)
 	}
 
@@ -109,7 +109,7 @@ func TestGeneratedFilesExist(t *testing.T) {
 		{Name: "title", Type: "string", GoType: "string", SQLType: "TEXT"},
 	}
 
-	if err := generator.GenerateResource(appDir, "testapp", "Post", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", ""); err != nil {
+	if err := generator.GenerateResource(appDir, "testapp", "Post", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "", false); err != nil {
 		t.Fatalf("Failed to generate resource: %v", err)
 	}
 
@@ -165,7 +165,7 @@ func TestForeignKeyGeneration(t *testing.T) {
 		{Name: "content", Type: "string", GoType: "string", SQLType: "TEXT"},
 	}
 
-	if err := generator.GenerateResource(tmpDir, "testmodule", "Post", parentFields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", ""); err != nil {
+	if err := generator.GenerateResource(tmpDir, "testmodule", "Post", parentFields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "", false); err != nil {
 		t.Fatalf("Failed to generate parent resource: %v", err)
 	}
 
@@ -184,7 +184,7 @@ func TestForeignKeyGeneration(t *testing.T) {
 		{Name: "text", Type: "string", GoType: "string", SQLType: "TEXT"},
 	}
 
-	if err := generator.GenerateResource(tmpDir, "testmodule", "Comment", childFields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", ""); err != nil {
+	if err := generator.GenerateResource(tmpDir, "testmodule", "Comment", childFields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "", false); err != nil {
 		t.Fatalf("Failed to generate child resource: %v", err)
 	}
 
@@ -300,7 +300,7 @@ func TestGeneratedAppFullFlow(t *testing.T) {
 		{Name: "content", Type: "text", GoType: "string", SQLType: "TEXT"},
 		{Name: "published", Type: "bool", GoType: "bool", SQLType: "BOOLEAN"},
 	}
-	if err := generator.GenerateResource(appDir, appName, "Post", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", ""); err != nil {
+	if err := generator.GenerateResource(appDir, appName, "Post", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "", false); err != nil {
 		t.Fatalf("Failed to generate resource: %v", err)
 	}
 	t.Log("✅ Resource generated")
@@ -394,7 +394,7 @@ func TestFileUploadResourceGeneration(t *testing.T) {
 		{Name: "doc", Type: "file", GoType: "string", SQLType: "TEXT", IsFile: true, IsImage: false, Metadata: parser.FieldMetadata{HTMLInputType: "file"}},
 	}
 
-	if err := generator.GenerateResource(tmpDir, "testmodule", "Gallery", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", ""); err != nil {
+	if err := generator.GenerateResource(tmpDir, "testmodule", "Gallery", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "", false); err != nil {
 		t.Fatalf("Failed to generate resource: %v", err)
 	}
 
@@ -627,7 +627,7 @@ func TestFileUploadFullFlow(t *testing.T) {
 		{Name: "doc", Type: "file", GoType: "string", SQLType: "TEXT", IsFile: true, IsImage: false, Metadata: parser.FieldMetadata{HTMLInputType: "file"}},
 		{Name: "views", Type: "int", GoType: "int64", SQLType: "INTEGER", Metadata: parser.GetFieldMetadata("int")},
 	}
-	if err := generator.GenerateResource(appDir, appName, "Gallery", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", ""); err != nil {
+	if err := generator.GenerateResource(appDir, appName, "Gallery", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "", false); err != nil {
 		t.Fatalf("Failed to generate resource: %v", err)
 	}
 	t.Log("✅ Resource with file/image fields generated")
@@ -729,4 +729,115 @@ func TestFileUploadFullFlow(t *testing.T) {
 	t.Log("✅ Build successful — file upload code compiles")
 
 	t.Log("✅ File upload full flow test passed!")
+}
+
+// TestAuthzResourceGeneration validates that generating a resource with --with-authz
+// produces correct handler, SQL, and template output.
+func TestAuthzResourceGeneration(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	dbDir := filepath.Join(tmpDir, "database")
+	if err := os.MkdirAll(dbDir, 0755); err != nil {
+		t.Fatalf("Failed to create database directory: %v", err)
+	}
+
+	fields := []parser.Field{
+		{Name: "title", Type: "string", GoType: "string", SQLType: "TEXT", Metadata: parser.GetFieldMetadata("string")},
+		{Name: "content", Type: "text", GoType: "string", SQLType: "TEXT", IsTextarea: true, Metadata: parser.GetFieldMetadata("text")},
+	}
+
+	if err := generator.GenerateResource(tmpDir, "testmodule", "Post", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "", true); err != nil {
+		t.Fatalf("Failed to generate resource: %v", err)
+	}
+
+	// --- Verify handler ---
+	handlerPath := filepath.Join(tmpDir, "app", "post", "post.go")
+	handler, err := os.ReadFile(handlerPath)
+	if err != nil {
+		t.Fatalf("Failed to read handler: %v", err)
+	}
+	handlerContent := string(handler)
+
+	handlerChecks := map[string]string{
+		"authz import":           `"github.com/livetemplate/lvt/pkg/authz"`,
+		"cookie import":          `"github.com/livetemplate/lvt/pkg/cookie"`,
+		"policy registration":    `authz.Register("posts"`,
+		"authz Can update":       `authz.Can(user, authz.ActionUpdate`,
+		"authz Can delete":       `authz.Can(user, authz.ActionDelete`,
+		"OwnedBy check":          `authz.OwnedBy(item.CreatedBy)`,
+		"CreatedBy in Create":    `CreatedBy: ctx.UserID()`,
+		"getUserRole method":     `func (c *PostController) getUserRole`,
+		"CookieAuthenticator":    `authz.NewCookieAuthenticator`,
+		"WithAuthenticator":      `livetemplate.WithAuthenticator`,
+	}
+
+	for desc, substr := range handlerChecks {
+		if !strings.Contains(handlerContent, substr) {
+			t.Errorf("Handler missing %s: expected %q", desc, substr)
+		}
+	}
+
+	// Verify handler has valid Go syntax
+	cmd := exec.Command("go", "tool", "compile", "-o", "/dev/null", handlerPath)
+	output, _ := cmd.CombinedOutput()
+	if strings.Contains(string(output), "syntax error") {
+		t.Errorf("Handler has syntax errors:\n%s", output)
+	}
+
+	// --- Verify SQL schema ---
+	schemaPath := filepath.Join(tmpDir, "database", "schema.sql")
+	schemaData, err := os.ReadFile(schemaPath)
+	if err != nil {
+		t.Fatalf("Failed to read schema.sql: %v", err)
+	}
+	schema := string(schemaData)
+
+	sqlChecks := map[string]string{
+		"created_by column": "created_by TEXT NOT NULL REFERENCES users(id)",
+		"created_by index":  "idx_posts_created_by",
+	}
+	for desc, substr := range sqlChecks {
+		if !strings.Contains(schema, substr) {
+			t.Errorf("Schema missing %s: expected %q\nSchema:\n%s", desc, substr, schema)
+		}
+	}
+
+	// --- Verify queries ---
+	queriesPath := filepath.Join(tmpDir, "database", "queries.sql")
+	queriesData, err := os.ReadFile(queriesPath)
+	if err != nil {
+		t.Fatalf("Failed to read queries.sql: %v", err)
+	}
+	queries := string(queriesData)
+
+	if !strings.Contains(queries, "created_by") {
+		t.Errorf("Queries should include created_by in INSERT\nQueries:\n%s", queries)
+	}
+
+	// --- Verify migration ---
+	migrationsDir := filepath.Join(tmpDir, "database", "migrations")
+	entries, err := os.ReadDir(migrationsDir)
+	if err != nil {
+		t.Fatalf("Failed to read migrations: %v", err)
+	}
+	found := false
+	for _, entry := range entries {
+		if strings.Contains(entry.Name(), "posts") {
+			data, _ := os.ReadFile(filepath.Join(migrationsDir, entry.Name()))
+			migration := string(data)
+			if !strings.Contains(migration, "created_by TEXT NOT NULL REFERENCES users(id)") {
+				t.Error("Migration missing created_by column")
+			}
+			if !strings.Contains(migration, "idx_posts_created_by") {
+				t.Error("Migration missing created_by index")
+			}
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("Migration file for posts not found")
+	}
+
+	t.Log("✅ Authz resource generation test passed")
 }

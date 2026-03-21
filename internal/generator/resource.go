@@ -15,7 +15,7 @@ import (
 	"golang.org/x/text/language"
 )
 
-func GenerateResource(basePath, moduleName, resourceName string, fields []parser.Field, kitName, cssFramework, styles, paginationMode string, pageSize int, editMode, parentResource string) error {
+func GenerateResource(basePath, moduleName, resourceName string, fields []parser.Field, kitName, cssFramework, styles, paginationMode string, pageSize int, editMode, parentResource string, withAuthz bool) error {
 	// Defaults
 	if kitName == "" {
 		kitName = "multi"
@@ -89,6 +89,7 @@ func GenerateResource(basePath, moduleName, resourceName string, fields []parser
 		PageSize:             pageSize,
 		EditMode:             editMode,
 		Styles:               styles,
+		WithAuthz:            withAuthz,
 	}
 	data.Components = ComputeComponentUsage(data)
 	if data.Components.UseModal || data.Components.UseToast {

@@ -10,6 +10,9 @@ CREATE TABLE IF NOT EXISTS [[.TableName]] (
   [[.Name]] [[.SQLType]] NOT NULL,
 [[- end]]
 [[- end]]
+[[- if .WithAuthz]]
+  created_by TEXT NOT NULL REFERENCES users(id),
+[[- end]]
   created_at DATETIME NOT NULL[[range .Fields]][[if .IsReference]],
   FOREIGN KEY ([[.Name]]) REFERENCES [[.ReferencedTable]](id)[[if .OnDelete]] ON DELETE [[.OnDelete]][[end]][[end]][[end]]
 );
@@ -18,5 +21,8 @@ CREATE TABLE IF NOT EXISTS [[.TableName]] (
 [[- if .IsReference]]
 CREATE INDEX IF NOT EXISTS idx_[[$.TableName]]_[[.Name]] ON [[$.TableName]]([[.Name]]);
 [[- end]]
+[[- end]]
+[[- if .WithAuthz]]
+CREATE INDEX IF NOT EXISTS idx_[[.TableName]]_created_by ON [[.TableName]](created_by);
 [[- end]]
 CREATE INDEX IF NOT EXISTS idx_[[.TableName]]_created_at ON [[.TableName]](created_at);

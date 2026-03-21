@@ -51,6 +51,9 @@ type ResourceData struct {
 	Styles               string         // Style adapter: "tailwind", "unstyled"
 	StylesImportPath     string         // computed import path for style adapter (empty if no components need it)
 
+	// Authorization (set when --with-authz is used)
+	WithAuthz bool // True when generating with ownership tracking and permission checks
+
 	// Embedded child resource fields (set when --parent is used)
 	ParentResource         string // Parent resource name, lowercase plural (e.g., "posts"). Empty = standalone.
 	ParentPackageName      string // Parent package name (e.g., "posts")
