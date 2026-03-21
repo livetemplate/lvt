@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -107,6 +108,22 @@ func (s *LocalStore) URL(key string) string {
 }
 
 // FileServer returns an http.Handler that serves files from baseDir.
+// Directory listings are disabled — only individual files are served.
 func (s *LocalStore) FileServer() http.Handler {
-	return http.FileServer(http.Dir(s.baseDir))
+	return http.FileServer(noListDir{http.Dir(s.baseDir)})
+}
+
+// noListDir wraps an http.FileSystem to disable directory listings.
+type noListDir struct{ http.FileSystem }
+
+func (d noListDir) Open(name string) (http.File, error) {
+	f, err := d.FileSystem.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	if stat, _ := f.Stat(); stat != nil && stat.IsDir() {
+		f.Close()
+		return nil, fs.ErrPermission
+	}
+	return f, nil
 }

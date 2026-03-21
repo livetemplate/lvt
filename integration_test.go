@@ -647,9 +647,9 @@ func TestFileUploadFullFlow(t *testing.T) {
 	// Step 4: Wire up route manually (file upload resources skip auto-injection)
 	t.Log("Step 4: Wiring up file upload route in main.go...")
 	mainGoPath := filepath.Join(appDir, "cmd", appName, "main.go")
-	mainGoContent, err2 := os.ReadFile(mainGoPath)
-	if err2 != nil {
-		t.Fatalf("Failed to read main.go: %v", err2)
+	mainGoContent, err := os.ReadFile(mainGoPath)
+	if err != nil {
+		t.Fatalf("Failed to read main.go: %v", err)
 	}
 	mainGoStr := string(mainGoContent)
 	// Add storage import

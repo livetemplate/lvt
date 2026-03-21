@@ -146,12 +146,13 @@ func (c *[[.ResourceName]]Controller) Add(state [[.ResourceName]]State, ctx *liv
 		if err != nil {
 			return state, fmt.Errorf("failed to open uploaded file: %w", err)
 		}
-		defer f.Close()
 		safeName := path.Base(strings.ReplaceAll(entry.ClientName, "\\", "/"))
 		key := fmt.Sprintf("[[$.TableName]]/%s/%s", id, safeName)
 		if err := c.Store.Save(dbCtx, key, f); err != nil {
+			f.Close()
 			return state, fmt.Errorf("failed to save file: %w", err)
 		}
+		f.Close()
 		[[.Name]]Val = c.Store.URL(key)
 		[[.Name]]Filename = entry.ClientName
 		[[.Name]]ContentType = entry.ClientType

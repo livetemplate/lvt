@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"mime"
+	"path"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -65,12 +67,17 @@ func NewS3Store(cfg S3StoreConfig) (*S3Store, error) {
 }
 
 // Save uploads the contents of reader to the given key in S3.
+// ContentType is inferred from the key's file extension.
 func (s *S3Store) Save(ctx context.Context, key string, reader io.Reader) error {
-	_, err := s.client.PutObject(ctx, &s3.PutObjectInput{
+	input := &s3.PutObjectInput{
 		Bucket: aws.String(s.config.Bucket),
 		Key:    aws.String(key),
 		Body:   reader,
-	})
+	}
+	if ct := mime.TypeByExtension(path.Ext(key)); ct != "" {
+		input.ContentType = aws.String(ct)
+	}
+	_, err := s.client.PutObject(ctx, input)
 	if err != nil {
 		return fmt.Errorf("storage: s3 put: %w", err)
 	}
@@ -91,6 +98,7 @@ func (s *S3Store) Open(ctx context.Context, key string) (io.ReadCloser, error) {
 
 // Delete removes the object at the given key from S3.
 // Also accepts URLs returned by URL() — the known prefix is stripped.
+// S3 DeleteObject is idempotent — deleting a non-existent key returns success.
 func (s *S3Store) Delete(ctx context.Context, key string) error {
 	key = s.resolveKey(key)
 	_, err := s.client.DeleteObject(ctx, &s3.DeleteObjectInput{
@@ -105,12 +113,18 @@ func (s *S3Store) Delete(ctx context.Context, key string) error {
 
 // resolveKey strips known URL prefixes so Delete can accept either a key or a URL.
 func (s *S3Store) resolveKey(key string) string {
-	for _, prefix := range []string{
-		s.config.CDNPrefix + "/",
-		fmt.Sprintf("%s/%s/", s.config.Endpoint, s.config.Bucket),
-		fmt.Sprintf("https://%s.s3.%s.amazonaws.com/", s.config.Bucket, s.config.Region),
-	} {
-		if prefix != "/" && strings.HasPrefix(key, prefix) {
+	var prefixes []string
+	if s.config.CDNPrefix != "" {
+		prefixes = append(prefixes, s.config.CDNPrefix+"/")
+	}
+	if s.config.Endpoint != "" {
+		prefixes = append(prefixes, fmt.Sprintf("%s/%s/", s.config.Endpoint, s.config.Bucket))
+	}
+	if s.config.Bucket != "" && s.config.Region != "" {
+		prefixes = append(prefixes, fmt.Sprintf("https://%s.s3.%s.amazonaws.com/", s.config.Bucket, s.config.Region))
+	}
+	for _, prefix := range prefixes {
+		if strings.HasPrefix(key, prefix) {
 			return key[len(prefix):]
 		}
 	}
