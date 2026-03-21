@@ -31,11 +31,6 @@ func Authz(args []string) error {
 
 	fmt.Println("Generating authorization system...")
 
-	// Validate auth exists
-	if _, err := os.Stat("app/auth"); os.IsNotExist(err) {
-		return fmt.Errorf("auth system not found. Run 'lvt gen auth' first")
-	}
-
 	cfg := &generator.AuthzConfig{
 		ModuleName: moduleName,
 		TableName:  tableName,

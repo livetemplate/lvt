@@ -9,12 +9,6 @@ import (
 	"github.com/livetemplate/lvt/pkg/cookie"
 )
 
-// TokenLookup is the interface for looking up a user ID from a session token.
-// The generated sqlc Queries struct satisfies this via its GetUserToken method.
-type TokenLookup interface {
-	GetUserToken(ctx context.Context, arg interface{ GetToken() string; GetNow() time.Time }) (interface{ GetUserID() string }, error)
-}
-
 // CookieAuthenticator implements livetemplate.Authenticator by reading
 // the auth session cookie to identify the user during WebSocket setup.
 // This enables ctx.UserID() to return the real authenticated user ID
@@ -63,10 +57,8 @@ func (a *CookieAuthenticator) GetSessionGroup(r *http.Request, userID string) (s
 	if userID != "" {
 		return userID, nil
 	}
-	// Fallback for unauthenticated: use browser session cookie
-	c, err := r.Cookie("livetemplate-id")
-	if err == nil && c.Value != "" {
-		return c.Value, nil
+	if id := cookie.Get(r, "livetemplate-id"); id != "" {
+		return id, nil
 	}
 	return fmt.Sprintf("anon-%d", time.Now().UnixNano()), nil
 }

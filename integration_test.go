@@ -760,7 +760,6 @@ func TestAuthzResourceGeneration(t *testing.T) {
 
 	handlerChecks := map[string]string{
 		"authz import":           `"github.com/livetemplate/lvt/pkg/authz"`,
-		"cookie import":          `"github.com/livetemplate/lvt/pkg/cookie"`,
 		"policy registration":    `authz.Register("posts"`,
 		"authz Can update":       `authz.Can(user, authz.ActionUpdate`,
 		"authz Can delete":       `authz.Can(user, authz.ActionDelete`,

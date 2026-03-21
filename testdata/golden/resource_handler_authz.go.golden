@@ -16,7 +16,6 @@ import (
 	"github.com/livetemplate/lvt/components/modal"
 	"github.com/livetemplate/lvt/components/toast"
 	"github.com/livetemplate/lvt/pkg/authz"
-	"github.com/livetemplate/lvt/pkg/cookie"
 	"testmodule/database/models"
 )
 

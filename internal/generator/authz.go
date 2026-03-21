@@ -25,13 +25,11 @@ func GenerateAuthz(projectRoot string, cfg *AuthzConfig) error {
 		cfg.TableName = "users"
 	}
 
-	// Validate auth exists
 	authDir := filepath.Join(projectRoot, "app", "auth")
 	if _, err := os.Stat(authDir); os.IsNotExist(err) {
 		return fmt.Errorf("auth system not found at %s — run 'lvt gen auth' first", authDir)
 	}
 
-	// Load project config for kit
 	projectConfig, err := config.LoadProjectConfig(projectRoot)
 	if err != nil {
 		return fmt.Errorf("failed to load project config: %w", err)
@@ -51,10 +49,14 @@ func GenerateAuthz(projectRoot string, cfg *AuthzConfig) error {
 
 	timestamp := time.Now()
 	var migrationPath string
-	for {
+	const maxRetries = 3600
+	for i := 0; i < maxRetries; i++ {
 		timestampStr := timestamp.Format("20060102150405")
 		migrationPath = filepath.Join(migrationsDir, fmt.Sprintf("%s_add_user_roles.sql", timestampStr))
-		matches, _ := filepath.Glob(filepath.Join(migrationsDir, timestampStr+"_*.sql"))
+		matches, err := filepath.Glob(filepath.Join(migrationsDir, timestampStr+"_*.sql"))
+		if err != nil {
+			return fmt.Errorf("failed to check for existing migrations: %w", err)
+		}
 		if len(matches) == 0 {
 			break
 		}
