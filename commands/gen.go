@@ -47,8 +47,12 @@ func Gen(args []string) error {
 		return Auth(args[1:])
 	case "stack":
 		return GenStack(args[1:])
+	case "queue":
+		return GenQueue(args[1:])
+	case "job":
+		return GenJob(args[1:])
 	default:
-		return fmt.Errorf("unknown subcommand: %s\n\nAvailable subcommands:\n  resource  Generate full CRUD resource with database\n  view      Generate view-only handler (no database)\n  schema    Generate database schema only\n  auth      Generate authentication system\n  stack     Generate deployment stack configuration\n\nRun 'lvt gen' for interactive mode", subcommand)
+		return fmt.Errorf("unknown subcommand: %s\n\nAvailable subcommands:\n  resource  Generate full CRUD resource with database\n  view      Generate view-only handler (no database)\n  schema    Generate database schema only\n  auth      Generate authentication system\n  stack     Generate deployment stack configuration\n  queue     Set up background job processing (River)\n  job       Scaffold a new background job handler\n\nRun 'lvt gen' for interactive mode", subcommand)
 	}
 }
 
@@ -61,6 +65,8 @@ func interactiveGen() error {
 	fmt.Println("  schema <table> <field:type>...        Generate database schema only")
 	fmt.Println("  auth [StructName] [table_name]        Generate authentication system")
 	fmt.Println("  stack <target>                        Generate deployment stack configuration")
+	fmt.Println("  queue                                 Set up background job processing (River)")
+	fmt.Println("  job <name>                            Scaffold a new background job handler")
 	fmt.Println()
 	fmt.Println("Examples:")
 	fmt.Println("  lvt gen resource posts title content:text published:bool")

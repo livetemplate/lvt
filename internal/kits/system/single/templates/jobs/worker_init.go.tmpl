@@ -1,0 +1,28 @@
+package jobs
+
+import (
+	"github.com/riverqueue/river"
+)
+
+var client *river.Client[any]
+
+// SetupWorkers registers all job workers with River.
+// New workers are added here by `lvt gen job`.
+func SetupWorkers() *river.Workers {
+	workers := river.NewWorkers()
+
+	// Register job workers below (added by `lvt gen job`)
+
+	return workers
+}
+
+// SetClient stores the River client for use by handlers via Client().
+func SetClient(c *river.Client[any]) {
+	client = c
+}
+
+// Client returns the River client for enqueueing jobs.
+// Call from HTTP handlers: jobs.Client().Insert(ctx, args, nil)
+func Client() *river.Client[any] {
+	return client
+}

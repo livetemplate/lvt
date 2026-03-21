@@ -1,0 +1,37 @@
+package jobs
+
+import (
+	"context"
+	"log/slog"
+
+	"github.com/riverqueue/river"
+)
+
+// <<.JobNameCamel>>Args defines the payload for <<.JobName>> jobs.
+type <<.JobNameCamel>>Args struct {
+	// TODO: Define your job payload fields here.
+	// Example:
+	//   To      string `json:"to"`
+	//   Subject string `json:"subject"`
+}
+
+// Kind returns the unique job type identifier used by River.
+func (<<.JobNameCamel>>Args) Kind() string { return "<<.JobName>>" }
+
+// <<.JobNameCamel>>Worker processes <<.JobName>> jobs.
+type <<.JobNameCamel>>Worker struct {
+	river.WorkerDefaults[<<.JobNameCamel>>Args]
+}
+
+// Work executes the <<.JobName>> job.
+func (w *<<.JobNameCamel>>Worker) Work(ctx context.Context, job *river.Job[<<.JobNameCamel>>Args]) error {
+	slog.Info("Processing <<.JobName>> job", "job_id", job.ID)
+
+	_ = job.Args // TODO: use job.Args fields
+
+	// TODO: Implement your job logic here.
+	// Return nil on success, or an error to trigger a retry.
+	// After max attempts are exhausted, the job moves to "discarded" state.
+
+	return nil
+}
