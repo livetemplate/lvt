@@ -340,13 +340,17 @@ func generateStandaloneResource(basePath, resourceDir, resourceNameLower, tableN
 	}
 
 	// Inject router registration into main.go
+	// When file uploads are used, skip auto-injection because the handler
+	// requires a storage.Store parameter that must be declared in main.go first.
 	mainGoPath := findMainGo(basePath)
-	if mainGoPath != "" {
+	if mainGoPath != "" && !data.Components.UseUpload {
+		handlerCall := resourceNameLower + ".Handler(queries)"
+
 		routes := []RouteInfo{
 			{
 				Path:        "/" + resourceNameLower,
 				PackageName: resourceNameLower,
-				HandlerCall: resourceNameLower + ".Handler(queries)",
+				HandlerCall: handlerCall,
 				ImportPath:  moduleName + "/app/" + resourceNameLower,
 			},
 		}
@@ -355,7 +359,7 @@ func generateStandaloneResource(basePath, resourceDir, resourceNameLower, tableN
 			routes = append(routes, RouteInfo{
 				Path:        "/" + resourceNameLower + "/",
 				PackageName: resourceNameLower,
-				HandlerCall: resourceNameLower + ".Handler(queries)",
+				HandlerCall: handlerCall,
 				ImportPath:  moduleName + "/app/" + resourceNameLower,
 			})
 		}
@@ -363,8 +367,8 @@ func generateStandaloneResource(basePath, resourceDir, resourceNameLower, tableN
 		for _, route := range routes {
 			if err := InjectRoute(mainGoPath, route); err != nil {
 				fmt.Printf("⚠️  Could not auto-inject route %s: %v\n", route.Path, err)
-				fmt.Printf("   Please add manually: http.Handle(\"%s\", %s.Handler(queries))\n",
-					route.Path, resourceNameLower)
+				fmt.Printf("   Please add manually: http.Handle(\"%s\", %s)\n",
+					route.Path, handlerCall)
 			}
 		}
 	}

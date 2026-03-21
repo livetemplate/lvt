@@ -8,13 +8,13 @@ WHERE id = ?
 LIMIT 1;
 
 -- name: Create[[.ResourceNameSingular]] :one
-INSERT INTO [[.TableName]] (id[[range .Fields]], [[.Name]][[end]], created_at)
-VALUES (?[[range .Fields]], ?[[end]], ?)
+INSERT INTO [[.TableName]] (id[[range .Fields]][[if .IsFile]], [[.Name]], [[.Name]]_filename, [[.Name]]_content_type, [[.Name]]_size[[else]], [[.Name]][[end]][[end]], created_at)
+VALUES (?[[range .Fields]][[if .IsFile]], ?, ?, ?, ?[[else]], ?[[end]][[end]], ?)
 RETURNING *;
 
 -- name: Update[[.ResourceNameSingular]] :exec
 UPDATE [[.TableName]]
-SET [[range $i, $f := .Fields]][[if $i]], [[end]][[$f.Name]] = ?[[end]]
+SET [[range $i, $f := .Fields]][[if $i]], [[end]][[if $f.IsFile]][[$f.Name]] = ?, [[$f.Name]]_filename = ?, [[$f.Name]]_content_type = ?, [[$f.Name]]_size = ?[[else]][[$f.Name]] = ?[[end]][[end]]
 WHERE id = ?;
 
 -- name: Delete[[.ResourceNameSingular]] :exec

@@ -29,6 +29,8 @@ type Field struct {
 	IsTextarea      bool     // true if field should render as textarea
 	IsSelect        bool     // true if field should render as <select>
 	SelectOptions   []string // options for select fields
+	IsFile          bool     // true if field is a file upload
+	IsImage         bool     // true if field is an image upload (subset of file)
 	Metadata        FieldMetadata
 }
 
@@ -80,6 +82,23 @@ func ParseFields(args []string) ([]Field, error) {
 				Metadata: FieldMetadata{
 					ValidateTag:   "required",
 					HTMLInputType: "text",
+				},
+			})
+			continue
+		}
+
+		// Handle file/image types: name:file or name:image
+		lowerTyp := strings.ToLower(typ)
+		if lowerTyp == "file" || lowerTyp == "image" {
+			fields = append(fields, Field{
+				Name:    name,
+				Type:    lowerTyp,
+				GoType:  "string",
+				SQLType: "TEXT",
+				IsFile:  true,
+				IsImage: lowerTyp == "image",
+				Metadata: FieldMetadata{
+					HTMLInputType: "file",
 				},
 			})
 			continue
@@ -169,12 +188,14 @@ var fieldTypeTable = map[string]fieldTypeInfo{
 	"phone":     {GoType: "string", SQLType: "TEXT", Metadata: FieldMetadata{ValidateTag: "required", HTMLInputType: "tel"}},
 	"tel":       {GoType: "string", SQLType: "TEXT", Metadata: FieldMetadata{ValidateTag: "required", HTMLInputType: "tel"}},
 	"password":  {GoType: "string", SQLType: "TEXT", Metadata: FieldMetadata{ValidateTag: "required,min=8", HTMLInputType: "password", HTMLMinLength: 8, IsPassword: true}},
+	"file":      {GoType: "string", SQLType: "TEXT", Metadata: FieldMetadata{HTMLInputType: "file"}},
+	"image":     {GoType: "string", SQLType: "TEXT", Metadata: FieldMetadata{HTMLInputType: "file"}},
 }
 
 // supportedTypes returns a comma-separated list of primary supported type names.
 func supportedTypes() string {
 	// Show primary names (not aliases) in a logical order
-	return "string, text, int, bool, float, time, email, url, phone, tel, password"
+	return "string, text, int, bool, float, time, email, url, phone, tel, password, file, image"
 }
 
 // MapType maps a user-provided type to Go and SQL types.

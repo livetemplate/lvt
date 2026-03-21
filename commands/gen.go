@@ -277,6 +277,16 @@ func GenResource(args []string) error {
 		fmt.Printf("  app/%s/%s.tmpl (modified)\n", parentResource, parentResource)
 		fmt.Println()
 		fmt.Println("No separate route — child is rendered on the parent's detail page.")
+	} else if compUsage.UseUpload {
+		fmt.Println("Manual route setup required (file uploads need storage):")
+		fmt.Println("  Add to main.go:")
+		fmt.Printf("    store := storage.NewLocalStore(\"uploads\", \"/uploads\")\n")
+		fmt.Printf("    http.Handle(\"/uploads/\", http.StripPrefix(\"/uploads/\", store.FileServer()))\n")
+		fmt.Printf("    http.Handle(\"/%s\", %s.Handler(queries, store))\n", resourceNameLower, resourceNameLower)
+		fmt.Println()
+		fmt.Println("  Add imports:")
+		fmt.Println("    \"github.com/livetemplate/lvt/pkg/storage\"")
+		fmt.Printf("    \"%s/app/%s\"\n", moduleName, resourceNameLower)
 	} else {
 		fmt.Println("Route auto-injected:")
 		fmt.Printf("  http.Handle(\"/%s\", %s.Handler(queries))\n", resourceNameLower, resourceNameLower)
@@ -580,6 +590,17 @@ func parseFieldsWithInference(fieldArgs []string) ([]parser.Field, error) {
 			typ = inferTypeForDirectMode(name)
 		}
 
+		// Delegate select and file/image types to ParseFields to avoid duplication
+		lowerTyp := strings.ToLower(typ)
+		if lowerTyp == "select" || lowerTyp == "file" || lowerTyp == "image" {
+			parsed, err := parser.ParseFields([]string{arg})
+			if err != nil {
+				return nil, err
+			}
+			fields = append(fields, parsed...)
+			continue
+		}
+
 		// Map to Go and SQL types
 		goType, sqlType, isTextarea, err := parser.MapType(typ)
 		if err != nil {
@@ -650,6 +671,13 @@ func inferTypeForDirectMode(fieldName string) string {
 
 		"enabled": "bool", "active": "bool", "visible": "bool",
 		"published": "bool", "deleted": "bool", "featured": "bool",
+
+		"avatar": "image", "photo": "image", "picture": "image",
+		"logo": "image", "thumbnail": "image", "icon": "image",
+		"cover": "image", "banner": "image", "headshot": "image",
+
+		"document": "file", "attachment": "file", "resume": "file",
+		"file": "file", "upload": "file", "certificate": "file",
 
 		"created_at": "time", "updated_at": "time", "deleted_at": "time",
 		"published_at": "time", "expires_at": "time",

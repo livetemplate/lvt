@@ -6,6 +6,10 @@ import (
 	"log"
 	"math"
 	"net/http"
+[[- if .Components.UseUpload]]
+	"os"
+	"path"
+[[- end]]
 	"sort"
 	"strings"
 	"time"
@@ -21,6 +25,9 @@ import (
 [[- if .Components.UseToast]]
 	"github.com/livetemplate/lvt/components/toast"
 [[- end]]
+[[- if .Components.UseUpload]]
+	"github.com/livetemplate/lvt/pkg/storage"
+[[- end]]
 	"[[.ModuleName]]/database/models"
 )
 
@@ -29,28 +36,28 @@ var validate = validator.New()
 type [[.ResourceName]]Item = models.[[.ResourceNameSingular]]
 
 type AddInput struct {
-[[- range .Fields]]
+[[- range .NonFileFields]]
 [[- if .ValidateTag]]
 	[[.Name | camelCase]] [[.GoType]] `json:"[[.Name]]" validate:"[[.ValidateTag]]"`
 [[- else]]
 	[[.Name | camelCase]] [[.GoType]] `json:"[[.Name]]"`
 [[- end]]
 [[- end]]
-[[- range .Fields]][[- if .IsPassword]]
+[[- range .NonFileFields]][[- if .IsPassword]]
 	[[.Name | camelCase]]Confirmation string `json:"[[.Name]]_confirmation" validate:"required,eqfield=[[.Name | camelCase]]"`
 [[- end]][[- end]]
 }
 
 type UpdateInput struct {
 	ID string `json:"id" validate:"required"`
-[[- range .Fields]]
+[[- range .NonFileFields]]
 [[- if .ValidateTag]]
 	[[.Name | camelCase]] [[.GoType]] `json:"[[.Name]]" validate:"[[.ValidateTag]]"`
 [[- else]]
 	[[.Name | camelCase]] [[.GoType]] `json:"[[.Name]]"`
 [[- end]]
 [[- end]]
-[[- range .Fields]][[- if .IsPassword]]
+[[- range .NonFileFields]][[- if .IsPassword]]
 	[[.Name | camelCase]]Confirmation string `json:"[[.Name]]_confirmation" validate:"required,eqfield=[[.Name | camelCase]]"`
 [[- end]][[- end]]
 }
@@ -74,6 +81,9 @@ type PaginationInput struct {
 // [[.ResourceName]]Controller is a singleton that holds dependencies (DB, logger, etc.)
 type [[.ResourceName]]Controller struct {
 	Queries *models.Queries
+[[- if .Components.UseUpload]]
+	Store   storage.Store
+[[- end]]
 }
 
 // [[.ResourceName]]State is pure data, cloned per session
@@ -88,8 +98,13 @@ type [[.ResourceName]]State struct {
 	Paginated[[.ResourceNamePlural]] [][[.ResourceName]]Item `json:"paginated_[[.ResourceNameLower]]s"`
 	TotalCount   int                   `json:"total_count"`
 	LastUpdated  string                `json:"last_updated"`
+[[- if eq .EditMode "page"]]
+	EditingID    string                `json:"editing_id"`
+	Editing[[.ResourceName]] *[[.ResourceName]]Item   `json:"editing_[[.ResourceNameLower]]"`
+[[- else]]
 	EditingID    string                `json:"editing_id" lvt:"transient"`
 	Editing[[.ResourceName]] *[[.ResourceName]]Item   `json:"editing_[[.ResourceNameLower]]" lvt:"transient"`
+[[- end]]
 	IsEditingMode bool                 `json:"is_editing_mode"` // For page mode: true when at /resource/:id/edit
 	PaginationMode string              `json:"pagination_mode"` // "infinite", "load-more", "prev-next", "numbers"
 	LoadedCount    int                 `json:"loaded_count"`    // For infinite/load-more modes
@@ -120,10 +135,42 @@ func (c *[[.ResourceName]]Controller) Add(state [[.ResourceName]]State, ctx *liv
 	now := time.Now()
 	id := fmt.Sprintf("[[.ResourceNameLower]]-%d", now.UnixNano())
 
+[[- if .Components.UseUpload]]
+	// Process file uploads
+[[- range .FileFields]]
+	var [[.Name]]Val, [[.Name]]Filename, [[.Name]]ContentType string
+	var [[.Name]]Size int64
+	if uploads := ctx.GetCompletedUploads("[[.Name]]"); len(uploads) > 0 {
+		entry := uploads[0]
+		f, err := os.Open(entry.TempPath)
+		if err != nil {
+			return state, fmt.Errorf("failed to open uploaded file: %w", err)
+		}
+		safeName := path.Base(strings.ReplaceAll(entry.ClientName, "\\", "/"))
+		key := fmt.Sprintf("[[$.TableName]]/%s/%s", id, safeName)
+		if err := c.Store.Save(dbCtx, key, f); err != nil {
+			f.Close()
+			return state, fmt.Errorf("failed to save file: %w", err)
+		}
+		f.Close()
+		[[.Name]]Val = c.Store.URL(key)
+		[[.Name]]Filename = entry.ClientName
+		[[.Name]]ContentType = entry.ClientType
+		[[.Name]]Size = entry.ClientSize
+	}
+[[- end]]
+[[- end]]
+
 	_, err := c.Queries.Create[[.ResourceNameSingular]](dbCtx, models.Create[[.ResourceNameSingular]]Params{
 		ID:        id,
-[[- range .Fields]]
+[[- range .NonFileFields]]
 		[[.Name | camelCase]]: input.[[.Name | camelCase]],
+[[- end]]
+[[- range .FileFields]]
+		[[.Name | camelCase]]:            [[.Name]]Val,
+		[[printf "%s_filename" .Name | camelCase]]:    [[.Name]]Filename,
+		[[printf "%s_content_type" .Name | camelCase]]: [[.Name]]ContentType,
+		[[printf "%s_size" .Name | camelCase]]:         [[.Name]]Size,
 [[- end]]
 		CreatedAt: now,
 	})
@@ -180,10 +227,55 @@ func (c *[[.ResourceName]]Controller) Update(state [[.ResourceName]]State, ctx *
 		return state, err
 	}
 
+[[- if .Components.UseUpload]]
+	// Process file uploads (only update file columns if new file uploaded)
+	existing, err := c.Queries.Get[[.ResourceNameSingular]]ByID(dbCtx, input.ID)
+	if err != nil {
+		return state, fmt.Errorf("failed to load existing [[.ResourceNameLower]]: %w", err)
+	}
+[[- range .FileFields]]
+	[[.Name]]Val := existing.[[.Name | camelCase]]
+	[[.Name]]Filename := existing.[[printf "%s_filename" .Name | camelCase]]
+	[[.Name]]ContentType := existing.[[printf "%s_content_type" .Name | camelCase]]
+	[[.Name]]Size := existing.[[printf "%s_size" .Name | camelCase]]
+	if uploads := ctx.GetCompletedUploads("[[.Name]]"); len(uploads) > 0 {
+		entry := uploads[0]
+		f, err := os.Open(entry.TempPath)
+		if err != nil {
+			return state, fmt.Errorf("failed to open uploaded file: %w", err)
+		}
+		defer f.Close()
+		safeName := path.Base(strings.ReplaceAll(entry.ClientName, "\\", "/"))
+		key := fmt.Sprintf("[[$.TableName]]/%s/%s", input.ID, safeName)
+		if err := c.Store.Save(dbCtx, key, f); err != nil {
+			return state, fmt.Errorf("failed to save file: %w", err)
+		}
+		// Delete old file from storage if replaced
+		if [[.Name]]Val != "" {
+			_ = c.Store.Delete(dbCtx, [[.Name]]Val)
+		}
+		[[.Name]]Val = c.Store.URL(key)
+		[[.Name]]Filename = entry.ClientName
+		[[.Name]]ContentType = entry.ClientType
+		[[.Name]]Size = entry.ClientSize
+	}
+[[- end]]
+[[- end]]
+
+[[- if .Components.UseUpload]]
+	err = c.Queries.Update[[.ResourceNameSingular]](dbCtx, models.Update[[.ResourceNameSingular]]Params{
+[[- else]]
 	err := c.Queries.Update[[.ResourceNameSingular]](dbCtx, models.Update[[.ResourceNameSingular]]Params{
+[[- end]]
 		ID: input.ID,
-[[- range .Fields]]
+[[- range .NonFileFields]]
 		[[.Name | camelCase]]: input.[[.Name | camelCase]],
+[[- end]]
+[[- range .FileFields]]
+		[[.Name | camelCase]]:            [[.Name]]Val,
+		[[printf "%s_filename" .Name | camelCase]]:    [[.Name]]Filename,
+		[[printf "%s_content_type" .Name | camelCase]]: [[.Name]]ContentType,
+		[[printf "%s_size" .Name | camelCase]]:         [[.Name]]Size,
 [[- end]]
 	})
 	if err != nil {
@@ -199,17 +291,9 @@ func (c *[[.ResourceName]]Controller) Update(state [[.ResourceName]]State, ctx *
 		return state, err
 	}
 
-	// Re-fetch the updated resource for display
-	[[.ResourceNameLower]]s, err := c.Queries.GetAll[[.ResourceNamePlural]](dbCtx)
-	if err == nil {
-		for _, item := range [[.ResourceNameLower]]s {
-			if item.ID == input.ID {
-				itemCopy := item
-				state.Editing[[.ResourceName]] = &itemCopy
-				break
-			}
-		}
-	}
+	// Close modal / clear editing state after successful save
+	state.EditingID = ""
+	state.Editing[[.ResourceName]] = nil
 
 [[- if .Components.UseToast]]
 	state.Toasts.AddSuccess("Updated", "[[.ResourceNameSingular]] updated successfully")
@@ -315,6 +399,17 @@ func (c *[[.ResourceName]]Controller) ConfirmDelete(state [[.ResourceName]]State
 	if state.PendingDeleteID == "" {
 		return state, nil
 	}
+
+[[- if .Components.UseUpload]]
+	// Delete associated files from storage
+	if existing, err := c.Queries.Get[[.ResourceNameSingular]]ByID(dbCtx, state.PendingDeleteID); err == nil {
+[[- range .FileFields]]
+		if existing.[[.Name | camelCase]] != "" {
+			_ = c.Store.Delete(dbCtx, existing.[[.Name | camelCase]])
+		}
+[[- end]]
+	}
+[[- end]]
 
 	err := c.Queries.Delete[[.ResourceNameSingular]](dbCtx, state.PendingDeleteID)
 	if err != nil {
@@ -491,8 +586,33 @@ func (c *[[.ResourceName]]Controller) LoadMore(state [[.ResourceName]]State, _ *
 	return state, nil
 }
 
-// Mount is called once when a new session is created
-func (c *[[.ResourceName]]Controller) Mount(state [[.ResourceName]]State, _ *livetemplate.Context) ([[.ResourceName]]State, error) {
+// Mount is called when a new session is created or when page-mode navigation triggers a remount.
+func (c *[[.ResourceName]]Controller) Mount(state [[.ResourceName]]State, ctx *livetemplate.Context) ([[.ResourceName]]State, error) {
+[[- if eq .EditMode "page"]]
+	// Page mode: check if navigating to a detail URL via _resource_id query param
+	resourceID := ctx.GetString("_resource_id")
+	if resourceID != "" {
+		state.EditingID = resourceID
+		state.IsEditingMode = ctx.GetString("_edit_mode") == "true"
+		dbCtx := context.Background()
+		[[.ResourceNameLower]]s, err := c.Queries.GetAll[[.ResourceNamePlural]](dbCtx)
+		if err != nil {
+			return state, fmt.Errorf("failed to load [[.ResourceNameLower]]s: %w", err)
+		}
+		for _, item := range [[.ResourceNameLower]]s {
+			if item.ID == resourceID {
+				itemCopy := item
+				state.Editing[[.ResourceName]] = &itemCopy
+				break
+			}
+		}
+		return state, nil
+	}
+	// No resource ID — show list view, clear any stale detail state
+	state.EditingID = ""
+	state.Editing[[.ResourceName]] = nil
+	state.IsEditingMode = false
+[[- end]]
 	return c.load[[.ResourceName]]s(state, context.Background())
 }
 
@@ -508,9 +628,9 @@ func (c *[[.ResourceName]]Controller) load[[.ResourceName]]s(state [[.ResourceNa
 		state.Filtered[[.ResourceNamePlural]] = [][[.ResourceName]]Item{}
 		query := strings.ToLower(state.SearchQuery)
 		for _, item := range [[.ResourceNameLower]]s {
-			// Search across all text fields
+			// Search across all text fields (skip file/image fields)
 [[- range .Fields]]
-[[- if eq .GoType "string"]]
+[[- if and (eq .GoType "string") (not .IsFile)]]
 			if strings.Contains(strings.ToLower(item.[[.Name | camelCase]]), query) {
 				state.Filtered[[$.ResourceNamePlural]] = append(state.Filtered[[$.ResourceNamePlural]], item)
 				continue
@@ -535,7 +655,7 @@ func (c *[[.ResourceName]]Controller) load[[.ResourceName]]s(state [[.ResourceNa
 func applySorting(state [[.ResourceName]]State) [[.ResourceName]]State {
 	switch state.SortBy {
 [[- range .Fields]]
-[[- if eq .GoType "string"]]
+[[- if and (eq .GoType "string") (not .IsFile)]]
 	case "[[.Name]]_asc":
 		sort.Slice(state.Filtered[[$.ResourceNamePlural]], func(i, j int) bool {
 			return strings.ToLower(state.Filtered[[$.ResourceNamePlural]][i].[[.Name | camelCase]]) < strings.ToLower(state.Filtered[[$.ResourceNamePlural]][j].[[.Name | camelCase]])
@@ -620,10 +740,17 @@ func formatTime() string {
 }
 
 // Handler creates an http.Handler for this resource
+[[- if .Components.UseUpload]]
+func Handler(queries *models.Queries, store storage.Store) http.Handler {
+[[- else]]
 func Handler(queries *models.Queries) http.Handler {
+[[- end]]
 	// Controller is a singleton that holds dependencies
 	controller := &[[.ResourceName]]Controller{
 		Queries: queries,
+[[- if .Components.UseUpload]]
+		Store:   store,
+[[- end]]
 	}
 
 	// Initial state is pure data, cloned per session
@@ -663,97 +790,49 @@ func Handler(queries *models.Queries) http.Handler {
 [[- end]]
 		),
 [[- end]]
+[[- range .FileFields]]
+		livetemplate.WithUpload("[[.Name]]", livetemplate.UploadConfig{
+			Accept:     []string{[[if .IsImage]]"image/*"[[else]]"*/*"[[end]]},
+			MaxEntries: 1,
+			MaxFileSize: 10 << 20, // 10 MB
+			AutoUpload: true,
+		}),
+[[- end]]
 	))
 	if _, err := baseTmpl.ParseFiles("app/[[.ResourceNameLower]]/[[.ResourceNameLower]].tmpl"); err != nil {
 		log.Fatalf("Failed to parse template: %v", err)
 	}
 
 [[- if eq .EditMode "page"]]
-	// Page mode: Support URL-based routing for resource detail and edit views
+	// Page mode: single shared handler so session state persists correctly.
+	// Detail URLs pass the resource ID via query param so Mount can detect them.
+	handler := baseTmpl.Handle(controller, livetemplate.AsState(initialState))
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Parse resource ID from URL path (e.g., /products/product-123 or /products/product-123/edit)
 		urlPath := strings.TrimPrefix(r.URL.Path, "/[[.ResourceNameLower]]")
 		urlPath = strings.TrimPrefix(urlPath, "/")
 
-		if urlPath != "" && r.Method == http.MethodGet {
+		if urlPath != "" {
 			// Check if this is an edit URL (/products/:id/edit)
 			isEditMode := strings.HasSuffix(urlPath, "/edit")
 			if isEditMode {
 				urlPath = strings.TrimSuffix(urlPath, "/edit")
 			}
 
-			// Extract resource ID
+			// Extract resource ID and pass as query param for Mount
 			resourceID := strings.Split(urlPath, "/")[0]
-			if resourceID == "" {
-				// Invalid URL, fall back to list view
-				tmpl, err := baseTmpl.Clone()
-				if err != nil {
-					log.Printf("Failed to clone template: %v", err)
-					http.Error(w, "Internal server error", http.StatusInternalServerError)
-					return
+			if resourceID != "" {
+				q := r.URL.Query()
+				q.Set("_resource_id", resourceID)
+				if isEditMode {
+					q.Set("_edit_mode", "true")
 				}
-				tmpl.Handle(controller, livetemplate.AsState(initialState)).ServeHTTP(w, r)
-				return
+				r.URL.RawQuery = q.Encode()
 			}
-
-			// Create state with EditingID and IsEditingMode set for this specific URL
-			resourceState := &[[.ResourceName]]State{
-				Title:          "[[.ResourceName]] Management",
-				CurrentPage:    1,
-				PageSize:       [[.PageSize]],
-				PaginationMode: "[[.PaginationMode]]",
-				LoadedCount:    [[if or (eq .PaginationMode "infinite") (eq .PaginationMode "load-more")]][[.PageSize]][[else]]0[[end]],
-				LastUpdated:    formatTime(),
-				CSSFramework:   "[[.CSSFramework]]",
-				IsEditingMode:  isEditMode,
-			}
-
-[[- if .Components.UseModal]]
-			resourceState.DeleteConfirm = modal.NewConfirm("delete",
-				modal.WithConfirmTitle("Delete [[.ResourceNameSingular]]"),
-				modal.WithConfirmMessage("Are you sure you want to delete this [[.ResourceNameLower]]? This action cannot be undone."),
-				modal.WithConfirmDestructive(true),
-			)
-[[- end]]
-[[- if .Components.UseToast]]
-			resourceState.Toasts = toast.New("notifications",
-				toast.WithPosition(toast.TopRight),
-				toast.WithMaxVisible(3),
-			)
-[[- end]]
-
-			// Find and set the editing resource
-			[[.ResourceNameLower]]s, err := queries.GetAll[[.ResourceNamePlural]](context.Background())
-			if err == nil {
-				for _, item := range [[.ResourceNameLower]]s {
-					if item.ID == resourceID {
-						resourceState.EditingID = resourceID
-						itemCopy := item
-						resourceState.Editing[[.ResourceName]] = &itemCopy
-						break
-					}
-				}
-			}
-
-			// Mount with custom state for this URL
-			tmpl, err := baseTmpl.Clone()
-			if err != nil {
-				log.Printf("Failed to clone template: %v", err)
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
-				return
-			}
-			tmpl.Handle(controller, livetemplate.AsState(resourceState)).ServeHTTP(w, r)
-			return
 		}
 
-		// Default: list view
-		tmpl, err := baseTmpl.Clone()
-		if err != nil {
-			log.Printf("Failed to clone template: %v", err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-		tmpl.Handle(controller, livetemplate.AsState(initialState)).ServeHTTP(w, r)
+		handler.ServeHTTP(w, r)
 	})
 [[- else]]
 	// Modal mode: clone template per request

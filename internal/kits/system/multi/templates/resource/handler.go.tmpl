@@ -6,6 +6,10 @@ import (
 	"log"
 	"math"
 	"net/http"
+[[- if .Components.UseUpload]]
+	"os"
+	"path"
+[[- end]]
 	"sort"
 	"strings"
 	"time"
@@ -21,6 +25,9 @@ import (
 [[- if .Components.UseToast]]
 	"github.com/livetemplate/lvt/components/toast"
 [[- end]]
+[[- if .Components.UseUpload]]
+	"github.com/livetemplate/lvt/pkg/storage"
+[[- end]]
 	"[[.ModuleName]]/database/models"
 )
 
@@ -29,28 +36,28 @@ var validate = validator.New()
 type [[.ResourceName]]Item = models.[[.ResourceNameSingular]]
 
 type AddInput struct {
-[[- range .Fields]]
+[[- range .NonFileFields]]
 [[- if .ValidateTag]]
 	[[.Name | camelCase]] [[.GoType]] `json:"[[.Name]]" validate:"[[.ValidateTag]]"`
 [[- else]]
 	[[.Name | camelCase]] [[.GoType]] `json:"[[.Name]]"`
 [[- end]]
 [[- end]]
-[[- range .Fields]][[- if .IsPassword]]
+[[- range .NonFileFields]][[- if .IsPassword]]
 	[[.Name | camelCase]]Confirmation string `json:"[[.Name]]_confirmation" validate:"required,eqfield=[[.Name | camelCase]]"`
 [[- end]][[- end]]
 }
 
 type UpdateInput struct {
 	ID string `json:"id" validate:"required"`
-[[- range .Fields]]
+[[- range .NonFileFields]]
 [[- if .ValidateTag]]
 	[[.Name | camelCase]] [[.GoType]] `json:"[[.Name]]" validate:"[[.ValidateTag]]"`
 [[- else]]
 	[[.Name | camelCase]] [[.GoType]] `json:"[[.Name]]"`
 [[- end]]
 [[- end]]
-[[- range .Fields]][[- if .IsPassword]]
+[[- range .NonFileFields]][[- if .IsPassword]]
 	[[.Name | camelCase]]Confirmation string `json:"[[.Name]]_confirmation" validate:"required,eqfield=[[.Name | camelCase]]"`
 [[- end]][[- end]]
 }
@@ -74,6 +81,9 @@ type PaginationInput struct {
 // [[.ResourceName]]Controller is a singleton that holds dependencies (DB, logger, etc.)
 type [[.ResourceName]]Controller struct {
 	Queries *models.Queries
+[[- if .Components.UseUpload]]
+	Store   storage.Store
+[[- end]]
 }
 
 // [[.ResourceName]]State is pure data, cloned per session
@@ -125,10 +135,42 @@ func (c *[[.ResourceName]]Controller) Add(state [[.ResourceName]]State, ctx *liv
 	now := time.Now()
 	id := fmt.Sprintf("[[.ResourceNameLower]]-%d", now.UnixNano())
 
+[[- if .Components.UseUpload]]
+	// Process file uploads
+[[- range .FileFields]]
+	var [[.Name]]Val, [[.Name]]Filename, [[.Name]]ContentType string
+	var [[.Name]]Size int64
+	if uploads := ctx.GetCompletedUploads("[[.Name]]"); len(uploads) > 0 {
+		entry := uploads[0]
+		f, err := os.Open(entry.TempPath)
+		if err != nil {
+			return state, fmt.Errorf("failed to open uploaded file: %w", err)
+		}
+		safeName := path.Base(strings.ReplaceAll(entry.ClientName, "\\", "/"))
+		key := fmt.Sprintf("[[$.TableName]]/%s/%s", id, safeName)
+		if err := c.Store.Save(dbCtx, key, f); err != nil {
+			f.Close()
+			return state, fmt.Errorf("failed to save file: %w", err)
+		}
+		f.Close()
+		[[.Name]]Val = c.Store.URL(key)
+		[[.Name]]Filename = entry.ClientName
+		[[.Name]]ContentType = entry.ClientType
+		[[.Name]]Size = entry.ClientSize
+	}
+[[- end]]
+[[- end]]
+
 	_, err := c.Queries.Create[[.ResourceNameSingular]](dbCtx, models.Create[[.ResourceNameSingular]]Params{
 		ID:        id,
-[[- range .Fields]]
+[[- range .NonFileFields]]
 		[[.Name | camelCase]]: input.[[.Name | camelCase]],
+[[- end]]
+[[- range .FileFields]]
+		[[.Name | camelCase]]:            [[.Name]]Val,
+		[[printf "%s_filename" .Name | camelCase]]:    [[.Name]]Filename,
+		[[printf "%s_content_type" .Name | camelCase]]: [[.Name]]ContentType,
+		[[printf "%s_size" .Name | camelCase]]:         [[.Name]]Size,
 [[- end]]
 		CreatedAt: now,
 	})
@@ -185,10 +227,55 @@ func (c *[[.ResourceName]]Controller) Update(state [[.ResourceName]]State, ctx *
 		return state, err
 	}
 
+[[- if .Components.UseUpload]]
+	// Process file uploads (only update file columns if new file uploaded)
+	existing, err := c.Queries.Get[[.ResourceNameSingular]]ByID(dbCtx, input.ID)
+	if err != nil {
+		return state, fmt.Errorf("failed to load existing [[.ResourceNameLower]]: %w", err)
+	}
+[[- range .FileFields]]
+	[[.Name]]Val := existing.[[.Name | camelCase]]
+	[[.Name]]Filename := existing.[[printf "%s_filename" .Name | camelCase]]
+	[[.Name]]ContentType := existing.[[printf "%s_content_type" .Name | camelCase]]
+	[[.Name]]Size := existing.[[printf "%s_size" .Name | camelCase]]
+	if uploads := ctx.GetCompletedUploads("[[.Name]]"); len(uploads) > 0 {
+		entry := uploads[0]
+		f, err := os.Open(entry.TempPath)
+		if err != nil {
+			return state, fmt.Errorf("failed to open uploaded file: %w", err)
+		}
+		defer f.Close()
+		safeName := path.Base(strings.ReplaceAll(entry.ClientName, "\\", "/"))
+		key := fmt.Sprintf("[[$.TableName]]/%s/%s", input.ID, safeName)
+		if err := c.Store.Save(dbCtx, key, f); err != nil {
+			return state, fmt.Errorf("failed to save file: %w", err)
+		}
+		// Delete old file from storage if replaced
+		if [[.Name]]Val != "" {
+			_ = c.Store.Delete(dbCtx, [[.Name]]Val)
+		}
+		[[.Name]]Val = c.Store.URL(key)
+		[[.Name]]Filename = entry.ClientName
+		[[.Name]]ContentType = entry.ClientType
+		[[.Name]]Size = entry.ClientSize
+	}
+[[- end]]
+[[- end]]
+
+[[- if .Components.UseUpload]]
+	err = c.Queries.Update[[.ResourceNameSingular]](dbCtx, models.Update[[.ResourceNameSingular]]Params{
+[[- else]]
 	err := c.Queries.Update[[.ResourceNameSingular]](dbCtx, models.Update[[.ResourceNameSingular]]Params{
+[[- end]]
 		ID: input.ID,
-[[- range .Fields]]
+[[- range .NonFileFields]]
 		[[.Name | camelCase]]: input.[[.Name | camelCase]],
+[[- end]]
+[[- range .FileFields]]
+		[[.Name | camelCase]]:            [[.Name]]Val,
+		[[printf "%s_filename" .Name | camelCase]]:    [[.Name]]Filename,
+		[[printf "%s_content_type" .Name | camelCase]]: [[.Name]]ContentType,
+		[[printf "%s_size" .Name | camelCase]]:         [[.Name]]Size,
 [[- end]]
 	})
 	if err != nil {
@@ -312,6 +399,17 @@ func (c *[[.ResourceName]]Controller) ConfirmDelete(state [[.ResourceName]]State
 	if state.PendingDeleteID == "" {
 		return state, nil
 	}
+
+[[- if .Components.UseUpload]]
+	// Delete associated files from storage
+	if existing, err := c.Queries.Get[[.ResourceNameSingular]]ByID(dbCtx, state.PendingDeleteID); err == nil {
+[[- range .FileFields]]
+		if existing.[[.Name | camelCase]] != "" {
+			_ = c.Store.Delete(dbCtx, existing.[[.Name | camelCase]])
+		}
+[[- end]]
+	}
+[[- end]]
 
 	err := c.Queries.Delete[[.ResourceNameSingular]](dbCtx, state.PendingDeleteID)
 	if err != nil {
@@ -530,9 +628,9 @@ func (c *[[.ResourceName]]Controller) load[[.ResourceName]]s(state [[.ResourceNa
 		state.Filtered[[.ResourceNamePlural]] = [][[.ResourceName]]Item{}
 		query := strings.ToLower(state.SearchQuery)
 		for _, item := range [[.ResourceNameLower]]s {
-			// Search across all text fields
+			// Search across all text fields (skip file/image fields)
 [[- range .Fields]]
-[[- if eq .GoType "string"]]
+[[- if and (eq .GoType "string") (not .IsFile)]]
 			if strings.Contains(strings.ToLower(item.[[.Name | camelCase]]), query) {
 				state.Filtered[[$.ResourceNamePlural]] = append(state.Filtered[[$.ResourceNamePlural]], item)
 				continue
@@ -557,7 +655,7 @@ func (c *[[.ResourceName]]Controller) load[[.ResourceName]]s(state [[.ResourceNa
 func applySorting(state [[.ResourceName]]State) [[.ResourceName]]State {
 	switch state.SortBy {
 [[- range .Fields]]
-[[- if eq .GoType "string"]]
+[[- if and (eq .GoType "string") (not .IsFile)]]
 	case "[[.Name]]_asc":
 		sort.Slice(state.Filtered[[$.ResourceNamePlural]], func(i, j int) bool {
 			return strings.ToLower(state.Filtered[[$.ResourceNamePlural]][i].[[.Name | camelCase]]) < strings.ToLower(state.Filtered[[$.ResourceNamePlural]][j].[[.Name | camelCase]])
@@ -642,10 +740,17 @@ func formatTime() string {
 }
 
 // Handler creates an http.Handler for this resource
+[[- if .Components.UseUpload]]
+func Handler(queries *models.Queries, store storage.Store) http.Handler {
+[[- else]]
 func Handler(queries *models.Queries) http.Handler {
+[[- end]]
 	// Controller is a singleton that holds dependencies
 	controller := &[[.ResourceName]]Controller{
 		Queries: queries,
+[[- if .Components.UseUpload]]
+		Store:   store,
+[[- end]]
 	}
 
 	// Initial state is pure data, cloned per session
@@ -684,6 +789,14 @@ func Handler(queries *models.Queries) http.Handler {
 			toast.Templates(),
 [[- end]]
 		),
+[[- end]]
+[[- range .FileFields]]
+		livetemplate.WithUpload("[[.Name]]", livetemplate.UploadConfig{
+			Accept:     []string{[[if .IsImage]]"image/*"[[else]]"*/*"[[end]]},
+			MaxEntries: 1,
+			MaxFileSize: 10 << 20, // 10 MB
+			AutoUpload: true,
+		}),
 [[- end]]
 	))
 	if _, err := baseTmpl.ParseFiles("app/[[.ResourceNameLower]]/[[.ResourceNameLower]].tmpl"); err != nil {

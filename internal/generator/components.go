@@ -5,6 +5,7 @@ type ComponentUsage struct {
 	UseModal    bool // delete confirmation modal
 	UseToast    bool // CRUD feedback notifications
 	UseDropdown bool // select field dropdowns
+	UseUpload   bool // file/image upload support
 }
 
 // ComputeComponentUsage determines which components a resource needs
@@ -18,7 +19,9 @@ func ComputeComponentUsage(data ResourceData) ComponentUsage {
 	for _, f := range data.Fields {
 		if f.IsSelect {
 			usage.UseDropdown = true
-			break
+		}
+		if f.IsFile {
+			usage.UseUpload = true
 		}
 	}
 
