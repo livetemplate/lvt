@@ -2,6 +2,9 @@ package [[.PackageName]]
 
 import (
 	"context"
+[[- if .WithAuthz]]
+	"database/sql"
+[[- end]]
 	"fmt"
 	"log"
 	"math"
@@ -856,7 +859,10 @@ func Handler(queries *models.Queries) http.Handler {
 [[- end]]
 [[- if .WithAuthz]]
 		livetemplate.WithAuthenticator(authz.NewCookieAuthenticator("users_token", func(ctx context.Context, token string) (string, error) {
-			row, err := controller.Queries.GetUserToken(ctx, models.GetUserTokenParams{Token: token, Now: time.Now()})
+			row, err := controller.Queries.GetUserToken(ctx, models.GetUserTokenParams{
+				Token:     token,
+				ExpiresAt: sql.NullTime{Time: time.Now(), Valid: true},
+			})
 			if err != nil {
 				return "", err
 			}
