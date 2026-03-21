@@ -24,6 +24,8 @@ func FieldDataFromFields(fields []parser.Field) []FieldData {
 			IsTextarea:      f.IsTextarea,
 			IsSelect:        f.IsSelect,
 			SelectOptions:   f.SelectOptions,
+			IsFile:          f.IsFile,
+			IsImage:         f.IsImage,
 			FieldMetadata:   f.Metadata,
 		}
 	}
@@ -72,6 +74,29 @@ func (d ResourceData) NonReferenceFields() []FieldData {
 	return result
 }
 
+// NonFileFields returns fields excluding file/image fields.
+// Used in handler templates: file data arrives via ctx.GetCompletedUploads, not form JSON.
+func (d ResourceData) NonFileFields() []FieldData {
+	var result []FieldData
+	for _, f := range d.Fields {
+		if !f.IsFile {
+			result = append(result, f)
+		}
+	}
+	return result
+}
+
+// FileFields returns only file/image fields.
+func (d ResourceData) FileFields() []FieldData {
+	var result []FieldData
+	for _, f := range d.Fields {
+		if f.IsFile {
+			result = append(result, f)
+		}
+	}
+	return result
+}
+
 type FieldData struct {
 	Name                 string
 	GoType               string
@@ -82,6 +107,8 @@ type FieldData struct {
 	IsTextarea           bool     // true if field should render as textarea
 	IsSelect             bool     // true if field should render as <select>
 	SelectOptions        []string // options for select fields
+	IsFile               bool     // true if field is a file upload
+	IsImage              bool     // true if field is an image upload (subset of file)
 	parser.FieldMetadata          // validation + HTML rendering metadata (embedded)
 }
 
@@ -160,16 +187,16 @@ func getDisplayField(fields []FieldData) FieldData {
 		}
 	}
 
-	// Prefer the first non-reference string field (most likely human-readable)
+	// Prefer the first non-reference, non-file string field (most likely human-readable)
 	for _, field := range fields {
-		if !field.IsReference && field.GoType == "string" {
+		if !field.IsReference && !field.IsFile && field.GoType == "string" {
 			return field
 		}
 	}
 
-	// Fall back to first non-reference field
+	// Fall back to first non-reference, non-file field
 	for _, field := range fields {
-		if !field.IsReference {
+		if !field.IsReference && !field.IsFile {
 			return field
 		}
 	}

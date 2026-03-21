@@ -24,7 +24,19 @@
 [[- range .Fields]]
     <div[[if ne (fieldClass $.CSSFramework) ""]] class="[[fieldClass $.CSSFramework]]"[[end]]>
       <label[[if ne (labelClass $.CSSFramework) ""]] class="[[labelClass $.CSSFramework]]"[[end]]>[[.Name | title]]</label>
-[[- if .IsTextarea]]
+[[- if .IsFile]]
+      <input type="file" lvt-upload="[[.Name]]"[[if .IsImage]] accept="image/*"[[end]] {{if .lvt.HasUploadError "[[.Name]]"}}aria-invalid="true"{{end}}>
+      {{range .lvt.Uploads "[[.Name]]"}}
+      <div style="margin-top: 0.5rem; font-size: 0.875rem;">
+        {{if .Done}}<span style="color: #059669;">&#10003;</span>{{else if .Error}}<span style="color: #dc2626;">&#10007;</span>{{else}}<span>{{.Progress}}%</span>{{end}}
+        {{.ClientName}} ({{.ClientSize}} bytes)
+        {{if .Error}}<span style="color: #dc2626;">{{.Error}}</span>{{end}}
+      </div>
+      {{end}}
+      {{if .lvt.HasUploadError "[[.Name]]"}}
+      <small style="color: #c00; font-size: 0.875rem;">{{.lvt.UploadError "[[.Name]]"}}</small>
+      {{end}}
+[[- else if .IsTextarea]]
       <textarea[[if ne (inputClass $.CSSFramework) ""]] class="[[inputClass $.CSSFramework]]"[[end]] name="[[.Name]]" placeholder="Enter [[.Name]]" rows="5" required {{if .lvt.HasError "[[.Name]]"}}aria-invalid="true"{{end}}></textarea>
 [[- else if .IsSelect]]
       <select[[if ne (inputClass $.CSSFramework) ""]] class="[[inputClass $.CSSFramework]]"[[end]] name="[[.Name]]" required {{if .lvt.HasError "[[.Name]]"}}aria-invalid="true"{{end}}>
@@ -45,9 +57,11 @@
 [[- else if eq .GoType "float64"]]
       <input[[if ne (inputClass $.CSSFramework) ""]] class="[[inputClass $.CSSFramework]]"[[end]] type="number"[[if .HTMLStep]] step="[[.HTMLStep]]"[[end]] name="[[.Name]]" placeholder="Enter [[.Name]]" required {{if .lvt.HasError "[[.Name]]"}}aria-invalid="true"{{end}}>
 [[- end]]
+[[- if not .IsFile]]
       {{if .lvt.HasError "[[.Name]]"}}
       <small style="color: #c00; font-size: 0.875rem;">{{.lvt.Error "[[.Name]]"}}</small>
       {{end}}
+[[- end]]
     </div>
 [[- if .IsPassword]]
     <div[[if ne (fieldClass $.CSSFramework) ""]] class="[[fieldClass $.CSSFramework]]"[[end]]>
@@ -85,7 +99,25 @@
 [[- range .Fields]]
     <div[[if ne (fieldClass $.CSSFramework) ""]] class="[[fieldClass $.CSSFramework]]"[[end]]>
       <label[[if ne (labelClass $.CSSFramework) ""]] class="[[labelClass $.CSSFramework]]"[[end]]>[[.Name | title]]</label>
-[[- if .IsTextarea]]
+[[- if .IsFile]]
+      {{if $.Editing[[$.ResourceName]].[[.Name | camelCase]]}}
+      <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: #f9fafb; border-radius: 4px; font-size: 0.875rem;">
+[[- if .IsImage]]
+        <img src="{{$.Editing[[$.ResourceName]].[[.Name | camelCase]]}}" alt="[[.Name | title]]" style="max-width: 200px; max-height: 150px; display: block; margin-bottom: 0.5rem; border-radius: 4px;">
+[[- end]]
+        Current: {{$.Editing[[$.ResourceName]].[[printf "%s_filename" .Name | camelCase]]}}
+      </div>
+      {{end}}
+      <input type="file" lvt-upload="[[.Name]]"[[if .IsImage]] accept="image/*"[[end]]>
+      <small style="color: #666; font-size: 0.75rem;">Leave empty to keep current file</small>
+      {{range .lvt.Uploads "[[.Name]]"}}
+      <div style="margin-top: 0.5rem; font-size: 0.875rem;">
+        {{if .Done}}<span style="color: #059669;">&#10003;</span>{{else if .Error}}<span style="color: #dc2626;">&#10007;</span>{{else}}<span>{{.Progress}}%</span>{{end}}
+        {{.ClientName}} ({{.ClientSize}} bytes)
+        {{if .Error}}<span style="color: #dc2626;">{{.Error}}</span>{{end}}
+      </div>
+      {{end}}
+[[- else if .IsTextarea]]
       <textarea[[if ne (inputClass $.CSSFramework) ""]] class="[[inputClass $.CSSFramework]]"[[end]] name="[[.Name]]" placeholder="Enter [[.Name]]" rows="5" required {{if .lvt.HasError "[[.Name]]"}}aria-invalid="true"{{end}}>{{.Editing[[$.ResourceName]].[[.Name | camelCase]]}}</textarea>
 [[- else if .IsSelect]]
 [[- $fCamel := .Name | camelCase]]

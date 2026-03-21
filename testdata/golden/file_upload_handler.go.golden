@@ -1,4 +1,4 @@
-package user
+package gallery
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -15,22 +16,21 @@ import (
 	_ "github.com/livetemplate/lvt/components/styles/tailwind"
 	"github.com/livetemplate/lvt/components/modal"
 	"github.com/livetemplate/lvt/components/toast"
+	"github.com/livetemplate/lvt/pkg/storage"
 	"testmodule/database/models"
 )
 
 var validate = validator.New()
 
-type UserItem = models.User
+type GalleryItem = models.Gallery
 
 type AddInput struct {
-	Name string `json:"name" validate:"required,min=3"`
-	Age int64 `json:"age" validate:"required"`
+	Title string `json:"title" validate:"required,min=3"`
 }
 
 type UpdateInput struct {
 	ID string `json:"id" validate:"required"`
-	Name string `json:"name" validate:"required,min=3"`
-	Age int64 `json:"age" validate:"required"`
+	Title string `json:"title" validate:"required,min=3"`
 }
 
 type IDInput struct {
@@ -49,25 +49,26 @@ type PaginationInput struct {
 	Page int `json:"page" validate:"required,min=1"`
 }
 
-// UserController is a singleton that holds dependencies (DB, logger, etc.)
-type UserController struct {
+// GalleryController is a singleton that holds dependencies (DB, logger, etc.)
+type GalleryController struct {
 	Queries *models.Queries
+	Store   storage.Store
 }
 
-// UserState is pure data, cloned per session
-type UserState struct {
+// GalleryState is pure data, cloned per session
+type GalleryState struct {
 	Title        string                `json:"title"`
 	SearchQuery  string                `json:"search_query"`
 	SortBy       string                `json:"sort_by"`
-	FilteredUsers  []UserItem `json:"filtered_users"`
+	FilteredGalleries  []GalleryItem `json:"filtered_gallerys"`
 	CurrentPage  int                   `json:"current_page"`
 	PageSize     int                   `json:"page_size"`
 	TotalPages   int                   `json:"total_pages"`
-	PaginatedUsers []UserItem `json:"paginated_users"`
+	PaginatedGalleries []GalleryItem `json:"paginated_gallerys"`
 	TotalCount   int                   `json:"total_count"`
 	LastUpdated  string                `json:"last_updated"`
 	EditingID    string                `json:"editing_id" lvt:"transient"`
-	EditingUser *UserItem   `json:"editing_user" lvt:"transient"`
+	EditingGallery *GalleryItem   `json:"editing_gallery" lvt:"transient"`
 	IsEditingMode bool                 `json:"is_editing_mode"` // For page mode: true when at /resource/:id/edit
 	PaginationMode string              `json:"pagination_mode"` // "infinite", "load-more", "prev-next", "numbers"
 	LoadedCount    int                 `json:"loaded_count"`    // For infinite/load-more modes
@@ -83,7 +84,7 @@ type UserState struct {
 }
 
 // Add handles the "add" action to create a new resource
-func (c *UserController) Add(state UserState, ctx *livetemplate.Context) (UserState, error) {
+func (c *GalleryController) Add(state GalleryState, ctx *livetemplate.Context) (GalleryState, error) {
 	dbCtx := context.Background()
 
 	var input AddInput
@@ -92,29 +93,73 @@ func (c *UserController) Add(state UserState, ctx *livetemplate.Context) (UserSt
 	}
 
 	now := time.Now()
-	id := fmt.Sprintf("user-%d", now.UnixNano())
+	id := fmt.Sprintf("gallery-%d", now.UnixNano())
+	// Process file uploads
+	var photoVal, photoFilename, photoContentType string
+	var photoSize int64
+	if uploads := ctx.GetCompletedUploads("photo"); len(uploads) > 0 {
+		entry := uploads[0]
+		f, err := os.Open(entry.TempPath)
+		if err != nil {
+			return state, fmt.Errorf("failed to open uploaded file: %w", err)
+		}
+		defer f.Close()
+		key := fmt.Sprintf("galleries/%s/%s", id, entry.ClientName)
+		if err := c.Store.Save(dbCtx, key, f); err != nil {
+			return state, fmt.Errorf("failed to save file: %w", err)
+		}
+		photoVal = c.Store.URL(key)
+		photoFilename = entry.ClientName
+		photoContentType = entry.ClientType
+		photoSize = entry.ClientSize
+	}
+	var docVal, docFilename, docContentType string
+	var docSize int64
+	if uploads := ctx.GetCompletedUploads("doc"); len(uploads) > 0 {
+		entry := uploads[0]
+		f, err := os.Open(entry.TempPath)
+		if err != nil {
+			return state, fmt.Errorf("failed to open uploaded file: %w", err)
+		}
+		defer f.Close()
+		key := fmt.Sprintf("galleries/%s/%s", id, entry.ClientName)
+		if err := c.Store.Save(dbCtx, key, f); err != nil {
+			return state, fmt.Errorf("failed to save file: %w", err)
+		}
+		docVal = c.Store.URL(key)
+		docFilename = entry.ClientName
+		docContentType = entry.ClientType
+		docSize = entry.ClientSize
+	}
 
-	_, err := c.Queries.CreateUser(dbCtx, models.CreateUserParams{
+	_, err := c.Queries.CreateGallery(dbCtx, models.CreateGalleryParams{
 		ID:        id,
-		Name: input.Name,
-		Age: input.Age,
+		Title: input.Title,
+		Photo:            photoVal,
+		PhotoFilename:    photoFilename,
+		PhotoContentType: photoContentType,
+		PhotoSize:         photoSize,
+		Doc:            docVal,
+		DocFilename:    docFilename,
+		DocContentType: docContentType,
+		DocSize:         docSize,
 		CreatedAt: now,
 	})
 	if err != nil {
-		return state, fmt.Errorf("failed to create user: %w", err)
+		return state, fmt.Errorf("failed to create gallery: %w", err)
 	}
 
-	state, err = c.loadUsers(state, dbCtx)
+	state, err = c.loadGallerys(state, dbCtx)
 	if err != nil {
 		return state, err
 	}
-	state.Toasts.AddSuccess("Created", "User created successfully")
+	state.Toasts.AddSuccess("Created", "Gallery created successfully")
 	state.LastUpdated = formatTime()
 	return state, nil
 }
 
 // Edit handles the "edit" action to start editing a resource
-func (c *UserController) Edit(state UserState, ctx *livetemplate.Context) (UserState, error) {
+func (c *GalleryController) Edit(state GalleryState, ctx *livetemplate.Context) (GalleryState, error) {
 	dbCtx := context.Background()
 
 	var input IDInput
@@ -123,16 +168,16 @@ func (c *UserController) Edit(state UserState, ctx *livetemplate.Context) (UserS
 	}
 
 	// Find the item to edit
-	users, err := c.Queries.GetAllUsers(dbCtx)
+	gallerys, err := c.Queries.GetAllGalleries(dbCtx)
 	if err != nil {
-		return state, fmt.Errorf("failed to load users: %w", err)
+		return state, fmt.Errorf("failed to load gallerys: %w", err)
 	}
 
-	for _, item := range users {
+	for _, item := range gallerys {
 		if item.ID == input.ID {
 			state.EditingID = input.ID
 			itemCopy := item
-			state.EditingUser = &itemCopy
+			state.EditingGallery = &itemCopy
 			break
 		}
 	}
@@ -142,49 +187,101 @@ func (c *UserController) Edit(state UserState, ctx *livetemplate.Context) (UserS
 }
 
 // Update handles the "update" action to save changes to a resource
-func (c *UserController) Update(state UserState, ctx *livetemplate.Context) (UserState, error) {
+func (c *GalleryController) Update(state GalleryState, ctx *livetemplate.Context) (GalleryState, error) {
 	dbCtx := context.Background()
 
 	var input UpdateInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
 		return state, err
 	}
-	err := c.Queries.UpdateUser(dbCtx, models.UpdateUserParams{
+	// Process file uploads (only update file columns if new file uploaded)
+	existing, err := c.Queries.GetGalleryByID(dbCtx, input.ID)
+	if err != nil {
+		return state, fmt.Errorf("failed to load existing gallery: %w", err)
+	}
+	photoVal := existing.Photo
+	photoFilename := existing.PhotoFilename
+	photoContentType := existing.PhotoContentType
+	photoSize := existing.PhotoSize
+	if uploads := ctx.GetCompletedUploads("photo"); len(uploads) > 0 {
+		entry := uploads[0]
+		f, err := os.Open(entry.TempPath)
+		if err != nil {
+			return state, fmt.Errorf("failed to open uploaded file: %w", err)
+		}
+		defer f.Close()
+		key := fmt.Sprintf("galleries/%s/%s", input.ID, entry.ClientName)
+		if err := c.Store.Save(dbCtx, key, f); err != nil {
+			return state, fmt.Errorf("failed to save file: %w", err)
+		}
+		photoVal = c.Store.URL(key)
+		photoFilename = entry.ClientName
+		photoContentType = entry.ClientType
+		photoSize = entry.ClientSize
+	}
+	docVal := existing.Doc
+	docFilename := existing.DocFilename
+	docContentType := existing.DocContentType
+	docSize := existing.DocSize
+	if uploads := ctx.GetCompletedUploads("doc"); len(uploads) > 0 {
+		entry := uploads[0]
+		f, err := os.Open(entry.TempPath)
+		if err != nil {
+			return state, fmt.Errorf("failed to open uploaded file: %w", err)
+		}
+		defer f.Close()
+		key := fmt.Sprintf("galleries/%s/%s", input.ID, entry.ClientName)
+		if err := c.Store.Save(dbCtx, key, f); err != nil {
+			return state, fmt.Errorf("failed to save file: %w", err)
+		}
+		docVal = c.Store.URL(key)
+		docFilename = entry.ClientName
+		docContentType = entry.ClientType
+		docSize = entry.ClientSize
+	}
+	err = c.Queries.UpdateGallery(dbCtx, models.UpdateGalleryParams{
 		ID: input.ID,
-		Name: input.Name,
-		Age: input.Age,
+		Title: input.Title,
+		Photo:            photoVal,
+		PhotoFilename:    photoFilename,
+		PhotoContentType: photoContentType,
+		PhotoSize:         photoSize,
+		Doc:            docVal,
+		DocFilename:    docFilename,
+		DocContentType: docContentType,
+		DocSize:         docSize,
 	})
 	if err != nil {
-		return state, fmt.Errorf("failed to update user: %w", err)
+		return state, fmt.Errorf("failed to update gallery: %w", err)
 	}
 
 	// For page mode: Exit edit mode and stay on detail view
 	state.IsEditingMode = false
 
 	// Reload the updated resource
-	state, err = c.loadUsers(state, dbCtx)
+	state, err = c.loadGallerys(state, dbCtx)
 	if err != nil {
 		return state, err
 	}
 
 	// Close modal / clear editing state after successful save
 	state.EditingID = ""
-	state.EditingUser = nil
-	state.Toasts.AddSuccess("Updated", "User updated successfully")
+	state.EditingGallery = nil
+	state.Toasts.AddSuccess("Updated", "Gallery updated successfully")
 	state.LastUpdated = formatTime()
 	return state, nil
 }
 
 // CancelEdit handles the "cancel_edit" action to cancel editing
-func (c *UserController) CancelEdit(state UserState, _ *livetemplate.Context) (UserState, error) {
+func (c *GalleryController) CancelEdit(state GalleryState, _ *livetemplate.Context) (GalleryState, error) {
 	state.EditingID = ""
-	state.EditingUser = nil
+	state.EditingGallery = nil
 	state.LastUpdated = formatTime()
 	return state, nil
 }
 
 // View handles the "view" action to view a resource
-func (c *UserController) View(state UserState, ctx *livetemplate.Context) (UserState, error) {
+func (c *GalleryController) View(state GalleryState, ctx *livetemplate.Context) (GalleryState, error) {
 	dbCtx := context.Background()
 
 	var input IDInput
@@ -193,16 +290,16 @@ func (c *UserController) View(state UserState, ctx *livetemplate.Context) (UserS
 	}
 
 	// Find the item to view/edit
-	users, err := c.Queries.GetAllUsers(dbCtx)
+	gallerys, err := c.Queries.GetAllGalleries(dbCtx)
 	if err != nil {
-		return state, fmt.Errorf("failed to load users: %w", err)
+		return state, fmt.Errorf("failed to load gallerys: %w", err)
 	}
 
-	for _, item := range users {
+	for _, item := range gallerys {
 		if item.ID == input.ID {
 			state.EditingID = input.ID
 			itemCopy := item
-			state.EditingUser = &itemCopy
+			state.EditingGallery = &itemCopy
 			break
 		}
 	}
@@ -212,14 +309,14 @@ func (c *UserController) View(state UserState, ctx *livetemplate.Context) (UserS
 }
 
 // Back handles the "back" action to return to list view
-func (c *UserController) Back(state UserState, _ *livetemplate.Context) (UserState, error) {
+func (c *GalleryController) Back(state GalleryState, _ *livetemplate.Context) (GalleryState, error) {
 	state.EditingID = ""
-	state.EditingUser = nil
+	state.EditingGallery = nil
 	state.LastUpdated = formatTime()
 	return state, nil
 }
 // RequestDelete handles the "request_delete" action to show the delete confirmation modal
-func (c *UserController) RequestDelete(state UserState, ctx *livetemplate.Context) (UserState, error) {
+func (c *GalleryController) RequestDelete(state GalleryState, ctx *livetemplate.Context) (GalleryState, error) {
 	var input IDInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
 		return state, err
@@ -232,42 +329,51 @@ func (c *UserController) RequestDelete(state UserState, ctx *livetemplate.Contex
 }
 
 // ConfirmDelete handles the "confirm_delete" action from the confirmation modal
-func (c *UserController) ConfirmDelete(state UserState, _ *livetemplate.Context) (UserState, error) {
+func (c *GalleryController) ConfirmDelete(state GalleryState, _ *livetemplate.Context) (GalleryState, error) {
 	dbCtx := context.Background()
 
 	if state.PendingDeleteID == "" {
 		return state, nil
 	}
+	// Delete associated files from storage
+	if existing, err := c.Queries.GetGalleryByID(dbCtx, state.PendingDeleteID); err == nil {
+		if existing.Photo != "" {
+			_ = c.Store.Delete(dbCtx, existing.Photo)
+		}
+		if existing.Doc != "" {
+			_ = c.Store.Delete(dbCtx, existing.Doc)
+		}
+	}
 
-	err := c.Queries.DeleteUser(dbCtx, state.PendingDeleteID)
+	err := c.Queries.DeleteGallery(dbCtx, state.PendingDeleteID)
 	if err != nil {
-		return state, fmt.Errorf("failed to delete user: %w", err)
+		return state, fmt.Errorf("failed to delete gallery: %w", err)
 	}
 
 	state.DeleteConfirm.Hide()
 	state.PendingDeleteID = ""
 	state.EditingID = ""
-	state.EditingUser = nil
+	state.EditingGallery = nil
 
-	state, err = c.loadUsers(state, dbCtx)
+	state, err = c.loadGallerys(state, dbCtx)
 	if err != nil {
 		return state, err
 	}
 
-	state.Toasts.AddSuccess("Deleted", "User deleted successfully")
+	state.Toasts.AddSuccess("Deleted", "Gallery deleted successfully")
 	state.LastUpdated = formatTime()
 	return state, nil
 }
 
 // CancelDelete handles the "cancel_delete" action to close the confirmation modal
-func (c *UserController) CancelDelete(state UserState, _ *livetemplate.Context) (UserState, error) {
+func (c *GalleryController) CancelDelete(state GalleryState, _ *livetemplate.Context) (GalleryState, error) {
 	state.DeleteConfirm.Hide()
 	state.PendingDeleteID = ""
 	return state, nil
 }
 
 // DismissToastNotifications handles the "dismiss_toast_notifications" action
-func (c *UserController) DismissToastNotifications(state UserState, ctx *livetemplate.Context) (UserState, error) {
+func (c *GalleryController) DismissToastNotifications(state GalleryState, ctx *livetemplate.Context) (GalleryState, error) {
 	toastID := ctx.GetString("toast")
 	if toastID != "" {
 		state.Toasts.Dismiss(toastID)
@@ -276,7 +382,7 @@ func (c *UserController) DismissToastNotifications(state UserState, ctx *livetem
 }
 
 // Search handles the "search" action to filter resources
-func (c *UserController) Search(state UserState, ctx *livetemplate.Context) (UserState, error) {
+func (c *GalleryController) Search(state GalleryState, ctx *livetemplate.Context) (GalleryState, error) {
 	dbCtx := context.Background()
 
 	var input SearchInput
@@ -289,7 +395,7 @@ func (c *UserController) Search(state UserState, ctx *livetemplate.Context) (Use
 		state.LoadedCount = state.PageSize
 	}
 
-	state, err := c.loadUsers(state, dbCtx)
+	state, err := c.loadGallerys(state, dbCtx)
 	if err != nil {
 		return state, err
 	}
@@ -299,7 +405,7 @@ func (c *UserController) Search(state UserState, ctx *livetemplate.Context) (Use
 }
 
 // Sort handles the "sort" action to sort resources
-func (c *UserController) Sort(state UserState, ctx *livetemplate.Context) (UserState, error) {
+func (c *GalleryController) Sort(state GalleryState, ctx *livetemplate.Context) (GalleryState, error) {
 	dbCtx := context.Background()
 
 	var input SortInput
@@ -327,7 +433,7 @@ func (c *UserController) Sort(state UserState, ctx *livetemplate.Context) (UserS
 	// Note: Don't reset LoadedCount when sorting - keep all loaded items visible
 	// Just re-sort the existing items for better UX
 
-	state, err := c.loadUsers(state, dbCtx)
+	state, err := c.loadGallerys(state, dbCtx)
 	if err != nil {
 		return state, err
 	}
@@ -337,13 +443,13 @@ func (c *UserController) Sort(state UserState, ctx *livetemplate.Context) (UserS
 }
 
 // NextPage handles the "next_page" action for pagination
-func (c *UserController) NextPage(state UserState, _ *livetemplate.Context) (UserState, error) {
+func (c *GalleryController) NextPage(state GalleryState, _ *livetemplate.Context) (GalleryState, error) {
 	dbCtx := context.Background()
 
 	if state.CurrentPage < state.TotalPages {
 		state.CurrentPage++
 	}
-	state, err := c.loadUsers(state, dbCtx)
+	state, err := c.loadGallerys(state, dbCtx)
 	if err != nil {
 		return state, err
 	}
@@ -353,13 +459,13 @@ func (c *UserController) NextPage(state UserState, _ *livetemplate.Context) (Use
 }
 
 // PrevPage handles the "prev_page" action for pagination
-func (c *UserController) PrevPage(state UserState, _ *livetemplate.Context) (UserState, error) {
+func (c *GalleryController) PrevPage(state GalleryState, _ *livetemplate.Context) (GalleryState, error) {
 	dbCtx := context.Background()
 
 	if state.CurrentPage > 1 {
 		state.CurrentPage--
 	}
-	state, err := c.loadUsers(state, dbCtx)
+	state, err := c.loadGallerys(state, dbCtx)
 	if err != nil {
 		return state, err
 	}
@@ -369,7 +475,7 @@ func (c *UserController) PrevPage(state UserState, _ *livetemplate.Context) (Use
 }
 
 // GotoPage handles the "goto_page" action to jump to a specific page
-func (c *UserController) GotoPage(state UserState, ctx *livetemplate.Context) (UserState, error) {
+func (c *GalleryController) GotoPage(state GalleryState, ctx *livetemplate.Context) (GalleryState, error) {
 	dbCtx := context.Background()
 
 	var input PaginationInput
@@ -379,7 +485,7 @@ func (c *UserController) GotoPage(state UserState, ctx *livetemplate.Context) (U
 	if input.Page >= 1 && input.Page <= state.TotalPages {
 		state.CurrentPage = input.Page
 	}
-	state, err := c.loadUsers(state, dbCtx)
+	state, err := c.loadGallerys(state, dbCtx)
 	if err != nil {
 		return state, err
 	}
@@ -389,7 +495,7 @@ func (c *UserController) GotoPage(state UserState, ctx *livetemplate.Context) (U
 }
 
 // LoadMore handles the "load_more" action for infinite scroll
-func (c *UserController) LoadMore(state UserState, _ *livetemplate.Context) (UserState, error) {
+func (c *GalleryController) LoadMore(state GalleryState, _ *livetemplate.Context) (GalleryState, error) {
 	dbCtx := context.Background()
 
 	if state.PaginationMode == "infinite" || state.PaginationMode == "load-more" {
@@ -397,7 +503,7 @@ func (c *UserController) LoadMore(state UserState, _ *livetemplate.Context) (Use
 			state.IsLoading = true
 			state.LoadedCount += state.PageSize
 			var err error
-			state, err = c.loadUsers(state, dbCtx)
+			state, err = c.loadGallerys(state, dbCtx)
 			if err != nil {
 				return state, err
 			}
@@ -410,31 +516,31 @@ func (c *UserController) LoadMore(state UserState, _ *livetemplate.Context) (Use
 }
 
 // Mount is called when a new session is created or when page-mode navigation triggers a remount.
-func (c *UserController) Mount(state UserState, ctx *livetemplate.Context) (UserState, error) {
-	return c.loadUsers(state, context.Background())
+func (c *GalleryController) Mount(state GalleryState, ctx *livetemplate.Context) (GalleryState, error) {
+	return c.loadGallerys(state, context.Background())
 }
 
-func (c *UserController) loadUsers(state UserState, ctx context.Context) (UserState, error) {
-	users, err := c.Queries.GetAllUsers(ctx)
+func (c *GalleryController) loadGallerys(state GalleryState, ctx context.Context) (GalleryState, error) {
+	gallerys, err := c.Queries.GetAllGalleries(ctx)
 	if err != nil {
-		return state, fmt.Errorf("failed to load users: %w", err)
+		return state, fmt.Errorf("failed to load gallerys: %w", err)
 	}
 
 	if state.SearchQuery == "" {
-		state.FilteredUsers = users
+		state.FilteredGalleries = gallerys
 	} else {
-		state.FilteredUsers = []UserItem{}
+		state.FilteredGalleries = []GalleryItem{}
 		query := strings.ToLower(state.SearchQuery)
-		for _, item := range users {
+		for _, item := range gallerys {
 			// Search across all text fields (skip file/image fields)
-			if strings.Contains(strings.ToLower(item.Name), query) {
-				state.FilteredUsers = append(state.FilteredUsers, item)
+			if strings.Contains(strings.ToLower(item.Title), query) {
+				state.FilteredGalleries = append(state.FilteredGalleries, item)
 				continue
 			}
 		}
 	}
 
-	state.TotalCount = len(users)
+	state.TotalCount = len(gallerys)
 	state = applySorting(state)
 	state = applyPagination(state)
 
@@ -446,67 +552,67 @@ func (c *UserController) loadUsers(state UserState, ctx context.Context) (UserSt
 // 1. State is cloned per session via AsState (JSON serialization creates fresh slices)
 // 2. The slice is populated fresh from the database in each load operation
 // 3. State is passed by value and returned, not shared across sessions
-func applySorting(state UserState) UserState {
+func applySorting(state GalleryState) GalleryState {
 	switch state.SortBy {
-	case "name_asc":
-		sort.Slice(state.FilteredUsers, func(i, j int) bool {
-			return strings.ToLower(state.FilteredUsers[i].Name) < strings.ToLower(state.FilteredUsers[j].Name)
+	case "title_asc":
+		sort.Slice(state.FilteredGalleries, func(i, j int) bool {
+			return strings.ToLower(state.FilteredGalleries[i].Title) < strings.ToLower(state.FilteredGalleries[j].Title)
 		})
-	case "name_desc":
-		sort.Slice(state.FilteredUsers, func(i, j int) bool {
-			return strings.ToLower(state.FilteredUsers[i].Name) > strings.ToLower(state.FilteredUsers[j].Name)
+	case "title_desc":
+		sort.Slice(state.FilteredGalleries, func(i, j int) bool {
+			return strings.ToLower(state.FilteredGalleries[i].Title) > strings.ToLower(state.FilteredGalleries[j].Title)
 		})
 	case "oldest_first":
-		sort.Slice(state.FilteredUsers, func(i, j int) bool {
-			return state.FilteredUsers[i].CreatedAt.Before(state.FilteredUsers[j].CreatedAt)
+		sort.Slice(state.FilteredGalleries, func(i, j int) bool {
+			return state.FilteredGalleries[i].CreatedAt.Before(state.FilteredGalleries[j].CreatedAt)
 		})
 	default:
-		sort.Slice(state.FilteredUsers, func(i, j int) bool {
-			return state.FilteredUsers[i].CreatedAt.After(state.FilteredUsers[j].CreatedAt)
+		sort.Slice(state.FilteredGalleries, func(i, j int) bool {
+			return state.FilteredGalleries[i].CreatedAt.After(state.FilteredGalleries[j].CreatedAt)
 		})
 	}
 	return state
 }
 
-func applyPagination(state UserState) UserState {
+func applyPagination(state GalleryState) GalleryState {
 	if state.PaginationMode == "infinite" || state.PaginationMode == "load-more" {
 		return applyInfiniteScroll(state)
 	}
 	return applyPagedNavigation(state)
 }
 
-func applyInfiniteScroll(state UserState) UserState {
+func applyInfiniteScroll(state GalleryState) GalleryState {
 	// Initialize LoadedCount if not set
 	if state.LoadedCount == 0 {
 		state.LoadedCount = state.PageSize
 	}
 
-	if len(state.FilteredUsers) == 0 {
-		state.PaginatedUsers = []UserItem{}
+	if len(state.FilteredGalleries) == 0 {
+		state.PaginatedGalleries = []GalleryItem{}
 		state.HasMore = false
 		return state
 	}
 
 	// Load items from 0 to LoadedCount
 	end := state.LoadedCount
-	if end > len(state.FilteredUsers) {
-		end = len(state.FilteredUsers)
+	if end > len(state.FilteredGalleries) {
+		end = len(state.FilteredGalleries)
 	}
 
-	state.PaginatedUsers = state.FilteredUsers[0:end]
-	state.HasMore = end < len(state.FilteredUsers)
+	state.PaginatedGalleries = state.FilteredGalleries[0:end]
+	state.HasMore = end < len(state.FilteredGalleries)
 	return state
 }
 
-func applyPagedNavigation(state UserState) UserState {
-	if len(state.FilteredUsers) == 0 {
+func applyPagedNavigation(state GalleryState) GalleryState {
+	if len(state.FilteredGalleries) == 0 {
 		state.TotalPages = 1
 		state.CurrentPage = 1
-		state.PaginatedUsers = []UserItem{}
+		state.PaginatedGalleries = []GalleryItem{}
 		return state
 	}
 
-	state.TotalPages = int(math.Ceil(float64(len(state.FilteredUsers)) / float64(state.PageSize)))
+	state.TotalPages = int(math.Ceil(float64(len(state.FilteredGalleries)) / float64(state.PageSize)))
 
 	if state.CurrentPage < 1 {
 		state.CurrentPage = 1
@@ -517,11 +623,11 @@ func applyPagedNavigation(state UserState) UserState {
 
 	start := (state.CurrentPage - 1) * state.PageSize
 	end := start + state.PageSize
-	if end > len(state.FilteredUsers) {
-		end = len(state.FilteredUsers)
+	if end > len(state.FilteredGalleries) {
+		end = len(state.FilteredGalleries)
 	}
 
-	state.PaginatedUsers = state.FilteredUsers[start:end]
+	state.PaginatedGalleries = state.FilteredGalleries[start:end]
 	return state
 }
 
@@ -530,15 +636,16 @@ func formatTime() string {
 }
 
 // Handler creates an http.Handler for this resource
-func Handler(queries *models.Queries) http.Handler {
+func Handler(queries *models.Queries, store storage.Store) http.Handler {
 	// Controller is a singleton that holds dependencies
-	controller := &UserController{
+	controller := &GalleryController{
 		Queries: queries,
+		Store:   store,
 	}
 
 	// Initial state is pure data, cloned per session
-	initialState := &UserState{
-		Title:          "User Management",
+	initialState := &GalleryState{
+		Title:          "Gallery Management",
 		CurrentPage:    1,
 		PageSize:       20,
 		PaginationMode: "infinite",
@@ -547,8 +654,8 @@ func Handler(queries *models.Queries) http.Handler {
 		CSSFramework:   "tailwind",
 	}
 	initialState.DeleteConfirm = modal.NewConfirm("delete",
-		modal.WithConfirmTitle("Delete User"),
-		modal.WithConfirmMessage("Are you sure you want to delete this user? This action cannot be undone."),
+		modal.WithConfirmTitle("Delete Gallery"),
+		modal.WithConfirmMessage("Are you sure you want to delete this gallery? This action cannot be undone."),
 		modal.WithConfirmDestructive(true),
 	)
 	initialState.Toasts = toast.New("notifications",
@@ -556,14 +663,26 @@ func Handler(queries *models.Queries) http.Handler {
 		toast.WithMaxVisible(3),
 	)
 
-	baseTmpl := livetemplate.Must(livetemplate.New("user",
+	baseTmpl := livetemplate.Must(livetemplate.New("gallery",
 		livetemplate.WithDevMode(false),
 		livetemplate.WithComponentTemplates(
 			modal.Templates(),
 			toast.Templates(),
 		),
+		livetemplate.WithUpload("photo", livetemplate.UploadConfig{
+			Accept:     []string{"image/*"},
+			MaxEntries: 1,
+			MaxFileSize: 10 << 20, // 10 MB
+			AutoUpload: true,
+		}),
+		livetemplate.WithUpload("doc", livetemplate.UploadConfig{
+			Accept:     []string{"*/*"},
+			MaxEntries: 1,
+			MaxFileSize: 10 << 20, // 10 MB
+			AutoUpload: true,
+		}),
 	))
-	if _, err := baseTmpl.ParseFiles("app/user/user.tmpl"); err != nil {
+	if _, err := baseTmpl.ParseFiles("app/gallery/gallery.tmpl"); err != nil {
 		log.Fatalf("Failed to parse template: %v", err)
 	}
 	// Modal mode: clone template per request

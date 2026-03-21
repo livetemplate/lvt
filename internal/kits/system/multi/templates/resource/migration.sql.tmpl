@@ -3,7 +3,14 @@
 CREATE TABLE IF NOT EXISTS [[.TableName]] (
   id TEXT PRIMARY KEY,
 [[- range .Fields]]
+[[- if .IsFile]]
+  [[.Name]] TEXT NOT NULL DEFAULT '',
+  [[.Name]]_filename TEXT NOT NULL DEFAULT '',
+  [[.Name]]_content_type TEXT NOT NULL DEFAULT '',
+  [[.Name]]_size INTEGER NOT NULL DEFAULT 0,
+[[- else]]
   [[.Name]] [[.SQLType]] NOT NULL,
+[[- end]]
 [[- end]]
   created_at DATETIME NOT NULL[[range .Fields]][[if .IsReference]],
   FOREIGN KEY ([[.Name]]) REFERENCES [[.ReferencedTable]](id)[[if .OnDelete]] ON DELETE [[.OnDelete]][[end]][[end]][[end]]

@@ -117,6 +117,21 @@ func TestParseFields(t *testing.T) {
 			input: []string{"name:string", "email:email", "phone:phone", "website:url", "secret:password"},
 			want:  5,
 		},
+		{
+			name:  "file field type",
+			input: []string{"doc:file"},
+			want:  1,
+		},
+		{
+			name:  "image field type",
+			input: []string{"photo:image"},
+			want:  1,
+		},
+		{
+			name:  "mixed fields with file and image",
+			input: []string{"title:string", "photo:image", "doc:file", "views:int"},
+			want:  4,
+		},
 	}
 
 	for _, tt := range tests {
@@ -229,6 +244,8 @@ func TestMapType(t *testing.T) {
 		{"phone", "string", "TEXT", false, false},
 		{"tel", "string", "TEXT", false, false},
 		{"password", "string", "TEXT", false, false},
+		{"file", "string", "TEXT", false, false},
+		{"image", "string", "TEXT", false, false},
 		{"uuid", "", "", false, true},
 		{"unknown", "", "", false, true},
 	}
@@ -279,6 +296,8 @@ func TestGetFieldMetadata(t *testing.T) {
 		{"bool", "", "checkbox", 0, false, ""},
 		{"float", "required", "number", 0, false, "0.01"},
 		{"text", "required,min=3", "text", 3, false, ""},
+		{"file", "", "file", 0, false, ""},
+		{"image", "", "file", 0, false, ""},
 		{"unknown_type", "", "text", 0, false, ""},
 	}
 
@@ -340,6 +359,46 @@ func TestParseFieldsMetadata(t *testing.T) {
 	// tel field
 	if fields[3].Metadata.HTMLInputType != "tel" {
 		t.Errorf("tel HTMLInputType = %q, want %q", fields[3].Metadata.HTMLInputType, "tel")
+	}
+}
+
+func TestParseFieldsFileProperties(t *testing.T) {
+	fields, err := ParseFields([]string{"photo:image", "doc:file"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(fields) != 2 {
+		t.Fatalf("expected 2 fields, got %d", len(fields))
+	}
+
+	// image field
+	img := fields[0]
+	if img.Name != "photo" {
+		t.Errorf("expected name 'photo', got %q", img.Name)
+	}
+	if img.GoType != "string" {
+		t.Errorf("expected GoType 'string', got %q", img.GoType)
+	}
+	if img.SQLType != "TEXT" {
+		t.Errorf("expected SQLType 'TEXT', got %q", img.SQLType)
+	}
+	if !img.IsFile {
+		t.Error("image field should have IsFile=true")
+	}
+	if !img.IsImage {
+		t.Error("image field should have IsImage=true")
+	}
+	if img.Metadata.HTMLInputType != "file" {
+		t.Errorf("image HTMLInputType = %q, want 'file'", img.Metadata.HTMLInputType)
+	}
+
+	// file field
+	doc := fields[1]
+	if !doc.IsFile {
+		t.Error("file field should have IsFile=true")
+	}
+	if doc.IsImage {
+		t.Error("file field should have IsImage=false")
 	}
 }
 
