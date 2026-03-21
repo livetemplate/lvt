@@ -407,23 +407,23 @@ func TestFileUploadResourceGeneration(t *testing.T) {
 	handlerContent := string(handler)
 
 	handlerChecks := map[string]string{
-		"storage import":        `"github.com/livetemplate/lvt/pkg/storage"`,
-		"os import":             `"os"`,
-		"Store field":           `Store   storage.Store`,
-		"Handler with store":    `func Handler(queries *models.Queries, store storage.Store) http.Handler`,
-		"WithUpload photo":      `livetemplate.WithUpload("photo"`,
-		"WithUpload doc":        `livetemplate.WithUpload("doc"`,
-		"image accept filter":   `"image/*"`,
-		"GetCompletedUploads":   `ctx.GetCompletedUploads("photo")`,
-		"Store.Save":            `c.Store.Save(`,
-		"Store.URL":             `c.Store.URL(`,
-		"AddInput struct":       "type AddInput struct",
-		"NonFile title in Add":  "Title string",
-		"photo upload var":      "var photoVal, photoFilename, photoContentType string",
-		"doc upload var":        "var docVal, docFilename, docContentType string",
-		"PhotoFilename param":   "PhotoFilename:",
-		"DocContentType param":  "DocContentType:",
-		"Store.Delete":          "c.Store.Delete(",
+		"storage import":       `"github.com/livetemplate/lvt/pkg/storage"`,
+		"os import":            `"os"`,
+		"Store field":          `Store   storage.Store`,
+		"Handler with store":   `func Handler(queries *models.Queries, store storage.Store) http.Handler`,
+		"WithUpload photo":     `livetemplate.WithUpload("photo"`,
+		"WithUpload doc":       `livetemplate.WithUpload("doc"`,
+		"image accept filter":  `"image/*"`,
+		"GetCompletedUploads":  `ctx.GetCompletedUploads("photo")`,
+		"Store.Save":           `c.Store.Save(`,
+		"Store.URL":            `c.Store.URL(`,
+		"AddInput struct":      "type AddInput struct",
+		"NonFile title in Add": "Title string",
+		"photo upload var":     "var photoVal, photoFilename, photoContentType string",
+		"doc upload var":       "var docVal, docFilename, docContentType string",
+		"PhotoFilename param":  "PhotoFilename:",
+		"DocContentType param": "DocContentType:",
+		"Store.Delete":         "c.Store.Delete(",
 	}
 
 	for desc, substr := range handlerChecks {
@@ -471,15 +471,15 @@ func TestFileUploadResourceGeneration(t *testing.T) {
 	schema := string(schemaData)
 
 	sqlChecks := map[string]string{
-		"photo column":        "photo TEXT NOT NULL DEFAULT ''",
-		"photo_filename":      "photo_filename TEXT NOT NULL DEFAULT ''",
-		"photo_content_type":  "photo_content_type TEXT NOT NULL DEFAULT ''",
-		"photo_size":          "photo_size INTEGER NOT NULL DEFAULT 0",
-		"doc column":          "doc TEXT NOT NULL DEFAULT ''",
-		"doc_filename":        "doc_filename TEXT NOT NULL DEFAULT ''",
-		"doc_content_type":    "doc_content_type TEXT NOT NULL DEFAULT ''",
-		"doc_size":            "doc_size INTEGER NOT NULL DEFAULT 0",
-		"title column":        "title TEXT NOT NULL",
+		"photo column":       "photo TEXT NOT NULL DEFAULT ''",
+		"photo_filename":     "photo_filename TEXT NOT NULL DEFAULT ''",
+		"photo_content_type": "photo_content_type TEXT NOT NULL DEFAULT ''",
+		"photo_size":         "photo_size INTEGER NOT NULL DEFAULT 0",
+		"doc column":         "doc TEXT NOT NULL DEFAULT ''",
+		"doc_filename":       "doc_filename TEXT NOT NULL DEFAULT ''",
+		"doc_content_type":   "doc_content_type TEXT NOT NULL DEFAULT ''",
+		"doc_size":           "doc_size INTEGER NOT NULL DEFAULT 0",
+		"title column":       "title TEXT NOT NULL",
 	}
 
 	for desc, substr := range sqlChecks {
@@ -498,10 +498,10 @@ func TestFileUploadResourceGeneration(t *testing.T) {
 
 	// INSERT should have expanded columns
 	queryChecks := map[string]string{
-		"INSERT photo columns":    "photo, photo_filename, photo_content_type, photo_size",
-		"INSERT doc columns":      "doc, doc_filename, doc_content_type, doc_size",
-		"UPDATE photo columns":    "photo = ?, photo_filename = ?, photo_content_type = ?, photo_size = ?",
-		"UPDATE doc columns":      "doc = ?, doc_filename = ?, doc_content_type = ?, doc_size = ?",
+		"INSERT photo columns": "photo, photo_filename, photo_content_type, photo_size",
+		"INSERT doc columns":   "doc, doc_filename, doc_content_type, doc_size",
+		"UPDATE photo columns": "photo = ?, photo_filename = ?, photo_content_type = ?, photo_size = ?",
+		"UPDATE doc columns":   "doc = ?, doc_filename = ?, doc_content_type = ?, doc_size = ?",
 	}
 
 	for desc, substr := range queryChecks {
