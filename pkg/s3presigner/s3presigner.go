@@ -5,7 +5,8 @@ package s3presigner
 import (
 	"context"
 	"fmt"
-	"path/filepath"
+	"path"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -105,7 +106,10 @@ func (p *S3Presigner) Presign(entry *livetemplate.UploadEntry) (livetemplate.Upl
 // generateKey creates S3 object key from upload entry.
 // Format: {KeyPrefix}/{entryID}/{sanitized_filename}
 func (p *S3Presigner) generateKey(entry *livetemplate.UploadEntry) string {
-	filename := filepath.Base(entry.ClientName)
+	// Normalize backslashes to forward slashes before extracting basename,
+	// since path.Base (POSIX) doesn't treat backslash as a separator.
+	normalized := strings.ReplaceAll(entry.ClientName, "\\", "/")
+	filename := path.Base(normalized)
 
 	if p.config.KeyPrefix != "" {
 		return fmt.Sprintf("%s/%s/%s", p.config.KeyPrefix, entry.ID, filename)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
@@ -89,7 +90,9 @@ func (s *S3Store) Open(ctx context.Context, key string) (io.ReadCloser, error) {
 }
 
 // Delete removes the object at the given key from S3.
+// Also accepts URLs returned by URL() — the known prefix is stripped.
 func (s *S3Store) Delete(ctx context.Context, key string) error {
+	key = s.resolveKey(key)
 	_, err := s.client.DeleteObject(ctx, &s3.DeleteObjectInput{
 		Bucket: aws.String(s.config.Bucket),
 		Key:    aws.String(key),
@@ -98,6 +101,20 @@ func (s *S3Store) Delete(ctx context.Context, key string) error {
 		return fmt.Errorf("storage: s3 delete: %w", err)
 	}
 	return nil
+}
+
+// resolveKey strips known URL prefixes so Delete can accept either a key or a URL.
+func (s *S3Store) resolveKey(key string) string {
+	for _, prefix := range []string{
+		s.config.CDNPrefix + "/",
+		fmt.Sprintf("%s/%s/", s.config.Endpoint, s.config.Bucket),
+		fmt.Sprintf("https://%s.s3.%s.amazonaws.com/", s.config.Bucket, s.config.Region),
+	} {
+		if prefix != "/" && strings.HasPrefix(key, prefix) {
+			return key[len(prefix):]
+		}
+	}
+	return key
 }
 
 // URL returns the public URL for the given key.

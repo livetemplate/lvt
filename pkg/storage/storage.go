@@ -9,6 +9,9 @@ import (
 )
 
 // Store is the interface for file storage backends.
+// Keys are opaque storage paths (e.g., "galleries/id/photo.jpg").
+// Delete also accepts URLs returned by URL() — implementations strip
+// their known prefix to recover the underlying key.
 type Store interface {
 	Save(ctx context.Context, key string, reader io.Reader) error
 	Open(ctx context.Context, key string) (io.ReadCloser, error)

@@ -7,6 +7,7 @@ import (
 	"math"
 	"net/http"
 	"os"
+	"path"
 	"sort"
 	"strings"
 	"time"
@@ -104,7 +105,8 @@ func (c *GalleryController) Add(state GalleryState, ctx *livetemplate.Context) (
 			return state, fmt.Errorf("failed to open uploaded file: %w", err)
 		}
 		defer f.Close()
-		key := fmt.Sprintf("galleries/%s/%s", id, entry.ClientName)
+		safeName := path.Base(strings.ReplaceAll(entry.ClientName, "\\", "/"))
+		key := fmt.Sprintf("galleries/%s/%s", id, safeName)
 		if err := c.Store.Save(dbCtx, key, f); err != nil {
 			return state, fmt.Errorf("failed to save file: %w", err)
 		}
@@ -122,7 +124,8 @@ func (c *GalleryController) Add(state GalleryState, ctx *livetemplate.Context) (
 			return state, fmt.Errorf("failed to open uploaded file: %w", err)
 		}
 		defer f.Close()
-		key := fmt.Sprintf("galleries/%s/%s", id, entry.ClientName)
+		safeName := path.Base(strings.ReplaceAll(entry.ClientName, "\\", "/"))
+		key := fmt.Sprintf("galleries/%s/%s", id, safeName)
 		if err := c.Store.Save(dbCtx, key, f); err != nil {
 			return state, fmt.Errorf("failed to save file: %w", err)
 		}
@@ -210,7 +213,8 @@ func (c *GalleryController) Update(state GalleryState, ctx *livetemplate.Context
 			return state, fmt.Errorf("failed to open uploaded file: %w", err)
 		}
 		defer f.Close()
-		key := fmt.Sprintf("galleries/%s/%s", input.ID, entry.ClientName)
+		safeName := path.Base(strings.ReplaceAll(entry.ClientName, "\\", "/"))
+		key := fmt.Sprintf("galleries/%s/%s", input.ID, safeName)
 		if err := c.Store.Save(dbCtx, key, f); err != nil {
 			return state, fmt.Errorf("failed to save file: %w", err)
 		}
@@ -230,7 +234,8 @@ func (c *GalleryController) Update(state GalleryState, ctx *livetemplate.Context
 			return state, fmt.Errorf("failed to open uploaded file: %w", err)
 		}
 		defer f.Close()
-		key := fmt.Sprintf("galleries/%s/%s", input.ID, entry.ClientName)
+		safeName := path.Base(strings.ReplaceAll(entry.ClientName, "\\", "/"))
+		key := fmt.Sprintf("galleries/%s/%s", input.ID, safeName)
 		if err := c.Store.Save(dbCtx, key, f); err != nil {
 			return state, fmt.Errorf("failed to save file: %w", err)
 		}

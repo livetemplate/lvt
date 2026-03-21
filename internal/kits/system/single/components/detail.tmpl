@@ -39,7 +39,7 @@
         {{else}}<span style="color: #999;">No image</span>{{end}}
 [[- else if .IsFile]]
         {{if $.Editing[[$.ResourceName]].[[.Name | camelCase]]}}
-        <a href="{{$.Editing[[$.ResourceName]].[[.Name | camelCase]]}}" target="_blank" style="text-decoration: underline;">{{$.Editing[[$.ResourceName]].[[printf "%s_filename" .Name | camelCase]]}}</a>
+        <a href="{{$.Editing[[$.ResourceName]].[[.Name | camelCase]]}}" target="_blank" rel="noopener noreferrer" style="text-decoration: underline;">{{$.Editing[[$.ResourceName]].[[printf "%s_filename" .Name | camelCase]]}}</a>
         {{else}}<span style="color: #999;">No file</span>{{end}}
 [[- else if .IsTextarea]]
         <div style="white-space: pre-wrap;">{{$.Editing[[$.ResourceName]].[[.Name | camelCase]]}}</div>

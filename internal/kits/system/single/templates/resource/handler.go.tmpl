@@ -8,6 +8,7 @@ import (
 	"net/http"
 [[- if .Components.UseUpload]]
 	"os"
+	"path"
 [[- end]]
 	"sort"
 	"strings"
@@ -146,7 +147,8 @@ func (c *[[.ResourceName]]Controller) Add(state [[.ResourceName]]State, ctx *liv
 			return state, fmt.Errorf("failed to open uploaded file: %w", err)
 		}
 		defer f.Close()
-		key := fmt.Sprintf("[[$.TableName]]/%s/%s", id, entry.ClientName)
+		safeName := path.Base(strings.ReplaceAll(entry.ClientName, "\\", "/"))
+		key := fmt.Sprintf("[[$.TableName]]/%s/%s", id, safeName)
 		if err := c.Store.Save(dbCtx, key, f); err != nil {
 			return state, fmt.Errorf("failed to save file: %w", err)
 		}
@@ -242,7 +244,8 @@ func (c *[[.ResourceName]]Controller) Update(state [[.ResourceName]]State, ctx *
 			return state, fmt.Errorf("failed to open uploaded file: %w", err)
 		}
 		defer f.Close()
-		key := fmt.Sprintf("[[$.TableName]]/%s/%s", input.ID, entry.ClientName)
+		safeName := path.Base(strings.ReplaceAll(entry.ClientName, "\\", "/"))
+		key := fmt.Sprintf("[[$.TableName]]/%s/%s", input.ID, safeName)
 		if err := c.Store.Save(dbCtx, key, f); err != nil {
 			return state, fmt.Errorf("failed to save file: %w", err)
 		}

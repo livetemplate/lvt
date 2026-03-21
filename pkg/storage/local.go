@@ -26,8 +26,12 @@ func NewLocalStore(baseDir, urlPrefix string) *LocalStore {
 }
 
 // Save writes the contents of reader to baseDir/key, creating parent directories.
+// The key is sanitized to prevent path traversal outside baseDir.
 func (s *LocalStore) Save(_ context.Context, key string, reader io.Reader) error {
-	path := filepath.Join(s.baseDir, filepath.FromSlash(key))
+	path, err := s.safePath(key)
+	if err != nil {
+		return err
+	}
 
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return fmt.Errorf("storage: create directory: %w", err)
@@ -48,7 +52,10 @@ func (s *LocalStore) Save(_ context.Context, key string, reader io.Reader) error
 
 // Open returns a ReadCloser for the file at baseDir/key.
 func (s *LocalStore) Open(_ context.Context, key string) (io.ReadCloser, error) {
-	path := filepath.Join(s.baseDir, filepath.FromSlash(key))
+	path, err := s.safePath(key)
+	if err != nil {
+		return nil, err
+	}
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("storage: open file: %w", err)
@@ -60,7 +67,10 @@ func (s *LocalStore) Open(_ context.Context, key string) (io.ReadCloser, error) 
 // the prefix is stripped automatically.
 func (s *LocalStore) Delete(_ context.Context, key string) error {
 	key = s.resolveKey(key)
-	path := filepath.Join(s.baseDir, filepath.FromSlash(key))
+	path, err := s.safePath(key)
+	if err != nil {
+		return err
+	}
 	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("storage: delete file: %w", err)
 	}
@@ -74,6 +84,21 @@ func (s *LocalStore) resolveKey(key string) string {
 		return key[len(prefix):]
 	}
 	return key
+}
+
+// safePath resolves a key to an absolute path within baseDir,
+// rejecting any key that would escape via path traversal.
+func (s *LocalStore) safePath(key string) (string, error) {
+	absBase, err := filepath.Abs(s.baseDir)
+	if err != nil {
+		return "", fmt.Errorf("storage: resolve base dir: %w", err)
+	}
+	joined := filepath.Join(absBase, filepath.FromSlash(key))
+	cleaned := filepath.Clean(joined)
+	if !strings.HasPrefix(cleaned, absBase+string(filepath.Separator)) && cleaned != absBase {
+		return "", fmt.Errorf("storage: path traversal rejected: %q", key)
+	}
+	return cleaned, nil
 }
 
 // URL returns the public URL for the given key.

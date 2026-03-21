@@ -284,8 +284,9 @@ func GenResource(args []string) error {
 		fmt.Printf("    http.Handle(\"/uploads/\", http.StripPrefix(\"/uploads/\", store.FileServer()))\n")
 		fmt.Printf("    http.Handle(\"/%s\", %s.Handler(queries, store))\n", resourceNameLower, resourceNameLower)
 		fmt.Println()
-		fmt.Println("  Add import:")
+		fmt.Println("  Add imports:")
 		fmt.Println("    \"github.com/livetemplate/lvt/pkg/storage\"")
+		fmt.Printf("    \"%s/app/%s\"\n", moduleName, resourceNameLower)
 	} else {
 		fmt.Println("Route auto-injected:")
 		fmt.Printf("  http.Handle(\"/%s\", %s.Handler(queries))\n", resourceNameLower, resourceNameLower)

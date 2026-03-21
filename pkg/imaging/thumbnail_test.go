@@ -36,8 +36,8 @@ func TestGenerateThumbnail(t *testing.T) {
 		t.Fatalf("ReadAll() error = %v", err)
 	}
 
-	if len(data) == 0 {
-		t.Error("GenerateThumbnail() returned empty result")
+	if len(data) < 2 {
+		t.Fatalf("GenerateThumbnail() returned too few bytes: %d", len(data))
 	}
 
 	// Verify JPEG header (starts with 0xFF 0xD8)
