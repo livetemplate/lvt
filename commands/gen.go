@@ -148,6 +148,13 @@ func GenResource(args []string) error {
 
 	resourceName := filteredArgs[0]
 
+	// Validate --with-authz prerequisites
+	if withAuthz {
+		if _, err := os.Stat(filepath.Join(basePath, "app", "auth")); os.IsNotExist(err) {
+			return fmt.Errorf("--with-authz requires authentication. Run 'lvt gen auth' and 'lvt gen authz' first")
+		}
+	}
+
 	// Validate that resource name doesn't look like a flag
 	if err := ValidatePositionalArg(resourceName, "resource name"); err != nil {
 		return err

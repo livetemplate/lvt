@@ -48,6 +48,9 @@ func (p *DefaultPolicy) Can(user User, action string, resource any) bool {
 	if user == nil {
 		return false
 	}
+	if user.GetID() == "" {
+		return false
+	}
 	if user.GetRole() == RoleAdmin {
 		return true
 	}
@@ -60,7 +63,7 @@ func (p *DefaultPolicy) Can(user User, action string, resource any) bool {
 		if ownable, ok := resource.(Ownable); ok {
 			return ownable.GetCreatedBy() == user.GetID()
 		}
-		return true
+		return false
 	}
 	return false
 }

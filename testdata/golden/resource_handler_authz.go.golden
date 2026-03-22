@@ -99,6 +99,9 @@ func (c *PostController) Add(state PostState, ctx *livetemplate.Context) (PostSt
 
 	now := time.Now()
 	id := fmt.Sprintf("post-%d", now.UnixNano())
+	if ctx.UserID() == "" {
+		return state, fmt.Errorf("authentication required to create post")
+	}
 
 	_, err := c.Queries.CreatePost(dbCtx, models.CreatePostParams{
 		ID:        id,
@@ -163,6 +166,16 @@ func (c *PostController) Update(state PostState, ctx *livetemplate.Context) (Pos
 	var input UpdateInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
 		return state, err
+	}
+	// Check authorization before update
+	if updateItem, err := c.Queries.GetPostByID(dbCtx, input.ID); err != nil {
+		return state, fmt.Errorf("post not found: %w", err)
+	} else {
+		user := authz.UserFrom(ctx.UserID(), c.getUserRole(dbCtx, ctx.UserID()))
+		if !authz.Can(user, authz.ActionUpdate, "posts", authz.OwnedBy(updateItem.CreatedBy)) {
+			state.Toasts.AddError("Forbidden", "You don't have permission to update this post")
+			return state, nil
+		}
 	}
 	err := c.Queries.UpdatePost(dbCtx, models.UpdatePostParams{
 		ID: input.ID,
@@ -255,11 +268,23 @@ func (c *PostController) RequestDelete(state PostState, ctx *livetemplate.Contex
 }
 
 // ConfirmDelete handles the "confirm_delete" action from the confirmation modal
-func (c *PostController) ConfirmDelete(state PostState, _ *livetemplate.Context) (PostState, error) {
+func (c *PostController) ConfirmDelete(state PostState, ctx *livetemplate.Context) (PostState, error) {
 	dbCtx := context.Background()
 
 	if state.PendingDeleteID == "" {
 		return state, nil
+	}
+	// Re-check authorization before destructive action
+	if deleteItem, err := c.Queries.GetPostByID(dbCtx, state.PendingDeleteID); err != nil {
+		return state, fmt.Errorf("post not found: %w", err)
+	} else {
+		user := authz.UserFrom(ctx.UserID(), c.getUserRole(dbCtx, ctx.UserID()))
+		if !authz.Can(user, authz.ActionDelete, "posts", authz.OwnedBy(deleteItem.CreatedBy)) {
+			state.DeleteConfirm.Hide()
+			state.PendingDeleteID = ""
+			state.Toasts.AddError("Forbidden", "You don't have permission to delete this post")
+			return state, nil
+		}
 	}
 
 	err := c.Queries.DeletePost(dbCtx, state.PendingDeleteID)

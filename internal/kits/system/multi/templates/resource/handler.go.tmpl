@@ -147,6 +147,12 @@ func (c *[[.ResourceName]]Controller) Add(state [[.ResourceName]]State, ctx *liv
 	now := time.Now()
 	id := fmt.Sprintf("[[.ResourceNameLower]]-%d", now.UnixNano())
 
+[[- if .WithAuthz]]
+	if ctx.UserID() == "" {
+		return state, fmt.Errorf("authentication required to create [[.ResourceNameLower]]")
+	}
+[[- end]]
+
 [[- if .Components.UseUpload]]
 	// Process file uploads
 [[- range .FileFields]]
@@ -256,6 +262,23 @@ func (c *[[.ResourceName]]Controller) Update(state [[.ResourceName]]State, ctx *
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
 		return state, err
 	}
+
+[[- if .WithAuthz]]
+	// Check authorization before update
+	if updateItem, err := c.Queries.Get[[.ResourceNameSingular]]ByID(dbCtx, input.ID); err != nil {
+		return state, fmt.Errorf("[[.ResourceNameLower]] not found: %w", err)
+	} else {
+		user := authz.UserFrom(ctx.UserID(), c.getUserRole(dbCtx, ctx.UserID()))
+		if !authz.Can(user, authz.ActionUpdate, "[[.TableName]]", authz.OwnedBy(updateItem.CreatedBy)) {
+[[- if .Components.UseToast]]
+			state.Toasts.AddError("Forbidden", "You don't have permission to update this [[.ResourceNameLower]]")
+			return state, nil
+[[- else]]
+			return state, fmt.Errorf("forbidden: you don't have permission to update this [[.ResourceNameLower]]")
+[[- end]]
+		}
+	}
+[[- end]]
 
 [[- if .Components.UseUpload]]
 	// Process file uploads (only update file columns if new file uploaded)
@@ -438,12 +461,33 @@ func (c *[[.ResourceName]]Controller) RequestDelete(state [[.ResourceName]]State
 }
 
 // ConfirmDelete handles the "confirm_delete" action from the confirmation modal
+[[- if .WithAuthz]]
+func (c *[[.ResourceName]]Controller) ConfirmDelete(state [[.ResourceName]]State, ctx *livetemplate.Context) ([[.ResourceName]]State, error) {
+[[- else]]
 func (c *[[.ResourceName]]Controller) ConfirmDelete(state [[.ResourceName]]State, _ *livetemplate.Context) ([[.ResourceName]]State, error) {
+[[- end]]
 	dbCtx := context.Background()
 
 	if state.PendingDeleteID == "" {
 		return state, nil
 	}
+
+[[- if .WithAuthz]]
+	// Re-check authorization before destructive action
+	if deleteItem, err := c.Queries.Get[[.ResourceNameSingular]]ByID(dbCtx, state.PendingDeleteID); err != nil {
+		return state, fmt.Errorf("[[.ResourceNameLower]] not found: %w", err)
+	} else {
+		user := authz.UserFrom(ctx.UserID(), c.getUserRole(dbCtx, ctx.UserID()))
+		if !authz.Can(user, authz.ActionDelete, "[[.TableName]]", authz.OwnedBy(deleteItem.CreatedBy)) {
+			state.DeleteConfirm.Hide()
+			state.PendingDeleteID = ""
+[[- if .Components.UseToast]]
+			state.Toasts.AddError("Forbidden", "You don't have permission to delete this [[.ResourceNameLower]]")
+[[- end]]
+			return state, nil
+		}
+	}
+[[- end]]
 
 [[- if .Components.UseUpload]]
 	// Delete associated files from storage

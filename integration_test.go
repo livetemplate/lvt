@@ -759,15 +759,15 @@ func TestAuthzResourceGeneration(t *testing.T) {
 	handlerContent := string(handler)
 
 	handlerChecks := map[string]string{
-		"authz import":           `"github.com/livetemplate/lvt/pkg/authz"`,
-		"policy registration":    `authz.Register("posts"`,
-		"authz Can update":       `authz.Can(user, authz.ActionUpdate`,
-		"authz Can delete":       `authz.Can(user, authz.ActionDelete`,
-		"OwnedBy check":          `authz.OwnedBy(item.CreatedBy)`,
-		"CreatedBy in Create":    `CreatedBy: ctx.UserID()`,
-		"getUserRole method":     `func (c *PostController) getUserRole`,
-		"CookieAuthenticator":    `authz.NewCookieAuthenticator`,
-		"WithAuthenticator":      `livetemplate.WithAuthenticator`,
+		"authz import":        `"github.com/livetemplate/lvt/pkg/authz"`,
+		"policy registration": `authz.Register("posts"`,
+		"authz Can update":    `authz.Can(user, authz.ActionUpdate`,
+		"authz Can delete":    `authz.Can(user, authz.ActionDelete`,
+		"OwnedBy check":       `authz.OwnedBy(item.CreatedBy)`,
+		"CreatedBy in Create": `CreatedBy: ctx.UserID()`,
+		"getUserRole method":  `func (c *PostController) getUserRole`,
+		"CookieAuthenticator": `authz.NewCookieAuthenticator`,
+		"WithAuthenticator":   `livetemplate.WithAuthenticator`,
 	}
 
 	for desc, substr := range handlerChecks {

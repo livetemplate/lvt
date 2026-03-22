@@ -79,6 +79,28 @@ func TestDefaultPolicy_NilUserDenied(t *testing.T) {
 	}
 }
 
+func TestDefaultPolicy_EmptyUserIDDenied(t *testing.T) {
+	p := &DefaultPolicy{}
+	emptyUser := UserFrom("", RoleUser)
+	for _, action := range []string{ActionCreate, ActionRead, ActionUpdate, ActionDelete, ActionList} {
+		if p.Can(emptyUser, action, nil) {
+			t.Errorf("empty user ID should be denied %s", action)
+		}
+	}
+}
+
+func TestDefaultPolicy_NonOwnableResourceDeniesUpdateDelete(t *testing.T) {
+	p := &DefaultPolicy{}
+	user := UserFrom("user-1", RoleUser)
+
+	if p.Can(user, ActionUpdate, nil) {
+		t.Error("non-ownable resource should deny update for regular user")
+	}
+	if p.Can(user, ActionDelete, nil) {
+		t.Error("non-ownable resource should deny delete for regular user")
+	}
+}
+
 func TestCan_UsesRegisteredPolicy(t *testing.T) {
 	// Register a custom policy that denies everything
 	Register("test_resource", &denyAllPolicy{})
