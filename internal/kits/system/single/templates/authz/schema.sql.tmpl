@@ -1,0 +1,12 @@
+-- Authorization: role column on {{.TableName}}
+-- Added by: lvt gen authz
+-- Note: This schema addition is for sqlc code generation.
+-- The actual column is added via migration.
+-- sqlc uses schema.sql to understand the table structure.
+-- We re-declare the full table here with the role column so sqlc
+-- generates the correct Go struct.
+
+-- The users table is already defined in schema.sql by gen auth.
+-- sqlc merges CREATE TABLE definitions, so adding the role column
+-- requires updating the existing CREATE TABLE statement.
+-- This is handled by the generator which patches schema.sql directly.

@@ -29,7 +29,7 @@ func TestGeneratedCodeSyntax(t *testing.T) {
 		{Name: "email", Type: "string", GoType: "string", SQLType: "TEXT"},
 	}
 
-	if err := generator.GenerateResource(tmpDir, "testmodule", "User", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", ""); err != nil {
+	if err := generator.GenerateResource(tmpDir, "testmodule", "User", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "", false); err != nil {
 		t.Fatalf("Failed to generate resource: %v", err)
 	}
 
@@ -109,7 +109,7 @@ func TestGeneratedFilesExist(t *testing.T) {
 		{Name: "title", Type: "string", GoType: "string", SQLType: "TEXT"},
 	}
 
-	if err := generator.GenerateResource(appDir, "testapp", "Post", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", ""); err != nil {
+	if err := generator.GenerateResource(appDir, "testapp", "Post", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "", false); err != nil {
 		t.Fatalf("Failed to generate resource: %v", err)
 	}
 
@@ -165,7 +165,7 @@ func TestForeignKeyGeneration(t *testing.T) {
 		{Name: "content", Type: "string", GoType: "string", SQLType: "TEXT"},
 	}
 
-	if err := generator.GenerateResource(tmpDir, "testmodule", "Post", parentFields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", ""); err != nil {
+	if err := generator.GenerateResource(tmpDir, "testmodule", "Post", parentFields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "", false); err != nil {
 		t.Fatalf("Failed to generate parent resource: %v", err)
 	}
 
@@ -184,7 +184,7 @@ func TestForeignKeyGeneration(t *testing.T) {
 		{Name: "text", Type: "string", GoType: "string", SQLType: "TEXT"},
 	}
 
-	if err := generator.GenerateResource(tmpDir, "testmodule", "Comment", childFields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", ""); err != nil {
+	if err := generator.GenerateResource(tmpDir, "testmodule", "Comment", childFields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "", false); err != nil {
 		t.Fatalf("Failed to generate child resource: %v", err)
 	}
 
@@ -300,7 +300,7 @@ func TestGeneratedAppFullFlow(t *testing.T) {
 		{Name: "content", Type: "text", GoType: "string", SQLType: "TEXT"},
 		{Name: "published", Type: "bool", GoType: "bool", SQLType: "BOOLEAN"},
 	}
-	if err := generator.GenerateResource(appDir, appName, "Post", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", ""); err != nil {
+	if err := generator.GenerateResource(appDir, appName, "Post", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "", false); err != nil {
 		t.Fatalf("Failed to generate resource: %v", err)
 	}
 	t.Log("✅ Resource generated")
@@ -394,7 +394,7 @@ func TestFileUploadResourceGeneration(t *testing.T) {
 		{Name: "doc", Type: "file", GoType: "string", SQLType: "TEXT", IsFile: true, IsImage: false, Metadata: parser.FieldMetadata{HTMLInputType: "file"}},
 	}
 
-	if err := generator.GenerateResource(tmpDir, "testmodule", "Gallery", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", ""); err != nil {
+	if err := generator.GenerateResource(tmpDir, "testmodule", "Gallery", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "", false); err != nil {
 		t.Fatalf("Failed to generate resource: %v", err)
 	}
 
@@ -627,7 +627,7 @@ func TestFileUploadFullFlow(t *testing.T) {
 		{Name: "doc", Type: "file", GoType: "string", SQLType: "TEXT", IsFile: true, IsImage: false, Metadata: parser.FieldMetadata{HTMLInputType: "file"}},
 		{Name: "views", Type: "int", GoType: "int64", SQLType: "INTEGER", Metadata: parser.GetFieldMetadata("int")},
 	}
-	if err := generator.GenerateResource(appDir, appName, "Gallery", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", ""); err != nil {
+	if err := generator.GenerateResource(appDir, appName, "Gallery", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "", false); err != nil {
 		t.Fatalf("Failed to generate resource: %v", err)
 	}
 	t.Log("✅ Resource with file/image fields generated")
@@ -729,4 +729,289 @@ func TestFileUploadFullFlow(t *testing.T) {
 	t.Log("✅ Build successful — file upload code compiles")
 
 	t.Log("✅ File upload full flow test passed!")
+}
+
+// TestAuthzResourceGeneration validates that generating a resource with --with-authz
+// produces correct handler, SQL, and template output.
+func TestAuthzResourceGeneration(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	dbDir := filepath.Join(tmpDir, "database")
+	if err := os.MkdirAll(dbDir, 0755); err != nil {
+		t.Fatalf("Failed to create database directory: %v", err)
+	}
+
+	fields := []parser.Field{
+		{Name: "title", Type: "string", GoType: "string", SQLType: "TEXT", Metadata: parser.GetFieldMetadata("string")},
+		{Name: "content", Type: "text", GoType: "string", SQLType: "TEXT", IsTextarea: true, Metadata: parser.GetFieldMetadata("text")},
+	}
+
+	if err := generator.GenerateResource(tmpDir, "testmodule", "Post", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "", true); err != nil {
+		t.Fatalf("Failed to generate resource: %v", err)
+	}
+
+	// --- Verify handler ---
+	handlerPath := filepath.Join(tmpDir, "app", "post", "post.go")
+	handler, err := os.ReadFile(handlerPath)
+	if err != nil {
+		t.Fatalf("Failed to read handler: %v", err)
+	}
+	handlerContent := string(handler)
+
+	handlerChecks := map[string]string{
+		"authz import":        `"github.com/livetemplate/lvt/pkg/authz"`,
+		"policy registration": `authz.Register("posts"`,
+		"authz Can update":    `authz.Can(user, authz.ActionUpdate`,
+		"authz Can delete":    `authz.Can(user, authz.ActionDelete`,
+		"OwnedBy check":       `authz.OwnedBy(item.CreatedBy)`,
+		"CreatedBy in Create": `CreatedBy: ctx.UserID()`,
+		"getUserRole method":  `func (c *PostController) getUserRole`,
+		"CookieAuthenticator": `authz.NewCookieAuthenticator`,
+		"WithAuthenticator":   `livetemplate.WithAuthenticator`,
+	}
+
+	for desc, substr := range handlerChecks {
+		if !strings.Contains(handlerContent, substr) {
+			t.Errorf("Handler missing %s: expected %q", desc, substr)
+		}
+	}
+
+	// Verify handler has valid Go syntax
+	cmd := exec.Command("go", "tool", "compile", "-o", "/dev/null", handlerPath)
+	output, _ := cmd.CombinedOutput()
+	if strings.Contains(string(output), "syntax error") {
+		t.Errorf("Handler has syntax errors:\n%s", output)
+	}
+
+	// --- Verify SQL schema ---
+	schemaPath := filepath.Join(tmpDir, "database", "schema.sql")
+	schemaData, err := os.ReadFile(schemaPath)
+	if err != nil {
+		t.Fatalf("Failed to read schema.sql: %v", err)
+	}
+	schema := string(schemaData)
+
+	sqlChecks := map[string]string{
+		"created_by column": "created_by TEXT NOT NULL REFERENCES users(id)",
+		"created_by index":  "idx_posts_created_by",
+	}
+	for desc, substr := range sqlChecks {
+		if !strings.Contains(schema, substr) {
+			t.Errorf("Schema missing %s: expected %q\nSchema:\n%s", desc, substr, schema)
+		}
+	}
+
+	// --- Verify queries ---
+	queriesPath := filepath.Join(tmpDir, "database", "queries.sql")
+	queriesData, err := os.ReadFile(queriesPath)
+	if err != nil {
+		t.Fatalf("Failed to read queries.sql: %v", err)
+	}
+	queries := string(queriesData)
+
+	if !strings.Contains(queries, "created_by") {
+		t.Errorf("Queries should include created_by in INSERT\nQueries:\n%s", queries)
+	}
+
+	// --- Verify migration ---
+	migrationsDir := filepath.Join(tmpDir, "database", "migrations")
+	entries, err := os.ReadDir(migrationsDir)
+	if err != nil {
+		t.Fatalf("Failed to read migrations: %v", err)
+	}
+	found := false
+	for _, entry := range entries {
+		if strings.Contains(entry.Name(), "posts") {
+			data, _ := os.ReadFile(filepath.Join(migrationsDir, entry.Name()))
+			migration := string(data)
+			if !strings.Contains(migration, "created_by TEXT NOT NULL REFERENCES users(id)") {
+				t.Error("Migration missing created_by column")
+			}
+			if !strings.Contains(migration, "idx_posts_created_by") {
+				t.Error("Migration missing created_by index")
+			}
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("Migration file for posts not found")
+	}
+
+	t.Log("✅ Authz resource generation test passed")
+}
+
+// TestAuthzFullFlow generates a complete app with auth, authz, and a resource
+// with --with-authz, runs sqlc, and verifies the generated code compiles.
+// This catches issues like undefined types (GetUserToken, GetUserTokenParams),
+// missing columns (created_by, role), or import mismatches.
+func TestAuthzFullFlow(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping full flow test in short mode")
+	}
+
+	if _, err := exec.LookPath("sqlc"); err != nil {
+		t.Fatal("sqlc not installed - run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest")
+	}
+
+	tmpDir := t.TempDir()
+
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get current directory: %v", err)
+	}
+	t.Cleanup(func() {
+		os.Chdir(origDir)
+	})
+
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("Failed to change directory: %v", err)
+	}
+
+	appName := "authzapp"
+	appDir := filepath.Join(tmpDir, appName)
+
+	// Step 1: Generate app
+	t.Log("Step 1: Generating app...")
+	if err := generator.GenerateApp(appName, appName, "multi", "tailwind", false); err != nil {
+		t.Fatalf("Failed to generate app: %v", err)
+	}
+
+	// Step 2: Add replace directives (before auth which runs go get)
+	t.Log("Step 2: Adding replace directives...")
+	goModPath := filepath.Join(appDir, "go.mod")
+	goModContent, err := os.ReadFile(goModPath)
+	if err != nil {
+		t.Fatalf("Failed to read go.mod: %v", err)
+	}
+	replaceDirective := fmt.Sprintf("\nreplace github.com/livetemplate/lvt => %s\nreplace github.com/livetemplate/lvt/components => %s/components\n", origDir, origDir)
+	if err := os.WriteFile(goModPath, append(goModContent, []byte(replaceDirective)...), 0644); err != nil {
+		t.Fatalf("Failed to update go.mod: %v", err)
+	}
+
+	// Step 3: Generate auth
+	t.Log("Step 3: Generating auth...")
+	time.Sleep(2 * time.Second)
+	authConfig := &generator.AuthConfig{
+		ModuleName:         appName,
+		TableName:          "users",
+		EnablePassword:     true,
+		EnableMagicLink:    true,
+		EnableEmailConfirm: true,
+	}
+	if err := generator.GenerateAuth(appDir, authConfig); err != nil {
+		t.Fatalf("Failed to generate auth: %v", err)
+	}
+	t.Log("✅ Auth generated")
+
+	// Step 4: Generate authz (adds role column to users table)
+	t.Log("Step 4: Generating authz...")
+	time.Sleep(2 * time.Second)
+	authzConfig := &generator.AuthzConfig{
+		ModuleName: appName,
+		TableName:  "users",
+	}
+	if err := generator.GenerateAuthz(appDir, authzConfig); err != nil {
+		t.Fatalf("Failed to generate authz: %v", err)
+	}
+	t.Log("✅ Authz generated")
+
+	// Verify schema.sql was patched with role column
+	schemaData, err := os.ReadFile(filepath.Join(appDir, "database", "schema.sql"))
+	if err != nil {
+		t.Fatalf("Failed to read schema.sql: %v", err)
+	}
+	if !strings.Contains(string(schemaData), "role TEXT NOT NULL DEFAULT 'user'") {
+		t.Fatalf("schema.sql not patched with role column.\nContent:\n%s", string(schemaData))
+	}
+	t.Log("✅ Schema patched with role column")
+
+	// Step 5: Generate resource with --with-authz
+	t.Log("Step 5: Generating resource with --with-authz...")
+	time.Sleep(2 * time.Second)
+	fields := []parser.Field{
+		{Name: "title", Type: "string", GoType: "string", SQLType: "TEXT", Metadata: parser.GetFieldMetadata("string")},
+		{Name: "content", Type: "text", GoType: "string", SQLType: "TEXT", IsTextarea: true, Metadata: parser.GetFieldMetadata("text")},
+		{Name: "published", Type: "bool", GoType: "bool", SQLType: "BOOLEAN", Metadata: parser.GetFieldMetadata("bool")},
+	}
+	if err := generator.GenerateResource(appDir, appName, "Post", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "", true); err != nil {
+		t.Fatalf("Failed to generate resource: %v", err)
+	}
+	t.Log("✅ Resource with --with-authz generated")
+
+	// Verify the handler references authz types
+	handlerData, err := os.ReadFile(filepath.Join(appDir, "app", "post", "post.go"))
+	if err != nil {
+		t.Fatalf("Failed to read handler: %v", err)
+	}
+	handlerContent := string(handlerData)
+	for _, expected := range []string{
+		"authz.Can(",
+		"authz.OwnedBy(",
+		"CreatedBy:",
+		"ctx.UserID()",
+		"GetUserByID",
+		"GetUserToken",
+		"authz.NewCookieAuthenticator",
+	} {
+		if !strings.Contains(handlerContent, expected) {
+			t.Errorf("Handler missing %q", expected)
+		}
+	}
+
+	// Step 6: go mod tidy
+	t.Log("Step 6: Running go mod tidy...")
+	cmd := exec.Command("go", "mod", "tidy")
+	cmd.Dir = appDir
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("go mod tidy failed: %v\nOutput: %s", err, output)
+	}
+
+	// Step 7: sqlc generate
+	t.Log("Step 7: Generating sqlc code...")
+	cmd = exec.Command("sqlc", "generate")
+	cmd.Dir = filepath.Join(appDir, "database")
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("sqlc generate failed: %v\nOutput: %s", err, output)
+	}
+	t.Log("✅ sqlc generate completed")
+
+	// Verify sqlc generated model has Role and CreatedBy fields
+	modelsDir := filepath.Join(appDir, "database", "models")
+	entries, err := os.ReadDir(modelsDir)
+	if err != nil {
+		t.Fatalf("Failed to read models directory: %v", err)
+	}
+	foundUserRole := false
+	foundCreatedBy := false
+	for _, entry := range entries {
+		if !strings.HasSuffix(entry.Name(), ".go") {
+			continue
+		}
+		data, _ := os.ReadFile(filepath.Join(modelsDir, entry.Name()))
+		content := string(data)
+		if strings.Contains(content, "Role") && strings.Contains(content, "User") {
+			foundUserRole = true
+		}
+		if strings.Contains(content, "CreatedBy") && strings.Contains(content, "Post") {
+			foundCreatedBy = true
+		}
+	}
+	if !foundUserRole {
+		t.Error("sqlc model missing Role field on User struct")
+	}
+	if !foundCreatedBy {
+		t.Error("sqlc model missing CreatedBy field on Post struct")
+	}
+
+	// Step 8: Build — this is the critical step
+	t.Log("Step 8: Building app...")
+	cmd = exec.Command("go", "build", "./...")
+	cmd.Dir = appDir
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("go build failed: %v\nOutput: %s", err, output)
+	}
+	t.Log("✅ Build successful — authz code compiles with auth + sqlc types")
+
+	t.Log("✅ Authz full flow test passed!")
 }

@@ -51,8 +51,10 @@ func Gen(args []string) error {
 		return GenQueue(args[1:])
 	case "job":
 		return GenJob(args[1:])
+	case "authz":
+		return Authz(args[1:])
 	default:
-		return fmt.Errorf("unknown subcommand: %s\n\nAvailable subcommands:\n  resource  Generate full CRUD resource with database\n  view      Generate view-only handler (no database)\n  schema    Generate database schema only\n  auth      Generate authentication system\n  stack     Generate deployment stack configuration\n  queue     Set up background job processing (River)\n  job       Scaffold a new background job handler\n\nRun 'lvt gen' for interactive mode", subcommand)
+		return fmt.Errorf("unknown subcommand: %s\n\nAvailable subcommands:\n  resource  Generate full CRUD resource with database\n  view      Generate view-only handler (no database)\n  schema    Generate database schema only\n  auth      Generate authentication system\n  authz     Generate role-based authorization\n  stack     Generate deployment stack configuration\n  queue     Set up background job processing (River)\n  job       Scaffold a new background job handler\n\nRun 'lvt gen' for interactive mode", subcommand)
 	}
 }
 
@@ -114,6 +116,7 @@ func GenResource(args []string) error {
 	editMode := "modal"          // default
 	skipValidation := false
 	parentResource := ""
+	withAuthz := false
 	var filteredArgs []string
 	for i := 0; i < len(args); i++ {
 		if args[i] == "--pagination" && i+1 < len(args) {
@@ -132,6 +135,8 @@ func GenResource(args []string) error {
 		} else if args[i] == "--parent" && i+1 < len(args) {
 			parentResource = args[i+1]
 			i++ // skip next arg
+		} else if args[i] == "--with-authz" {
+			withAuthz = true
 		} else {
 			filteredArgs = append(filteredArgs, args[i])
 		}
@@ -142,6 +147,13 @@ func GenResource(args []string) error {
 	}
 
 	resourceName := filteredArgs[0]
+
+	// Validate --with-authz prerequisites
+	if withAuthz {
+		if _, err := os.Stat(filepath.Join(basePath, "app", "auth")); os.IsNotExist(err) {
+			return fmt.Errorf("--with-authz requires authentication. Run 'lvt gen auth' and 'lvt gen authz' first")
+		}
+	}
 
 	// Validate that resource name doesn't look like a flag
 	if err := ValidatePositionalArg(resourceName, "resource name"); err != nil {
@@ -231,7 +243,7 @@ func GenResource(args []string) error {
 	fmt.Println()
 
 	styles := projectConfig.Styles
-	if err := generator.GenerateResource(basePath, moduleName, resourceName, fields, kit, cssFramework, styles, paginationMode, pageSize, editMode, parentResource); err != nil {
+	if err := generator.GenerateResource(basePath, moduleName, resourceName, fields, kit, cssFramework, styles, paginationMode, pageSize, editMode, parentResource, withAuthz); err != nil {
 		capture.RecordError(telemetry.GenerationError{Phase: "generation", Message: err.Error()})
 		capture.AttributeComponentErrors() // attribute errors on failure path
 		capture.Complete(false, "")

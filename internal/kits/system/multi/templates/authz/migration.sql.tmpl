@@ -1,0 +1,12 @@
+-- +goose Up
+-- +goose StatementBegin
+ALTER TABLE {{.TableName}} ADD COLUMN role TEXT NOT NULL DEFAULT 'user';
+CREATE INDEX IF NOT EXISTS idx_{{.TableName}}_role ON {{.TableName}}(role);
+-- +goose StatementEnd
+
+-- +goose Down
+-- +goose StatementBegin
+-- SQLite does not support DROP COLUMN directly.
+-- To remove the role column, recreate the table without it.
+DROP INDEX IF EXISTS idx_{{.TableName}}_role;
+-- +goose StatementEnd
