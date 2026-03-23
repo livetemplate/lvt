@@ -1,0 +1,7 @@
+-- name: List[[.ResourceNamePlural]]Paginated :many
+SELECT * FROM [[.TableName]]
+ORDER BY created_at DESC
+LIMIT ? OFFSET ?;
+
+-- name: Count[[.ResourceNamePlural]] :one
+SELECT COUNT(*) FROM [[.TableName]];

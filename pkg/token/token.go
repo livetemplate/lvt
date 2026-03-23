@@ -17,6 +17,8 @@ const (
 	ContextReset = "reset"
 	// ContextConfirm is for email confirmation tokens
 	ContextConfirm = "confirm"
+	// ContextAPI is for API bearer tokens
+	ContextAPI = "api"
 )
 
 // Generate creates a cryptographically secure random token.
