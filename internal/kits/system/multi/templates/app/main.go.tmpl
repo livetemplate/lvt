@@ -164,10 +164,20 @@ func getDBPath() string {
 	return path
 }
 
-// loggingMiddleware logs all HTTP requests with structured logging
+// loggingMiddleware logs all HTTP requests with structured logging.
+// Features: request ID propagation, sensitive data redaction, slow request detection.
 func loggingMiddleware(next http.Handler) http.Handler {
+	slowThresholdMs := getEnvInt("SLOW_REQUEST_THRESHOLD_MS", 1000)
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
+
+		// Request ID: use incoming X-Request-ID or generate one
+		requestID := r.Header.Get("X-Request-ID")
+		if requestID == "" {
+			requestID = fmt.Sprintf("%d", time.Now().UnixNano())
+		}
+		w.Header().Set("X-Request-ID", requestID)
 
 		// Create a response writer wrapper to capture status code
 		rw := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
@@ -175,15 +185,52 @@ func loggingMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(rw, r)
 
 		duration := time.Since(start)
+		durationMs := duration.Milliseconds()
 
-		slog.Info("HTTP request",
+		// Redact sensitive query parameters
+		path := r.URL.Path
+		query := redactSensitiveParams(r.URL.RawQuery)
+
+		attrs := []any{
 			"method", r.Method,
-			"path", r.URL.Path,
+			"path", path,
 			"status", rw.statusCode,
-			"duration_ms", duration.Milliseconds(),
+			"duration_ms", durationMs,
 			"remote_addr", r.RemoteAddr,
-			"user_agent", r.UserAgent())
+			"request_id", requestID,
+		}
+
+		if query != "" {
+			attrs = append(attrs, "query", query)
+		}
+
+		if durationMs >= int64(slowThresholdMs) {
+			slog.Warn("Slow HTTP request", attrs...)
+		} else {
+			slog.Info("HTTP request", attrs...)
+		}
 	})
+}
+
+// redactSensitiveParams replaces values of sensitive query/form parameters with "[REDACTED]".
+func redactSensitiveParams(rawQuery string) string {
+	if rawQuery == "" {
+		return ""
+	}
+	sensitiveKeys := map[string]bool{
+		"password": true, "token": true, "secret": true,
+		"api_key": true, "access_token": true, "refresh_token": true,
+	}
+	parts := strings.Split(rawQuery, "&")
+	for i, part := range parts {
+		if eqIdx := strings.IndexByte(part, '='); eqIdx >= 0 {
+			key := strings.ToLower(part[:eqIdx])
+			if sensitiveKeys[key] {
+				parts[i] = part[:eqIdx+1] + "[REDACTED]"
+			}
+		}
+	}
+	return strings.Join(parts, "&")
 }
 
 // responseWriter wraps http.ResponseWriter to capture the status code
