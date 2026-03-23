@@ -1092,7 +1092,7 @@ func TestAPIResourceGeneration(t *testing.T) {
 	queries := string(queriesData)
 
 	queryChecks := map[string]string{
-		"paginated query":  "ListPostsPaginated",
+		"paginated query": "ListPostsPaginated",
 		"LIMIT OFFSET":    "LIMIT ? OFFSET ?",
 		"count query":     "CountPosts",
 		"COUNT(*)":        "COUNT(*)",
