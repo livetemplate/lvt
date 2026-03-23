@@ -484,3 +484,57 @@ func WrapExistingRoutesWithAuth(mainGoPath string, structName string) error {
 
 	return nil
 }
+
+// InjectAPIRegistration adds api.RegisterRoutes(http.DefaultServeMux, queries)
+// and the api package import to main.go.
+func InjectAPIRegistration(mainGoPath, importPath string) error {
+	data, err := os.ReadFile(mainGoPath)
+	if err != nil {
+		return fmt.Errorf("failed to read main.go: %w", err)
+	}
+
+	content := string(data)
+
+	// Check if already injected
+	if strings.Contains(content, "api.RegisterRoutes") {
+		return nil
+	}
+
+	// Add import
+	importLine := fmt.Sprintf("\t\"%s\"", importPath)
+	if !strings.Contains(content, importLine) {
+		// Find the import block and add the import
+		importMarker := "\"golang.org/x/time/rate\""
+		if strings.Contains(content, importMarker) {
+			content = strings.Replace(content, importMarker, importLine+"\n\n\t"+importMarker, 1)
+		}
+	}
+
+	// Enable queries variable if needed
+	if strings.Contains(content, "_, err := database.InitDB(dbPath)") {
+		content = strings.Replace(content, "_, err := database.InitDB(dbPath)", "queries, err := database.InitDB(dbPath)", 1)
+	}
+
+	// Add RegisterRoutes call at the TODO marker
+	todoMarker := "// TODO: Add routes here"
+	if idx := strings.Index(content, todoMarker); idx >= 0 {
+		// Find the end of the TODO line
+		lineEnd := strings.Index(content[idx:], "\n")
+		if lineEnd < 0 {
+			lineEnd = len(content) - idx
+		}
+		// Skip the Example comment line too
+		nextLineStart := idx + lineEnd + 1
+		if nextLineStart < len(content) && strings.Contains(content[nextLineStart:nextLineStart+80], "Example:") {
+			exampleEnd := strings.Index(content[nextLineStart:], "\n")
+			if exampleEnd >= 0 {
+				nextLineStart += exampleEnd + 1
+			}
+		}
+		insertPoint := nextLineStart
+		registrationLine := "\tapi.RegisterRoutes(http.DefaultServeMux, queries)\n"
+		content = content[:insertPoint] + registrationLine + content[insertPoint:]
+	}
+
+	return os.WriteFile(mainGoPath, []byte(content), 0644)
+}

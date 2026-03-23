@@ -190,18 +190,12 @@ func GenerateAPI(basePath, moduleName, resourceName string, fields []parser.Fiel
 		}
 	}
 
-	// Inject route into main.go
+	// Inject API route registration into main.go
 	mainGoPath := findMainGo(basePath)
 	if mainGoPath != "" {
-		route := RouteInfo{
-			Path:        "/api/v1/" + resourceNameLower + "/",
-			PackageName: "api",
-			HandlerCall: "api.Handler(queries)",
-			ImportPath:  moduleName + "/app/api",
-		}
-		if err := InjectRoute(mainGoPath, route); err != nil {
-			fmt.Printf("⚠️  Could not auto-inject API route: %v\n", err)
-			fmt.Printf("   Add manually: http.Handle(\"/api/v1/%s/\", api.Handler(queries))\n", resourceNameLower)
+		if err := InjectAPIRegistration(mainGoPath, moduleName+"/app/api"); err != nil {
+			fmt.Printf("⚠️  Could not auto-inject API routes: %v\n", err)
+			fmt.Printf("   Add manually: api.RegisterRoutes(http.DefaultServeMux, queries)\n")
 		}
 	}
 

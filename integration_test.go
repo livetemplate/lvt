@@ -1049,7 +1049,7 @@ func TestAPIResourceGeneration(t *testing.T) {
 		"HandleCreate method": "func (h *PostHandler) HandleCreate",
 		"HandleUpdate method": "func (h *PostHandler) HandleUpdate",
 		"HandleDelete method": "func (h *PostHandler) HandleDelete",
-		"Handler function":    "func Handler(queries *models.Queries) http.Handler",
+		"RegisterRoutes func": "func RegisterRoutes(mux *http.ServeMux, queries *models.Queries)",
 		"GET list route":      `"GET /api/v1/post"`,
 		"POST create route":   `"POST /api/v1/post"`,
 		"GET by ID route":     `"GET /api/v1/post/{id}"`,
