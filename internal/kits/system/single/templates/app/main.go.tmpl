@@ -16,6 +16,8 @@ import (
 
 	"[[.ModuleName]]/app/home"
 	"[[.ModuleName]]/database"
+
+	"github.com/livetemplate/lvt/pkg/middleware"
 )
 
 func main() {
@@ -52,9 +54,13 @@ func main() {
 	// Example: http.Handle("/users", users.Handler(queries))
 
 	// Wrap the default mux with middleware
-	handler := securityHeadersMiddleware(
-		recoveryMiddleware(
-			loggingMiddleware(http.DefaultServeMux)))
+	// Compose middleware pipeline using named chain.
+	// Customize by reordering or adding middleware to the chain.
+	handler := middleware.Chain(
+		securityHeadersMiddleware,
+		recoveryMiddleware,
+		loggingMiddleware,
+	)(http.DefaultServeMux)
 
 	// Create server with production-ready settings
 	srv := &http.Server{

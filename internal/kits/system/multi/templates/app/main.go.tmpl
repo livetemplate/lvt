@@ -19,6 +19,7 @@ import (
 	"[[.ModuleName]]/app/home"
 	"[[.ModuleName]]/database"
 
+	"github.com/livetemplate/lvt/pkg/middleware"
 	"golang.org/x/time/rate"
 )
 
@@ -69,10 +70,15 @@ func main() {
 		getEnvInt("RATE_LIMIT_MAX_IPS", 10000),
 		nil)
 
-	// Wrap the default mux with middleware
-	handler := globalRL(securityHeadersMiddleware(
-		recoveryMiddleware(
-			loggingMiddleware(http.DefaultServeMux))))
+	// Compose middleware pipeline using named chain.
+	// Customize by reordering or adding middleware to the chain.
+	// For API routes, create a separate chain with CORS and bearer auth.
+	handler := middleware.Chain(
+		globalRL,
+		securityHeadersMiddleware,
+		recoveryMiddleware,
+		loggingMiddleware,
+	)(http.DefaultServeMux)
 
 	// Create server with production-ready settings
 	srv := &http.Server{
