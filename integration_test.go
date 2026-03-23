@@ -1015,3 +1015,208 @@ func TestAuthzFullFlow(t *testing.T) {
 
 	t.Log("✅ Authz full flow test passed!")
 }
+
+// TestAPIResourceGeneration validates that generating an API resource
+// produces correct handler, SQL, and test output.
+func TestAPIResourceGeneration(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	dbDir := filepath.Join(tmpDir, "database")
+	if err := os.MkdirAll(dbDir, 0755); err != nil {
+		t.Fatalf("Failed to create database directory: %v", err)
+	}
+
+	fields := []parser.Field{
+		{Name: "title", Type: "string", GoType: "string", SQLType: "TEXT", Metadata: parser.GetFieldMetadata("string")},
+		{Name: "content", Type: "text", GoType: "string", SQLType: "TEXT", IsTextarea: true, Metadata: parser.GetFieldMetadata("text")},
+	}
+
+	if err := generator.GenerateAPI(tmpDir, "testmodule", "Post", fields, "multi"); err != nil {
+		t.Fatalf("Failed to generate API: %v", err)
+	}
+
+	// Verify handler exists and has correct content
+	handlerPath := filepath.Join(tmpDir, "app", "api", "post.go")
+	handler, err := os.ReadFile(handlerPath)
+	if err != nil {
+		t.Fatalf("Failed to read handler: %v", err)
+	}
+	handlerContent := string(handler)
+
+	handlerChecks := map[string]string{
+		"HandleList method":   "func (h *PostHandler) HandleList",
+		"HandleGet method":    "func (h *PostHandler) HandleGet",
+		"HandleCreate method": "func (h *PostHandler) HandleCreate",
+		"HandleUpdate method": "func (h *PostHandler) HandleUpdate",
+		"HandleDelete method": "func (h *PostHandler) HandleDelete",
+		"Handler function":    "func Handler(queries *models.Queries) http.Handler",
+		"GET list route":      `"GET /api/v1/post"`,
+		"POST create route":   `"POST /api/v1/post"`,
+		"GET by ID route":     `"GET /api/v1/post/{id}"`,
+		"PUT update route":    `"PUT /api/v1/post/{id}"`,
+		"DELETE route":        `"DELETE /api/v1/post/{id}"`,
+		"APIResponse struct":  "type APIResponse struct",
+		"Meta struct":         "type Meta struct",
+		"writeJSON helper":    "func writeJSON(",
+		"writeError helper":   "func writeError(",
+		"readJSON helper":     "func readJSON(",
+		"parsePagination":     "func parsePagination(",
+		"StatusCreated":       "http.StatusCreated",
+		"StatusNoContent":     "http.StatusNoContent",
+		"StatusNotFound":      "http.StatusNotFound",
+		"validator import":    `"github.com/go-playground/validator/v10"`,
+		"json import":         `"encoding/json"`,
+		"pagination LIMIT":    "ListPostsPaginated",
+		"count query":         "CountPosts",
+	}
+
+	for desc, substr := range handlerChecks {
+		if !strings.Contains(handlerContent, substr) {
+			t.Errorf("Handler missing %s: expected %q", desc, substr)
+		}
+	}
+
+	// Verify handler has valid Go syntax
+	cmd := exec.Command("go", "tool", "compile", "-o", "/dev/null", handlerPath)
+	output, _ := cmd.CombinedOutput()
+	if strings.Contains(string(output), "syntax error") {
+		t.Errorf("Handler has syntax errors:\n%s", output)
+	}
+
+	// Verify queries have paginated variants
+	queriesPath := filepath.Join(tmpDir, "database", "queries.sql")
+	queriesData, err := os.ReadFile(queriesPath)
+	if err != nil {
+		t.Fatalf("Failed to read queries.sql: %v", err)
+	}
+	queries := string(queriesData)
+
+	queryChecks := map[string]string{
+		"paginated query": "ListPostsPaginated",
+		"LIMIT OFFSET":    "LIMIT ? OFFSET ?",
+		"count query":     "CountPosts",
+		"COUNT(*)":        "COUNT(*)",
+		"base GetAll":     "GetAllPosts",
+		"base Create":     "CreatePost",
+	}
+	for desc, substr := range queryChecks {
+		if !strings.Contains(queries, substr) {
+			t.Errorf("Queries missing %s: expected %q", desc, substr)
+		}
+	}
+
+	// Verify test file exists
+	testPath := filepath.Join(tmpDir, "app", "api", "post_test.go")
+	if _, err := os.Stat(testPath); os.IsNotExist(err) {
+		t.Error("API test file not generated")
+	}
+
+	t.Log("✅ API resource generation test passed")
+}
+
+// TestAPIFullFlow generates a complete app with an API resource,
+// runs sqlc, and verifies the generated code compiles.
+func TestAPIFullFlow(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping full flow test in short mode")
+	}
+
+	if _, err := exec.LookPath("sqlc"); err != nil {
+		t.Fatal("sqlc not installed - run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest")
+	}
+
+	tmpDir := t.TempDir()
+
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get current directory: %v", err)
+	}
+	t.Cleanup(func() {
+		os.Chdir(origDir)
+	})
+
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("Failed to change directory: %v", err)
+	}
+
+	appName := "apiapp"
+	appDir := filepath.Join(tmpDir, appName)
+
+	// Step 1: Generate app
+	t.Log("Step 1: Generating app...")
+	if err := generator.GenerateApp(appName, appName, "multi", "tailwind", false); err != nil {
+		t.Fatalf("Failed to generate app: %v", err)
+	}
+
+	// Step 2: Add replace directives
+	t.Log("Step 2: Adding replace directives...")
+	goModPath := filepath.Join(appDir, "go.mod")
+	goModContent, err := os.ReadFile(goModPath)
+	if err != nil {
+		t.Fatalf("Failed to read go.mod: %v", err)
+	}
+	replaceDirective := fmt.Sprintf("\nreplace github.com/livetemplate/lvt => %s\nreplace github.com/livetemplate/lvt/components => %s/components\n", origDir, origDir)
+	if err := os.WriteFile(goModPath, append(goModContent, []byte(replaceDirective)...), 0644); err != nil {
+		t.Fatalf("Failed to update go.mod: %v", err)
+	}
+
+	// Step 3: Generate API resource
+	t.Log("Step 3: Generating API resource...")
+	fields := []parser.Field{
+		{Name: "title", Type: "string", GoType: "string", SQLType: "TEXT", Metadata: parser.GetFieldMetadata("string")},
+		{Name: "content", Type: "text", GoType: "string", SQLType: "TEXT", IsTextarea: true, Metadata: parser.GetFieldMetadata("text")},
+		{Name: "published", Type: "bool", GoType: "bool", SQLType: "BOOLEAN", Metadata: parser.GetFieldMetadata("bool")},
+	}
+	if err := generator.GenerateAPI(appDir, appName, "Post", fields, "multi"); err != nil {
+		t.Fatalf("Failed to generate API: %v", err)
+	}
+	t.Log("✅ API resource generated")
+
+	// Step 4: go mod tidy
+	t.Log("Step 4: Running go mod tidy...")
+	cmd := exec.Command("go", "mod", "tidy")
+	cmd.Dir = appDir
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("go mod tidy failed: %v\nOutput: %s", err, output)
+	}
+
+	// Step 5: sqlc generate
+	t.Log("Step 5: Generating sqlc code...")
+	cmd = exec.Command("sqlc", "generate")
+	cmd.Dir = filepath.Join(appDir, "database")
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("sqlc generate failed: %v\nOutput: %s", err, output)
+	}
+	t.Log("✅ sqlc generate completed")
+
+	// Verify sqlc generated the paginated query type
+	modelsDir := filepath.Join(appDir, "database", "models")
+	entries, err := os.ReadDir(modelsDir)
+	if err != nil {
+		t.Fatalf("Failed to read models directory: %v", err)
+	}
+	foundPaginated := false
+	for _, entry := range entries {
+		if strings.HasSuffix(entry.Name(), ".go") {
+			data, _ := os.ReadFile(filepath.Join(modelsDir, entry.Name()))
+			if strings.Contains(string(data), "ListPostsPaginated") {
+				foundPaginated = true
+				break
+			}
+		}
+	}
+	if !foundPaginated {
+		t.Error("sqlc model missing ListPostsPaginated query type")
+	}
+
+	// Step 6: Build
+	t.Log("Step 6: Building app...")
+	cmd = exec.Command("go", "build", "./...")
+	cmd.Dir = appDir
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("go build failed: %v\nOutput: %s", err, output)
+	}
+	t.Log("✅ Build successful — API code compiles")
+
+	t.Log("✅ API full flow test passed!")
+}
