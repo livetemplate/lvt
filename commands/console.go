@@ -41,22 +41,22 @@ func Console(args []string) error {
 
 // findDBPath locates the database file for the current project.
 func findDBPath() string {
-	// Check DATABASE_PATH env var first
 	if path := os.Getenv("DATABASE_PATH"); path != "" {
 		return path
 	}
 
-	// Check current directory
-	if _, err := os.Stat("app.db"); err == nil {
-		return "app.db"
+	dir, err := os.Getwd()
+	if err != nil {
+		return ""
 	}
-
-	// Walk up looking for app.db
-	dir, _ := os.Getwd()
 	for {
 		path := filepath.Join(dir, "app.db")
 		if _, err := os.Stat(path); err == nil {
 			return path
+		}
+		// Stop at project boundary (go.mod indicates project root)
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			break
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
@@ -64,7 +64,6 @@ func findDBPath() string {
 		}
 		dir = parent
 	}
-
 	return ""
 }
 

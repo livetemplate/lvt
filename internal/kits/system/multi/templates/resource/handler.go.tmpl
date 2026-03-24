@@ -706,6 +706,21 @@ func (c *[[.ResourceName]]Controller) Mount(state [[.ResourceName]]State, ctx *l
 }
 
 func (c *[[.ResourceName]]Controller) load[[.ResourceName]]s(state [[.ResourceName]]State, ctx context.Context) ([[.ResourceName]]State, error) {
+[[- if .Searchable]]
+	if state.SearchQuery != "" {
+		results, err := c.Queries.Search[[.ResourceNamePlural]](ctx, state.SearchQuery)
+		if err != nil {
+			state.Filtered[[.ResourceNamePlural]] = [][[.ResourceName]]Item{}
+		} else {
+			state.Filtered[[.ResourceNamePlural]] = results
+		}
+		state.TotalCount = len(state.Filtered[[.ResourceNamePlural]])
+		state = applySorting(state)
+		state = applyPagination(state)
+		return state, nil
+	}
+[[- end]]
+
 	[[.ResourceNameLower]]s, err := c.Queries.GetAll[[.ResourceNamePlural]](ctx)
 	if err != nil {
 		return state, fmt.Errorf("failed to load [[.ResourceNameLower]]s: %w", err)
@@ -713,21 +728,11 @@ func (c *[[.ResourceName]]Controller) load[[.ResourceName]]s(state [[.ResourceNa
 
 	if state.SearchQuery == "" {
 		state.Filtered[[.ResourceNamePlural]] = [[.ResourceNameLower]]s
-[[- if .Searchable]]
-	} else {
-		// Full-text search using FTS5
-		results, err := c.Queries.Search[[.ResourceNamePlural]](ctx, state.SearchQuery)
-		if err != nil {
-			state.Filtered[[.ResourceNamePlural]] = [][[.ResourceName]]Item{}
-		} else {
-			state.Filtered[[.ResourceNamePlural]] = results
-		}
-[[- else]]
+[[- if not .Searchable]]
 	} else {
 		state.Filtered[[.ResourceNamePlural]] = [][[.ResourceName]]Item{}
 		query := strings.ToLower(state.SearchQuery)
 		for _, item := range [[.ResourceNameLower]]s {
-			// Search across all text fields (skip file/image fields)
 [[- range .Fields]]
 [[- if and (eq .GoType "string") (not .IsFile)]]
 			if strings.Contains(strings.ToLower(item.[[.Name | camelCase]]), query) {

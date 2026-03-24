@@ -95,8 +95,8 @@ func (d ResourceData) NonFileFields() []FieldData {
 // SearchableFields returns string fields suitable for FTS indexing (excludes file/image/reference).
 func (d ResourceData) SearchableFields() []FieldData {
 	var result []FieldData
-	for _, f := range d.Fields {
-		if f.GoType == "string" && !f.IsFile && !f.IsReference {
+	for _, f := range d.NonFileFields() {
+		if f.GoType == "string" && !f.IsReference {
 			result = append(result, f)
 		}
 	}

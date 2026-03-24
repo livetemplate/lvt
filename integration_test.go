@@ -450,11 +450,6 @@ func TestFileUploadResourceGeneration(t *testing.T) {
 		t.Error("AddInput should contain title field")
 	}
 
-	// Verify search skips file fields
-	if !strings.Contains(handlerContent, "Search across all text fields (skip file/image fields)") {
-		t.Error("Handler search comment should mention skipping file/image fields")
-	}
-
 	// --- Verify handler has valid Go syntax ---
 	cmd := exec.Command("go", "tool", "compile", "-o", "/dev/null", handlerPath)
 	output, _ := cmd.CombinedOutput()

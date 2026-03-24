@@ -415,6 +415,7 @@ func (c *UserController) Mount(state UserState, ctx *livetemplate.Context) (User
 }
 
 func (c *UserController) loadUsers(state UserState, ctx context.Context) (UserState, error) {
+
 	users, err := c.Queries.GetAllUsers(ctx)
 	if err != nil {
 		return state, fmt.Errorf("failed to load users: %w", err)
@@ -426,7 +427,6 @@ func (c *UserController) loadUsers(state UserState, ctx context.Context) (UserSt
 		state.FilteredUsers = []UserItem{}
 		query := strings.ToLower(state.SearchQuery)
 		for _, item := range users {
-			// Search across all text fields (skip file/image fields)
 			if strings.Contains(strings.ToLower(item.Name), query) {
 				state.FilteredUsers = append(state.FilteredUsers, item)
 				continue

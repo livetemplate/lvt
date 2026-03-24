@@ -463,6 +463,7 @@ func (c *PostController) Mount(state PostState, ctx *livetemplate.Context) (Post
 }
 
 func (c *PostController) loadPosts(state PostState, ctx context.Context) (PostState, error) {
+
 	posts, err := c.Queries.GetAllPosts(ctx)
 	if err != nil {
 		return state, fmt.Errorf("failed to load posts: %w", err)
@@ -474,7 +475,6 @@ func (c *PostController) loadPosts(state PostState, ctx context.Context) (PostSt
 		state.FilteredPosts = []PostItem{}
 		query := strings.ToLower(state.SearchQuery)
 		for _, item := range posts {
-			// Search across all text fields (skip file/image fields)
 			if strings.Contains(strings.ToLower(item.Title), query) {
 				state.FilteredPosts = append(state.FilteredPosts, item)
 				continue

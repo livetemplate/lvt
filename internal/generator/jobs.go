@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -435,7 +436,7 @@ func injectPeriodicJob(workerPath, taskNameCamel, schedule string) error {
 // New tasks are added here by ` + "`lvt gen task`" + `.
 func PeriodicJobs() []*river.PeriodicJob {
 	return []*river.PeriodicJob{
-	// Scheduled tasks below (added by ` + "`lvt gen task`" + `)
+		// Scheduled tasks below (added by ` + "`lvt gen task`" + `)
 	}
 }
 `
@@ -515,17 +516,28 @@ func scheduleToGo(schedule string) string {
 			if len(parts) >= 2 {
 				duration := parts[1]
 				if strings.HasSuffix(duration, "m") {
-					return duration[:len(duration)-1] + " * time.Minute"
+					if n := duration[:len(duration)-1]; isPositiveInt(n) {
+						return n + " * time.Minute"
+					}
 				}
 				if strings.HasSuffix(duration, "h") {
-					return duration[:len(duration)-1] + " * time.Hour"
+					if n := duration[:len(duration)-1]; isPositiveInt(n) {
+						return n + " * time.Hour"
+					}
 				}
 				if strings.HasSuffix(duration, "s") {
-					return duration[:len(duration)-1] + " * time.Second"
+					if n := duration[:len(duration)-1]; isPositiveInt(n) {
+						return n + " * time.Second"
+					}
 				}
 			}
 		}
 		// Fallback: use the string as-is (user can edit)
 		return fmt.Sprintf("time.Hour // TODO: adjust schedule (was: %s)", schedule)
 	}
+}
+
+func isPositiveInt(s string) bool {
+	n, err := strconv.Atoi(s)
+	return err == nil && n > 0
 }

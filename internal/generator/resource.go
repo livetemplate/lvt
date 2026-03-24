@@ -92,6 +92,9 @@ func GenerateResource(basePath, moduleName, resourceName string, fields []parser
 		Searchable:           searchable,
 		WithAuthz:            withAuthz,
 	}
+	if data.Searchable && len(data.SearchableFields()) == 0 {
+		return fmt.Errorf("--searchable requires at least one string field for FTS indexing")
+	}
 	data.Components = ComputeComponentUsage(data)
 	if data.Components.UseModal || data.Components.UseToast {
 		if data.Styles == "unstyled" {
