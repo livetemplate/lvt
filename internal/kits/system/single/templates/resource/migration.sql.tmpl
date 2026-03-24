@@ -28,10 +28,31 @@ CREATE INDEX IF NOT EXISTS idx_[[$.TableName]]_[[.Name]] ON [[$.TableName]]([[.N
 CREATE INDEX IF NOT EXISTS idx_[[.TableName]]_created_by ON [[.TableName]](created_by);
 [[- end]]
 CREATE INDEX IF NOT EXISTS idx_[[.TableName]]_created_at ON [[.TableName]](created_at);
+[[- if .Searchable]]
+
+CREATE VIRTUAL TABLE IF NOT EXISTS [[.TableName]]_fts USING fts5([[range $i, $f := .SearchableFields]][[if $i]], [[end]][[.Name]][[end]], content=[[.TableName]], content_rowid=rowid);
+
+CREATE TRIGGER IF NOT EXISTS [[.TableName]]_ai AFTER INSERT ON [[.TableName]] BEGIN
+  INSERT INTO [[.TableName]]_fts(rowid[[range .SearchableFields]], [[.Name]][[end]]) VALUES (new.rowid[[range .SearchableFields]], new.[[.Name]][[end]]);
+END;
+CREATE TRIGGER IF NOT EXISTS [[.TableName]]_ad AFTER DELETE ON [[.TableName]] BEGIN
+  INSERT INTO [[.TableName]]_fts([[.TableName]]_fts, rowid[[range .SearchableFields]], [[.Name]][[end]]) VALUES('delete', old.rowid[[range .SearchableFields]], old.[[.Name]][[end]]);
+END;
+CREATE TRIGGER IF NOT EXISTS [[.TableName]]_au AFTER UPDATE ON [[.TableName]] BEGIN
+  INSERT INTO [[.TableName]]_fts([[.TableName]]_fts, rowid[[range .SearchableFields]], [[.Name]][[end]]) VALUES('delete', old.rowid[[range .SearchableFields]], old.[[.Name]][[end]]);
+  INSERT INTO [[.TableName]]_fts(rowid[[range .SearchableFields]], [[.Name]][[end]]) VALUES (new.rowid[[range .SearchableFields]], new.[[.Name]][[end]]);
+END;
+[[- end]]
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
+[[- if .Searchable]]
+DROP TRIGGER IF EXISTS [[.TableName]]_au;
+DROP TRIGGER IF EXISTS [[.TableName]]_ad;
+DROP TRIGGER IF EXISTS [[.TableName]]_ai;
+DROP TABLE IF EXISTS [[.TableName]]_fts;
+[[- end]]
 [[- range .Fields]]
 [[- if .IsReference]]
 DROP INDEX IF EXISTS idx_[[$.TableName]]_[[.Name]];

@@ -21,7 +21,7 @@ func runHandlerGoldenTest(t *testing.T, resourceName string, fields []parser.Fie
 		t.Fatalf("Failed to create database directory: %v", err)
 	}
 
-	if err := generator.GenerateResource(tmpDir, "testmodule", resourceName, fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "", authz); err != nil {
+	if err := generator.GenerateResource(tmpDir, "testmodule", resourceName, fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "", authz, false); err != nil {
 		t.Fatalf("Failed to generate resource: %v", err)
 	}
 
@@ -101,7 +101,7 @@ func TestAuthzResourceHandlerGolden(t *testing.T) {
 	}
 	runHandlerGoldenTest(t, "Post", fields,
 		"testdata/golden/resource_handler_authz.go.golden",
-		"app/post/post.go", true)
+		"app/post/post.go", true, false)
 }
 
 // TestResourceHandlerUnstyledImport verifies that styles="unstyled" generates the unstyled import
@@ -117,7 +117,7 @@ func TestResourceHandlerUnstyledImport(t *testing.T) {
 		{Name: "name", Type: "string", GoType: "string", SQLType: "TEXT", Metadata: parser.GetFieldMetadata("string")},
 	}
 
-	if err := generator.GenerateResource(tmpDir, "testmodule", "Item", fields, "multi", "tailwind", "unstyled", "infinite", 20, "modal", "", false); err != nil {
+	if err := generator.GenerateResource(tmpDir, "testmodule", "Item", fields, "multi", "tailwind", "unstyled", "infinite", 20, "modal", "", false, false); err != nil {
 		t.Fatalf("Failed to generate resource: %v", err)
 	}
 
@@ -149,7 +149,7 @@ func TestResourceHandlerInvalidStyles(t *testing.T) {
 		{Name: "name", Type: "string", GoType: "string", SQLType: "TEXT", Metadata: parser.GetFieldMetadata("string")},
 	}
 
-	err := generator.GenerateResource(tmpDir, "testmodule", "Item", fields, "multi", "tailwind", "bootstrap", "infinite", 20, "modal", "", false)
+	err := generator.GenerateResource(tmpDir, "testmodule", "Item", fields, "multi", "tailwind", "bootstrap", "infinite", 20, "modal", "", false, false)
 	if err == nil {
 		t.Fatal("Expected error for invalid styles adapter, got nil")
 	}
@@ -215,7 +215,7 @@ func TestResourceTemplateGolden(t *testing.T) {
 		{Name: "published", Type: "bool", GoType: "bool", SQLType: "BOOLEAN", Metadata: parser.GetFieldMetadata("bool")},
 	}
 
-	if err := generator.GenerateResource(tmpDir, "testmodule", "Post", fields, "multi", "tailwind", "tailwind", "prev-next", 10, "modal", "", false); err != nil {
+	if err := generator.GenerateResource(tmpDir, "testmodule", "Post", fields, "multi", "tailwind", "tailwind", "prev-next", 10, "modal", "", false, false); err != nil {
 		t.Fatalf("Failed to generate resource: %v", err)
 	}
 

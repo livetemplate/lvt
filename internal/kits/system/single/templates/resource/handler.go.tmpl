@@ -713,6 +713,16 @@ func (c *[[.ResourceName]]Controller) load[[.ResourceName]]s(state [[.ResourceNa
 
 	if state.SearchQuery == "" {
 		state.Filtered[[.ResourceNamePlural]] = [[.ResourceNameLower]]s
+[[- if .Searchable]]
+	} else {
+		// Full-text search using FTS5
+		results, err := c.Queries.Search[[.ResourceNamePlural]](ctx, state.SearchQuery)
+		if err != nil {
+			state.Filtered[[.ResourceNamePlural]] = [][[.ResourceName]]Item{}
+		} else {
+			state.Filtered[[.ResourceNamePlural]] = results
+		}
+[[- else]]
 	} else {
 		state.Filtered[[.ResourceNamePlural]] = [][[.ResourceName]]Item{}
 		query := strings.ToLower(state.SearchQuery)
@@ -727,6 +737,7 @@ func (c *[[.ResourceName]]Controller) load[[.ResourceName]]s(state [[.ResourceNa
 [[- end]]
 [[- end]]
 		}
+[[- end]]
 	}
 
 	state.TotalCount = len([[.ResourceNameLower]]s)

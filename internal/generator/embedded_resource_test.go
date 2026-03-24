@@ -27,7 +27,7 @@ func TestEmbeddedResourceGeneration(t *testing.T) {
 		{Name: "content", Type: "text", GoType: "string", SQLType: "TEXT", IsTextarea: true},
 	}
 
-	err := GenerateResource(tmpDir, "testapp", "posts", postFields, "multi", "tailwind", "tailwind", "infinite", 20, "page", "", false)
+	err := GenerateResource(tmpDir, "testapp", "posts", postFields, "multi", "tailwind", "tailwind", "infinite", 20, "page", "", false, false)
 	if err != nil {
 		t.Fatalf("failed to generate posts: %v", err)
 	}
@@ -43,7 +43,7 @@ func TestEmbeddedResourceGeneration(t *testing.T) {
 		{Name: "text", Type: "string", GoType: "string", SQLType: "TEXT"},
 	}
 
-	err = GenerateResource(tmpDir, "testapp", "comments", commentFields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "posts", false)
+	err = GenerateResource(tmpDir, "testapp", "comments", commentFields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "posts", false, false)
 	if err != nil {
 		t.Fatalf("failed to generate embedded comments: %v", err)
 	}
@@ -169,7 +169,7 @@ func TestEmbeddedResourceGeneration_MissingParent(t *testing.T) {
 	}
 
 	// Should fail because posts resource doesn't exist
-	err := GenerateResource(tmpDir, "testapp", "comments", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "posts", false)
+	err := GenerateResource(tmpDir, "testapp", "comments", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "posts", false, false)
 	if err == nil {
 		t.Error("expected error when parent resource doesn't exist")
 	}
@@ -183,7 +183,7 @@ func TestEmbeddedResourceGeneration_MissingReferenceField(t *testing.T) {
 	postFields := []parser.Field{
 		{Name: "title", Type: "string", GoType: "string", SQLType: "TEXT"},
 	}
-	if err := GenerateResource(tmpDir, "testapp", "posts", postFields, "multi", "tailwind", "tailwind", "infinite", 20, "page", "", false); err != nil {
+	if err := GenerateResource(tmpDir, "testapp", "posts", postFields, "multi", "tailwind", "tailwind", "infinite", 20, "page", "", false, false); err != nil {
 		t.Fatalf("failed to generate posts: %v", err)
 	}
 
@@ -193,7 +193,7 @@ func TestEmbeddedResourceGeneration_MissingReferenceField(t *testing.T) {
 		{Name: "text", Type: "string", GoType: "string", SQLType: "TEXT"},
 	}
 
-	err := GenerateResource(tmpDir, "testapp", "comments", commentFields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "posts", false)
+	err := GenerateResource(tmpDir, "testapp", "comments", commentFields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "posts", false, false)
 	if err == nil {
 		t.Error("expected error when child has no reference field for parent")
 	}

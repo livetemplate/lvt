@@ -20,3 +20,11 @@ WHERE id = ?;
 -- name: Delete[[.ResourceNameSingular]] :exec
 DELETE FROM [[.TableName]]
 WHERE id = ?;
+[[- if .Searchable]]
+
+-- name: Search[[.ResourceNamePlural]] :many
+SELECT [[.TableName]].* FROM [[.TableName]]
+JOIN [[.TableName]]_fts ON [[.TableName]].rowid = [[.TableName]]_fts.rowid
+WHERE [[.TableName]]_fts MATCH ?
+ORDER BY rank;
+[[- end]]

@@ -121,6 +121,7 @@ func GenResource(args []string) error {
 	skipValidation := false
 	parentResource := ""
 	withAuthz := false
+	searchable := false
 	var filteredArgs []string
 	for i := 0; i < len(args); i++ {
 		if args[i] == "--pagination" && i+1 < len(args) {
@@ -141,6 +142,8 @@ func GenResource(args []string) error {
 			i++ // skip next arg
 		} else if args[i] == "--with-authz" {
 			withAuthz = true
+		} else if args[i] == "--searchable" {
+			searchable = true
 		} else {
 			filteredArgs = append(filteredArgs, args[i])
 		}
@@ -247,7 +250,7 @@ func GenResource(args []string) error {
 	fmt.Println()
 
 	styles := projectConfig.Styles
-	if err := generator.GenerateResource(basePath, moduleName, resourceName, fields, kit, cssFramework, styles, paginationMode, pageSize, editMode, parentResource, withAuthz); err != nil {
+	if err := generator.GenerateResource(basePath, moduleName, resourceName, fields, kit, cssFramework, styles, paginationMode, pageSize, editMode, parentResource, withAuthz, searchable); err != nil {
 		capture.RecordError(telemetry.GenerationError{Phase: "generation", Message: err.Error()})
 		capture.AttributeComponentErrors() // attribute errors on failure path
 		capture.Complete(false, "")

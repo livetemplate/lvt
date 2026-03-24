@@ -29,7 +29,7 @@ func TestGeneratedCodeSyntax(t *testing.T) {
 		{Name: "email", Type: "string", GoType: "string", SQLType: "TEXT"},
 	}
 
-	if err := generator.GenerateResource(tmpDir, "testmodule", "User", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "", false); err != nil {
+	if err := generator.GenerateResource(tmpDir, "testmodule", "User", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "", false, false); err != nil {
 		t.Fatalf("Failed to generate resource: %v", err)
 	}
 
@@ -109,7 +109,7 @@ func TestGeneratedFilesExist(t *testing.T) {
 		{Name: "title", Type: "string", GoType: "string", SQLType: "TEXT"},
 	}
 
-	if err := generator.GenerateResource(appDir, "testapp", "Post", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "", false); err != nil {
+	if err := generator.GenerateResource(appDir, "testapp", "Post", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "", false, false); err != nil {
 		t.Fatalf("Failed to generate resource: %v", err)
 	}
 
@@ -165,7 +165,7 @@ func TestForeignKeyGeneration(t *testing.T) {
 		{Name: "content", Type: "string", GoType: "string", SQLType: "TEXT"},
 	}
 
-	if err := generator.GenerateResource(tmpDir, "testmodule", "Post", parentFields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "", false); err != nil {
+	if err := generator.GenerateResource(tmpDir, "testmodule", "Post", parentFields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "", false, false); err != nil {
 		t.Fatalf("Failed to generate parent resource: %v", err)
 	}
 
@@ -184,7 +184,7 @@ func TestForeignKeyGeneration(t *testing.T) {
 		{Name: "text", Type: "string", GoType: "string", SQLType: "TEXT"},
 	}
 
-	if err := generator.GenerateResource(tmpDir, "testmodule", "Comment", childFields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "", false); err != nil {
+	if err := generator.GenerateResource(tmpDir, "testmodule", "Comment", childFields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "", false, false); err != nil {
 		t.Fatalf("Failed to generate child resource: %v", err)
 	}
 
@@ -300,7 +300,7 @@ func TestGeneratedAppFullFlow(t *testing.T) {
 		{Name: "content", Type: "text", GoType: "string", SQLType: "TEXT"},
 		{Name: "published", Type: "bool", GoType: "bool", SQLType: "BOOLEAN"},
 	}
-	if err := generator.GenerateResource(appDir, appName, "Post", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "", false); err != nil {
+	if err := generator.GenerateResource(appDir, appName, "Post", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "", false, false); err != nil {
 		t.Fatalf("Failed to generate resource: %v", err)
 	}
 	t.Log("✅ Resource generated")
@@ -394,7 +394,7 @@ func TestFileUploadResourceGeneration(t *testing.T) {
 		{Name: "doc", Type: "file", GoType: "string", SQLType: "TEXT", IsFile: true, IsImage: false, Metadata: parser.FieldMetadata{HTMLInputType: "file"}},
 	}
 
-	if err := generator.GenerateResource(tmpDir, "testmodule", "Gallery", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "", false); err != nil {
+	if err := generator.GenerateResource(tmpDir, "testmodule", "Gallery", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "", false, false); err != nil {
 		t.Fatalf("Failed to generate resource: %v", err)
 	}
 
@@ -627,7 +627,7 @@ func TestFileUploadFullFlow(t *testing.T) {
 		{Name: "doc", Type: "file", GoType: "string", SQLType: "TEXT", IsFile: true, IsImage: false, Metadata: parser.FieldMetadata{HTMLInputType: "file"}},
 		{Name: "views", Type: "int", GoType: "int64", SQLType: "INTEGER", Metadata: parser.GetFieldMetadata("int")},
 	}
-	if err := generator.GenerateResource(appDir, appName, "Gallery", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "", false); err != nil {
+	if err := generator.GenerateResource(appDir, appName, "Gallery", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "", false, false); err != nil {
 		t.Fatalf("Failed to generate resource: %v", err)
 	}
 	t.Log("✅ Resource with file/image fields generated")
@@ -746,7 +746,7 @@ func TestAuthzResourceGeneration(t *testing.T) {
 		{Name: "content", Type: "text", GoType: "string", SQLType: "TEXT", IsTextarea: true, Metadata: parser.GetFieldMetadata("text")},
 	}
 
-	if err := generator.GenerateResource(tmpDir, "testmodule", "Post", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "", true); err != nil {
+	if err := generator.GenerateResource(tmpDir, "testmodule", "Post", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "", true, false); err != nil {
 		t.Fatalf("Failed to generate resource: %v", err)
 	}
 
@@ -934,7 +934,7 @@ func TestAuthzFullFlow(t *testing.T) {
 		{Name: "content", Type: "text", GoType: "string", SQLType: "TEXT", IsTextarea: true, Metadata: parser.GetFieldMetadata("text")},
 		{Name: "published", Type: "bool", GoType: "bool", SQLType: "BOOLEAN", Metadata: parser.GetFieldMetadata("bool")},
 	}
-	if err := generator.GenerateResource(appDir, appName, "Post", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "", true); err != nil {
+	if err := generator.GenerateResource(appDir, appName, "Post", fields, "multi", "tailwind", "tailwind", "infinite", 20, "modal", "", true, false); err != nil {
 		t.Fatalf("Failed to generate resource: %v", err)
 	}
 	t.Log("✅ Resource with --with-authz generated")
