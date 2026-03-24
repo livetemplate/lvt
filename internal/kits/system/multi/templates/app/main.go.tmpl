@@ -69,10 +69,14 @@ func main() {
 		getEnvInt("RATE_LIMIT_MAX_IPS", 10000),
 		nil)
 
-	// Wrap the default mux with middleware
-	handler := globalRL(securityHeadersMiddleware(
-		recoveryMiddleware(
-			loggingMiddleware(http.DefaultServeMux))))
+	// Compose middleware pipeline.
+	// Customize by reordering or adding middleware to the chain.
+	handler := chainMiddleware(http.DefaultServeMux,
+		globalRL,
+		securityHeadersMiddleware,
+		recoveryMiddleware,
+		loggingMiddleware,
+	)
 
 	// Create server with production-ready settings
 	srv := &http.Server{
@@ -495,4 +499,13 @@ func getEnvInt(key string, defaultVal int) int {
 		return n
 	}
 	return defaultVal
+}
+
+// chainMiddleware composes multiple middlewares into a handler chain.
+// The first middleware is the outermost layer (executed first on request, last on response).
+func chainMiddleware(handler http.Handler, middlewares ...func(http.Handler) http.Handler) http.Handler {
+	for i := len(middlewares) - 1; i >= 0; i-- {
+		handler = middlewares[i](handler)
+	}
+	return handler
 }
