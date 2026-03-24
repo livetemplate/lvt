@@ -16,8 +16,6 @@ import (
 
 	"[[.ModuleName]]/app/home"
 	"[[.ModuleName]]/database"
-
-	"github.com/livetemplate/lvt/pkg/middleware"
 )
 
 func main() {
@@ -53,14 +51,13 @@ func main() {
 	// TODO: Add routes here
 	// Example: http.Handle("/users", users.Handler(queries))
 
-	// Wrap the default mux with middleware
-	// Compose middleware pipeline using named chain.
+	// Compose middleware pipeline.
 	// Customize by reordering or adding middleware to the chain.
-	handler := middleware.Chain(
+	handler := chainMiddleware(http.DefaultServeMux,
 		securityHeadersMiddleware,
 		recoveryMiddleware,
 		loggingMiddleware,
-	)(http.DefaultServeMux)
+	)
 
 	// Create server with production-ready settings
 	srv := &http.Server{
@@ -316,4 +313,13 @@ func serveClientLibrary(w http.ResponseWriter, r *http.Request) {
 
 	// Not found locally — CDN is used in templates
 	http.Error(w, "Client library not found locally. Templates load from CDN.", http.StatusNotFound)
+}
+
+// chainMiddleware composes multiple middlewares into a handler chain.
+// The first middleware is the outermost layer (executed first on request, last on response).
+func chainMiddleware(handler http.Handler, middlewares ...func(http.Handler) http.Handler) http.Handler {
+	for i := len(middlewares) - 1; i >= 0; i-- {
+		handler = middlewares[i](handler)
+	}
+	return handler
 }
