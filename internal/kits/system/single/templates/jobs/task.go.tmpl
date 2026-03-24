@@ -1,0 +1,37 @@
+package jobs
+
+import (
+	"context"
+	"log/slog"
+
+	"github.com/riverqueue/river"
+)
+
+// <<.JobNameCamel>>Args defines the payload for the <<.JobName>> scheduled task.
+type <<.JobNameCamel>>Args struct {
+	// Scheduled tasks typically don't need payload fields.
+	// Add fields here if the task needs configuration.
+}
+
+// Kind returns the unique task type identifier used by River.
+func (<<.JobNameCamel>>Args) Kind() string { return "<<.JobName>>" }
+
+// <<.JobNameCamel>>Worker processes the <<.JobName>> scheduled task.
+type <<.JobNameCamel>>Worker struct {
+	river.WorkerDefaults[<<.JobNameCamel>>Args]
+}
+
+// Work executes the <<.JobName>> scheduled task.
+// This runs on the schedule defined in worker.go PeriodicJobs.
+func (w *<<.JobNameCamel>>Worker) Work(ctx context.Context, job *river.Job[<<.JobNameCamel>>Args]) error {
+	slog.Info("Running scheduled task: <<.JobName>>", "job_id", job.ID)
+
+	// TODO: Implement your scheduled task logic here.
+	// Examples:
+	//   - Clean up expired sessions
+	//   - Generate daily reports
+	//   - Sync data from external APIs
+	//   - Send digest emails
+
+	return nil
+}

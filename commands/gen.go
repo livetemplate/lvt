@@ -55,8 +55,10 @@ func Gen(args []string) error {
 		return Authz(args[1:])
 	case "api":
 		return GenAPI(args[1:])
+	case "task":
+		return GenTask(args[1:])
 	default:
-		return fmt.Errorf("unknown subcommand: %s\n\nAvailable subcommands:\n  resource  Generate full CRUD resource with database\n  view      Generate view-only handler (no database)\n  schema    Generate database schema only\n  auth      Generate authentication system\n  authz     Generate role-based authorization\n  api       Generate JSON API endpoints\n  stack     Generate deployment stack configuration\n  queue     Set up background job processing (River)\n  job       Scaffold a new background job handler\n\nRun 'lvt gen' for interactive mode", subcommand)
+		return fmt.Errorf("unknown subcommand: %s\n\nAvailable subcommands:\n  resource  Generate full CRUD resource with database\n  view      Generate view-only handler (no database)\n  schema    Generate database schema only\n  auth      Generate authentication system\n  authz     Generate role-based authorization\n  api       Generate JSON API endpoints\n  stack     Generate deployment stack configuration\n  queue     Set up background job processing (River)\n  job       Scaffold a new background job handler\n  task      Scaffold a new scheduled task\n\nRun 'lvt gen' for interactive mode", subcommand)
 	}
 }
 

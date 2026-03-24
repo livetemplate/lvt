@@ -341,3 +341,191 @@ func injectWorkerRegistration(workerPath string, jobNameCamel string) error {
 
 	return os.WriteFile(workerPath, []byte(workerStr), 0644)
 }
+
+// TaskConfig holds configuration for scheduled task generation.
+type TaskConfig struct {
+	ModuleName   string
+	JobName      string
+	JobNameCamel string
+	Schedule     string // cron expression or shortcut
+}
+
+// GenerateTask scaffolds a new scheduled task and registers it.
+func GenerateTask(projectRoot, moduleName, taskName, schedule string) error {
+	workerPath := filepath.Join(projectRoot, "app", "jobs", "worker.go")
+	if _, err := os.Stat(workerPath); os.IsNotExist(err) {
+		return fmt.Errorf("job queue not set up yet. Run 'lvt gen queue' first")
+	}
+
+	projectConfig, err := config.LoadProjectConfig(projectRoot)
+	if err != nil {
+		return fmt.Errorf("failed to load project config: %w", err)
+	}
+	kitName := projectConfig.GetKit()
+	kitLoader := kits.DefaultLoader()
+
+	taskNameCamel := toCamelCase(taskName)
+
+	taskConfig := &TaskConfig{
+		ModuleName:   moduleName,
+		JobName:      taskName,
+		JobNameCamel: taskNameCamel,
+		Schedule:     schedule,
+	}
+
+	taskPath := filepath.Join(projectRoot, "app", "jobs", taskName+".go")
+	if _, err := os.Stat(taskPath); err == nil {
+		return fmt.Errorf("task '%s' already exists (app/jobs/%s.go)", taskName, taskName)
+	}
+
+	// Generate task handler
+	templateContent, err := kitLoader.LoadKitTemplate(kitName, "jobs/task.go.tmpl")
+	if err != nil {
+		return fmt.Errorf("failed to load task template: %w", err)
+	}
+
+	tmpl, err := template.New("task_handler").Delims("<<", ">>").Parse(string(templateContent))
+	if err != nil {
+		return fmt.Errorf("failed to parse task template: %w", err)
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, taskConfig); err != nil {
+		return fmt.Errorf("failed to execute task template: %w", err)
+	}
+	if err := os.WriteFile(taskPath, buf.Bytes(), 0644); err != nil {
+		return fmt.Errorf("failed to write %s.go: %w", taskName, err)
+	}
+
+	// Register worker
+	if err := injectWorkerRegistration(workerPath, taskNameCamel); err != nil {
+		return fmt.Errorf("failed to register worker: %w", err)
+	}
+
+	// Add periodic job config to worker.go
+	if err := injectPeriodicJob(workerPath, taskNameCamel, schedule); err != nil {
+		return fmt.Errorf("failed to inject periodic job: %w", err)
+	}
+
+	// Inject PeriodicJobs into main.go River client config
+	mainGoPath := findMainGo(projectRoot)
+	if mainGoPath != "" {
+		if err := injectPeriodicJobsConfig(mainGoPath); err != nil {
+			fmt.Printf("⚠️  Could not auto-inject PeriodicJobs config: %v\n", err)
+		}
+	}
+
+	return nil
+}
+
+// injectPeriodicJob adds a periodic job entry to worker.go.
+func injectPeriodicJob(workerPath, taskNameCamel, schedule string) error {
+	content, err := os.ReadFile(workerPath)
+	if err != nil {
+		return err
+	}
+
+	workerStr := string(content)
+
+	// Check if PeriodicJobs function exists, add if not
+	if !strings.Contains(workerStr, "func PeriodicJobs()") {
+		periodicFunc := `
+
+// PeriodicJobs returns scheduled tasks for River's periodic job runner.
+// New tasks are added here by ` + "`lvt gen task`" + `.
+func PeriodicJobs() []*river.PeriodicJob {
+	return []*river.PeriodicJob{
+	// Scheduled tasks below (added by ` + "`lvt gen task`" + `)
+	}
+}
+`
+		workerStr += periodicFunc
+	}
+
+	// Inject the periodic job entry
+	entry := fmt.Sprintf(`river.NewPeriodicJob(
+			river.PeriodicInterval(%s),
+			func() (river.JobArgs, *river.InsertOpts) {
+				return %sArgs{}, nil
+			},
+			&river.PeriodicJobOpts{RunOnStart: true},
+		),`, scheduleToGo(schedule), taskNameCamel)
+
+	marker := "// Scheduled tasks below (added by `lvt gen task`)"
+	if !strings.Contains(workerStr, entry) {
+		idx := strings.Index(workerStr, marker)
+		if idx >= 0 {
+			insertPos := idx + len(marker)
+			workerStr = workerStr[:insertPos] + "\n\t\t" + entry + workerStr[insertPos:]
+		}
+	}
+
+	// Ensure time import exists
+	if !strings.Contains(workerStr, `"time"`) {
+		workerStr = strings.Replace(workerStr, `"github.com/riverqueue/river"`, `"time"`+"\n\n\t"+`"github.com/riverqueue/river"`, 1)
+	}
+
+	return os.WriteFile(workerPath, []byte(workerStr), 0644)
+}
+
+// injectPeriodicJobsConfig adds PeriodicJobs to the River client config in main.go.
+func injectPeriodicJobsConfig(mainGoPath string) error {
+	content, err := os.ReadFile(mainGoPath)
+	if err != nil {
+		return err
+	}
+
+	mainStr := string(content)
+
+	if strings.Contains(mainStr, "PeriodicJobs:") {
+		return nil // Already configured
+	}
+
+	// Find Workers: line in River config and add PeriodicJobs after it
+	target := "\t\tWorkers: jobWorkers,"
+	if idx := strings.Index(mainStr, target); idx >= 0 {
+		insertPos := idx + len(target)
+		mainStr = mainStr[:insertPos] + "\n\t\tPeriodicJobs: jobs.PeriodicJobs()," + mainStr[insertPos:]
+	}
+
+	return os.WriteFile(mainGoPath, []byte(mainStr), 0644)
+}
+
+// scheduleToGo converts a cron expression or shortcut to Go code.
+func scheduleToGo(schedule string) string {
+	switch schedule {
+	case "@hourly":
+		return "time.Hour"
+	case "@daily":
+		return "24 * time.Hour"
+	case "@weekly":
+		return "7 * 24 * time.Hour"
+	case "@every 1m", "@every 1 minute":
+		return "time.Minute"
+	case "@every 5m", "@every 5 minutes":
+		return "5 * time.Minute"
+	case "@every 10m", "@every 10 minutes":
+		return "10 * time.Minute"
+	case "@every 30m", "@every 30 minutes":
+		return "30 * time.Minute"
+	default:
+		// Try to parse @every Nm pattern
+		if strings.HasPrefix(schedule, "@every ") {
+			parts := strings.Fields(schedule)
+			if len(parts) >= 2 {
+				duration := parts[1]
+				if strings.HasSuffix(duration, "m") {
+					return duration[:len(duration)-1] + " * time.Minute"
+				}
+				if strings.HasSuffix(duration, "h") {
+					return duration[:len(duration)-1] + " * time.Hour"
+				}
+				if strings.HasSuffix(duration, "s") {
+					return duration[:len(duration)-1] + " * time.Second"
+				}
+			}
+		}
+		// Fallback: use the string as-is (user can edit)
+		return fmt.Sprintf("time.Hour // TODO: adjust schedule (was: %s)", schedule)
+	}
+}
