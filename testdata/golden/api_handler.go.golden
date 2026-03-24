@@ -195,16 +195,14 @@ func (h *PostHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// Handler returns an http.Handler for this API resource.
-func Handler(queries *models.Queries) http.Handler {
+// RegisterRoutes registers all API routes on the given mux.
+func RegisterRoutes(mux *http.ServeMux, queries *models.Queries) {
 	h := &PostHandler{Queries: queries}
-	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/v1/post", h.HandleList)
 	mux.HandleFunc("POST /api/v1/post", h.HandleCreate)
 	mux.HandleFunc("GET /api/v1/post/{id}", h.HandleGet)
 	mux.HandleFunc("PUT /api/v1/post/{id}", h.HandleUpdate)
 	mux.HandleFunc("DELETE /api/v1/post/{id}", h.HandleDelete)
-	return mux
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
