@@ -43,6 +43,16 @@ func GenTask(args []string) error {
 		return err
 	}
 
+	// Validate schedule format
+	validSchedules := map[string]bool{
+		"@hourly": true, "@daily": true, "@weekly": true,
+		"@every 1m": true, "@every 5m": true, "@every 10m": true, "@every 30m": true,
+		"@every 1 minute": true, "@every 5 minutes": true, "@every 10 minutes": true, "@every 30 minutes": true,
+	}
+	if !validSchedules[schedule] && !isValidEverySchedule(schedule) {
+		return fmt.Errorf("unsupported schedule %q\n\nSupported formats:\n  @hourly, @daily, @weekly\n  @every Nm (e.g., @every 5m, @every 2h, @every 30s)", schedule)
+	}
+
 	cwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("failed to get working directory: %w", err)
@@ -102,4 +112,29 @@ func printGenTaskHelp() {
 	fmt.Println()
 	fmt.Println("Prerequisites:")
 	fmt.Println("  Run 'lvt gen queue' first to set up the job infrastructure.")
+}
+
+func isValidEverySchedule(s string) bool {
+	if !strings.HasPrefix(s, "@every ") {
+		return false
+	}
+	parts := strings.Fields(s)
+	if len(parts) < 2 {
+		return false
+	}
+	d := parts[1]
+	if len(d) < 2 {
+		return false
+	}
+	suffix := d[len(d)-1]
+	if suffix != 'm' && suffix != 'h' && suffix != 's' {
+		return false
+	}
+	n := d[:len(d)-1]
+	for _, c := range n {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return len(n) > 0
 }
