@@ -7,9 +7,6 @@ import (
 [[- end]]
 	"fmt"
 	"log"
-[[- if .Searchable]]
-	"log/slog"
-[[- end]]
 	"math"
 	"net/http"
 [[- if .Components.UseUpload]]
@@ -713,11 +710,9 @@ func (c *[[.ResourceName]]Controller) load[[.ResourceName]]s(state [[.ResourceNa
 	if state.SearchQuery != "" {
 		results, err := c.Queries.Search[[.ResourceNamePlural]](ctx, state.SearchQuery)
 		if err != nil {
-			slog.Error("FTS search failed", "error", err)
-			state.Filtered[[.ResourceNamePlural]] = [][[.ResourceName]]Item{}
-		} else {
-			state.Filtered[[.ResourceNamePlural]] = results
+			return state, fmt.Errorf("search failed: %w", err)
 		}
+		state.Filtered[[.ResourceNamePlural]] = results
 		state.TotalCount = len(state.Filtered[[.ResourceNamePlural]])
 		state = applySorting(state)
 		state = applyPagination(state)

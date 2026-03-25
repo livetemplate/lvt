@@ -465,7 +465,11 @@ func PeriodicJobs() []*river.PeriodicJob {
 
 	// Ensure time import exists
 	if !strings.Contains(workerStr, `"time"`) {
-		workerStr = strings.Replace(workerStr, `"github.com/riverqueue/river"`, `"time"`+"\n\n\t"+`"github.com/riverqueue/river"`, 1)
+		target := `"github.com/riverqueue/river"`
+		if !strings.Contains(workerStr, target) {
+			return fmt.Errorf("could not inject time import: river import not found in worker.go")
+		}
+		workerStr = strings.Replace(workerStr, target, `"time"`+"\n\n\t"+target, 1)
 	}
 
 	return os.WriteFile(workerPath, []byte(workerStr), 0644)
