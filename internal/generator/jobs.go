@@ -459,7 +459,7 @@ func PeriodicJobs() []*river.PeriodicJob {
 			insertPos := idx + len(marker)
 			workerStr = workerStr[:insertPos] + "\n\t\t" + entry + workerStr[insertPos:]
 		} else {
-			return fmt.Errorf("could not find injection marker in worker.go PeriodicJobs function.\nAdd manually to PeriodicJobs():\n\t%s", strings.ReplaceAll(entry, "\n", "\n\t"))
+			return fmt.Errorf("could not register periodic job in worker.go.\n\nThe marker comment was not found in PeriodicJobs().\nPlease add this entry manually to the return slice in PeriodicJobs():\n\n%s", entry)
 		}
 	}
 

@@ -133,5 +133,8 @@ func isValidEverySchedule(s string) bool {
 			return false
 		}
 	}
-	return len(n) > 0
+	if len(n) == 0 || n == "0" {
+		return false
+	}
+	return true
 }
