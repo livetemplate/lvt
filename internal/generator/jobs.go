@@ -449,7 +449,7 @@ func PeriodicJobs() []*river.PeriodicJob {
 			func() (river.JobArgs, *river.InsertOpts) {
 				return %sArgs{}, nil
 			},
-			&river.PeriodicJobOpts{RunOnStart: true}, // set to false to skip running on app startup
+			&river.PeriodicJobOpts{RunOnStart: false}, // set to true to also run immediately on app startup
 		),`, scheduleToGo(schedule), taskNameCamel)
 
 	marker := "// Scheduled tasks below (added by `lvt gen task`)"
@@ -514,14 +514,6 @@ func scheduleToGo(schedule string) string {
 		return "24 * time.Hour"
 	case "@weekly":
 		return "7 * 24 * time.Hour"
-	case "@every 1m", "@every 1 minute":
-		return "time.Minute"
-	case "@every 5m", "@every 5 minutes":
-		return "5 * time.Minute"
-	case "@every 10m", "@every 10 minutes":
-		return "10 * time.Minute"
-	case "@every 30m", "@every 30 minutes":
-		return "30 * time.Minute"
 	default:
 		// Try to parse @every Nm pattern
 		if strings.HasPrefix(schedule, "@every ") {
