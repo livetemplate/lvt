@@ -484,10 +484,12 @@ func injectPeriodicJobsConfig(mainGoPath string) error {
 
 	// Find Workers: line in River config and add PeriodicJobs after it
 	target := "\t\tWorkers: jobWorkers,"
-	if idx := strings.Index(mainStr, target); idx >= 0 {
-		insertPos := idx + len(target)
-		mainStr = mainStr[:insertPos] + "\n\t\tPeriodicJobs: jobs.PeriodicJobs()," + mainStr[insertPos:]
+	idx := strings.Index(mainStr, target)
+	if idx < 0 {
+		return fmt.Errorf("could not find River config injection point in main.go (expected 'Workers: jobWorkers,')")
 	}
+	insertPos := idx + len(target)
+	mainStr = mainStr[:insertPos] + "\n\t\tPeriodicJobs: jobs.PeriodicJobs()," + mainStr[insertPos:]
 
 	return os.WriteFile(mainGoPath, []byte(mainStr), 0644)
 }

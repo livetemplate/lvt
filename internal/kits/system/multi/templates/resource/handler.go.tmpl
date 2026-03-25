@@ -720,7 +720,6 @@ func (c *[[.ResourceName]]Controller) load[[.ResourceName]]s(state [[.ResourceNa
 		return state, nil
 	}
 [[- end]]
-
 	[[.ResourceNameLower]]s, err := c.Queries.GetAll[[.ResourceNamePlural]](ctx)
 	if err != nil {
 		return state, fmt.Errorf("failed to load [[.ResourceNameLower]]s: %w", err)

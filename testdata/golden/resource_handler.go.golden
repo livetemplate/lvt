@@ -415,7 +415,6 @@ func (c *UserController) Mount(state UserState, ctx *livetemplate.Context) (User
 }
 
 func (c *UserController) loadUsers(state UserState, ctx context.Context) (UserState, error) {
-
 	users, err := c.Queries.GetAllUsers(ctx)
 	if err != nil {
 		return state, fmt.Errorf("failed to load users: %w", err)

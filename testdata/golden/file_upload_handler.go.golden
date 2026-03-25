@@ -536,7 +536,6 @@ func (c *GalleryController) Mount(state GalleryState, ctx *livetemplate.Context)
 }
 
 func (c *GalleryController) loadGallerys(state GalleryState, ctx context.Context) (GalleryState, error) {
-
 	gallerys, err := c.Queries.GetAllGalleries(ctx)
 	if err != nil {
 		return state, fmt.Errorf("failed to load gallerys: %w", err)

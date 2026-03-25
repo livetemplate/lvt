@@ -463,7 +463,6 @@ func (c *PostController) Mount(state PostState, ctx *livetemplate.Context) (Post
 }
 
 func (c *PostController) loadPosts(state PostState, ctx context.Context) (PostState, error) {
-
 	posts, err := c.Queries.GetAllPosts(ctx)
 	if err != nil {
 		return state, fmt.Errorf("failed to load posts: %w", err)
