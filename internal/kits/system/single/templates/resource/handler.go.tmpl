@@ -710,6 +710,7 @@ func (c *[[.ResourceName]]Controller) load[[.ResourceName]]s(state [[.ResourceNa
 	if state.SearchQuery != "" {
 		results, err := c.Queries.Search[[.ResourceNamePlural]](ctx, state.SearchQuery)
 		if err != nil {
+			log.Printf("FTS search failed: %v", err)
 			state.Filtered[[.ResourceNamePlural]] = [][[.ResourceName]]Item{}
 		} else {
 			state.Filtered[[.ResourceNamePlural]] = results

@@ -31,6 +31,9 @@ func GenTask(args []string) error {
 		}
 	}
 
+	if len(filteredArgs) < 1 {
+		return fmt.Errorf("task name required\n\nUsage: lvt gen task <name> --schedule <interval>")
+	}
 	taskName := strings.ToLower(strings.TrimSpace(filteredArgs[0]))
 	if taskName == "" {
 		return fmt.Errorf("task name cannot be empty")

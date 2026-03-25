@@ -68,7 +68,7 @@ func findDBPath() string {
 }
 
 func printConsoleHelp() {
-	fmt.Println("Usage: lvt console")
+	fmt.Println("Usage: lvt console  (alias: lvt db)")
 	fmt.Println()
 	fmt.Println("Opens an interactive SQLite database shell for the current app.")
 	fmt.Println()

@@ -483,13 +483,18 @@ func injectPeriodicJobsConfig(mainGoPath string) error {
 	}
 
 	// Find Workers: line in River config and add PeriodicJobs after it
+	// Try marker comment first (preferred), fall back to code matching
+	marker := "// Periodic jobs injected here by `lvt gen task`"
 	target := "\t\tWorkers: jobWorkers,"
-	idx := strings.Index(mainStr, target)
-	if idx < 0 {
-		return fmt.Errorf("could not find River config injection point in main.go (expected 'Workers: jobWorkers,')")
+	idx := strings.Index(mainStr, marker)
+	if idx >= 0 {
+		mainStr = strings.Replace(mainStr, marker, "PeriodicJobs: jobs.PeriodicJobs(),\n\t\t"+marker, 1)
+	} else if idx = strings.Index(mainStr, target); idx >= 0 {
+		insertPos := idx + len(target)
+		mainStr = mainStr[:insertPos] + "\n\t\tPeriodicJobs: jobs.PeriodicJobs()," + mainStr[insertPos:]
+	} else {
+		return fmt.Errorf("could not find River config injection point in main.go")
 	}
-	insertPos := idx + len(target)
-	mainStr = mainStr[:insertPos] + "\n\t\tPeriodicJobs: jobs.PeriodicJobs()," + mainStr[insertPos:]
 
 	return os.WriteFile(mainGoPath, []byte(mainStr), 0644)
 }
@@ -534,8 +539,7 @@ func scheduleToGo(schedule string) string {
 				}
 			}
 		}
-		// Fallback: use the string as-is (user can edit)
-		return fmt.Sprintf("time.Hour // TODO: adjust schedule (was: %s)", schedule)
+		return fmt.Sprintf("time.Hour // TODO: adjust schedule (was: %q)", schedule)
 	}
 }
 
