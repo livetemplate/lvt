@@ -48,6 +48,8 @@ func main() {
 		err = commands.Parse(args)
 	case "resource", "res":
 		err = commands.Resource(args)
+	case "console", "db":
+		err = commands.Console(args)
 	case "seed":
 		err = commands.Seed(args)
 	case "kits", "kit":

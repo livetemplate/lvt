@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -340,4 +341,207 @@ func injectWorkerRegistration(workerPath string, jobNameCamel string) error {
 	workerStr = workerStr[:insertPos] + registration + workerStr[insertPos:]
 
 	return os.WriteFile(workerPath, []byte(workerStr), 0644)
+}
+
+// TaskConfig holds configuration for scheduled task generation.
+type TaskConfig struct {
+	ModuleName   string
+	JobName      string
+	JobNameCamel string
+	Schedule     string // cron expression or shortcut
+}
+
+// GenerateTask scaffolds a new scheduled task and registers it.
+func GenerateTask(projectRoot, moduleName, taskName, schedule string) error {
+	workerPath := filepath.Join(projectRoot, "app", "jobs", "worker.go")
+	if _, err := os.Stat(workerPath); os.IsNotExist(err) {
+		return fmt.Errorf("job queue not set up yet. Run 'lvt gen queue' first")
+	}
+
+	projectConfig, err := config.LoadProjectConfig(projectRoot)
+	if err != nil {
+		return fmt.Errorf("failed to load project config: %w", err)
+	}
+	kitName := projectConfig.GetKit()
+	kitLoader := kits.DefaultLoader()
+
+	taskNameCamel := toCamelCase(taskName)
+
+	taskConfig := &TaskConfig{
+		ModuleName:   moduleName,
+		JobName:      taskName,
+		JobNameCamel: taskNameCamel,
+		Schedule:     schedule,
+	}
+
+	taskPath := filepath.Join(projectRoot, "app", "jobs", taskName+".go")
+	if _, err := os.Stat(taskPath); err == nil {
+		return fmt.Errorf("task '%s' already exists (app/jobs/%s.go)", taskName, taskName)
+	}
+
+	// Generate task handler
+	templateContent, err := kitLoader.LoadKitTemplate(kitName, "jobs/task.go.tmpl")
+	if err != nil {
+		return fmt.Errorf("failed to load task template: %w", err)
+	}
+
+	tmpl, err := template.New("task_handler").Delims("<<", ">>").Parse(string(templateContent))
+	if err != nil {
+		return fmt.Errorf("failed to parse task template: %w", err)
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, taskConfig); err != nil {
+		return fmt.Errorf("failed to execute task template: %w", err)
+	}
+	if err := os.WriteFile(taskPath, buf.Bytes(), 0644); err != nil {
+		return fmt.Errorf("failed to write %s.go: %w", taskName, err)
+	}
+
+	// Register worker
+	if err := injectWorkerRegistration(workerPath, taskNameCamel); err != nil {
+		return fmt.Errorf("failed to register worker: %w", err)
+	}
+
+	// Add periodic job config to worker.go
+	if err := injectPeriodicJob(workerPath, taskNameCamel, schedule); err != nil {
+		return fmt.Errorf("failed to inject periodic job: %w", err)
+	}
+
+	// Inject PeriodicJobs into main.go River client config
+	mainGoPath := findMainGo(projectRoot)
+	if mainGoPath != "" {
+		if err := injectPeriodicJobsConfig(mainGoPath); err != nil {
+			fmt.Printf("⚠️  Could not auto-inject PeriodicJobs config: %v\n", err)
+		}
+	}
+
+	return nil
+}
+
+// injectPeriodicJob adds a periodic job entry to worker.go.
+func injectPeriodicJob(workerPath, taskNameCamel, schedule string) error {
+	content, err := os.ReadFile(workerPath)
+	if err != nil {
+		return err
+	}
+
+	workerStr := string(content)
+
+	// Check if PeriodicJobs function exists, add if not
+	if !strings.Contains(workerStr, "func PeriodicJobs()") {
+		periodicFunc := `
+
+// PeriodicJobs returns scheduled tasks for River's periodic job runner.
+// New tasks are added here by ` + "`lvt gen task`" + `.
+func PeriodicJobs() []*river.PeriodicJob {
+	return []*river.PeriodicJob{
+		// Scheduled tasks below (added by ` + "`lvt gen task`" + `)
+	}
+}
+`
+		workerStr += periodicFunc
+	}
+
+	// Inject the periodic job entry
+	entry := fmt.Sprintf(`river.NewPeriodicJob(
+			river.PeriodicInterval(%s),
+			func() (river.JobArgs, *river.InsertOpts) {
+				return %sArgs{}, nil
+			},
+			&river.PeriodicJobOpts{RunOnStart: false}, // set to true to also run immediately on app startup
+		),`, scheduleToGo(schedule), taskNameCamel)
+
+	marker := "// Scheduled tasks below (added by `lvt gen task`)"
+	if !strings.Contains(workerStr, entry) {
+		idx := strings.Index(workerStr, marker)
+		if idx >= 0 {
+			insertPos := idx + len(marker)
+			workerStr = workerStr[:insertPos] + "\n\t\t" + entry + workerStr[insertPos:]
+		} else {
+			return fmt.Errorf("could not register periodic job in worker.go.\n\nThe marker comment was not found in PeriodicJobs().\nPlease add this entry manually to the return slice in PeriodicJobs():\n\n%s", entry)
+		}
+	}
+
+	// Ensure time import exists
+	if !strings.Contains(workerStr, `"time"`) {
+		target := `"github.com/riverqueue/river"`
+		if !strings.Contains(workerStr, target) {
+			return fmt.Errorf("could not inject time import: river import not found in worker.go")
+		}
+		workerStr = strings.Replace(workerStr, target, `"time"`+"\n\n\t"+target, 1)
+	}
+
+	return os.WriteFile(workerPath, []byte(workerStr), 0644)
+}
+
+// injectPeriodicJobsConfig adds PeriodicJobs to the River client config in main.go.
+func injectPeriodicJobsConfig(mainGoPath string) error {
+	content, err := os.ReadFile(mainGoPath)
+	if err != nil {
+		return err
+	}
+
+	mainStr := string(content)
+
+	if strings.Contains(mainStr, "PeriodicJobs:") {
+		return nil // Already configured
+	}
+
+	// Find Workers: line in River config and add PeriodicJobs after it
+	// Try marker comment first (preferred), fall back to code matching
+	marker := "// Periodic jobs injected here by `lvt gen task`"
+	target := "\t\tWorkers: jobWorkers,"
+	idx := strings.Index(mainStr, marker)
+	if idx >= 0 {
+		mainStr = strings.Replace(mainStr, marker, "PeriodicJobs: jobs.PeriodicJobs(),\n\t\t"+marker, 1)
+	} else if idx = strings.Index(mainStr, target); idx >= 0 {
+		insertPos := idx + len(target)
+		mainStr = mainStr[:insertPos] + "\n\t\tPeriodicJobs: jobs.PeriodicJobs()," + mainStr[insertPos:]
+	} else {
+		return fmt.Errorf("could not find River config injection point in main.go")
+	}
+
+	return os.WriteFile(mainGoPath, []byte(mainStr), 0644)
+}
+
+// scheduleToGo converts a cron expression or shortcut to Go code.
+func scheduleToGo(schedule string) string {
+	switch schedule {
+	case "@hourly":
+		return "time.Hour"
+	case "@daily":
+		return "24 * time.Hour"
+	case "@weekly":
+		return "7 * 24 * time.Hour"
+	default:
+		// Try to parse @every Nm pattern
+		if strings.HasPrefix(schedule, "@every ") {
+			parts := strings.Fields(schedule)
+			if len(parts) >= 2 {
+				duration := parts[1]
+				if strings.HasSuffix(duration, "m") {
+					if n := duration[:len(duration)-1]; isPositiveInt(n) {
+						return n + " * time.Minute"
+					}
+				}
+				if strings.HasSuffix(duration, "h") {
+					if n := duration[:len(duration)-1]; isPositiveInt(n) {
+						return n + " * time.Hour"
+					}
+				}
+				if strings.HasSuffix(duration, "s") {
+					if n := duration[:len(duration)-1]; isPositiveInt(n) {
+						return n + " * time.Second"
+					}
+				}
+			}
+		}
+		return fmt.Sprintf("time.Hour // TODO: adjust schedule (was: %q)", schedule)
+	}
+}
+
+func isPositiveInt(s string) bool {
+	n, err := strconv.Atoi(s)
+	return err == nil && n > 0
 }

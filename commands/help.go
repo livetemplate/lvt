@@ -75,6 +75,8 @@ func printGenResourceHelp() {
 	fmt.Println("  --pagination <mode> Pagination: infinite, load-more, prev-next, numbers")
 	fmt.Println("  --page-size <n>     Items per page (default: 20)")
 	fmt.Println("  --edit-mode <mode>  Edit mode: modal, page")
+	fmt.Println("  --with-authz        Add ownership tracking and permission checks")
+	fmt.Println("  --searchable        Enable FTS5 full-text search on string fields")
 	fmt.Println("  --skip-validation   Skip post-generation validation checks")
 	fmt.Println()
 	fmt.Println("Examples:")

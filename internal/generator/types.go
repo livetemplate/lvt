@@ -51,6 +51,9 @@ type ResourceData struct {
 	Styles               string         // Style adapter: "tailwind", "unstyled"
 	StylesImportPath     string         // computed import path for style adapter (empty if no components need it)
 
+	// Full-text search (set when --searchable is used)
+	Searchable bool // True when generating with SQLite FTS5 full-text search
+
 	// Authorization (set when --with-authz is used)
 	WithAuthz bool // True when generating with ownership tracking and permission checks
 
@@ -83,6 +86,17 @@ func (d ResourceData) NonFileFields() []FieldData {
 	var result []FieldData
 	for _, f := range d.Fields {
 		if !f.IsFile {
+			result = append(result, f)
+		}
+	}
+	return result
+}
+
+// SearchableFields returns string fields suitable for FTS indexing (excludes file/image/reference).
+func (d ResourceData) SearchableFields() []FieldData {
+	var result []FieldData
+	for _, f := range d.NonFileFields() {
+		if f.GoType == "string" && !f.IsReference {
 			result = append(result, f)
 		}
 	}

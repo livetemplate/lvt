@@ -547,7 +547,6 @@ func (c *GalleryController) loadGallerys(state GalleryState, ctx context.Context
 		state.FilteredGalleries = []GalleryItem{}
 		query := strings.ToLower(state.SearchQuery)
 		for _, item := range gallerys {
-			// Search across all text fields (skip file/image fields)
 			if strings.Contains(strings.ToLower(item.Title), query) {
 				state.FilteredGalleries = append(state.FilteredGalleries, item)
 				continue
