@@ -43,11 +43,8 @@ func GenTask(args []string) error {
 		return err
 	}
 
-	// Validate schedule format
 	validSchedules := map[string]bool{
 		"@hourly": true, "@daily": true, "@weekly": true,
-		"@every 1m": true, "@every 5m": true, "@every 10m": true, "@every 30m": true,
-		"@every 1 minute": true, "@every 5 minutes": true, "@every 10 minutes": true, "@every 30 minutes": true,
 	}
 	if !validSchedules[schedule] && !isValidEverySchedule(schedule) {
 		return fmt.Errorf("unsupported schedule %q\n\nSupported formats:\n  @hourly, @daily, @weekly\n  @every Nm (e.g., @every 5m, @every 2h, @every 30s)", schedule)

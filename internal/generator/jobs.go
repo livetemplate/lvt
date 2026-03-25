@@ -449,7 +449,7 @@ func PeriodicJobs() []*river.PeriodicJob {
 			func() (river.JobArgs, *river.InsertOpts) {
 				return %sArgs{}, nil
 			},
-			&river.PeriodicJobOpts{RunOnStart: true},
+			&river.PeriodicJobOpts{RunOnStart: true}, // set to false to skip running on app startup
 		),`, scheduleToGo(schedule), taskNameCamel)
 
 	marker := "// Scheduled tasks below (added by `lvt gen task`)"
@@ -458,6 +458,8 @@ func PeriodicJobs() []*river.PeriodicJob {
 		if idx >= 0 {
 			insertPos := idx + len(marker)
 			workerStr = workerStr[:insertPos] + "\n\t\t" + entry + workerStr[insertPos:]
+		} else {
+			return fmt.Errorf("could not find injection marker in worker.go PeriodicJobs function.\nAdd manually to PeriodicJobs():\n\t%s", strings.ReplaceAll(entry, "\n", "\n\t"))
 		}
 	}
 
