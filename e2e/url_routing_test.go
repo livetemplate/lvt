@@ -298,6 +298,8 @@ func TestPageModeURLRouting(t *testing.T) {
 		err = chromedp.Run(testCtx,
 			chromedp.Evaluate(`history.back()`, nil),
 			waitFor(`window.location.pathname === '/products'`, 10*time.Second),
+			// Wait for the table to render after back navigation (full page reload)
+			waitFor(`document.querySelector('table') !== null`, 10*time.Second),
 			chromedp.Evaluate(`document.querySelector('table') !== null`, &backToList),
 		)
 		if err != nil {
