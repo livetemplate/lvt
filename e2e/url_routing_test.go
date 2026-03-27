@@ -160,11 +160,12 @@ func TestPageModeURLRouting(t *testing.T) {
 			t.Fatalf("No products available - seeded data not found (anchor links missing)")
 		}
 
-		// In page mode, clicking anchor link causes full page navigation
-		// Don't wait for WebSocket after click since it's a new page load
+		// In page mode, clicking anchor link causes full page navigation.
+		// We must wait for the URL to change (not readyState) to avoid a race
+		// where readyState === 'complete' matches on the OLD page before navigation starts.
 		err = chromedp.Run(testCtx,
 			chromedp.Click(`table tbody tr a`, chromedp.ByQuery),
-			waitFor(`document.readyState === 'complete'`, 10*time.Second),
+			waitFor(`window.location.pathname.match(/^\/products\/.+$/) !== null`, 10*time.Second),
 			chromedp.Location(&currentURL),
 		)
 		if err != nil {
@@ -288,9 +289,17 @@ func TestPageModeURLRouting(t *testing.T) {
 
 		err = chromedp.Run(testCtx,
 			chromedp.Click(`table tbody tr a`, chromedp.ByQuery),
-			waitFor(`document.readyState === 'complete'`, 10*time.Second),
+			waitFor(`window.location.pathname.match(/^\/products\/.+$/) !== null`, 10*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Failed to navigate to detail: %v", err)
+		}
+
+		err = chromedp.Run(testCtx,
 			chromedp.Evaluate(`history.back()`, nil),
-			waitFor(`document.readyState === 'complete'`, 10*time.Second),
+			waitFor(`window.location.pathname === '/products'`, 10*time.Second),
+			// Wait for the table to render after back navigation (full page reload)
+			waitFor(`document.querySelector('table') !== null`, 10*time.Second),
 			chromedp.Evaluate(`document.querySelector('table') !== null`, &backToList),
 		)
 		if err != nil {
@@ -332,9 +341,15 @@ func TestPageModeURLRouting(t *testing.T) {
 
 		err = chromedp.Run(testCtx,
 			chromedp.Click(`table tbody tr a`, chromedp.ByQuery),
-			waitFor(`document.readyState === 'complete'`, 10*time.Second),
+			waitFor(`window.location.pathname.match(/^\/products\/.+$/) !== null`, 10*time.Second),
+		)
+		if err != nil {
+			t.Fatalf("Failed to navigate to detail: %v", err)
+		}
+
+		err = chromedp.Run(testCtx,
 			chromedp.Evaluate(`history.back()`, nil),
-			waitFor(`document.readyState === 'complete'`, 10*time.Second),
+			waitFor(`window.location.pathname === '/products'`, 10*time.Second),
 			chromedp.Location(&finalURL),
 		)
 		if err != nil {

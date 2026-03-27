@@ -21,10 +21,10 @@ import (
 func TestModalFunctionality(t *testing.T) {
 	t.Parallel() // Can run concurrently with Chrome pool
 
-	// Use embedded client library (avoids working directory issues in parallel tests)
+	// Use CDN-fetched client library (avoids working directory issues in parallel tests)
 	clientJS := e2etest.GetClientLibraryJS()
 	if len(clientJS) == 0 {
-		t.Fatal("Client library not embedded")
+		t.Fatal("Client library is empty (CDN fetch may have failed)")
 	}
 
 	// Start a simple HTTP server
@@ -43,7 +43,7 @@ func TestModalFunctionality(t *testing.T) {
 
 	mux := http.NewServeMux()
 
-	// Serve the embedded client library
+	// Serve the client library
 	mux.HandleFunc("/livetemplate-client.js", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/javascript")
 		w.Write(clientJS)
