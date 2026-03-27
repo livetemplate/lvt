@@ -20,8 +20,8 @@ import (
 
 const (
 	// clientCDNURL is the unpkg.com URL for the latest LiveTemplate client library.
-	clientCDNURL   = "https://unpkg.com/@livetemplate/client@latest/dist/livetemplate-client.browser.js"
-	clientCacheTTL = 1 * time.Hour
+	clientCDNURL    = "https://unpkg.com/@livetemplate/client@latest/dist/livetemplate-client.browser.js"
+	clientCacheTTL  = 1 * time.Hour
 	clientCacheFile = "livetemplate-client-latest.js"
 )
 
