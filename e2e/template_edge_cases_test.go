@@ -73,7 +73,7 @@ func verifyAppBuildsAndRuns(t *testing.T, appDir string, hasQueries bool) {
 	injectComponentsForTest(t, appDir)
 
 	// Write embedded client library
-	writeEmbeddedClientLibrary(t, appDir)
+	writeClientLibrary(t, appDir)
 
 	// Run sqlc if needed
 	if hasQueries {

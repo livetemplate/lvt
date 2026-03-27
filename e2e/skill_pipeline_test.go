@@ -65,7 +65,7 @@ func TestSkillPipeline(t *testing.T) {
 	// Step 8: Inject components and build
 	t.Log("Step 8: Building app...")
 	injectComponentsForTest(t, appDir)
-	writeEmbeddedClientLibrary(t, appDir)
+	writeClientLibrary(t, appDir)
 
 	// Run sqlc
 	sqlcPath := filepath.Join(appDir, "database/sqlc.yaml")

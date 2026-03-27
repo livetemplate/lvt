@@ -104,23 +104,24 @@ func enableDevMode(t *testing.T, appDir string) {
 	t.Log("Enabled DevMode for test app")
 }
 
-// writeEmbeddedClientLibrary writes the CDN-fetched client library to the app directory
-// This allows Docker-based e2e tests to serve it locally instead of using CDN
-func writeEmbeddedClientLibrary(t *testing.T, appDir string) {
+// writeClientLibrary writes the CDN-fetched client library to the app directory.
+// This allows Docker-based e2e tests to serve it locally instead of using CDN.
+func writeClientLibrary(t *testing.T, appDir string) {
 	t.Helper()
+	js := e2etest.GetClientLibraryJS()
 	clientPath := filepath.Join(appDir, "livetemplate-client.js")
-	if err := os.WriteFile(clientPath, e2etest.GetClientLibraryJS(), 0644); err != nil {
+	if err := os.WriteFile(clientPath, js, 0644); err != nil {
 		t.Fatalf("Failed to write client library: %v", err)
 	}
-	t.Logf("Wrote CDN-fetched client library to %s (%d bytes)", clientPath, len(e2etest.GetClientLibraryJS()))
+	t.Logf("Wrote client library to %s (%d bytes)", clientPath, len(js))
 }
 
-// setupLocalClientLibrary configures the test app to use the local client library (fetched from CDN)
-// Call this before building Docker images for Docker-based e2e tests
+// setupLocalClientLibrary configures the test app to use the local client library (fetched from CDN).
+// Call this before building Docker images for Docker-based e2e tests.
 func setupLocalClientLibrary(t *testing.T, appDir string) {
 	t.Helper()
 	enableDevMode(t, appDir)
-	writeEmbeddedClientLibrary(t, appDir)
+	writeClientLibrary(t, appDir)
 }
 
 // copyFile copies a file from src to dst
@@ -329,7 +330,7 @@ func buildAndRunNative(t *testing.T, appDir string, port int) *exec.Cmd {
 	injectComponentsForTest(t, appDir)
 
 	// Write CDN-fetched client library (DevMode should already be enabled)
-	writeEmbeddedClientLibrary(t, appDir)
+	writeClientLibrary(t, appDir)
 
 	// Run sqlc generate if sqlc.yaml exists
 	sqlcPath := filepath.Join(appDir, "database/sqlc.yaml")

@@ -19,10 +19,12 @@ import (
 )
 
 const (
-	// clientCDNURL is the unpkg.com URL for the latest LiveTemplate client library.
-	clientCDNURL    = "https://unpkg.com/@livetemplate/client@latest/dist/livetemplate-client.browser.js"
-	clientCacheTTL  = 1 * time.Hour
-	clientCacheFile = "livetemplate-client-latest.js"
+	// defaultClientCDNURL is the unpkg.com URL for the latest LiveTemplate client library.
+	// Override with the LVT_CLIENT_CDN_URL environment variable to pin a specific version.
+	defaultClientCDNURL = "https://unpkg.com/@livetemplate/client@latest/dist/livetemplate-client.browser.js"
+	clientCacheTTL      = 1 * time.Hour
+	clientCacheFile     = "livetemplate-client-latest.js"
+	clientFetchTimeout  = 30 * time.Second
 )
 
 var (
@@ -31,8 +33,16 @@ var (
 	clientFetchErr error
 )
 
+func getClientCDNURL() string {
+	if url := os.Getenv("LVT_CLIENT_CDN_URL"); url != "" {
+		return url
+	}
+	return defaultClientCDNURL
+}
+
 // GetClientLibraryJS returns the LiveTemplate client library JS fetched from CDN.
 // The result is cached in memory (per-process) and on disk (with TTL).
+// On CDN failure, falls back to an expired disk cache if available.
 func GetClientLibraryJS() []byte {
 	clientOnce.Do(func() {
 		clientBytes, clientFetchErr = fetchClientLibrary()
@@ -46,13 +56,28 @@ func GetClientLibraryJS() []byte {
 func clientCacheDir() string {
 	cacheDir, err := os.UserCacheDir()
 	if err != nil {
+		log.Printf("[lvt/testing] Could not determine cache directory: %v", err)
 		return ""
 	}
 	return filepath.Join(cacheDir, "lvt")
 }
 
+// readCachedClient reads the disk-cached client library.
+// Returns nil if no cache exists or the cache is unreadable.
+func readCachedClient() []byte {
+	dir := clientCacheDir()
+	if dir == "" {
+		return nil
+	}
+	data, err := os.ReadFile(filepath.Join(dir, clientCacheFile))
+	if err != nil || len(data) == 0 {
+		return nil
+	}
+	return data
+}
+
 func fetchClientLibrary() ([]byte, error) {
-	// Check disk cache
+	// Check fresh disk cache
 	if dir := clientCacheDir(); dir != "" {
 		cachePath := filepath.Join(dir, clientCacheFile)
 		info, err := os.Stat(cachePath)
@@ -65,15 +90,27 @@ func fetchClientLibrary() ([]byte, error) {
 	}
 
 	// Fetch from CDN
-	log.Printf("[lvt/testing] Fetching client library from %s", clientCDNURL)
-	resp, err := http.Get(clientCDNURL)
+	cdnURL := getClientCDNURL()
+	log.Printf("[lvt/testing] Fetching client library from %s", cdnURL)
+
+	httpClient := &http.Client{Timeout: clientFetchTimeout}
+	resp, err := httpClient.Get(cdnURL)
 	if err != nil {
-		return nil, fmt.Errorf("CDN fetch failed: %w", err)
+		// Fall back to expired cache on network failure
+		if cached := readCachedClient(); cached != nil {
+			log.Printf("[lvt/testing] CDN fetch failed (%v), using expired cache (%d bytes)", err, len(cached))
+			return cached, nil
+		}
+		return nil, fmt.Errorf("CDN fetch failed (no cache available): %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("CDN returned status %d for %s", resp.StatusCode, clientCDNURL)
+		if cached := readCachedClient(); cached != nil {
+			log.Printf("[lvt/testing] CDN returned status %d, using expired cache (%d bytes)", resp.StatusCode, len(cached))
+			return cached, nil
+		}
+		return nil, fmt.Errorf("CDN returned status %d for %s (no cache available)", resp.StatusCode, cdnURL)
 	}
 
 	data, err := io.ReadAll(resp.Body)
@@ -81,18 +118,44 @@ func fetchClientLibrary() ([]byte, error) {
 		return nil, fmt.Errorf("failed to read CDN response: %w", err)
 	}
 	if len(data) == 0 {
-		return nil, fmt.Errorf("CDN returned empty response for %s", clientCDNURL)
+		return nil, fmt.Errorf("CDN returned empty response for %s", cdnURL)
 	}
 
-	log.Printf("[lvt/testing] Fetched client library from CDN (%d bytes)", len(data))
+	// Log the resolved URL (after redirects) to show the actual version fetched
+	resolvedURL := resp.Request.URL.String()
+	log.Printf("[lvt/testing] Fetched client library from CDN (%d bytes, resolved: %s)", len(data), resolvedURL)
 
-	// Write to disk cache (best-effort)
+	// Write to disk cache atomically (best-effort)
 	if dir := clientCacheDir(); dir != "" {
 		_ = os.MkdirAll(dir, 0755)
-		_ = os.WriteFile(filepath.Join(dir, clientCacheFile), data, 0644)
+		_ = writeFileAtomic(filepath.Join(dir, clientCacheFile), data)
 	}
 
 	return data, nil
+}
+
+// writeFileAtomic writes data to a temporary file and renames it to path,
+// preventing other processes from observing a partially-written file.
+func writeFileAtomic(path string, data []byte) error {
+	dir := filepath.Dir(path)
+	tmp, err := os.CreateTemp(dir, filepath.Base(path)+".tmp-*")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	defer func() {
+		_ = tmp.Close()
+		_ = os.Remove(tmpName) // no-op after successful rename
+	}()
+
+	if _, err := tmp.Write(data); err != nil {
+		return err
+	}
+	_ = tmp.Sync()
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmpName, path)
 }
 
 const (
