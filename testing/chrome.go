@@ -114,7 +114,8 @@ func fetchClientLibrary() ([]byte, error) {
 		return nil, fmt.Errorf("CDN returned status %d for %s (no cache available)", resp.StatusCode, cdnURL)
 	}
 
-	data, err := io.ReadAll(resp.Body)
+	const maxSize = 10 << 20 // 10MB guard against unexpected responses
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxSize))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read CDN response: %w", err)
 	}
