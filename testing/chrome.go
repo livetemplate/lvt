@@ -62,10 +62,9 @@ func clientCacheDir() string {
 	return filepath.Join(cacheDir, "lvt")
 }
 
-// readCachedClient reads the disk-cached client library.
+// readCachedClientFrom reads the disk-cached client library from the given directory.
 // Returns nil if no cache exists or the cache is unreadable.
-func readCachedClient() []byte {
-	dir := clientCacheDir()
+func readCachedClientFrom(dir string) []byte {
 	if dir == "" {
 		return nil
 	}
@@ -77,9 +76,11 @@ func readCachedClient() []byte {
 }
 
 func fetchClientLibrary() ([]byte, error) {
+	cacheDir := clientCacheDir()
+
 	// Check fresh disk cache
-	if dir := clientCacheDir(); dir != "" {
-		cachePath := filepath.Join(dir, clientCacheFile)
+	if cacheDir != "" {
+		cachePath := filepath.Join(cacheDir, clientCacheFile)
 		info, err := os.Stat(cachePath)
 		if err == nil && time.Since(info.ModTime()) < clientCacheTTL {
 			if data, err := os.ReadFile(cachePath); err == nil && len(data) > 0 {
@@ -97,7 +98,7 @@ func fetchClientLibrary() ([]byte, error) {
 	resp, err := httpClient.Get(cdnURL)
 	if err != nil {
 		// Fall back to expired cache on network failure
-		if cached := readCachedClient(); cached != nil {
+		if cached := readCachedClientFrom(cacheDir); cached != nil {
 			log.Printf("[lvt/testing] CDN fetch failed (%v), using expired cache (%d bytes)", err, len(cached))
 			return cached, nil
 		}
@@ -106,7 +107,7 @@ func fetchClientLibrary() ([]byte, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		if cached := readCachedClient(); cached != nil {
+		if cached := readCachedClientFrom(cacheDir); cached != nil {
 			log.Printf("[lvt/testing] CDN returned status %d, using expired cache (%d bytes)", resp.StatusCode, len(cached))
 			return cached, nil
 		}
@@ -126,9 +127,9 @@ func fetchClientLibrary() ([]byte, error) {
 	log.Printf("[lvt/testing] Fetched client library from CDN (%d bytes, resolved: %s)", len(data), resolvedURL)
 
 	// Write to disk cache atomically (best-effort)
-	if dir := clientCacheDir(); dir != "" {
-		_ = os.MkdirAll(dir, 0755)
-		_ = writeFileAtomic(filepath.Join(dir, clientCacheFile), data)
+	if cacheDir != "" {
+		_ = os.MkdirAll(cacheDir, 0755)
+		_ = writeFileAtomic(filepath.Join(cacheDir, clientCacheFile), data)
 	}
 
 	return data, nil
@@ -143,8 +144,11 @@ func writeFileAtomic(path string, data []byte) error {
 		return err
 	}
 	tmpName := tmp.Name()
+	closed := false
 	defer func() {
-		_ = tmp.Close()
+		if !closed {
+			_ = tmp.Close()
+		}
 		_ = os.Remove(tmpName) // no-op after successful rename
 	}()
 
@@ -155,6 +159,7 @@ func writeFileAtomic(path string, data []byte) error {
 	if err := tmp.Close(); err != nil {
 		return err
 	}
+	closed = true
 	return os.Rename(tmpName, path)
 }
 

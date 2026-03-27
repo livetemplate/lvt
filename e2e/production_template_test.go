@@ -205,7 +205,7 @@ func buildAndRunProdApp(t *testing.T, appDir string, port int) (*exec.Cmd, strin
 	// Inject components for test
 	injectComponentsForTest(t, appDir)
 
-	// Write embedded client library
+	// Write client library
 	writeClientLibrary(t, appDir)
 
 	// Run sqlc generate (skip failures for empty query files in bare apps)
