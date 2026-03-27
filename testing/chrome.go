@@ -2,26 +2,97 @@ package testing
 
 import (
 	"context"
-	_ "embed"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/chromedp/chromedp"
 )
 
-//go:embed livetemplate-client.browser.js
-var clientLibraryJS []byte
+const (
+	// clientCDNURL is the unpkg.com URL for the latest LiveTemplate client library.
+	clientCDNURL   = "https://unpkg.com/@livetemplate/client@latest/dist/livetemplate-client.browser.js"
+	clientCacheTTL = 1 * time.Hour
+	clientCacheFile = "livetemplate-client-latest.js"
+)
 
-// GetClientLibraryJS returns the embedded client library for e2e tests
+var (
+	clientOnce     sync.Once
+	clientBytes    []byte
+	clientFetchErr error
+)
+
+// GetClientLibraryJS returns the LiveTemplate client library JS fetched from CDN.
+// The result is cached in memory (per-process) and on disk (with TTL).
 func GetClientLibraryJS() []byte {
-	return clientLibraryJS
+	clientOnce.Do(func() {
+		clientBytes, clientFetchErr = fetchClientLibrary()
+	})
+	if clientFetchErr != nil {
+		panic(fmt.Sprintf("failed to fetch client library from CDN: %v", clientFetchErr))
+	}
+	return clientBytes
+}
+
+func clientCacheDir() string {
+	cacheDir, err := os.UserCacheDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(cacheDir, "lvt")
+}
+
+func fetchClientLibrary() ([]byte, error) {
+	// Check disk cache
+	if dir := clientCacheDir(); dir != "" {
+		cachePath := filepath.Join(dir, clientCacheFile)
+		info, err := os.Stat(cachePath)
+		if err == nil && time.Since(info.ModTime()) < clientCacheTTL {
+			if data, err := os.ReadFile(cachePath); err == nil && len(data) > 0 {
+				log.Printf("[lvt/testing] Using cached client library (%d bytes, age: %v)", len(data), time.Since(info.ModTime()).Round(time.Second))
+				return data, nil
+			}
+		}
+	}
+
+	// Fetch from CDN
+	log.Printf("[lvt/testing] Fetching client library from %s", clientCDNURL)
+	resp, err := http.Get(clientCDNURL)
+	if err != nil {
+		return nil, fmt.Errorf("CDN fetch failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("CDN returned status %d for %s", resp.StatusCode, clientCDNURL)
+	}
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read CDN response: %w", err)
+	}
+	if len(data) == 0 {
+		return nil, fmt.Errorf("CDN returned empty response for %s", clientCDNURL)
+	}
+
+	log.Printf("[lvt/testing] Fetched client library from CDN (%d bytes)", len(data))
+
+	// Write to disk cache (best-effort)
+	if dir := clientCacheDir(); dir != "" {
+		_ = os.MkdirAll(dir, 0755)
+		_ = os.WriteFile(filepath.Join(dir, clientCacheFile), data, 0644)
+	}
+
+	return data, nil
 }
 
 const (
@@ -340,12 +411,12 @@ func StartTestServer(t *testing.T, mainPath string, port int) *exec.Cmd {
 	return cmd
 }
 
-// ServeClientLibrary serves the LiveTemplate client browser bundle from embedded bytes.
-// This is for development/testing purposes only. In production, serve from CDN.
+// ServeClientLibrary serves the LiveTemplate client browser bundle fetched from CDN.
+// This is for development/testing purposes only. In production, serve from CDN directly.
 func ServeClientLibrary(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/javascript")
 	w.Header().Set("Cache-Control", "no-cache")
-	w.Write(clientLibraryJS)
+	w.Write(GetClientLibraryJS())
 }
 
 // WaitForServer polls an HTTP server until it responds or timeout is reached.
