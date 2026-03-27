@@ -24,7 +24,7 @@ func TestModalFunctionality(t *testing.T) {
 	// Use CDN-fetched client library (avoids working directory issues in parallel tests)
 	clientJS := e2etest.GetClientLibraryJS()
 	if len(clientJS) == 0 {
-		t.Fatal("Client library not embedded")
+		t.Fatal("Client library is empty (CDN fetch may have failed)")
 	}
 
 	// Start a simple HTTP server

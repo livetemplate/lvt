@@ -30,7 +30,7 @@ func renderingTestServer(t *testing.T, html string) (string, func()) {
 
 	clientJS := e2etest.GetClientLibraryJS()
 	if len(clientJS) == 0 {
-		t.Fatal("Client library not embedded")
+		t.Fatal("Client library is empty (CDN fetch may have failed)")
 	}
 
 	listener, err := net.Listen("tcp", "0.0.0.0:0")
