@@ -180,7 +180,11 @@ func (c *Container) TakePendingJSON() string {
 			c.hasNewMessages = false
 			return ""
 		}
-		b, _ := json.Marshal(c.Messages)
+		b, err := json.Marshal(c.Messages)
+		if err != nil {
+			c.hasNewMessages = false
+			return ""
+		}
 		c.renderedJSON = string(b)
 		c.Messages = make([]Message, 0)
 		c.hasNewMessages = false
