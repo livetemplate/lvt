@@ -44,33 +44,6 @@ check_prerequisites() {
     fi
 }
 
-# Get core library version
-get_core_library_version() {
-    log_step "Fetching core library version from github.com/livetemplate/livetemplate"
-
-    # Get latest release from GitHub API
-    local core_version=$(gh release list --repo livetemplate/livetemplate --limit 1 --json tagName --jq '.[0].tagName' 2>/dev/null || echo "")
-
-    if [ -z "$core_version" ]; then
-        log_error "Could not fetch core library version"
-        log_info "Make sure github.com/livetemplate/livetemplate has releases"
-        exit 1
-    fi
-
-    # Remove 'v' prefix if present
-    core_version=${core_version#v}
-
-    log_info "Core library version: $core_version"
-    echo "$core_version"
-}
-
-# Extract major.minor from version
-get_major_minor() {
-    local version=$1
-    IFS='.' read -r major minor patch <<< "$version"
-    echo "${major}.${minor}"
-}
-
 # Get current version
 get_current_version() {
     if [ ! -f VERSION ]; then
@@ -78,28 +51,6 @@ get_current_version() {
         exit 1
     fi
     cat VERSION | tr -d '\n'
-}
-
-# Validate version against core library
-validate_version() {
-    local new_version=$1
-    local core_version=$(get_core_library_version)
-
-    local new_major_minor=$(get_major_minor "$new_version")
-    local core_major_minor=$(get_major_minor "$core_version")
-
-    if [ "$new_major_minor" != "$core_major_minor" ]; then
-        log_error "Version mismatch!"
-        echo ""
-        echo "  LVT version:  $new_version (major.minor: $new_major_minor)"
-        echo "  Core version: $core_version (major.minor: $core_major_minor)"
-        echo ""
-        echo "LVT must match core library's major.minor version."
-        echo "Use: ${core_major_minor}.X where X is any patch version"
-        exit 1
-    fi
-
-    log_info "Version validated against core library (major.minor: $core_major_minor)"
 }
 
 # Bump version
@@ -137,9 +88,6 @@ update_versions() {
 
     log_step "Updating VERSION file to $new_version"
     echo "$new_version" > VERSION
-
-    # Update go.mod to use latest core library with same major.minor
-    log_step "Updating go.mod to use core library v$(get_major_minor "$new_version").x"
 
     log_info "Version files updated to $new_version"
 }
@@ -202,8 +150,6 @@ commit_and_tag() {
     git commit -m "chore(release): v$new_version
 
 Release LVT CLI v$new_version
-
-This release uses core library version: $(get_major_minor "$new_version").x
 
 🤖 Generated with automated release script"
 
@@ -280,8 +226,6 @@ extract_release_notes() {
         echo ""
         echo "## Related Releases"
         echo ""
-        echo "This release uses the LiveTemplate core library version $(get_major_minor "$new_version").x"
-        echo ""
         echo "- Core Library: https://github.com/livetemplate/livetemplate"
         echo "- Client Library: https://github.com/livetemplate/client"
         echo "- Examples: https://github.com/livetemplate/examples"
@@ -332,7 +276,6 @@ dry_run() {
     echo "========================================"
     echo ""
 
-    log_info "Would validate version against core library"
     log_info "Would update VERSION to: $new_version"
     log_info "Would generate CHANGELOG.md"
     log_info "Would run tests and build"
@@ -399,35 +342,26 @@ main() {
     current_version=$(get_current_version)
     log_info "Current version: $current_version"
 
-    # Get core library version for reference
-    core_version=$(get_core_library_version)
-    core_major_minor=$(get_major_minor "$core_version")
-
-    echo ""
-    log_info "Core library version: $core_version (major.minor: $core_major_minor)"
-    log_info "LVT must use major.minor: $core_major_minor"
-
     # Ask for version bump type
     echo ""
     echo "Select version bump type:"
-    echo "  1) patch (bug fixes)        → $(bump_version "$current_version" patch)"
-    echo "  2) minor (sync with core)   → ${core_major_minor}.0"
-    echo "  3) major (sync with core)   → ${core_major_minor}.0"
-    echo "  4) custom version           → ${core_major_minor}.X"
+    echo "  1) patch (bug fixes)   → $(bump_version "$current_version" patch)"
+    echo "  2) minor (new feature) → $(bump_version "$current_version" minor)"
+    echo "  3) major (breaking)    → $(bump_version "$current_version" major)"
+    echo "  4) custom version"
     echo ""
     read -rp "Enter choice [1-4]: " choice
 
     case $choice in
         1) new_version=$(bump_version "$current_version" patch) ;;
-        2) new_version="${core_major_minor}.0" ;;
-        3) new_version="${core_major_minor}.0" ;;
+        2) new_version=$(bump_version "$current_version" minor) ;;
+        3) new_version=$(bump_version "$current_version" major) ;;
         4)
-            read -rp "Enter patch version for ${core_major_minor}.X: " patch_ver
-            if ! [[ $patch_ver =~ ^[0-9]+$ ]]; then
-                log_error "Invalid patch version. Must be a number"
+            read -rp "Enter custom version (e.g. 1.2.3): " new_version
+            if ! [[ $new_version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                log_error "Invalid version format. Must be MAJOR.MINOR.PATCH"
                 exit 1
             fi
-            new_version="${core_major_minor}.${patch_ver}"
             ;;
         *)
             log_error "Invalid choice"
@@ -437,9 +371,6 @@ main() {
 
     echo ""
     log_info "New version will be: $new_version"
-
-    # Validate version
-    validate_version "$new_version"
 
     echo ""
     echo "This will:"
