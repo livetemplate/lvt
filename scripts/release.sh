@@ -156,6 +156,17 @@ Release LVT CLI v$new_version
     log_step "Creating git tag v$new_version"
     git tag -a "v$new_version" -m "Release v$new_version"
 
+    # Tag any nested Go modules (required by Go module proxy)
+    while IFS= read -r gomod; do
+        local subdir
+        subdir=$(dirname "$gomod")
+        subdir=${subdir#./}
+        if [ "$subdir" != "." ]; then
+            log_step "Creating nested module tag ${subdir}/v${new_version}"
+            git tag -a "${subdir}/v${new_version}" -m "Release ${subdir}/v${new_version}"
+        fi
+    done < <(find . -name "go.mod" -not -path "./vendor/*" -not -path "./.git/*" | grep -v "^\./go.mod$" | sort)
+
     log_info "Committed and tagged v$new_version"
 }
 
@@ -247,6 +258,17 @@ publish_github() {
         exit 1
     }
     git push origin "v$new_version"
+
+    # Push nested module tags
+    while IFS= read -r gomod; do
+        local subdir
+        subdir=$(dirname "$gomod")
+        subdir=${subdir#./}
+        if [ "$subdir" != "." ]; then
+            git push origin "${subdir}/v${new_version}"
+        fi
+    done < <(find . -name "go.mod" -not -path "./vendor/*" -not -path "./.git/*" | grep -v "^\./go.mod$" | sort)
+
     log_info "Pushed to GitHub"
 
     # Extract release notes
