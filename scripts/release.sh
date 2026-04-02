@@ -40,9 +40,7 @@ check_prerequisites() {
 
     # Check optional tools
     if ! command -v git-chglog >/dev/null 2>&1; then
-        log_warn "git-chglog not installed (optional). Install with: brew install git-chglog"
-    elif [ ! -f ".chglog/config.yml" ]; then
-        log_warn "git-chglog installed but .chglog/config.yml not found — will use simple changelog generation"
+        log_warn "git-chglog not installed (optional). See: https://github.com/git-chglog/git-chglog#installation"
     fi
 }
 
@@ -157,11 +155,17 @@ generate_changelog() {
         # Use git-chglog only when both the binary and its config are present
         log_info "Using git-chglog for changelog generation"
         git-chglog --next-tag "v$new_version" -o CHANGELOG.md || {
-            log_warn "git-chglog failed, keeping existing CHANGELOG.md"
+            log_error "git-chglog failed. Aborting to avoid releasing with a stale changelog."
+            log_info "To skip changelog generation, remove .chglog/config.yml or uninstall git-chglog."
+            exit 1
         }
     else
-        # Simple changelog generation
-        log_warn "git-chglog not found, using simple changelog generation"
+        # Simple changelog generation (git-chglog not installed or .chglog/config.yml not found)
+        if command -v git-chglog >/dev/null 2>&1; then
+            log_warn ".chglog/config.yml not found — using simple changelog generation"
+        else
+            log_warn "git-chglog not installed — using simple changelog generation"
+        fi
 
         if [ -n "$prev_tag" ]; then
             {
@@ -294,6 +298,8 @@ publish_github() {
     log_step "Pushing commits and tags to GitHub (branch: $branch)"
     git push origin "$branch" || {
         log_error "Failed to push to origin. You may need to 'git pull --rebase origin $branch' first."
+        log_error "After resolving, re-run the script or manually push:"
+        log_error "  git push origin $branch && git push origin v$new_version"
         exit 1
     }
     git push origin "v$new_version"
@@ -386,6 +392,7 @@ main() {
             exit 1
         }
         log_info "Up to date with origin/$branch"
+        log_info "Current HEAD: $(git log -1 --oneline)"
     fi
 
     # Get current version
