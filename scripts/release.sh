@@ -37,6 +37,11 @@ check_prerequisites() {
         log_error "GitHub CLI not authenticated. Run 'gh auth login' first"
         exit 1
     fi
+
+    # Check optional tools
+    if ! command -v git-chglog >/dev/null 2>&1; then
+        log_warn "git-chglog not installed (optional). Install with: brew install git-chglog"
+    fi
 }
 
 # Get core library version
@@ -146,44 +151,38 @@ generate_changelog() {
 
     log_step "Generating changelog for v$new_version"
 
-    if [ -n "$prev_tag" ]; then
-        {
-            echo "# Changelog"
-            echo ""
-            echo "All notable changes to the LVT CLI will be documented in this file."
-            echo ""
-            echo "The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),"
-            echo "and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)."
-            echo ""
-            echo "## [v$new_version] - $(date +%Y-%m-%d)"
-            echo ""
-            echo "### Changes"
-            echo ""
-            git log "$prev_tag"..HEAD --pretty=format:"- %s (%h)" --no-merges | grep -v "^- Merge " || true
-            echo ""
-            echo ""
-            tail -n +7 CHANGELOG.md 2>/dev/null || true
-        } > CHANGELOG.md.tmp
-        mv CHANGELOG.md.tmp CHANGELOG.md
+    if command -v git-chglog >/dev/null 2>&1; then
+        # Use git-chglog if available
+        log_info "Using git-chglog for changelog generation"
+        git-chglog --next-tag "v$new_version" -o CHANGELOG.md 2>/dev/null || {
+            log_warn "git-chglog failed, keeping existing CHANGELOG.md"
+        }
     else
-        {
-            echo "# Changelog"
-            echo ""
-            echo "All notable changes to the LVT CLI will be documented in this file."
-            echo ""
-            echo "## [v$new_version] - $(date +%Y-%m-%d)"
-            echo ""
-            echo "Initial release of LVT CLI as a standalone package."
-            echo ""
-            echo "### Features"
-            echo ""
-            echo "- Code generation for resources, views, and projects"
-            echo "- Kit system with Tailwind, Bulma, Pico, and None frameworks"
-            echo "- Development server with hot reload"
-            echo "- Stack generators for deployment"
-            echo "- Migration and seeder tools"
-            echo "- Interactive UI for common tasks"
-        } > CHANGELOG.md
+        # Simple changelog generation
+        log_warn "git-chglog not found, using simple changelog generation"
+
+        if [ -n "$prev_tag" ]; then
+            {
+                echo "# Changelog"
+                echo ""
+                echo "All notable changes to the LVT CLI will be documented in this file."
+                echo ""
+                echo "The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),"
+                echo "and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)."
+                echo ""
+                echo "## [v$new_version] - $(date +%Y-%m-%d)"
+                echo ""
+                echo "### Changes"
+                echo ""
+                git log "$prev_tag"..HEAD --pretty=format:"- %s (%h)" --no-merges | grep -v "^- Merge " || true
+                echo ""
+                echo ""
+                tail -n +7 CHANGELOG.md 2>/dev/null || true
+            } > CHANGELOG.md.tmp
+            mv CHANGELOG.md.tmp CHANGELOG.md
+        else
+            log_warn "No previous tag found, skipping changelog generation"
+        fi
     fi
 }
 
@@ -210,14 +209,14 @@ This release uses core library version: $(get_major_minor "$new_version").x
 # Build and test
 build_and_test() {
     log_step "Running Go tests..."
-    go test ./... -timeout=120s || {
+    GOWORK=off go test ./... -timeout=120s || {
         log_error "Tests failed, aborting release"
         exit 1
     }
     log_info "Tests passed"
 
     log_step "Building LVT CLI..."
-    go build -o /tmp/lvt . || {
+    GOWORK=off go build -o /tmp/lvt . || {
         log_error "Build failed, aborting release"
         exit 1
     }
@@ -288,8 +287,14 @@ extract_release_notes() {
 publish_github() {
     local new_version=$1
 
-    log_step "Pushing commits and tags to GitHub"
-    git push origin main
+    local branch
+    branch=$(git rev-parse --abbrev-ref HEAD)
+
+    log_step "Pushing commits and tags to GitHub (branch: $branch)"
+    git push origin "$branch" || {
+        log_error "Failed to push to origin. You may need to 'git pull --rebase origin $branch' first."
+        exit 1
+    }
     git push origin "v$new_version"
     log_info "Pushed to GitHub"
 
@@ -363,6 +368,23 @@ main() {
         echo ""
         git status --short
         exit 1
+    fi
+
+    # Detect branch and pull latest
+    local branch
+    if ! branch=$(git symbolic-ref --short HEAD 2>/dev/null); then
+        log_error "Repository is in a detached HEAD state. Please check out a branch before running this script."
+        exit 1
+    fi
+    if [ "$dry_run_mode" = true ]; then
+        log_info "[dry-run] Would pull latest from origin/$branch"
+    else
+        log_step "Pulling latest changes from origin/$branch"
+        git pull --rebase origin "$branch" || {
+            log_error "Failed to pull latest changes. Resolve conflicts and try again."
+            exit 1
+        }
+        log_info "Up to date with origin/$branch"
     fi
 
     # Get current version
@@ -454,8 +476,10 @@ main() {
     echo "  • Go:     go install github.com/livetemplate/lvt@v$new_version"
     echo ""
     echo "📝 Next steps:"
+    echo "  • Verify the release on GitHub"
     echo "  • Test binary downloads"
     echo "  • Update examples to use new version"
+    echo "  • Announce the release"
 }
 
 main "$@"
