@@ -1,4 +1,10 @@
 {{define "lvt:modal:confirm:v1"}}
+<style>
+  [data-modal] { position: fixed; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; padding: 1rem; background: rgba(0,0,0,0.5); }
+  [data-modal] > div:last-child > div { background: var(--pico-background-color); border-radius: var(--pico-border-radius); padding: 1.5rem 2rem; max-width: 28rem; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+  [data-modal] > div:last-child > div > div:last-child { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.5rem; }
+  [data-modal] button { width: auto; margin: 0; }
+</style>
 {{if .Open}}
 <div class="{{.Styles.Root}}" data-modal="{{.ID}}" role="alertdialog" aria-modal="true">
   {{/* Overlay */}}
