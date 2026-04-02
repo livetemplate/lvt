@@ -173,6 +173,11 @@ func (c *Container) DismissAll() {
 // value. This handles LiveTemplate's double-evaluation pattern where dynamic
 // expressions are evaluated once for HTML rendering and once for the diff tree.
 // Returns an empty string when there are no pending messages.
+//
+// Note: the first call drains c.Messages. After template execution completes,
+// Count() and HasMessages() will return zero even though toasts are displaying
+// client-side. This is by design — the server's role ends once the client
+// receives the pending JSON.
 func (c *Container) TakePendingJSON() string {
 	if c.hasNewMessages {
 		// New messages since last drain — marshal, drain, and cache.
