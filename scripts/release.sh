@@ -256,7 +256,7 @@ publish_github() {
 
     # Use GoReleaser to build and create release
     log_step "Building binaries and creating GitHub release with GoReleaser"
-    goreleaser release --clean --release-notes "$notes_file" || {
+    GITHUB_TOKEN=$(gh auth token) goreleaser release --clean --release-notes "$notes_file" || {
         log_error "GoReleaser failed"
         exit 1
     }
