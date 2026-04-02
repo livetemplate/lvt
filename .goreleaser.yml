@@ -6,6 +6,7 @@ builds:
     binary: lvt
     env:
       - CGO_ENABLED=0
+      - GOWORK=off
     ldflags:
       - -s -w
       - -X main.version={{.Version}}
