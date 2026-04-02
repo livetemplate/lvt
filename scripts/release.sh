@@ -41,6 +41,8 @@ check_prerequisites() {
     # Check optional tools
     if ! command -v git-chglog >/dev/null 2>&1; then
         log_warn "git-chglog not installed (optional). Install with: brew install git-chglog"
+    elif [ ! -f ".chglog/config.yml" ]; then
+        log_warn "git-chglog installed but .chglog/config.yml not found — will use simple changelog generation"
     fi
 }
 
@@ -151,10 +153,10 @@ generate_changelog() {
 
     log_step "Generating changelog for v$new_version"
 
-    if command -v git-chglog >/dev/null 2>&1; then
-        # Use git-chglog if available
+    if command -v git-chglog >/dev/null 2>&1 && [ -f ".chglog/config.yml" ]; then
+        # Use git-chglog only when both the binary and its config are present
         log_info "Using git-chglog for changelog generation"
-        git-chglog --next-tag "v$new_version" -o CHANGELOG.md 2>/dev/null || {
+        git-chglog --next-tag "v$new_version" -o CHANGELOG.md || {
             log_warn "git-chglog failed, keeping existing CHANGELOG.md"
         }
     else
@@ -191,7 +193,8 @@ commit_and_tag() {
     local new_version=$1
 
     log_step "Committing version bump"
-    git add VERSION CHANGELOG.md
+    git add VERSION
+    [ -f CHANGELOG.md ] && git add CHANGELOG.md
     git commit -m "chore(release): v$new_version
 
 Release LVT CLI v$new_version
@@ -286,9 +289,7 @@ extract_release_notes() {
 # Push and create GitHub release with GoReleaser
 publish_github() {
     local new_version=$1
-
-    local branch
-    branch=$(git rev-parse --abbrev-ref HEAD)
+    local branch=$2
 
     log_step "Pushing commits and tags to GitHub (branch: $branch)"
     git push origin "$branch" || {
@@ -464,7 +465,7 @@ main() {
     generate_changelog "$new_version"
     build_and_test
     commit_and_tag "$new_version"
-    publish_github "$new_version"
+    publish_github "$new_version" "$branch"
 
     echo ""
     echo "================================================"
