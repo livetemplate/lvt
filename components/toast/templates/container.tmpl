@@ -1,51 +1,10 @@
 {{define "lvt:toast:container:v1"}}
-{{$c := .}}
-<div
-  class="{{$c.Styles.Container}} {{$c.GetPositionClasses}} {{$c.Styles.ContainerWidth}}"
-  data-toast-container="{{$c.ID}}"
-  aria-live="polite"
-  aria-atomic="true"
->
-  {{range $c.VisibleMessages}}
-  <div
-    class="{{$c.Styles.Toast}} {{$c.GetTypeClasses .Type}}"
-    role="alert"
-    data-toast="{{.ID}}"
-    {{if gt .AutoDismissMS 0}}data-auto-dismiss="{{.AutoDismissMS}}"{{end}}
-  >
-    <div class="{{$c.Styles.ToastInner}}">
-      <div class="{{$c.Styles.ToastLayout}}">
-        {{if .Icon}}
-        <div class="{{$c.Styles.IconWrap}}">
-          {{.Icon}}
-        </div>
-        {{end}}
-        <div class="{{$c.Styles.ContentWrap}}{{if .Icon}} {{$c.Styles.ContentIcon}}{{end}}">
-          {{if .Title}}
-          <p class="{{$c.Styles.Title}}">{{.Title}}</p>
-          {{end}}
-          {{if .Body}}
-          <p class="{{$c.Styles.Body}}{{if .Title}} {{$c.Styles.BodyWithTitle}}{{end}}">{{.Body}}</p>
-          {{end}}
-        </div>
-        {{if .Dismissible}}
-        <div class="{{$c.Styles.DismissWrap}}">
-          <button
-            type="button"
-            class="{{$c.Styles.DismissBtn}}"
-            lvt-click="dismiss_toast_{{$c.ID}}"
-            lvt-data-toast="{{.ID}}"
-            aria-label="Dismiss"
-          >
-            <svg class="{{$c.Styles.DismissIcon}}" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-            </svg>
-          </button>
-        </div>
-        {{end}}
-      </div>
-    </div>
-  </div>
-  {{end}}
-</div>
+{{- $c := . -}}
+{{- $pending := $c.TakePendingJSON -}}
+<span
+  data-toast-trigger="{{$c.ID}}"
+  {{- if $pending}} data-pending='{{$pending}}'{{end}}
+  hidden
+  aria-hidden="true"
+></span>
 {{end}}
