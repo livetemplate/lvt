@@ -342,20 +342,22 @@ func TestTemplateRendering(t *testing.T) {
 	}
 
 	html := buf.String()
-	if !strings.Contains(html, `data-toast-container="notifications"`) {
-		t.Error("expected data-toast-container attribute")
+	if !strings.Contains(html, `data-toast-trigger="notifications"`) {
+		t.Error("expected data-toast-trigger attribute")
 	}
-	if !strings.Contains(html, `aria-live="polite"`) {
-		t.Error("expected aria-live attribute")
+	if !strings.Contains(html, `hidden`) {
+		t.Error("expected hidden attribute on trigger span")
 	}
-	if !strings.Contains(html, "Success!") {
-		t.Error("expected toast title in output")
+	if !strings.Contains(html, `aria-hidden="true"`) {
+		t.Error("expected aria-hidden attribute on trigger span")
 	}
-	if !strings.Contains(html, "Your changes have been saved.") {
-		t.Error("expected toast body in output")
+	// Pending messages should be serialized in data-pending attribute
+	if !strings.Contains(html, `data-pending='[`) {
+		t.Error("expected data-pending attribute with JSON messages")
 	}
-	if !strings.Contains(html, `lvt-click="dismiss_toast_notifications"`) {
-		t.Error("expected dismiss button with lvt-click")
+	// html/template escapes quotes inside attributes as &#34;
+	if !strings.Contains(html, `&#34;title&#34;:&#34;Success!&#34;`) {
+		t.Errorf("expected toast title in data-pending JSON, got:\n%s", html)
 	}
 }
 
@@ -376,17 +378,16 @@ func TestUnstyledTemplateRendering(t *testing.T) {
 	}
 
 	html := buf.String()
-	// Unstyled version should use BEM-style class names, not Tailwind
-	if strings.Contains(html, "fixed z-50") {
-		t.Error("unstyled template should not have Tailwind classes")
+	// Trigger-only template is style-agnostic; both styled and unstyled
+	// render the same hidden span with data-toast-trigger.
+	if !strings.Contains(html, `data-toast-trigger="test"`) {
+		t.Error("expected data-toast-trigger attribute")
 	}
-	// Should have unstyled BEM classes
-	if !strings.Contains(html, "lvt-toast") {
-		t.Error("unstyled template should have BEM-style classes")
+	if !strings.Contains(html, `hidden`) {
+		t.Error("expected hidden attribute on trigger span")
 	}
-	// But should still have functional attributes
-	if !strings.Contains(html, `role="alert"`) {
-		t.Error("unstyled template should have role=alert")
+	if !strings.Contains(html, `data-pending='[`) {
+		t.Error("expected data-pending attribute with JSON messages")
 	}
 }
 
@@ -407,11 +408,14 @@ func TestAutoDismissRendering(t *testing.T) {
 	}
 
 	html := buf.String()
-	if !strings.Contains(html, `data-auto-dismiss="5000"`) {
-		t.Error("expected data-auto-dismiss attribute on success toast")
+	// Auto-dismiss metadata is now embedded in the JSON payload inside data-pending.
+	// html/template escapes quotes as &#34; inside attribute values.
+	// The success toast should carry dismissMS in the JSON.
+	if !strings.Contains(html, `&#34;dismissMS&#34;:5000`) {
+		t.Errorf("expected dismissMS field in data-pending JSON for success toast, got:\n%s", html)
 	}
 
-	// Error toast should NOT have auto-dismiss
+	// Error toast should have dismissMS=0 (no auto-dismiss)
 	c2 := New("test2", WithStyled(true))
 	c2.AddError("Oops", "Something went wrong")
 
@@ -422,8 +426,8 @@ func TestAutoDismissRendering(t *testing.T) {
 	}
 
 	html2 := buf.String()
-	if strings.Contains(html2, "data-auto-dismiss") {
-		t.Error("error toast should NOT have data-auto-dismiss attribute")
+	if !strings.Contains(html2, `&#34;dismissMS&#34;:0`) {
+		t.Errorf("expected dismissMS:0 in data-pending JSON for error toast (no auto-dismiss), got:\n%s", html2)
 	}
 }
 
@@ -460,8 +464,82 @@ func TestEmptyContainerRendering(t *testing.T) {
 	}
 
 	html := buf.String()
-	// Should render container even if empty
-	if !strings.Contains(html, `data-toast-container="test"`) {
-		t.Error("expected empty container to render")
+	// Should render trigger span even when empty
+	if !strings.Contains(html, `data-toast-trigger="test"`) {
+		t.Error("expected empty container to render trigger span")
+	}
+	// No data-pending when no messages
+	if strings.Contains(html, `data-pending`) {
+		t.Error("expected no data-pending attribute when container is empty")
+	}
+}
+
+func TestTakePendingJSON_DrainAndCache(t *testing.T) {
+	c := New("test")
+	c.AddInfo("Hello", "World")
+
+	// First call: drains messages and returns JSON.
+	json1 := c.TakePendingJSON()
+	if json1 == "" {
+		t.Fatal("first call should return non-empty JSON")
+	}
+	if !strings.Contains(json1, `"title":"Hello"`) {
+		t.Errorf("expected title in JSON, got %s", json1)
+	}
+	// Messages should be drained after first call.
+	if c.Count() != 0 {
+		t.Errorf("expected 0 messages after drain, got %d", c.Count())
+	}
+
+	// Second call (same render cycle): returns cached JSON (idempotent).
+	json2 := c.TakePendingJSON()
+	if json2 != json1 {
+		t.Errorf("second call should return cached JSON;\n  got:  %s\n  want: %s", json2, json1)
+	}
+
+	// Third call: cache cleared, returns empty string.
+	json3 := c.TakePendingJSON()
+	if json3 != "" {
+		t.Errorf("third call should return empty string, got %s", json3)
+	}
+}
+
+func TestTakePendingJSON_NoMessages(t *testing.T) {
+	c := New("test")
+
+	result := c.TakePendingJSON()
+	if result != "" {
+		t.Errorf("expected empty string when no messages, got %s", result)
+	}
+}
+
+func TestTakePendingJSON_AddAfterDrain(t *testing.T) {
+	c := New("test")
+	c.AddSuccess("First", "First message")
+
+	// Drain
+	json1 := c.TakePendingJSON()
+	if json1 == "" {
+		t.Fatal("expected non-empty JSON from first drain")
+	}
+
+	// Consume cache
+	_ = c.TakePendingJSON()
+	// Clear cache
+	_ = c.TakePendingJSON()
+
+	// Add new message after drain
+	c.AddError("Second", "Second message")
+
+	json4 := c.TakePendingJSON()
+	if json4 == "" {
+		t.Fatal("expected non-empty JSON after adding new message")
+	}
+	if !strings.Contains(json4, `"title":"Second"`) {
+		t.Errorf("expected new message in JSON, got %s", json4)
+	}
+	// Should not contain the first message
+	if strings.Contains(json4, `"title":"First"`) {
+		t.Error("expected first message to be absent after drain")
 	}
 }

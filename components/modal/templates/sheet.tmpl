@@ -1,4 +1,8 @@
 {{define "lvt:modal:sheet:v1"}}
+<style>
+  [data-modal] { position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,0.5); }
+  [data-modal] button { width: auto; margin: 0; }
+</style>
 {{if .Open}}
 <div class="{{.Styles.Root}}" data-modal="{{.ID}}" role="dialog" aria-modal="true">
   {{/* Overlay */}}

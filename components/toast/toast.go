@@ -23,6 +23,7 @@
 package toast
 
 import (
+	"encoding/json"
 	"strconv"
 
 	"github.com/livetemplate/lvt/components/base"
@@ -53,13 +54,13 @@ const (
 
 // Message represents a single toast notification.
 type Message struct {
-	ID            string // Unique identifier for this toast
-	Title         string // Optional title/header
-	Body          string // Main message content
-	Type          Type   // Visual style (info, success, warning, error)
-	Dismissible   bool   // Whether user can dismiss the toast
-	Icon          string // Optional icon (HTML or class name)
-	AutoDismissMS int    // Auto-dismiss after this many milliseconds (0 = no auto-dismiss)
+	ID            string `json:"id"`
+	Title         string `json:"title"`
+	Body          string `json:"body"`
+	Type          Type   `json:"type"`
+	Dismissible   bool   `json:"dismissible"`
+	Icon          string `json:"icon,omitempty"`
+	AutoDismissMS int    `json:"dismissMS"`
 }
 
 // Container holds and manages multiple toast notifications.
@@ -78,6 +79,13 @@ type Container struct {
 
 	// Counter for generating unique IDs
 	Counter int `json:"counter"`
+
+	// hasNewMessages is set to true when Add is called, cleared after first drain.
+	// renderedJSON caches the drained JSON so TakePendingJSON is idempotent within
+	// a single render cycle (LiveTemplate evaluates dynamic expressions twice per
+	// update: once for HTML rendering, once for the diff tree).
+	hasNewMessages bool
+	renderedJSON   string
 }
 
 // New creates a toast container.
@@ -112,6 +120,8 @@ func (c *Container) Add(msg Message) {
 	}
 
 	c.Messages = append(c.Messages, msg)
+	c.hasNewMessages = true
+	c.renderedJSON = "" // Invalidate render cache
 
 	// Trim to MaxVisible if set
 	if c.MaxVisible > 0 && len(c.Messages) > c.MaxVisible {
@@ -155,6 +165,40 @@ func (c *Container) Dismiss(id string) {
 // DismissAll removes all toasts.
 func (c *Container) DismissAll() {
 	c.Messages = make([]Message, 0)
+}
+
+// TakePendingJSON returns JSON-encoded pending messages and clears the queue.
+// Safe to call multiple times per render cycle: the first call drains the queue
+// and caches the result; subsequent calls within the same cycle return the cached
+// value. This handles LiveTemplate's double-evaluation pattern where dynamic
+// expressions are evaluated once for HTML rendering and once for the diff tree.
+// Returns an empty string when there are no pending messages.
+//
+// Note: the first call drains c.Messages. After template execution completes,
+// Count() and HasMessages() will return zero even though toasts are displaying
+// client-side. This is by design — the server's role ends once the client
+// receives the pending JSON.
+func (c *Container) TakePendingJSON() string {
+	if c.hasNewMessages {
+		// New messages since last drain — marshal, drain, and cache.
+		if len(c.Messages) == 0 {
+			c.hasNewMessages = false
+			return ""
+		}
+		b, err := json.Marshal(c.Messages)
+		if err != nil {
+			c.hasNewMessages = false
+			return ""
+		}
+		c.renderedJSON = string(b)
+		c.Messages = make([]Message, 0)
+		c.hasNewMessages = false
+		return c.renderedJSON
+	}
+	// No new messages — return cached result from this render cycle, then clear.
+	result := c.renderedJSON
+	c.renderedJSON = ""
+	return result
 }
 
 // Count returns the number of active toasts.
