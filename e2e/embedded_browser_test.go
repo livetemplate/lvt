@@ -387,18 +387,18 @@ func TestToastAutoDismiss(t *testing.T) {
 			t.Fatalf("Failed to create item: %v", err)
 		}
 
-		// Wait for toast to appear
+		// Wait for toast to appear (client-rendered via data-toast-trigger ephemeral component)
 		err = chromedp.Run(bctx,
-			waitFor(`document.querySelector('[data-toast][data-auto-dismiss]') !== null`, 5*time.Second),
+			waitFor(`document.querySelector('[data-lvt-toast-item]') !== null`, 5*time.Second),
 		)
 		if err != nil {
 			t.Fatalf("Toast did not appear: %v", err)
 		}
-		t.Log("Toast appeared with data-auto-dismiss attribute")
+		t.Log("Toast appeared as data-lvt-toast-item")
 
 		// Verify the toast auto-dismisses within 8 seconds (5s timer + buffer)
 		err = chromedp.Run(bctx,
-			waitFor(`document.querySelector('[data-toast]') === null`, 8*time.Second),
+			waitFor(`document.querySelector('[data-lvt-toast-item]') === null`, 8*time.Second),
 		)
 		if err != nil {
 			t.Fatalf("Toast did not auto-dismiss within 8 seconds: %v", err)
