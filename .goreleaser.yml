@@ -1,10 +1,5 @@
 version: 2
 
-before:
-  hooks:
-    - go mod tidy
-    - go test ./... -timeout=30s
-
 builds:
   - id: lvt
     main: .
@@ -75,36 +70,28 @@ changelog:
 release:
   github:
     owner: livetemplate
-    name: livetemplate
+    name: lvt
   draft: false
   prerelease: auto
   mode: replace
   header: |
-    ## LiveTemplate {{ .Tag }}
+    ## LVT CLI {{ .Tag }}
 
-    Release of LiveTemplate framework with synchronized versions across all components:
-    - **Go Library**: `github.com/livetemplate/livetemplate@{{ .Tag }}`
-    - **TypeScript Client**: `@livetemplate/client@{{ trimprefix .Tag "v" }}`
-    - **CLI Tool**: `lvt` (binaries below)
+    Code generator and development server for LiveTemplate.
 
     ### Installation
 
-    **Go Library:**
+    **Go Install:**
     ```bash
-    go get github.com/livetemplate/livetemplate@{{ .Tag }}
+    go install github.com/livetemplate/lvt@{{ .Tag }}
     ```
 
-    **TypeScript Client:**
-    ```bash
-    npm install @livetemplate/client@{{ trimprefix .Tag "v" }}
-    ```
-
-    **CLI Tool:**
+    **Binary Download:**
     Download the appropriate binary for your platform from the assets below.
   footer: |
     ---
 
-    **Full Changelog**: https://github.com/livetemplate/livetemplate/blob/main/CHANGELOG.md
+    **Full Changelog**: https://github.com/livetemplate/lvt/blob/main/CHANGELOG.md
 
 # Homebrew tap (optional - uncomment if you have a tap)
 # brews:
