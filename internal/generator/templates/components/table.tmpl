@@ -44,7 +44,7 @@
               </td>
 [[- if eq $.EditMode "modal"]]
               <td style="white-space: nowrap; width: 70px; text-align: right; padding: 12px 8px;">
-                <button[[if ne (buttonClass $.CSSFramework "secondary") ""]] class="[[buttonClass $.CSSFramework "secondary"]]"[[end]] lvt-click="edit" lvt-data-id="{{.ID}}">
+                <button[[if ne (buttonClass $.CSSFramework "secondary") ""]] class="[[buttonClass $.CSSFramework "secondary"]]"[[end]] name="edit" data-id="{{.ID}}">
                   Edit
                 </button>
               </td>

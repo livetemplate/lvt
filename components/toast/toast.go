@@ -4,7 +4,7 @@
 //   - New() creates a toast container (template: "lvt:toast:container:v1")
 //   - NewMessage() creates a single toast message (template: "lvt:toast:message:v1")
 //
-// Required lvt-* attributes: lvt-click
+// Required lvt-* attributes: name
 //
 // Example usage:
 //

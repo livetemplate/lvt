@@ -8,7 +8,7 @@
   {{/* Overlay */}}
   <div
     class="{{.Styles.Overlay}}"
-    {{if .CloseOnOverlay}}lvt-click="hide_{{.ID}}"{{end}}
+    {{if .CloseOnOverlay}}lvt-on:click="hide_{{.ID}}"{{end}}
     aria-hidden="true"
   ></div>
 
@@ -17,7 +17,7 @@
     {{/* Modal panel */}}
     <div
       class="{{.Styles.Panel}} {{.SizeClass}}"
-      {{if .CloseOnEscape}}lvt-keydown="hide_{{.ID}}" lvt-key="Escape"{{end}}
+      {{if .CloseOnEscape}}lvt-on:keydown="hide_{{.ID}}" lvt-key="Escape"{{end}}
     >
       {{/* Header */}}
       {{if .HasHeader}}
@@ -31,7 +31,7 @@
         <button
           type="button"
           class="{{.Styles.CloseBtn}}"
-          lvt-click="hide_{{.ID}}"
+          name="hide_{{.ID}}"
           aria-label="Close"
         >
           <svg class="{{.Styles.CloseIcon}}" viewBox="0 0 20 20" fill="currentColor">

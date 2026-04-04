@@ -8,8 +8,8 @@
       <button
         type="button"
         class="{{$c.Styles.TagRemoveBtn}}"
-        lvt-click="remove_tag_{{$c.ID}}"
-        lvt-data-value="{{$tag.Value}}"
+        name="remove_tag_{{$c.ID}}"
+        data-value="{{$tag.Value}}"
         aria-label="Remove tag"
       >
         <svg class="{{$c.Styles.TagRemoveIcon}}" viewBox="0 0 20 20" fill="currentColor">
@@ -24,11 +24,11 @@
       class="{{$c.Styles.Input}}"
       placeholder="{{$c.Placeholder}}"
       value="{{$c.Input}}"
-      lvt-input="input_tag_{{$c.ID}}"
-      lvt-keydown="keydown_tag_{{$c.ID}}"
+      lvt-on:input="input_tag_{{$c.ID}}"
+      lvt-on:keydown="keydown_tag_{{$c.ID}}"
       lvt-key="Enter,Backspace"
-      lvt-focus="focus_tag_{{$c.ID}}"
-      lvt-blur="blur_tag_{{$c.ID}}"
+      lvt-on:focus="focus_tag_{{$c.ID}}"
+      lvt-on:blur="blur_tag_{{$c.ID}}"
       autocomplete="off"
     />
     {{end}}
@@ -38,8 +38,8 @@
     {{range $c.FilteredSuggestions}}
     <div
       class="{{$c.Styles.Suggestion}}"
-      lvt-click="select_suggestion_{{$c.ID}}"
-      lvt-data-value="{{.}}"
+      lvt-on:click="select_suggestion_{{$c.ID}}"
+      data-value="{{.}}"
     >
       {{.}}
     </div>

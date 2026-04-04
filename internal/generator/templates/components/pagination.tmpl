@@ -30,7 +30,7 @@
       {{if .IsLoading}}
         <div[[if ne (loadingClass .CSSFramework) ""]] class="[[loadingClass .CSSFramework]]"[[end]]>Loading...</div>
       {{else}}
-        <button[[if ne (buttonClass .CSSFramework "primary") ""]] class="[[buttonClass .CSSFramework "primary"]]"[[end]] lvt-click="load_more">
+        <button[[if ne (buttonClass .CSSFramework "primary") ""]] class="[[buttonClass .CSSFramework "primary"]]"[[end]] name="load_more">
           Load More
         </button>
       {{end}}
@@ -45,7 +45,7 @@
 {{define "prevNextPagination"}}
   {{if gt .TotalPages 1}}
     <nav[[if ne (paginationClass .CSSFramework) ""]] class="[[paginationClass .CSSFramework]]"[[end]] role="navigation" aria-label="pagination">
-      <button[[if ne (paginationButtonClass .CSSFramework) ""]] class="[[paginationButtonClass .CSSFramework]]"[[end]] lvt-click="prev_page" {{if eq .CurrentPage 1}}disabled{{end}}>
+      <button[[if ne (paginationButtonClass .CSSFramework) ""]] class="[[paginationButtonClass .CSSFramework]]"[[end]] name="prev_page" {{if eq .CurrentPage 1}}disabled{{end}}>
         Previous
       </button>
 [[- if ne (paginationInfoClass .CSSFramework) ""]]
@@ -58,7 +58,7 @@
           Page {{.CurrentPage}} of {{.TotalPages}}
         </span>
       </div>
-      <button[[if ne (paginationButtonClass .CSSFramework) ""]] class="[[paginationButtonClass .CSSFramework]]"[[end]] lvt-click="next_page" {{if eq .CurrentPage .TotalPages}}disabled{{end}}>
+      <button[[if ne (paginationButtonClass .CSSFramework) ""]] class="[[paginationButtonClass .CSSFramework]]"[[end]] name="next_page" {{if eq .CurrentPage .TotalPages}}disabled{{end}}>
         Next
       </button>
     </nav>
@@ -69,7 +69,7 @@
 {{define "numberedPagination"}}
   {{if gt .TotalPages 1}}
     <nav[[if ne (paginationClass .CSSFramework) ""]] class="[[paginationClass .CSSFramework]]"[[end]] role="navigation" aria-label="pagination" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-top: 1rem;">
-      <button[[if ne (paginationButtonClass .CSSFramework) ""]] class="[[paginationButtonClass .CSSFramework]]"[[end]] lvt-click="prev_page" {{if eq .CurrentPage 1}}disabled{{end}}>
+      <button[[if ne (paginationButtonClass .CSSFramework) ""]] class="[[paginationButtonClass .CSSFramework]]"[[end]] name="prev_page" {{if eq .CurrentPage 1}}disabled{{end}}>
         &laquo; Prev
       </button>
 
@@ -77,7 +77,7 @@
         {{if eq .CurrentPage 1}}
           <span[[if ne (paginationActiveClass .CSSFramework) ""]] class="[[paginationActiveClass .CSSFramework]]"[[end]] style="padding: 0.5rem 0.75rem; font-weight: bold;">1</span>
         {{else}}
-          <button[[if ne (paginationButtonClass .CSSFramework) ""]] class="[[paginationButtonClass .CSSFramework]]"[[end]] lvt-click="goto_page" lvt-data-page="1">1</button>
+          <button[[if ne (paginationButtonClass .CSSFramework) ""]] class="[[paginationButtonClass .CSSFramework]]"[[end]] name="goto_page" data-page="1">1</button>
         {{end}}
 
         {{if gt .TotalPages 2}}
@@ -87,7 +87,7 @@
 
           {{if and (gt .CurrentPage 1) (lt .CurrentPage .TotalPages)}}
             {{if gt .CurrentPage 2}}
-              <button[[if ne (paginationButtonClass .CSSFramework) ""]] class="[[paginationButtonClass .CSSFramework]]"[[end]] lvt-click="goto_page" lvt-data-page="{{.CurrentPage}}">{{.CurrentPage}}</button>
+              <button[[if ne (paginationButtonClass .CSSFramework) ""]] class="[[paginationButtonClass .CSSFramework]]"[[end]] name="goto_page" data-page="{{.CurrentPage}}">{{.CurrentPage}}</button>
             {{end}}
           {{end}}
 
@@ -100,12 +100,12 @@
           {{if eq .CurrentPage .TotalPages}}
             <span[[if ne (paginationActiveClass .CSSFramework) ""]] class="[[paginationActiveClass .CSSFramework]]"[[end]] style="padding: 0.5rem 0.75rem; font-weight: bold;">{{.TotalPages}}</span>
           {{else}}
-            <button[[if ne (paginationButtonClass .CSSFramework) ""]] class="[[paginationButtonClass .CSSFramework]]"[[end]] lvt-click="goto_page" lvt-data-page="{{.TotalPages}}">{{.TotalPages}}</button>
+            <button[[if ne (paginationButtonClass .CSSFramework) ""]] class="[[paginationButtonClass .CSSFramework]]"[[end]] name="goto_page" data-page="{{.TotalPages}}">{{.TotalPages}}</button>
           {{end}}
         {{end}}
       </div>
 
-      <button[[if ne (paginationButtonClass .CSSFramework) ""]] class="[[paginationButtonClass .CSSFramework]]"[[end]] lvt-click="next_page" {{if eq .CurrentPage .TotalPages}}disabled{{end}}>
+      <button[[if ne (paginationButtonClass .CSSFramework) ""]] class="[[paginationButtonClass .CSSFramework]]"[[end]] name="next_page" {{if eq .CurrentPage .TotalPages}}disabled{{end}}>
         Next &raquo;
       </button>
     </nav>

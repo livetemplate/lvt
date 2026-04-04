@@ -4,7 +4,7 @@
 //   - New() creates a basic accordion (template: "lvt:accordion:default:v1")
 //   - NewSingle() creates single-open accordion (template: "lvt:accordion:single:v1")
 //
-// Required lvt-* attributes: lvt-click
+// Required lvt-* attributes: name
 //
 // Example usage:
 //

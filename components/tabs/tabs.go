@@ -5,7 +5,7 @@
 //   - NewVertical() creates vertical tabs (template: "lvt:tabs:vertical:v1")
 //   - NewPills() creates pill-style tabs (template: "lvt:tabs:pills:v1")
 //
-// Required lvt-* attributes: lvt-click
+// Required lvt-* attributes: name
 //
 // Example usage:
 //

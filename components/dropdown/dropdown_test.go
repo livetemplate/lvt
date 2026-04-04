@@ -527,11 +527,11 @@ func TestTemplateRendering(t *testing.T) {
 		}
 
 		html := buf.String()
-		if !strings.Contains(html, `lvt-input="search_search-test"`) {
-			t.Error("expected lvt-input attribute")
+		if !strings.Contains(html, `lvt-on:input="search_search-test"`) {
+			t.Error("expected lvt-on:input attribute")
 		}
-		if !strings.Contains(html, `lvt-debounce="150"`) {
-			t.Error("expected lvt-debounce attribute")
+		if !strings.Contains(html, `lvt-mod:debounce="150"`) {
+			t.Error("expected lvt-mod:debounce attribute")
 		}
 	})
 
@@ -554,8 +554,8 @@ func TestTemplateRendering(t *testing.T) {
 		if !strings.Contains(html, `aria-multiselectable="true"`) {
 			t.Error("expected aria-multiselectable attribute")
 		}
-		if !strings.Contains(html, `lvt-change="toggle_item_multi-test"`) {
-			t.Error("expected lvt-change attribute")
+		if !strings.Contains(html, `lvt-on:change="toggle_item_multi-test"`) {
+			t.Error("expected lvt-on:change attribute")
 		}
 		if !strings.Contains(html, "1 selected") {
 			t.Error("expected selected count")

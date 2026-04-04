@@ -3,7 +3,7 @@
 // Available variants:
 //   - New() creates a basic tags input (template: "lvt:tagsinput:default:v1")
 //
-// Required lvt-* attributes: lvt-input, lvt-keydown, lvt-click
+// Required lvt-* attributes: lvt-on:input, lvt-on:keydown, name
 //
 // Example usage:
 //

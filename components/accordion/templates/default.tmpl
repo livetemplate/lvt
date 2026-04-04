@@ -7,8 +7,8 @@
       type="button"
       id="accordion-header-{{$c.ID}}-{{.ID}}"
       class="{{$c.Styles.Header}} {{if .Disabled}}cursor-not-allowed{{end}}"
-      lvt-click="toggle_accordion_{{$c.ID}}"
-      lvt-data-item="{{.ID}}"
+      name="toggle_accordion_{{$c.ID}}"
+      data-item="{{.ID}}"
       aria-expanded="{{$c.IsOpen .ID}}"
       aria-controls="accordion-content-{{$c.ID}}-{{.ID}}"
       {{if .Disabled}}disabled{{end}}

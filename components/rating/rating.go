@@ -4,7 +4,7 @@
 //   - New() creates a star rating (template: "lvt:rating:default:v1")
 //   - NewReadonly() creates a read-only rating display (template: "lvt:rating:readonly:v1")
 //
-// Required lvt-* attributes: lvt-click, lvt-mouseover, lvt-mouseleave
+// Required lvt-* attributes: lvt-on:click, lvt-on:mouseover, lvt-on:mouseleave
 //
 // Example usage:
 //

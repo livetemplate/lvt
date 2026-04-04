@@ -364,8 +364,8 @@ func TestTemplateRendering(t *testing.T) {
 		if !strings.Contains(html, `role="tablist"`) {
 			t.Error("expected role=tablist")
 		}
-		if !strings.Contains(html, `lvt-click="select_tab_settings"`) {
-			t.Error("expected lvt-click attribute")
+		if !strings.Contains(html, `name="select_tab_settings"`) {
+			t.Error("expected name attribute for button routing")
 		}
 		if !strings.Contains(html, `aria-selected="true"`) {
 			t.Error("expected aria-selected=true for active tab")

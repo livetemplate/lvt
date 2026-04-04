@@ -35,7 +35,7 @@
       <span>{{len $c.SelectedItems}} selected</span>
       <button
         type="button"
-        lvt-click="clear_all_{{$c.ID}}"
+        name="clear_all_{{$c.ID}}"
       >
         Clear all
       </button>
@@ -52,8 +52,8 @@
         type="checkbox"
         {{if $c.IsSelected .Value}}checked{{end}}
         {{if .Disabled}}disabled{{end}}
-        lvt-change="toggle_item_{{$c.ID}}"
-        lvt-data-value="{{.Value}}"
+        lvt-on:change="toggle_item_{{$c.ID}}"
+        data-value="{{.Value}}"
       />
       <span>{{.Label}}</span>
     </label>

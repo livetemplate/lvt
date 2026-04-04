@@ -37,7 +37,7 @@
     <button
       type="button"
       class="{{$c.Styles.NavBtn}}"
-      lvt-click="prev_month_{{$c.ID}}"
+      name="prev_month_{{$c.ID}}"
       aria-label="Previous month"
     >
       <svg class="{{$c.Styles.NavIcon}}" viewBox="0 0 20 20" fill="currentColor">
@@ -50,7 +50,7 @@
     <button
       type="button"
       class="{{$c.Styles.NavBtn}}"
-      lvt-click="next_month_{{$c.ID}}"
+      name="next_month_{{$c.ID}}"
       aria-label="Next month"
     >
       <svg class="{{$c.Styles.NavIcon}}" viewBox="0 0 20 20" fill="currentColor">
@@ -72,8 +72,8 @@
       type="button"
       class="{{$c.Styles.DayBtn}} {{if not .InMonth}}{{$c.Styles.DayOutMonth}}{{else if .IsDisabled}}{{$c.Styles.DayDisabled}}{{else if .IsSelected}}{{$c.Styles.DaySelected}}{{else if .IsToday}}{{$c.Styles.DayToday}}{{else}}{{$c.Styles.DayDefault}}{{end}}"
       {{if and .InMonth (not .IsDisabled)}}
-      lvt-click="select_date_{{$c.ID}}"
-      lvt-data-date="{{.DateString}}"
+      name="select_date_{{$c.ID}}"
+      data-date="{{.DateString}}"
       {{else}}
       disabled
       {{end}}
@@ -88,7 +88,7 @@
     <button
       type="button"
       class="{{$c.Styles.TodayBtn}}"
-      lvt-click="today_{{$c.ID}}"
+      name="today_{{$c.ID}}"
     >
       Today
     </button>
@@ -96,7 +96,7 @@
     <button
       type="button"
       class="{{$c.Styles.ClearBtn}}"
-      lvt-click="clear_date_{{$c.ID}}"
+      name="clear_date_{{$c.ID}}"
     >
       Clear
     </button>

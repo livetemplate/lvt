@@ -9,8 +9,8 @@
       class="{{$c.Styles.TriggerBtn}}"
       placeholder="{{$c.Placeholder}}"
       value="{{$c.Query}}"
-      lvt-input="search_{{$c.ID}}"
-      lvt-debounce="150"
+      lvt-on:input="search_{{$c.ID}}"
+      lvt-mod:debounce="150"
       onfocus="this.closest('[data-dropdown]').classList.add('open');this.setAttribute('aria-expanded','true')"
       {{if $c.Disabled}}disabled{{end}}
       autocomplete="off"
@@ -22,7 +22,7 @@
     <button
       type="button"
       class="{{$c.Styles.ClearBtnWrap}}"
-      lvt-click="clear_search_{{$c.ID}}"
+      name="clear_search_{{$c.ID}}"
     >
       <svg class="{{$c.Styles.TriggerIcon}}" viewBox="0 0 20 20" fill="currentColor">
         <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
@@ -46,8 +46,8 @@
     {{range $visibleOptions}}
     <div
       class="{{$c.Styles.Option}} {{if .Disabled}}{{$c.Styles.OptionDisabled}}{{end}} {{if and $c.Selected (eq $c.Selected.Value .Value)}}{{$c.Styles.OptionSelected}}{{end}}"
-      lvt-click="select_{{$c.ID}}"
-      lvt-data-value="{{.Value}}"
+      lvt-on:click="select_{{$c.ID}}"
+      data-value="{{.Value}}"
       role="option"
       {{if .Disabled}}aria-disabled="true"{{end}}
       {{if and $c.Selected (eq $c.Selected.Value .Value)}}aria-selected="true"{{end}}

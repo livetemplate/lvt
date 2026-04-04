@@ -12,7 +12,7 @@
 [[- if ne (selectWrapperClass .CSSFramework) ""]]
     <div class="[[selectWrapperClass .CSSFramework]]">
 [[- end]]
-      <select[[if ne (selectClass .CSSFramework) ""]] class="[[selectClass .CSSFramework]]"[[end]] name="sort_by" lvt-change="sort" data-expected-value="{{.SortBy}}">
+      <select[[if ne (selectClass .CSSFramework) ""]] class="[[selectClass .CSSFramework]]"[[end]] name="sort_by" lvt-on:change="sort" data-expected-value="{{.SortBy}}">
         <option value="" {{if eq .SortBy ""}}selected{{end}}>Newest First</option>
 [[- range $i, $f := .Fields]]
 [[- if and (eq $i 0) (eq $f.GoType "string")]]

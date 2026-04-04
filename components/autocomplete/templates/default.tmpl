@@ -9,9 +9,9 @@
       class="{{$c.Styles.Input}} {{if $c.Loading}}{{$c.Styles.InputLoading}}{{end}}"
       placeholder="{{$c.Placeholder}}"
       value="{{$c.Query}}"
-      lvt-input="query_{{$c.ID}}"
+      lvt-on:input="query_{{$c.ID}}"
       onfocus="this.closest('[data-autocomplete]').classList.add('open')"
-      lvt-keydown="keydown_{{$c.ID}}"
+      lvt-on:keydown="keydown_{{$c.ID}}"
       autocomplete="off"
       aria-autocomplete="list"
       aria-haspopup="listbox"
@@ -29,7 +29,7 @@
     <button
       type="button"
       class="{{$c.Styles.ClearBtn}}"
-      lvt-click="clear_{{$c.ID}}"
+      name="clear_{{$c.ID}}"
       aria-label="Clear selection"
     >
       <svg class="{{$c.Styles.ClearIcon}}" viewBox="0 0 20 20" fill="currentColor">
@@ -50,8 +50,8 @@
       class="{{$c.Styles.Option}} {{if $suggestion.Disabled}}{{$c.Styles.OptionDisabled}}{{else if $c.IsHighlighted $index}}{{$c.Styles.OptionActive}}{{end}}"
       role="option"
       {{if not $suggestion.Disabled}}
-      lvt-click="select_{{$c.ID}}"
-      lvt-data-index="{{$index}}"
+      lvt-on:click="select_{{$c.ID}}"
+      data-index="{{$index}}"
       {{end}}
       aria-selected="{{$c.IsHighlighted $index}}"
       {{if $suggestion.Disabled}}aria-disabled="true"{{end}}

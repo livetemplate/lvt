@@ -4,7 +4,7 @@
 //   - New() creates a basic autocomplete (template: "lvt:autocomplete:default:v1")
 //   - NewMulti() creates a multi-select autocomplete (template: "lvt:autocomplete:multi:v1")
 //
-// Required lvt-* attributes: lvt-input, lvt-click, lvt-keydown, lvt-el:removeClass:on:click-away
+// Required lvt-* attributes: lvt-on:input, name, lvt-on:keydown, lvt-el:removeClass:on:click-away
 //
 // Example usage:
 //

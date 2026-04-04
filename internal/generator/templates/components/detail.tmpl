@@ -19,7 +19,7 @@
     <a href="/[[.ResourceNameLower]]/{{.EditingID}}/edit"[[if ne (buttonClass .CSSFramework "primary") ""]] class="[[buttonClass .CSSFramework "primary"]]"[[end]] style="text-decoration: none;">
       Edit
     </a>
-    <button[[if ne (buttonClass .CSSFramework "danger") ""]] class="[[buttonClass .CSSFramework "danger"]]"[[end]] lvt-click="request_delete" lvt-data-id="{{.EditingID}}">
+    <button[[if ne (buttonClass .CSSFramework "danger") ""]] class="[[buttonClass .CSSFramework "danger"]]"[[end]] name="request_delete" data-id="{{.EditingID}}">
       Delete
     </button>
   </div>

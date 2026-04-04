@@ -26,8 +26,8 @@
         class="{{$c.Styles.Item}} w-full text-left {{$c.ItemClass $item}}"
         role="menuitem"
         {{if not $item.Disabled}}
-        lvt-click="select_{{$c.ID}}"
-        lvt-data-item="{{$item.ID}}"
+        name="select_{{$c.ID}}"
+        data-item="{{$item.ID}}"
         {{end}}
         {{if $item.Disabled}}disabled aria-disabled="true"{{end}}
       >

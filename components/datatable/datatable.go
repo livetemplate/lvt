@@ -3,7 +3,7 @@
 // Available variants:
 //   - New() creates a data table (template: "lvt:datatable:default:v1")
 //
-// Required lvt-* attributes: lvt-click
+// Required lvt-* attributes: name, lvt-on:click, lvt-on:input
 //
 // Example usage:
 //

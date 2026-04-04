@@ -7,15 +7,15 @@
 
   <div
     class="{{$c.Styles.StarsWrapper}} {{$c.SizeClass}} {{if not $c.Readonly}}{{$c.Styles.StarBtn}}{{else}}{{$c.Styles.StarReadonly}}{{end}}"
-    {{if not $c.Readonly}}lvt-mouseleave="leave_{{$c.ID}}"{{end}}
+    {{if not $c.Readonly}}lvt-on:mouseleave="leave_{{$c.ID}}"{{end}}
   >
     {{range $star := $c.Stars}}
     <span
       class="{{if $c.IsStarFull $star}}{{$c.ColorClass}}{{else if $c.IsStarHalf $star}}{{$c.ColorClass}}{{else}}{{$c.EmptyColorClass}}{{end}}"
       {{if not $c.Readonly}}
-      lvt-click="click_{{$c.ID}}"
-      lvt-data-star="{{$star}}"
-      lvt-mouseover="hover_{{$c.ID}}"
+      lvt-on:click="click_{{$c.ID}}"
+      data-star="{{$star}}"
+      lvt-on:mouseover="hover_{{$c.ID}}"
       {{end}}
     >
       {{if $c.IsStarHalf $star}}

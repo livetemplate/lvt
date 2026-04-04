@@ -5,7 +5,7 @@
 //   - NewRange() creates a date range picker (template: "lvt:datepicker:range:v1")
 //   - NewInline() creates an inline calendar (template: "lvt:datepicker:inline:v1")
 //
-// Required lvt-* attributes: lvt-click
+// Required lvt-* attributes: name, lvt-el:removeClass:on:click-away
 //
 // Example usage:
 //

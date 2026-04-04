@@ -17,12 +17,12 @@ func TestKitFeatureParity(t *testing.T) {
 		name    string
 		pattern string
 	}{
-		{"delete button in edit modal", `lvt-data-id="{{.EditingID}}"`},
-		{"cancel edit button", `lvt-click="cancel_edit"`},
-		{"update form submission", `lvt-submit="update"`},
-		{"add form submission", `lvt-submit="add"`},
-		{"add modal open button", `lvt-modal-open="add-modal"`},
-		{"edit button in table", `lvt-click="edit"`},
+		{"delete button in edit modal", `data-id="{{.EditingID}}"`},
+		{"cancel edit button", `name="cancel_edit"`},
+		{"update form submission", `name="update"`},
+		{"add form submission", `name="add"`},
+		{"add modal open button", `commandfor="add-modal"`},
+		{"edit button in table", `name="edit"`},
 	}
 
 	for _, kit := range kits {

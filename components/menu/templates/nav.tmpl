@@ -48,8 +48,8 @@
         type="button"
         class="{{$c.Styles.Item}} w-full text-left {{if $subItem.Active}}{{$c.Styles.ItemActive}}{{else if $subItem.Disabled}}{{$c.Styles.ItemDisabled}}{{else}}{{$c.Styles.ItemDefault}}{{end}}"
         {{if not $subItem.Disabled}}
-        lvt-click="select_{{$c.ID}}"
-        lvt-data-item="{{$subItem.ID}}"
+        name="select_{{$c.ID}}"
+        data-item="{{$subItem.ID}}"
         {{end}}
         {{if $subItem.Disabled}}disabled{{end}}
       >
@@ -80,8 +80,8 @@
     type="button"
     class="{{$c.Styles.Item}} {{if $item.Active}}{{$c.Styles.ItemActive}}{{else if $item.Disabled}}{{$c.Styles.ItemDisabled}}{{else}}{{$c.Styles.ItemDefault}}{{end}}"
     {{if not $item.Disabled}}
-    lvt-click="select_{{$c.ID}}"
-    lvt-data-item="{{$item.ID}}"
+    name="select_{{$c.ID}}"
+    data-item="{{$item.ID}}"
     {{end}}
     {{if $item.Disabled}}disabled{{end}}
   >

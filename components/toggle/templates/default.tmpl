@@ -18,14 +18,14 @@
     {{if .Disabled}}disabled{{end}}
     {{if .Required}}required{{end}}
     value="{{.Value}}"
-    lvt-change="toggle_{{.ID}}"
+    lvt-on:change="toggle_{{.ID}}"
   />
 
   {{if .Styles.UseCustomTrack}}
   {{/* Toggle track */}}
   <div
     class="{{.Styles.Track}} {{.SizeClasses}} {{.TrackColorClass}}"
-    lvt-click="toggle_{{.ID}}"
+    lvt-on:click="toggle_{{.ID}}"
     role="switch"
     aria-checked="{{.Checked}}"
   >

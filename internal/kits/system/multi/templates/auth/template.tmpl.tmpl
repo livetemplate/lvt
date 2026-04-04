@@ -67,11 +67,11 @@
                 </div>
 
                 <div class="flex items-center justify-between text-sm">
-                    <button type="button" lvt-click="SwitchToRegister"
+                    <button type="button" name="SwitchToRegister"
                             class="font-medium text-indigo-600 hover:text-indigo-500">
                         Create account
                     </button>
-                    <button type="button" lvt-click="SwitchToForgot"
+                    <button type="button" name="SwitchToForgot"
                             class="font-medium text-indigo-600 hover:text-indigo-500">
                         Forgot password?
                     </button>
@@ -79,9 +79,9 @@
             </form>
             {{ end }}
 
-            <!-- Magic Link Form - separate form with lvt-submit to send email -->
+            <!-- Magic Link Form - separate form with name to send email -->
             {{ if .ShowMagicLink }}
-            <form class="mt-4 space-y-4" lvt-submit="MagicLink">
+            <form class="mt-4 space-y-4" name="MagicLink">
                 <div class="rounded-md shadow-sm">
                     <div>
                         <label for="magic-email" class="sr-only">Email address</label>
@@ -102,7 +102,7 @@
 
             {{ else if eq .View "register" }}
             <!-- Registration Form -->
-            <form class="mt-8 space-y-6" lvt-submit="Register">
+            <form class="mt-8 space-y-6" name="Register">
                 <div class="rounded-md shadow-sm -space-y-px">
                     <div>
                         <label for="email" class="sr-only">Email address</label>
@@ -126,7 +126,7 @@
                 </div>
 
                 <div class="text-sm text-center">
-                    <button type="button" lvt-click="SwitchToLogin"
+                    <button type="button" name="SwitchToLogin"
                             class="font-medium text-indigo-600 hover:text-indigo-500">
                         Already have an account? Sign in
                     </button>
@@ -135,7 +135,7 @@
 
             {{ else if eq .View "forgot" }}
             <!-- Forgot Password Form -->
-            <form class="mt-8 space-y-6" lvt-submit="ForgotPassword">
+            <form class="mt-8 space-y-6" name="ForgotPassword">
                 <div class="rounded-md shadow-sm">
                     <div>
                         <label for="email" class="sr-only">Email address</label>
@@ -153,7 +153,7 @@
                 </div>
 
                 <div class="text-sm text-center">
-                    <button type="button" lvt-click="SwitchToLogin"
+                    <button type="button" name="SwitchToLogin"
                             class="font-medium text-indigo-600 hover:text-indigo-500">
                         Back to sign in
                     </button>

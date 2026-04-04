@@ -148,11 +148,11 @@ func TestEmbeddedResourceGeneration(t *testing.T) {
 	}
 	childTmplSrc := string(childTmpl)
 
-	if !strings.Contains(childTmplSrc, `lvt-submit="comment_add"`) {
-		t.Error("child template should use comment_add action")
+	if !strings.Contains(childTmplSrc, `name="comment_add"`) {
+		t.Error("child template should use comment_add action via button name")
 	}
-	if !strings.Contains(childTmplSrc, `lvt-click="comment_edit"`) {
-		t.Error("child template should use comment_edit action")
+	if !strings.Contains(childTmplSrc, `name="comment_edit"`) {
+		t.Error("child template should use comment_edit action via button name")
 	}
 	if !strings.Contains(childTmplSrc, `{{define "comments:section"}}`) {
 		t.Error("child template should define comments:section block")

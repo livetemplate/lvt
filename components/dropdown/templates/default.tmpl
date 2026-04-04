@@ -30,8 +30,8 @@
     {{range $c.Options}}
     <div
       class="{{$c.Styles.Option}} {{if .Disabled}}{{$c.Styles.OptionDisabled}}{{end}} {{if and $c.Selected (eq $c.Selected.Value .Value)}}{{$c.Styles.OptionSelected}}{{end}}"
-      lvt-click="select_{{$c.ID}}"
-      lvt-data-value="{{.Value}}"
+      lvt-on:click="select_{{$c.ID}}"
+      data-value="{{.Value}}"
       role="option"
       {{if .Disabled}}aria-disabled="true"{{end}}
       {{if and $c.Selected (eq $c.Selected.Value .Value)}}aria-selected="true"{{end}}
