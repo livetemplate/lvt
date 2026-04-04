@@ -1,5 +1,6 @@
 {{define "lvt:menu:nav:v1"}}
 {{$c := .}}
+<style>[data-submenu]:not(.open)>[data-submenu-panel]{display:none}</style>
 <nav class="{{if eq $c.Orientation "vertical"}}flex flex-col space-y-1{{else}}flex items-center space-x-1{{end}}" data-menu="{{$c.ID}}" data-nav="true">
   {{range $item := $c.Items}}
   {{if $item.IsDivider}}
@@ -13,25 +14,24 @@
     {{$item.Label}}
   </div>
   {{else if $item.IsSubmenu}}
-  <div class="relative">
+  <div class="relative" data-submenu="{{$item.ID}}"
+       lvt-el:removeClass:on:click-away="open">
     <button
       type="button"
       class="{{$c.Styles.Item}} {{if $item.Active}}{{$c.Styles.ItemActive}}{{else}}{{$c.Styles.ItemDefault}}{{end}}"
-      lvt-click="toggle_submenu_{{$c.ID}}"
-      lvt-data-submenu="{{$item.ID}}"
-      aria-expanded="{{$c.IsSubmenuOpen $item.ID}}"
+      onclick="var s=this.closest('[data-submenu]');s.classList.toggle('open');this.setAttribute('aria-expanded',s.classList.contains('open'))"
+      aria-expanded="false"
       aria-haspopup="true"
     >
       {{if $item.HasIcon}}<span>{{$item.Icon}}</span>{{end}}
       {{$item.Label}}
-      <svg class="{{$c.Styles.TriggerIcon}} {{if $c.IsSubmenuOpen $item.ID}}{{$c.Styles.TriggerIconOpen}}{{end}}" viewBox="0 0 20 20" fill="currentColor">
+      <svg class="{{$c.Styles.TriggerIcon}}" viewBox="0 0 20 20" fill="currentColor">
         <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
       </svg>
     </button>
-    {{if $c.IsSubmenuOpen $item.ID}}
     <div
       class="{{if eq $c.Orientation "vertical"}}pl-4 mt-1 space-y-1{{else}}{{$c.Styles.Panel}}{{end}}"
-      lvt-click-away="close_submenu_{{$c.ID}}"
+      data-submenu-panel
     >
       {{range $subItem := $item.Items}}
       {{if $subItem.IsLink}}
@@ -59,7 +59,6 @@
       {{end}}
       {{end}}
     </div>
-    {{end}}
   </div>
   {{else if $item.IsLink}}
   <a

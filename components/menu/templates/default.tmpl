@@ -1,26 +1,27 @@
 {{define "lvt:menu:default:v1"}}
 {{$c := .}}
-<div class="{{$c.Styles.Root}}" data-menu="{{$c.ID}}">
+<style>[data-menu]:not(.open) [data-menu-panel]{display:none}</style>
+<div class="{{$c.Styles.Root}}" data-menu="{{$c.ID}}"
+     lvt-el:removeClass:on:click-away="open">
   <button
     type="button"
     class="{{$c.Styles.TriggerBtn}}"
-    lvt-click="toggle_{{$c.ID}}"
+    onclick="var r=this.closest('[data-menu]');r.classList.toggle('open');this.setAttribute('aria-expanded',r.classList.contains('open'))"
     aria-haspopup="true"
-    aria-expanded="{{$c.Open}}"
+    aria-expanded="false"
   >
     {{if $c.TriggerIcon}}<span>{{$c.TriggerIcon}}</span>{{end}}
     {{if $c.Trigger}}{{$c.Trigger}}{{else}}Menu{{end}}
-    <svg class="{{$c.Styles.TriggerIcon}} {{if $c.Open}}{{$c.Styles.TriggerIconOpen}}{{end}}" viewBox="0 0 20 20" fill="currentColor">
+    <svg class="{{$c.Styles.TriggerIcon}}" viewBox="0 0 20 20" fill="currentColor">
       <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
     </svg>
   </button>
 
-  {{if $c.Open}}
   <div
     class="{{$c.Styles.Panel}} {{$c.PositionClass}}"
+    data-menu-panel
     role="menu"
     aria-orientation="vertical"
-    lvt-click-away="close_{{$c.ID}}"
   >
     <div class="{{$c.Styles.PanelInner}}">
       {{range $index, $item := $c.Items}}
@@ -70,6 +71,5 @@
       {{end}}
     </div>
   </div>
-  {{end}}
 </div>
 {{end}}

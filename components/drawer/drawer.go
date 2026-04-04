@@ -3,7 +3,9 @@
 // Available variants:
 //   - New() creates a drawer (template: "lvt:drawer:default:v1")
 //
-// Required lvt-* attributes: lvt-click, lvt-click-away
+// Open/close is handled client-side via CSS classes.
+// The consuming page triggers the drawer by adding/removing the "open" class
+// on the element with data-drawer attribute.
 //
 // Example usage:
 //
@@ -44,12 +46,10 @@ const (
 )
 
 // Drawer is a slide-out panel component.
+// Open/close is handled client-side via CSS classes.
 // Use template "lvt:drawer:default:v1" to render.
 type Drawer struct {
 	base.Base
-
-	// Open indicates whether the drawer is visible
-	Open bool
 
 	// Position is where the drawer slides from
 	Position Position
@@ -100,28 +100,6 @@ func New(id string, opts ...Option) *Drawer {
 	}
 
 	return d
-}
-
-// Toggle opens or closes the drawer.
-func (d *Drawer) Toggle() {
-	d.Open = !d.Open
-}
-
-// Show opens the drawer.
-func (d *Drawer) Show() {
-	d.Open = true
-}
-
-// Close closes the drawer.
-func (d *Drawer) Close() {
-	if !d.Persistent {
-		d.Open = false
-	}
-}
-
-// ForceClose closes the drawer even if persistent.
-func (d *Drawer) ForceClose() {
-	d.Open = false
 }
 
 // IsLeft returns true if position is left.
@@ -215,21 +193,18 @@ func (d *Drawer) PositionClass() string {
 	}
 }
 
-// TransformClass returns CSS transform classes for animation.
+// TransformClass returns the CSS transform value for the closed state.
+// This is used as a CSS custom property; the open state uses translate(0,0).
 func (d *Drawer) TransformClass() string {
-	s := d.Styles()
-	if d.Open {
-		return s.TransformOpen
-	}
 	switch d.Position {
 	case PositionRight:
-		return s.TransformRight
+		return "translateX(100%)"
 	case PositionTop:
-		return s.TransformTop
+		return "translateY(-100%)"
 	case PositionBottom:
-		return s.TransformBottom
+		return "translateY(100%)"
 	default: // left
-		return s.TransformLeft
+		return "translateX(-100%)"
 	}
 }
 

@@ -4,7 +4,7 @@
 //   - New() creates a time picker (template: "lvt:timepicker:default:v1")
 //   - NewDuration() creates a duration picker (template: "lvt:timepicker:duration:v1")
 //
-// Required lvt-* attributes: lvt-click, lvt-input, lvt-click-away
+// Required lvt-* attributes: lvt-click, lvt-input, lvt-el:removeClass:on:click-away, lvt-el:addClass:on:done
 //
 // Example usage:
 //
@@ -45,9 +45,6 @@ type TimePicker struct {
 	// HasValue indicates if a time has been selected
 	HasValue bool
 
-	// Open indicates whether the picker popup is visible
-	Open bool
-
 	// Placeholder text shown when no time is selected
 	Placeholder string
 
@@ -86,9 +83,6 @@ type DurationPicker struct {
 
 	// HasValue indicates if a duration has been set
 	HasValue bool
-
-	// Open indicates whether the picker popup is visible
-	Open bool
 
 	// Placeholder text
 	Placeholder string
@@ -142,22 +136,11 @@ func NewDuration(id string, opts ...DurationOption) *DurationPicker {
 	return dp
 }
 
-// Toggle opens or closes the picker.
-func (tp *TimePicker) Toggle() {
-	tp.Open = !tp.Open
-}
-
-// Close closes the picker.
-func (tp *TimePicker) Close() {
-	tp.Open = false
-}
-
 // SetTime sets the time.
 func (tp *TimePicker) SetTime(hour, minute int) {
 	tp.Hour = hour
 	tp.Minute = minute
 	tp.HasValue = true
-	tp.Open = false
 
 	// Normalize for 12-hour format
 	if !tp.Use24Hour {
@@ -394,22 +377,11 @@ func (dp *DurationPicker) DurationStyles() styles.TimepickerStyles {
 
 // DurationPicker methods
 
-// Toggle opens or closes the picker.
-func (dp *DurationPicker) Toggle() {
-	dp.Open = !dp.Open
-}
-
-// Close closes the picker.
-func (dp *DurationPicker) Close() {
-	dp.Open = false
-}
-
 // SetDuration sets the duration.
 func (dp *DurationPicker) SetDuration(hours, minutes int) {
 	dp.Hours = hours
 	dp.Minutes = minutes
 	dp.HasValue = true
-	dp.Open = false
 }
 
 // SetDurationWithSeconds sets the duration including seconds.

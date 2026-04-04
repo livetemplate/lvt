@@ -1,11 +1,14 @@
 {{define "lvt:timepicker:duration:v1"}}
-<div class="{{.DurationStyles.Root}}" data-timepicker="{{.ID}}" data-duration="true">
+<style>[data-timepicker]:not(.open) [data-timepicker-panel]{display:none}</style>
+<div class="{{.DurationStyles.Root}}" data-timepicker="{{.ID}}" data-duration="true"
+     lvt-el:removeClass:on:click-away="open"
+     lvt-el:addClass:on:done="open">
   <button
     type="button"
     class="{{.DurationStyles.TriggerBtn}}"
-    lvt-click="toggle_{{.ID}}"
+    onclick="var r=this.closest('[data-timepicker]');r.classList.toggle('open');this.setAttribute('aria-expanded',r.classList.contains('open'))"
     aria-haspopup="dialog"
-    aria-expanded="{{.Open}}"
+    aria-expanded="false"
   >
     <span class="{{.DurationStyles.TriggerText}}">
       <span class="{{if not .HasValue}}{{.DurationStyles.Placeholder}}{{end}}">{{.DisplayValue}}</span>
@@ -15,10 +18,10 @@
     </span>
   </button>
 
-  {{if .Open}}
   <div
     class="{{.DurationStyles.Dropdown}}"
-    lvt-click-away="close_{{.ID}}"
+    data-timepicker-panel
+    hidden
     role="dialog"
     aria-modal="true"
     aria-label="Choose duration"
@@ -132,6 +135,5 @@
     </div>
     {{end}}
   </div>
-  {{end}}
 </div>
 {{end}}

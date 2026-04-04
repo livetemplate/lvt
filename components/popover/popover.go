@@ -3,7 +3,8 @@
 // Available variants:
 //   - New() creates a popover (template: "lvt:popover:default:v1")
 //
-// Required lvt-* attributes: lvt-click, lvt-click-away
+// Open/close is handled client-side via CSS classes and onclick/onmouseenter/onmouseleave handlers.
+// Server actions handle data operations only.
 //
 // Example usage:
 //
@@ -50,6 +51,7 @@ const (
 )
 
 // Popover is a rich content overlay component.
+// Open/close is handled client-side via CSS classes.
 // Use template "lvt:popover:default:v1" to render.
 type Popover struct {
 	base.Base
@@ -65,9 +67,6 @@ type Popover struct {
 
 	// Trigger is what action shows the popover
 	Trigger Trigger
-
-	// Open indicates whether the popover is visible
-	Open bool
 
 	// Arrow shows a pointing arrow
 	Arrow bool
@@ -107,21 +106,6 @@ func New(id string, opts ...Option) *Popover {
 	}
 
 	return p
-}
-
-// Show opens the popover.
-func (p *Popover) Show() {
-	p.Open = true
-}
-
-// Hide closes the popover.
-func (p *Popover) Hide() {
-	p.Open = false
-}
-
-// Toggle toggles popover visibility.
-func (p *Popover) Toggle() {
-	p.Open = !p.Open
 }
 
 // IsTop returns true if position starts with "top".

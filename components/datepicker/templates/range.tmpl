@@ -1,11 +1,14 @@
 {{define "lvt:datepicker:range:v1"}}
-<div class="{{.Styles.Root}}" data-datepicker="{{.ID}}" data-range="true">
+<style>[data-datepicker]:not(.open) [data-datepicker-panel]{display:none}</style>
+<div class="{{.Styles.Root}}" data-datepicker="{{.ID}}" data-range="true"
+     lvt-el:removeClass:on:click-away="open"
+     lvt-el:addClass:on:done="open">
   <button
     type="button"
     class="{{.Styles.TriggerBtn}}"
-    lvt-click="toggle_datepicker_{{.ID}}"
+    onclick="var r=this.closest('[data-datepicker]');r.classList.toggle('open');this.setAttribute('aria-expanded',r.classList.contains('open'))"
     aria-haspopup="dialog"
-    aria-expanded="{{.Open}}"
+    aria-expanded="false"
   >
     <span class="{{.Styles.TriggerText}}">
       <span class="{{if not .StartDate}}{{.Styles.Placeholder}}{{end}}">{{.DisplayRangeValue}}</span>
@@ -15,10 +18,10 @@
     </span>
   </button>
 
-  {{if .Open}}
   <div
     class="{{.Styles.Dropdown}}"
-    lvt-click-away="close_datepicker_{{.ID}}"
+    data-datepicker-panel
+    hidden
     role="dialog"
     aria-modal="true"
     aria-label="Choose date range"
@@ -39,6 +42,5 @@
     </div>
     {{end}}
   </div>
-  {{end}}
 </div>
 {{end}}

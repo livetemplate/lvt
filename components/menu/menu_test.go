@@ -21,9 +21,6 @@ func TestNew(t *testing.T) {
 	if m.HighlightedIndex != -1 {
 		t.Errorf("Expected HighlightedIndex -1, got %d", m.HighlightedIndex)
 	}
-	if m.Open {
-		t.Error("Expected Open to be false")
-	}
 }
 
 func TestNewContext(t *testing.T) {
@@ -82,10 +79,9 @@ func TestWithPosition(t *testing.T) {
 }
 
 func TestWithOpen(t *testing.T) {
+	// WithOpen is a no-op; open/close is client-side now
 	m := New("test", WithOpen(true))
-	if !m.Open {
-		t.Error("Expected Open to be true")
-	}
+	_ = m // should not panic
 }
 
 func TestWithStyled(t *testing.T) {
@@ -95,59 +91,21 @@ func TestWithStyled(t *testing.T) {
 	}
 }
 
-func TestToggle(t *testing.T) {
-	m := New("test")
-
-	m.Toggle()
-	if !m.Open {
-		t.Error("Expected Open to be true after toggle")
-	}
-
-	m.HighlightedIndex = 2
-	m.Toggle()
-	if m.Open {
-		t.Error("Expected Open to be false after second toggle")
-	}
-	if m.HighlightedIndex != -1 {
-		t.Error("Expected HighlightedIndex to reset to -1 on close")
-	}
-}
-
-func TestShow(t *testing.T) {
-	m := New("test")
-	m.Show()
-	if !m.Open {
-		t.Error("Expected Open to be true after Show")
-	}
-}
-
-func TestClose(t *testing.T) {
-	m := New("test", WithOpen(true))
-	m.HighlightedIndex = 2
-	m.Close()
-
-	if m.Open {
-		t.Error("Expected Open to be false after Close")
-	}
-	if m.HighlightedIndex != -1 {
-		t.Error("Expected HighlightedIndex to reset to -1")
-	}
-}
-
 func TestSelectIndex(t *testing.T) {
 	items := []Item{
 		{ID: "edit", Label: "Edit"},
 		{ID: "delete", Label: "Delete"},
 	}
-	m := New("test", WithItems(items), WithOpen(true))
+	m := New("test", WithItems(items))
+	m.HighlightedIndex = 1
 
 	id := m.SelectIndex(0)
 
 	if id != "edit" {
 		t.Errorf("Expected 'edit', got '%s'", id)
 	}
-	if m.Open {
-		t.Error("Expected Open to be false after selection")
+	if m.HighlightedIndex != -1 {
+		t.Error("Expected HighlightedIndex to reset to -1 after selection")
 	}
 }
 
@@ -305,9 +263,6 @@ func TestShowAt(t *testing.T) {
 	if cm.Y != 200 {
 		t.Errorf("Expected Y 200, got %d", cm.Y)
 	}
-	if !cm.Open {
-		t.Error("Expected Open to be true")
-	}
 }
 
 // NavMenu tests
@@ -343,51 +298,6 @@ func TestWithActiveID(t *testing.T) {
 	}
 	if !nm.Items[0].Active {
 		t.Error("Expected first item to be active")
-	}
-}
-
-func TestToggleSubmenu(t *testing.T) {
-	nm := NewNav("test")
-
-	nm.ToggleSubmenu("products")
-	if nm.OpenSubmenuID != "products" {
-		t.Errorf("Expected OpenSubmenuID 'products', got '%s'", nm.OpenSubmenuID)
-	}
-
-	nm.ToggleSubmenu("products")
-	if nm.OpenSubmenuID != "" {
-		t.Errorf("Expected OpenSubmenuID to be empty, got '%s'", nm.OpenSubmenuID)
-	}
-}
-
-func TestOpenSubmenu(t *testing.T) {
-	nm := NewNav("test")
-	nm.OpenSubmenu("products")
-
-	if nm.OpenSubmenuID != "products" {
-		t.Errorf("Expected OpenSubmenuID 'products', got '%s'", nm.OpenSubmenuID)
-	}
-}
-
-func TestCloseSubmenu(t *testing.T) {
-	nm := NewNav("test")
-	nm.OpenSubmenuID = "products"
-	nm.CloseSubmenu()
-
-	if nm.OpenSubmenuID != "" {
-		t.Error("Expected OpenSubmenuID to be empty")
-	}
-}
-
-func TestIsSubmenuOpen(t *testing.T) {
-	nm := NewNav("test")
-	nm.OpenSubmenuID = "products"
-
-	if !nm.IsSubmenuOpen("products") {
-		t.Error("Expected 'products' submenu to be open")
-	}
-	if nm.IsSubmenuOpen("services") {
-		t.Error("Expected 'services' submenu to not be open")
 	}
 }
 

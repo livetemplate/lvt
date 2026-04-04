@@ -5,7 +5,8 @@
 //   - NewContext() creates a context/right-click menu (template: "lvt:menu:context:v1")
 //   - NewNav() creates a navigation menu (template: "lvt:menu:nav:v1")
 //
-// Required lvt-* attributes: lvt-click, lvt-click-away
+// Open/close is handled client-side via CSS classes and onclick handlers.
+// Server actions handle data operations only (Select, Highlight).
 //
 // Example usage:
 //
@@ -73,15 +74,13 @@ type Item struct {
 }
 
 // Menu is a dropdown/action menu component.
+// Open/close is handled client-side via CSS classes and onclick handlers.
 // Use template "lvt:menu:default:v1" to render.
 type Menu struct {
 	base.Base
 
 	// Items is the list of menu items
 	Items []Item
-
-	// Open indicates whether the menu is visible
-	Open bool
 
 	// Trigger is the button/element that opens the menu
 	Trigger string
@@ -117,9 +116,6 @@ type NavMenu struct {
 
 	// Orientation is "horizontal" or "vertical"
 	Orientation string
-
-	// OpenSubmenuID is the ID of the currently open submenu
-	OpenSubmenuID string
 
 	// ActiveID is the ID of the active/current item
 	ActiveID string
@@ -169,26 +165,7 @@ func NewNav(id string, opts ...NavOption) *NavMenu {
 	return nm
 }
 
-// Toggle opens or closes the menu.
-func (m *Menu) Toggle() {
-	m.Open = !m.Open
-	if !m.Open {
-		m.HighlightedIndex = -1
-	}
-}
-
-// Show opens the menu.
-func (m *Menu) Show() {
-	m.Open = true
-}
-
-// Close closes the menu.
-func (m *Menu) Close() {
-	m.Open = false
-	m.HighlightedIndex = -1
-}
-
-// SelectIndex selects the item at the given index.
+// SelectIndex selects the item at the given index and returns its ID.
 func (m *Menu) SelectIndex(index int) string {
 	clickableItems := m.ClickableItems()
 	if index < 0 || index >= len(clickableItems) {
@@ -200,7 +177,7 @@ func (m *Menu) SelectIndex(index int) string {
 		return ""
 	}
 
-	m.Close()
+	m.HighlightedIndex = -1
 	return item.ID
 }
 
@@ -325,38 +302,15 @@ func (m *Menu) SetItemDisabled(id string, disabled bool) {
 
 // ContextMenu methods
 
-// ShowAt shows the context menu at the specified position.
+// ShowAt sets the context menu position.
+// The consuming page is responsible for adding the "open" CSS class to show it.
 func (cm *ContextMenu) ShowAt(x, y int) {
 	cm.X = x
 	cm.Y = y
-	cm.Open = true
 }
 
-// NavMenu methods
-
-// ToggleSubmenu opens or closes a submenu.
-func (nm *NavMenu) ToggleSubmenu(id string) {
-	if nm.OpenSubmenuID == id {
-		nm.OpenSubmenuID = ""
-	} else {
-		nm.OpenSubmenuID = id
-	}
-}
-
-// OpenSubmenu opens a specific submenu.
-func (nm *NavMenu) OpenSubmenu(id string) {
-	nm.OpenSubmenuID = id
-}
-
-// CloseSubmenu closes the open submenu.
-func (nm *NavMenu) CloseSubmenu() {
-	nm.OpenSubmenuID = ""
-}
-
-// IsSubmenuOpen checks if a submenu is open.
-func (nm *NavMenu) IsSubmenuOpen(id string) bool {
-	return nm.OpenSubmenuID == id
-}
+// NavMenu submenu open/close is handled client-side via CSS classes.
+// See lvt:menu:nav:v1 template for the onclick/click-away pattern.
 
 // SetActive sets the active item.
 func (nm *NavMenu) SetActive(id string) {

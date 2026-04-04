@@ -1,11 +1,14 @@
 {{define "lvt:timepicker:default:v1"}}
-<div class="{{.Styles.Root}}" data-timepicker="{{.ID}}">
+<style>[data-timepicker]:not(.open) [data-timepicker-panel]{display:none}</style>
+<div class="{{.Styles.Root}}" data-timepicker="{{.ID}}"
+     lvt-el:removeClass:on:click-away="open"
+     lvt-el:addClass:on:done="open">
   <button
     type="button"
     class="{{.Styles.TriggerBtn}}"
-    lvt-click="toggle_{{.ID}}"
+    onclick="var r=this.closest('[data-timepicker]');r.classList.toggle('open');this.setAttribute('aria-expanded',r.classList.contains('open'))"
     aria-haspopup="dialog"
-    aria-expanded="{{.Open}}"
+    aria-expanded="false"
   >
     <span class="{{.Styles.TriggerText}}">
       <span class="{{if not .HasValue}}{{.Styles.Placeholder}}{{end}}">{{.DisplayValue}}</span>
@@ -15,10 +18,10 @@
     </span>
   </button>
 
-  {{if .Open}}
   <div
     class="{{.Styles.Dropdown}}"
-    lvt-click-away="close_{{.ID}}"
+    data-timepicker-panel
+    hidden
     role="dialog"
     aria-modal="true"
     aria-label="Choose time"
@@ -161,6 +164,5 @@
       {{end}}
     </div>
   </div>
-  {{end}}
 </div>
 {{end}}

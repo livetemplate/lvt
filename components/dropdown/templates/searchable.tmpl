@@ -1,6 +1,8 @@
 {{define "lvt:dropdown:searchable:v1"}}
 {{$c := .}}
-<div class="{{$c.Styles.Root}}" data-dropdown="{{$c.ID}}">
+<style>[data-dropdown]:not(.open) [data-dropdown-panel]{display:none}</style>
+<div class="{{$c.Styles.Root}} {{if $c.Open}}open{{end}}" data-dropdown="{{$c.ID}}"
+     lvt-el:removeClass:on:click-away="open">
   <div class="{{$c.Styles.SearchWrapper}}">
     <input
       type="text"
@@ -9,7 +11,7 @@
       value="{{$c.Query}}"
       lvt-input="search_{{$c.ID}}"
       lvt-debounce="150"
-      lvt-focus="open_{{$c.ID}}"
+      onfocus="this.closest('[data-dropdown]').classList.add('open');this.setAttribute('aria-expanded','true')"
       {{if $c.Disabled}}disabled{{end}}
       autocomplete="off"
       aria-haspopup="listbox"
@@ -34,10 +36,9 @@
     </span>
   </div>
 
-  {{if $c.Open}}
   <div
     class="{{$c.Styles.Dropdown}}"
-    lvt-click-away="close_{{$c.ID}}"
+    data-dropdown-panel
     role="listbox"
   >
     {{$visibleOptions := $c.VisibleOptions}}
@@ -60,6 +61,5 @@
     </div>
     {{end}}
   </div>
-  {{end}}
 </div>
 {{end}}

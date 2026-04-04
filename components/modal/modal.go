@@ -5,7 +5,7 @@
 //   - NewConfirm() creates a confirmation dialog (template: "lvt:modal:confirm:v1")
 //   - NewSheet() creates a slide-in sheet (template: "lvt:modal:sheet:v1")
 //
-// Required lvt-* attributes: lvt-click, lvt-click-away, lvt-modal-open, lvt-modal-close
+// Open/close is handled client-side via onclick handlers and CSS classes.
 //
 // Example usage:
 //

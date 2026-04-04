@@ -30,9 +30,6 @@ func TestNew(t *testing.T) {
 	if d.Selected != nil {
 		t.Error("expected Selected to be nil")
 	}
-	if d.Open {
-		t.Error("expected Open to be false")
-	}
 	if d.Disabled {
 		t.Error("expected Disabled to be false")
 	}
@@ -60,36 +57,6 @@ func TestNewWithOptions(t *testing.T) {
 	if !d.Disabled {
 		t.Error("expected Disabled to be true")
 	}
-	if !d.Open {
-		t.Error("expected Open to be true")
-	}
-}
-
-func TestDropdown_Toggle(t *testing.T) {
-	d := New("test", nil)
-
-	if d.Open {
-		t.Error("expected initially closed")
-	}
-
-	d.Toggle()
-	if !d.Open {
-		t.Error("expected open after toggle")
-	}
-
-	d.Toggle()
-	if d.Open {
-		t.Error("expected closed after second toggle")
-	}
-}
-
-func TestDropdown_Close(t *testing.T) {
-	d := New("test", nil, WithOpen(true))
-
-	d.Close()
-	if d.Open {
-		t.Error("expected closed after Close()")
-	}
 }
 
 func TestDropdown_Select(t *testing.T) {
@@ -98,15 +65,12 @@ func TestDropdown_Select(t *testing.T) {
 		{Value: "b", Label: "Option B"},
 	}
 
-	d := New("test", options, WithOpen(true))
+	d := New("test", options)
 
 	d.Select("b")
 
 	if d.Selected == nil || d.Selected.Value != "b" {
 		t.Error("expected 'b' to be selected")
-	}
-	if d.Open {
-		t.Error("expected dropdown to close after selection")
 	}
 }
 
@@ -543,8 +507,8 @@ func TestTemplateRendering(t *testing.T) {
 		if !strings.Contains(html, "Select...") {
 			t.Error("expected placeholder text")
 		}
-		if !strings.Contains(html, `lvt-click="toggle_test"`) {
-			t.Error("expected lvt-click attribute")
+		if !strings.Contains(html, `onclick=`) {
+			t.Error("expected onclick attribute for client-side toggle")
 		}
 	})
 
@@ -578,7 +542,6 @@ func TestTemplateRendering(t *testing.T) {
 			{Value: "b", Label: "Beta"},
 		}
 		m := NewMulti("multi-test", options, WithStyled(true))
-		m.Open = true
 		m.ToggleItem("a")
 
 		var buf strings.Builder

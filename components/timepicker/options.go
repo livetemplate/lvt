@@ -71,11 +71,10 @@ func WithStyled(styled bool) Option {
 	}
 }
 
-// WithOpen sets the initial open state.
-func WithOpen(open bool) Option {
-	return func(tp *TimePicker) {
-		tp.Open = open
-	}
+// WithOpen is a no-op, retained for backward compatibility.
+// Open/close state is now managed client-side via CSS classes.
+func WithOpen(_ bool) Option {
+	return func(_ *TimePicker) {}
 }
 
 // Duration picker options

@@ -1,6 +1,8 @@
 {{define "lvt:autocomplete:default:v1"}}
 {{$c := .}}
-<div class="{{$c.Styles.Root}}" data-autocomplete="{{$c.ID}}">
+<style>[data-autocomplete]:not(.open) [data-autocomplete-panel]{display:none}</style>
+<div class="{{$c.Styles.Root}} {{if $c.Open}}open{{end}}" data-autocomplete="{{$c.ID}}"
+     lvt-el:removeClass:on:click-away="open">
   <div class="{{$c.Styles.InputWrapper}}">
     <input
       type="text"
@@ -8,13 +10,13 @@
       placeholder="{{$c.Placeholder}}"
       value="{{$c.Query}}"
       lvt-input="query_{{$c.ID}}"
-      lvt-focus="focus_{{$c.ID}}"
+      onfocus="this.closest('[data-autocomplete]').classList.add('open')"
       lvt-keydown="keydown_{{$c.ID}}"
       autocomplete="off"
       aria-autocomplete="list"
       aria-haspopup="listbox"
       aria-expanded="{{$c.Open}}"
-      {{if $c.Open}}aria-controls="suggestions_{{$c.ID}}"{{end}}
+      aria-controls="suggestions_{{$c.ID}}"
     />
     {{if $c.Loading}}
     <div class="{{$c.Styles.LoadingWrapper}}">
@@ -37,12 +39,11 @@
     {{end}}
   </div>
 
-  {{if $c.Open}}
   <ul
     id="suggestions_{{$c.ID}}"
     class="{{$c.Styles.Dropdown}}"
+    data-autocomplete-panel
     role="listbox"
-    lvt-click-away="blur_{{$c.ID}}"
   >
     {{range $index, $suggestion := $c.FilteredSuggestions}}
     <li
@@ -71,6 +72,5 @@
     <li class="{{$c.Styles.Empty}}">No suggestions found</li>
     {{end}}
   </ul>
-  {{end}}
 </div>
 {{end}}

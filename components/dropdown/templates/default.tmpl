@@ -1,13 +1,15 @@
 {{define "lvt:dropdown:default:v1"}}
 {{$c := .}}
-<div class="{{$c.Styles.Root}}" data-dropdown="{{$c.ID}}">
+<style>[data-dropdown]:not(.open) [data-dropdown-panel]{display:none}</style>
+<div class="{{$c.Styles.Root}}" data-dropdown="{{$c.ID}}"
+     lvt-el:removeClass:on:click-away="open">
   <button
     type="button"
     class="{{$c.Styles.TriggerBtn}}"
-    lvt-click="toggle_{{$c.ID}}"
+    onclick="var r=this.closest('[data-dropdown]');r.classList.toggle('open');this.setAttribute('aria-expanded',r.classList.contains('open'))"
     {{if $c.Disabled}}disabled{{end}}
     aria-haspopup="listbox"
-    aria-expanded="{{$c.Open}}"
+    aria-expanded="false"
   >
     <span class="{{$c.Styles.SelectedText}}">
       {{if $c.Selected}}{{$c.Selected.Label}}{{else}}{{$c.Placeholder}}{{end}}
@@ -19,10 +21,9 @@
     </span>
   </button>
 
-  {{if $c.Open}}
   <div
     class="{{$c.Styles.Dropdown}}"
-    lvt-click-away="close_{{$c.ID}}"
+    data-dropdown-panel
     lvt-focus-trap
     role="listbox"
   >
@@ -39,6 +40,5 @@
     </div>
     {{end}}
   </div>
-  {{end}}
 </div>
 {{end}}
