@@ -1,13 +1,15 @@
 {{define "lvt:dropdown:multi:v1"}}
 {{$c := .}}
-<div class="{{$c.Styles.Root}}" data-dropdown="{{$c.ID}}">
+{{template "lvt:dropdown:panel-css"}}
+<div class="{{$c.Styles.Root}}" data-dropdown="{{$c.ID}}"
+     lvt-el:removeClass:on:click-away="open"
+     lvt-el:addClass:on:done="open">
   <button
     type="button"
     class="{{$c.Styles.TriggerBtn}}"
-    lvt-click="toggle_{{$c.ID}}"
+    lvt-el:toggleClass:on:click="open" data-lvt-target="closest:[data-dropdown]"
     {{if $c.Disabled}}disabled{{end}}
     aria-haspopup="listbox"
-    aria-expanded="{{$c.Open}}"
     aria-multiselectable="true"
   >
     <span class="{{$c.Styles.SelectedText}}">
@@ -20,10 +22,9 @@
     </span>
   </button>
 
-  {{if $c.Open}}
   <div
     class="{{$c.Styles.Dropdown}}"
-    lvt-click-away="close_{{$c.ID}}"
+    data-dropdown-panel
     lvt-focus-trap
     role="listbox"
     aria-multiselectable="true"
@@ -33,7 +34,7 @@
       <span>{{len $c.SelectedItems}} selected</span>
       <button
         type="button"
-        lvt-click="clear_all_{{$c.ID}}"
+        name="clear_all_{{$c.ID}}"
       >
         Clear all
       </button>
@@ -50,13 +51,12 @@
         type="checkbox"
         {{if $c.IsSelected .Value}}checked{{end}}
         {{if .Disabled}}disabled{{end}}
-        lvt-change="toggle_item_{{$c.ID}}"
-        lvt-data-value="{{.Value}}"
+        lvt-on:change="toggle_item_{{$c.ID}}"
+        data-value="{{.Value}}"
       />
       <span>{{.Label}}</span>
     </label>
     {{end}}
   </div>
-  {{end}}
 </div>
 {{end}}

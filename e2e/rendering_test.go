@@ -462,14 +462,14 @@ func TestRendering_Modal_Lifecycle(t *testing.T) {
 <head><title>Modal Lifecycle Test</title></head>
 <body>
 	<div data-lvt-id="modal-test">
-		<button id="open-modal" lvt-modal-open="test-modal">Open Modal</button>
+		<button id="open-modal" lvt-el:toggleAttr:on:click="hidden" data-lvt-target="#test-modal">Open Modal</button>
 
 		<div id="test-modal" hidden aria-hidden="true" role="dialog" data-modal-backdrop data-modal-id="test-modal"
 			 style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;">
 			<div style="background: white; padding: 2rem; border-radius: 8px;">
 				<h2>Test Modal</h2>
 				<p id="modal-content">Modal content here</p>
-				<button id="close-modal" lvt-modal-close="test-modal">Close</button>
+				<button id="close-modal" lvt-el:toggleAttr:on:click="hidden" data-lvt-target="#test-modal">Close</button>
 			</div>
 		</div>
 	</div>
@@ -504,7 +504,7 @@ func TestRendering_Modal_Lifecycle(t *testing.T) {
 
 		// Open modal
 		chromedp.Evaluate(`document.getElementById('open-modal').click()`, nil),
-		waitFor(`document.getElementById('test-modal').style.display === 'flex'`, 3*time.Second),
+		waitFor(`!document.getElementById('test-modal').hasAttribute('hidden')`, 3*time.Second),
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			t.Log("Modal opened")
 			return nil
@@ -520,7 +520,7 @@ func TestRendering_Modal_Lifecycle(t *testing.T) {
 
 		// Reopen modal (critical test - ensures modal can be reopened after closing)
 		chromedp.Evaluate(`document.getElementById('open-modal').click()`, nil),
-		waitFor(`document.getElementById('test-modal').style.display === 'flex'`, 3*time.Second),
+		waitFor(`!document.getElementById('test-modal').hasAttribute('hidden')`, 3*time.Second),
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			t.Log("Modal reopened successfully")
 			return nil

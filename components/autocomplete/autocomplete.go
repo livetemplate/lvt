@@ -4,7 +4,7 @@
 //   - New() creates a basic autocomplete (template: "lvt:autocomplete:default:v1")
 //   - NewMulti() creates a multi-select autocomplete (template: "lvt:autocomplete:multi:v1")
 //
-// Required lvt-* attributes: lvt-input, lvt-click, lvt-focus, lvt-blur, lvt-click-away
+// Required lvt-* attributes: lvt-on:input, name, lvt-on:keydown, lvt-el:removeClass:on:click-away
 //
 // Example usage:
 //
@@ -232,20 +232,6 @@ func (ac *Autocomplete) Clear() {
 	ac.Open = false
 	ac.HighlightedIndex = -1
 	ac.FilteredSuggestions = nil
-}
-
-// Focus opens suggestions if query meets minimum.
-func (ac *Autocomplete) Focus() {
-	ac.Filter()
-	if len(ac.Query) >= ac.MinChars && len(ac.FilteredSuggestions) > 0 {
-		ac.Open = true
-	}
-}
-
-// Blur closes suggestions.
-func (ac *Autocomplete) Blur() {
-	ac.Open = false
-	ac.HighlightedIndex = -1
 }
 
 // HighlightNext moves highlight to the next suggestion.

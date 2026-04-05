@@ -57,7 +57,7 @@
     client.send = function(message) {
       const action = message.action;
 
-      if (action === 'confirm_delete') {
+      if (action === 'delete') {
         // Call original send to perform the delete
         originalSend(message);
 
@@ -76,7 +76,7 @@
     // Listen for successful form submission to redirect from edit to detail view
     document.addEventListener('lvt:success', function(e) {
       const form = e.target;
-      if (form && form.hasAttribute('lvt-submit') && form.getAttribute('lvt-submit') === 'update') {
+      if (form && form.getAttribute('name') === 'update') {
         // After successful update, redirect from /edit to detail view
         if (window.location.pathname.endsWith('/edit')) {
           const viewURL = window.location.pathname.replace(/\/edit$/, '');

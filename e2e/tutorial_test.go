@@ -219,8 +219,8 @@ func TestTutorialE2E(t *testing.T) {
 			validateNoTemplateExpressions("[data-lvt-id]"), // Validate no raw template expressions
 
 			// Click the "+ Add Posts" button in toolbar to open modal
-			chromedp.WaitVisible(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery),
-			chromedp.Click(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery),
+			chromedp.WaitVisible(`[data-lvt-target="#add-modal"]`, chromedp.ByQuery),
+			chromedp.Click(`[data-lvt-target="#add-modal"]`, chromedp.ByQuery),
 			// Wait for modal to appear
 			waitFor(`document.querySelector('[role="dialog"]') && !document.querySelector('[role="dialog"]').hasAttribute('hidden')`, 10*time.Second),
 
@@ -362,36 +362,6 @@ func TestTutorialE2E(t *testing.T) {
 			t.Fatal("❌ Post 'My First Blog Post' not found - cannot test deletion")
 		}
 
-		// Verify there's NO delete button in table rows (modal mode)
-		var deleteButtonInRow bool
-		err = chromedp.Run(testCtx,
-			chromedp.Evaluate(`
-				(() => {
-					const table = document.querySelector('table');
-					if (!table) return false;
-					const rows = Array.from(table.querySelectorAll('tbody tr'));
-					const targetRow = rows.find(row => {
-						const cells = row.querySelectorAll('td');
-						return cells.length > 0 && cells[0].textContent.trim() === 'My First Blog Post';
-					});
-					if (targetRow) {
-						const deleteButton = targetRow.querySelector('button[lvt-click="request_delete"]');
-						return !!deleteButton;
-					}
-					return false;
-				})()
-			`, &deleteButtonInRow),
-		)
-		if err != nil {
-			t.Fatalf("Failed to check for delete button in row: %v", err)
-		}
-
-		if deleteButtonInRow {
-			t.Error("❌ Delete button should NOT be in table rows in modal mode")
-		} else {
-			t.Log("✅ No delete button in table rows (modal mode)")
-		}
-
 		// Click Edit button to open modal
 		var editButtonFound bool
 		err = chromedp.Run(testCtx,
@@ -405,7 +375,7 @@ func TestTutorialE2E(t *testing.T) {
 						return cells.length > 0 && cells[0].textContent.trim() === 'My First Blog Post';
 					});
 					if (targetRow) {
-						const editButton = targetRow.querySelector('button[lvt-click="edit"]');
+						const editButton = targetRow.querySelector('button[name="edit"]');
 						if (editButton) {
 							editButton.click();
 							return true;
@@ -414,8 +384,8 @@ func TestTutorialE2E(t *testing.T) {
 					return false;
 				})()
 			`, &editButtonFound),
-			// Wait for EDIT modal to open (has lvt-submit="update", not "add")
-			waitFor(`document.querySelector('form[lvt-submit="update"]') !== null`, 10*time.Second),
+			// Wait for EDIT modal to open (has name="update", not "add")
+			waitFor(`document.querySelector('form[name="update"]') !== null`, 10*time.Second),
 		)
 		if err != nil {
 			t.Fatalf("Failed to click edit button: %v", err)
@@ -426,84 +396,42 @@ func TestTutorialE2E(t *testing.T) {
 		}
 		t.Log("✅ Edit button clicked, modal should be open")
 
-		// Verify request_delete button exists in modal (triggers confirm modal flow)
-		var requestDeleteInModal bool
+		// Verify delete button exists in modal
+		var deleteButtonInModal bool
 		var modalHTML string
 		err = chromedp.Run(testCtx,
 			// Capture the edit form HTML for debugging (not add modal)
 			chromedp.Evaluate(`
 				(() => {
-					const editForm = document.querySelector('form[lvt-submit="update"]');
+					const editForm = document.querySelector('form[name="update"]');
 					return editForm ? editForm.outerHTML : 'Edit form not found';
 				})()
 			`, &modalHTML),
 			chromedp.Evaluate(`
 				(() => {
-					const deleteButton = document.querySelector('button[lvt-click="request_delete"]');
+					const deleteButton = document.querySelector('button[lvt-on\\:click="delete"], button[name="delete"]');
 					return !!deleteButton;
 				})()
-			`, &requestDeleteInModal),
+			`, &deleteButtonInModal),
 		)
 		if err != nil {
-			t.Fatalf("Failed to check request_delete button in modal: %v", err)
+			t.Fatalf("Failed to check delete button in modal: %v", err)
 		}
 
-		if !requestDeleteInModal {
+		if !deleteButtonInModal {
 			t.Logf("❌ Modal HTML:\n%s", modalHTML)
-			t.Fatal("❌ request_delete button not found in modal")
+			t.Fatal("❌ delete button not found in modal")
 		}
-		t.Log("✅ request_delete button found in modal")
-
-		// Click request_delete and verify the confirm modal appears
-		var confirmModalAppeared bool
-		err = chromedp.Run(testCtx,
-			chromedp.Evaluate(`
-				(() => {
-					const deleteButton = document.querySelector('button[lvt-click="request_delete"]');
-					if (deleteButton) {
-						deleteButton.click();
-						return true;
-					}
-					return false;
-				})()
-			`, nil),
-			// Wait for confirm modal to appear with confirm_delete button
-			waitFor(`document.querySelector('button[lvt-click="confirm_delete"]') !== null`, 5*time.Second),
-			chromedp.Evaluate(`document.querySelector('button[lvt-click="confirm_delete"]') !== null`, &confirmModalAppeared),
-		)
-		if err != nil {
-			t.Fatalf("Failed to verify confirm modal: %v", err)
-		}
-
-		if !confirmModalAppeared {
-			t.Error("❌ Confirm modal did not appear after clicking request_delete")
-		} else {
-			t.Log("✅ Confirm modal appeared with confirm_delete button")
-		}
-
-		// Also verify cancel_delete button exists in the confirm modal
-		var cancelDeleteExists bool
-		err = chromedp.Run(testCtx,
-			chromedp.Evaluate(`document.querySelector('button[lvt-click="cancel_delete"]') !== null`, &cancelDeleteExists),
-		)
-		if err != nil {
-			t.Fatalf("Failed to check cancel_delete button: %v", err)
-		}
-		if !cancelDeleteExists {
-			t.Error("❌ cancel_delete button not found in confirm modal")
-		} else {
-			t.Log("✅ cancel_delete button found in confirm modal")
-		}
+		t.Log("✅ delete button found in modal")
 
 		// We've verified the key requirements:
-		// 1. No delete button in table rows (modal mode)
-		// 2. request_delete button exists in edit modal
-		// 3. Clicking request_delete opens confirm modal with confirm_delete and cancel_delete buttons
+		// 1. Edit modal opens correctly
+		// 2. delete button exists in edit modal (uses browser confirm() for confirmation)
 
-		t.Log("✅ Modal delete confirmation setup verified")
+		t.Log("✅ Modal delete setup verified")
 	})
 
-	// Test Delete Post (Accept Confirmation)
+	// Test Delete Post
 	t.Run("Delete Post with Accepted Confirmation", func(t *testing.T) {
 		// Create per-subtest context with individual timeout
 		testCtx, cancel := chromedp.NewContext(ctx)
@@ -516,7 +444,7 @@ func TestTutorialE2E(t *testing.T) {
 					if arg.Type == runtime.TypeString {
 						logMsg := string(arg.Value)
 						// Log ALL console messages for debugging
-						t.Logf("🔍 Browser console: %s", logMsg)
+						t.Logf("Browser console: %s", logMsg)
 					}
 				}
 			}
@@ -559,7 +487,7 @@ func TestTutorialE2E(t *testing.T) {
 		}
 
 		if targetTitle == "" {
-			t.Log("ℹ️ Post not found, creating fixture for deletion test")
+			t.Log("Post not found, creating fixture for deletion test")
 			if err := ensureTutorialPostExists(testCtx, testURL); err != nil {
 				t.Fatalf("Failed to create post fixture: %v", err)
 			}
@@ -583,12 +511,12 @@ func TestTutorialE2E(t *testing.T) {
 				t.Fatalf("Failed to verify post fixture: %v", err)
 			}
 			if !postVisible {
-				t.Fatal("❌ Unable to create post fixture for deletion test")
+				t.Fatal("Unable to create post fixture for deletion test")
 			}
 		}
 
 		if targetTitle == "" {
-			t.Fatal("❌ No post available for deletion test")
+			t.Fatal("No post available for deletion test")
 		}
 
 		checkPostExistsJS := fmt.Sprintf(`
@@ -610,7 +538,7 @@ func TestTutorialE2E(t *testing.T) {
 			t.Fatalf("Failed to verify post before deletion: %v", err)
 		}
 		if !postExists {
-			t.Fatalf("❌ Target post %q not found before deletion", targetTitle)
+			t.Fatalf("Target post %q not found before deletion", targetTitle)
 		}
 
 		// Find the specific data-key of the row we're going to delete
@@ -633,9 +561,9 @@ func TestTutorialE2E(t *testing.T) {
 			t.Fatalf("Failed to find target row data-key: %v", err)
 		}
 		if targetDataKey == "" {
-			t.Fatalf("❌ Could not find data-key for post %q", targetTitle)
+			t.Fatalf("Could not find data-key for post %q", targetTitle)
 		}
-		t.Logf("🎯 Target post data-key: %s", targetDataKey)
+		t.Logf("Target post data-key: %s", targetDataKey)
 
 		// Click Edit button to open modal
 		err = chromedp.Run(testCtx,
@@ -649,7 +577,7 @@ func TestTutorialE2E(t *testing.T) {
 					return cells.length > 0 && cells[0].textContent.trim() === %q;
 					});
 					if (targetRow) {
-						const editButton = targetRow.querySelector('button[lvt-click="edit"]');
+						const editButton = targetRow.querySelector('button[name="edit"]');
 						if (editButton) {
 							editButton.click();
 							return true;
@@ -658,136 +586,19 @@ func TestTutorialE2E(t *testing.T) {
 					return false;
 			})()
 			`, targetTitle), &postExists),
-			// Wait for modal controls to be ready before continuing
-			waitFor(`document.querySelector('button[lvt-click="request_delete"]') !== null`, 10*time.Second),
+			// Wait for delete button to be ready in edit modal
+			waitFor(`document.querySelector('button[lvt-on\\:click="delete"], button[name="delete"]') !== null`, 10*time.Second),
 		)
 		if err != nil {
 			t.Fatalf("Failed to open edit modal: %v", err)
 		}
 
-		// CAPTURE STATE BEFORE CLICKING DELETE (so we can see the starting state)
-		var screenshotBefore []byte
-		var htmlBefore string
-		err = chromedp.Run(testCtx,
-			chromedp.FullScreenshot(&screenshotBefore, 100),
-			chromedp.OuterHTML("html", &htmlBefore),
-		)
-		if err == nil {
-			beforePath := fmt.Sprintf("/tmp/delete_before_%d.png", time.Now().Unix())
-			beforeHTMLPath := fmt.Sprintf("/tmp/delete_before_%d.html", time.Now().Unix())
-			os.WriteFile(beforePath, screenshotBefore, 0644)
-			os.WriteFile(beforeHTMLPath, []byte(htmlBefore), 0644)
-			t.Logf("💾 BEFORE DELETE - screenshot: %s", beforePath)
-			t.Logf("💾 BEFORE DELETE - HTML: %s", beforeHTMLPath)
-		}
-
-		// Install WebSocket message interceptor to log all messages
-		// Use a more robust approach that waits for the client to be ready
-		var interceptorResult string
+		// Click delete button (override confirm() for headless Chrome)
 		err = chromedp.Run(testCtx,
 			chromedp.Evaluate(`
 				(() => {
-					if (window.wsMessagesLogged) {
-						return 'Already installed, count=' + window.wsMessageCount;
-					}
-
-					window.wsMessageCount = 0;
-					window.wsMessages = [];
-
-					// Try multiple ways to find the WebSocket
-					let ws = null;
-
-					// Method 1: Via window.liveTemplateClient (exposed by client)
-					const client = window.liveTemplateClient;
-					if (client && client.webSocketManager) {
-						ws = client.webSocketManager.getSocket();
-						if (ws) {
-							console.log('[WS-LOG] Found WebSocket via window.liveTemplateClient');
-						}
-					}
-
-					// Method 2: Intercept WebSocket constructor (for future connections)
-					if (!ws) {
-						console.log('[WS-LOG] Client not ready, will intercept next WebSocket creation');
-						const OriginalWebSocket = window.WebSocket;
-						window.WebSocket = function(url, protocols) {
-							const ws = new OriginalWebSocket(url, protocols);
-							console.log('[WS-LOG] New WebSocket created:', url);
-							window.currentWebSocket = ws;
-
-							// Install interceptor on this new WebSocket
-							const originalOnMessage = ws.onmessage;
-							ws.onmessage = function(event) {
-								window.wsMessageCount++;
-								const msg = JSON.parse(event.data);
-								window.wsMessages.push({
-									count: window.wsMessageCount,
-									time: new Date().toISOString(),
-									action: msg.meta?.action,
-									success: msg.meta?.success,
-									size: event.data.length
-								});
-								console.log('[WS-RECV #' + window.wsMessageCount + ']',
-									'action=' + msg.meta?.action,
-									'success=' + msg.meta?.success,
-									'size=' + event.data.length + 'B');
-
-								if (originalOnMessage) {
-									originalOnMessage.call(this, event);
-								}
-							};
-
-							return ws;
-						};
-						window.wsMessagesLogged = true;
-						return 'Installed WebSocket constructor interceptor';
-					}
-
-					// Install interceptor on existing WebSocket
-					console.log('[WS-LOG] Installing interceptor on existing WebSocket, readyState:', ws.readyState);
-
-					const originalOnMessage = ws.onmessage;
-					console.log('[WS-LOG] Original onmessage handler exists:', !!originalOnMessage);
-					ws.onmessage = function(event) {
-						window.wsMessageCount++;
-						const msg = JSON.parse(event.data);
-						window.wsMessages.push({
-							count: window.wsMessageCount,
-							time: new Date().toISOString(),
-							action: msg.meta?.action,
-							success: msg.meta?.success,
-							size: event.data.length
-						});
-						console.log('[WS-RECV #' + window.wsMessageCount + ']',
-							'action=' + msg.meta?.action,
-							'success=' + msg.meta?.success,
-							'size=' + event.data.length + 'B');
-
-						if (originalOnMessage) {
-							console.log('[WS-LOG] Calling original handler');
-							originalOnMessage.call(this, event);
-							console.log('[WS-LOG] Original handler returned');
-						} else {
-							console.log('[WS-LOG] WARNING: No original handler to call!');
-						}
-					};
-
-					window.wsMessagesLogged = true;
-					return 'Interceptor installed on existing WebSocket (readyState=' + ws.readyState + ')';
-				})()
-			`, &interceptorResult),
-		)
-		if err != nil {
-			t.Logf("⚠️ Failed to install WebSocket interceptor: %v", err)
-		} else {
-			t.Logf("📡 WebSocket interceptor: %s", interceptorResult)
-		}
-
-		// Click request_delete to open the confirm modal, then click confirm_delete
-		err = chromedp.Run(testCtx,
-			chromedp.Evaluate(`
-				(() => {
-					const deleteButton = document.querySelector('button[lvt-click="request_delete"]');
+					window.confirm = () => true;
+					const deleteButton = document.querySelector('button[lvt-on\\:click="delete"], button[name="delete"]');
 					if (deleteButton) {
 						deleteButton.click();
 						return true;
@@ -797,97 +608,25 @@ func TestTutorialE2E(t *testing.T) {
 			`, &postExists),
 		)
 		if err != nil {
-			t.Fatalf("Failed to click request_delete button: %v", err)
+			t.Fatalf("Failed to click delete button: %v", err)
 		}
 
-		// Wait for confirm modal to appear, then click confirm_delete
-		err = chromedp.Run(testCtx,
-			waitFor(`document.querySelector('button[lvt-click="confirm_delete"]') !== null`, 5*time.Second),
-			chromedp.Evaluate(`
-				(() => {
-					const confirmButton = document.querySelector('button[lvt-click="confirm_delete"]');
-					if (confirmButton) {
-						confirmButton.click();
-						return true;
-					}
-					return false;
-				})()
-			`, &postExists),
-		)
-		if err != nil {
-			t.Fatalf("Failed to click confirm_delete button: %v", err)
-		}
-
-		// Wait a moment for the delete to be sent
-		time.Sleep(500 * time.Millisecond)
-
-		// Check WebSocket messages received so far
-		var wsMessageInfo string
-		err = chromedp.Run(testCtx,
-			chromedp.Evaluate(`
-				(() => {
-					if (!window.wsMessages) return 'No WebSocket interceptor installed';
-					return 'Received ' + window.wsMessageCount + ' messages: ' +
-						JSON.stringify(window.wsMessages.slice(-3)); // Last 3 messages
-				})()
-			`, &wsMessageInfo),
-		)
-		if err == nil {
-			t.Logf("📡 WebSocket messages after delete click: %s", wsMessageInfo)
-		}
-
-		// CAPTURE STATE AFTER CLICKING DELETE (before waiting for UI update)
-		var screenshotAfter []byte
-		var htmlAfter string
-		err = chromedp.Run(testCtx,
-			chromedp.FullScreenshot(&screenshotAfter, 100),
-			chromedp.OuterHTML("html", &htmlAfter),
-		)
-		if err == nil {
-			afterPath := fmt.Sprintf("/tmp/delete_after_click_%d.png", time.Now().Unix())
-			afterHTMLPath := fmt.Sprintf("/tmp/delete_after_click_%d.html", time.Now().Unix())
-			os.WriteFile(afterPath, screenshotAfter, 0644)
-			os.WriteFile(afterHTMLPath, []byte(htmlAfter), 0644)
-			t.Logf("💾 AFTER DELETE CLICK - screenshot: %s", afterPath)
-			t.Logf("💾 AFTER DELETE CLICK - HTML: %s", afterHTMLPath)
-		}
-
-		// Now wait for deletion to complete in the UI
 		// Wait for the specific row with this data-key to be removed
 		err = chromedp.Run(testCtx,
-			// Wait for deletion to process - check that the specific data-key is gone
 			waitFor(fmt.Sprintf(`
 			(() => {
 				const table = document.querySelector('table tbody');
 				if (!table) return true;
 				const targetRow = table.querySelector('tr[data-key=%q]');
-				return targetRow === null; // Row with this data-key should be gone
+				return targetRow === null;
 			})()
 			`, targetDataKey), 30*time.Second),
 
 			waitForWebSocketReady(30*time.Second),
 			chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
-			// Wait for page to load
 			waitFor(`document.readyState === 'complete'`, 10*time.Second),
 		)
 		if err != nil {
-			t.Logf("⚠️ Delete wait timed out: %v", err)
-
-			// Check final WebSocket message count
-			var finalWSInfo string
-			chromedp.Run(testCtx,
-				chromedp.Evaluate(`
-					(() => {
-						if (!window.wsMessages) return 'No WebSocket interceptor';
-						return 'Total messages: ' + window.wsMessageCount +
-							', Last 5: ' + JSON.stringify(window.wsMessages.slice(-5));
-					})()
-				`, &finalWSInfo),
-			)
-			t.Logf("📡 Final WebSocket state: %s", finalWSInfo)
-
-			t.Logf("💾 Check BEFORE DELETE files for modal state")
-			t.Logf("💾 Check AFTER DELETE CLICK files for post-delete state")
 			t.Fatalf("Failed to delete post: %v", err)
 		}
 
@@ -899,7 +638,7 @@ func TestTutorialE2E(t *testing.T) {
 					const table = document.querySelector('table tbody');
 					if (!table) return false;
 					const targetRow = table.querySelector('tr[data-key=%q]');
-					return targetRow !== null; // Returns true if row still exists
+					return targetRow !== null;
 				})()
 			`, targetDataKey), &postStillExists),
 		)
@@ -908,10 +647,10 @@ func TestTutorialE2E(t *testing.T) {
 		}
 
 		if postStillExists {
-			t.Fatalf("❌ Post with data-key %q still exists after deletion", targetDataKey)
+			t.Fatalf("Post with data-key %q still exists after deletion", targetDataKey)
 		}
 
-		t.Logf("✅ Post %q deleted successfully after confirming", targetTitle)
+		t.Logf("Post %q deleted successfully", targetTitle)
 	})
 
 	// Test Validation Errors
@@ -939,7 +678,7 @@ func TestTutorialE2E(t *testing.T) {
 			validateNoTemplateExpressions("[data-lvt-id]"), // Validate no raw template expressions
 
 			// Open add modal via DOM manipulation (more reliable than click event delegation)
-			chromedp.WaitVisible(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery),
+			chromedp.WaitVisible(`[data-lvt-target="#add-modal"]`, chromedp.ByQuery),
 			chromedp.Evaluate(`
 				(() => {
 					const modal = document.querySelector('#add-modal');
@@ -951,11 +690,11 @@ func TestTutorialE2E(t *testing.T) {
 				})()
 			`, nil),
 			// Wait for form to be visible (modal is open)
-			chromedp.WaitVisible(`form[lvt-submit]`, chromedp.ByQuery),
+			chromedp.WaitVisible(`form[name]`, chromedp.ByQuery),
 
 			// Submit form WITHOUT filling required fields
 			chromedp.Evaluate(`
-				const form = document.querySelector('form[lvt-submit]');
+				const form = document.querySelector('form[name]');
 				if (form) {
 					// Bypass HTML5 validation to test server-side validation
 					form.noValidate = true;
@@ -966,7 +705,7 @@ func TestTutorialE2E(t *testing.T) {
 			// Wait for validation errors to appear (server responds with error messages)
 			waitFor(`
 				(() => {
-					const form = document.querySelector('form[lvt-submit]');
+					const form = document.querySelector('form[name]');
 					if (!form) return false;
 					const smallTags = form.querySelectorAll('small');
 					return smallTags.length > 0 && Array.from(smallTags).some(el =>
@@ -976,13 +715,13 @@ func TestTutorialE2E(t *testing.T) {
 			`, 10*time.Second),
 
 			// Debug: Capture the form HTML
-			chromedp.Evaluate(`document.querySelector('form[lvt-submit]')?.outerHTML || 'Form not found'`, &formHTML),
+			chromedp.Evaluate(`document.querySelector('form[name]')?.outerHTML || 'Form not found'`, &formHTML),
 
 			// Check if error messages are visible in the UI (rendered server-side)
 			chromedp.Evaluate(`
 				(() => {
 					// Look for error messages in <small> tags (server-side rendered via .lvt.HasError)
-					const form = document.querySelector('form[lvt-submit]');
+					const form = document.querySelector('form[name]');
 					if (!form) return false;
 					const smallTags = Array.from(form.querySelectorAll('small'));
 					return smallTags.some(el => el.textContent.includes('required') || el.textContent.includes('is required'));
@@ -992,7 +731,7 @@ func TestTutorialE2E(t *testing.T) {
 			// Get specific error texts (server-side rendered)
 			chromedp.Evaluate(`
 				(() => {
-					const form = document.querySelector('form[lvt-submit]');
+					const form = document.querySelector('form[name]');
 					if (!form) return '';
 					// Find the small tag near the title input
 					const titleDiv = Array.from(form.querySelectorAll('div')).find(div => {
@@ -1004,7 +743,7 @@ func TestTutorialE2E(t *testing.T) {
 			`, &titleErrorText),
 			chromedp.Evaluate(`
 				(() => {
-					const form = document.querySelector('form[lvt-submit]');
+					const form = document.querySelector('form[name]');
 					if (!form) return '';
 					// Find the small tag near the content input
 					const contentDiv = Array.from(form.querySelectorAll('div')).find(div => {
@@ -1141,9 +880,9 @@ func ensureTutorialPostExists(ctx context.Context, baseURL string) error {
 		chromedp.Navigate(baseURL+"/posts"),
 		waitForWebSocketReady(30*time.Second),
 		chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
-		chromedp.WaitVisible(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery),
+		chromedp.WaitVisible(`[data-lvt-target="#add-modal"]`, chromedp.ByQuery),
 		// Retry modal click until event handlers are attached
-		clickUntilModalOpens(`[lvt-modal-open="add-modal"]`, `input[name="title"]`, 15*time.Second),
+		clickUntilModalOpens(`[data-lvt-target="#add-modal"]`, `input[name="title"]`, 15*time.Second),
 		chromedp.Evaluate(`document.querySelector('input[name="title"]').value = ''`, nil),
 		chromedp.Evaluate(`document.querySelector('textarea[name="content"]').value = ''`, nil),
 		chromedp.SendKeys(`input[name="title"]`, title, chromedp.ByQuery),

@@ -96,28 +96,6 @@ func TestWithStyled(t *testing.T) {
 	}
 }
 
-func TestToggle(t *testing.T) {
-	tp := New("test")
-
-	tp.Toggle()
-	if !tp.Open {
-		t.Error("Expected Open to be true after toggle")
-	}
-
-	tp.Toggle()
-	if tp.Open {
-		t.Error("Expected Open to be false after second toggle")
-	}
-}
-
-func TestClose(t *testing.T) {
-	tp := New("test", WithOpen(true))
-	tp.Close()
-	if tp.Open {
-		t.Error("Expected Open to be false after Close")
-	}
-}
-
 func TestSetTime(t *testing.T) {
 	tp := New("test")
 	tp.SetTime(14, 30)
@@ -409,20 +387,6 @@ func TestMinuteOptions(t *testing.T) {
 }
 
 // Duration picker tests
-
-func TestDurationToggle(t *testing.T) {
-	dp := NewDuration("test")
-
-	dp.Toggle()
-	if !dp.Open {
-		t.Error("Expected Open to be true")
-	}
-
-	dp.Toggle()
-	if dp.Open {
-		t.Error("Expected Open to be false")
-	}
-}
 
 func TestSetDuration(t *testing.T) {
 	dp := NewDuration("test")

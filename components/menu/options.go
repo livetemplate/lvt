@@ -35,11 +35,10 @@ func WithPosition(position string) Option {
 	}
 }
 
-// WithOpen sets the initial open state.
-func WithOpen(open bool) Option {
-	return func(m *Menu) {
-		m.Open = open
-	}
+// WithOpen is a no-op. Open/close is now handled client-side via CSS classes.
+// Deprecated: This option has no effect.
+func WithOpen(_ bool) Option {
+	return func(_ *Menu) {}
 }
 
 // WithStyled enables Tailwind CSS styling for the component.

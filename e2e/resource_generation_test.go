@@ -325,7 +325,7 @@ func TestResourceGen_EditModeModal(t *testing.T) {
 	}
 
 	tmplContent := string(tmpl)
-	if !strings.Contains(tmplContent, `lvt-modal-open="add-modal"`) {
+	if !strings.Contains(tmplContent, `data-lvt-target="#add-modal"`) {
 		t.Error("Template missing modal for adding")
 	}
 

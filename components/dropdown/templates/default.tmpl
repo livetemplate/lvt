@@ -1,13 +1,14 @@
 {{define "lvt:dropdown:default:v1"}}
 {{$c := .}}
-<div class="{{$c.Styles.Root}}" data-dropdown="{{$c.ID}}">
+{{template "lvt:dropdown:panel-css"}}
+<div class="{{$c.Styles.Root}}" data-dropdown="{{$c.ID}}"
+     lvt-el:removeClass:on:click-away="open">
   <button
     type="button"
     class="{{$c.Styles.TriggerBtn}}"
-    lvt-click="toggle_{{$c.ID}}"
+    lvt-el:toggleClass:on:click="open" data-lvt-target="closest:[data-dropdown]"
     {{if $c.Disabled}}disabled{{end}}
     aria-haspopup="listbox"
-    aria-expanded="{{$c.Open}}"
   >
     <span class="{{$c.Styles.SelectedText}}">
       {{if $c.Selected}}{{$c.Selected.Label}}{{else}}{{$c.Placeholder}}{{end}}
@@ -19,18 +20,17 @@
     </span>
   </button>
 
-  {{if $c.Open}}
   <div
     class="{{$c.Styles.Dropdown}}"
-    lvt-click-away="close_{{$c.ID}}"
+    data-dropdown-panel
     lvt-focus-trap
     role="listbox"
   >
     {{range $c.Options}}
     <div
       class="{{$c.Styles.Option}} {{if .Disabled}}{{$c.Styles.OptionDisabled}}{{end}} {{if and $c.Selected (eq $c.Selected.Value .Value)}}{{$c.Styles.OptionSelected}}{{end}}"
-      lvt-click="select_{{$c.ID}}"
-      lvt-data-value="{{.Value}}"
+      lvt-on:click="select_{{$c.ID}}"
+      data-value="{{.Value}}"
       role="option"
       {{if .Disabled}}aria-disabled="true"{{end}}
       {{if and $c.Selected (eq $c.Selected.Value .Value)}}aria-selected="true"{{end}}
@@ -39,6 +39,5 @@
     </div>
     {{end}}
   </div>
-  {{end}}
 </div>
 {{end}}

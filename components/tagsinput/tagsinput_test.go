@@ -361,11 +361,11 @@ func TestTemplateRendering(t *testing.T) {
 	if !strings.Contains(html, "python") {
 		t.Error("expected 'python' tag in output")
 	}
-	if !strings.Contains(html, `lvt-input="input_tag_skills"`) {
-		t.Error("expected lvt-input attribute")
+	if !strings.Contains(html, `lvt-on:input="input_tag_skills"`) {
+		t.Error("expected lvt-on:input attribute")
 	}
-	if !strings.Contains(html, `lvt-click="remove_tag_skills"`) {
-		t.Error("expected remove button with lvt-click")
+	if !strings.Contains(html, `name="remove_tag_skills"`) {
+		t.Error("expected remove button with name attribute")
 	}
 }
 

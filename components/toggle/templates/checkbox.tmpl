@@ -14,11 +14,11 @@
       {{if .Disabled}}disabled{{end}}
       {{if .Required}}required{{end}}
       value="{{.Value}}"
-      lvt-change="toggle_{{.ID}}"
+      lvt-on:change="toggle_{{.ID}}"
     />
     <div
       class="{{.Styles.CheckboxBox}} {{.CheckboxStateClass}}"
-      lvt-click="toggle_{{.ID}}"
+      lvt-on:click="toggle_{{.ID}}"
     >
       {{if .Checked}}
       <svg class="{{.Styles.CheckIcon}}" viewBox="0 0 12 12" fill="none">
@@ -41,7 +41,7 @@
     {{if .Disabled}}disabled{{end}}
     {{if .Required}}required{{end}}
     value="{{.Value}}"
-    lvt-change="toggle_{{.ID}}"
+    lvt-on:change="toggle_{{.ID}}"
   />
   {{end}}
 

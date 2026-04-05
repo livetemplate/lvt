@@ -365,49 +365,6 @@ func TestClear(t *testing.T) {
 	}
 }
 
-func TestFocus(t *testing.T) {
-	suggestions := []Suggestion{
-		{Value: "1", Label: "One"},
-	}
-	ac := New("test", WithSuggestions(suggestions), WithMinChars(1))
-	ac.Query = "o"
-
-	ac.Focus()
-
-	if !ac.Open {
-		t.Error("Expected Open to be true after Focus with matching suggestions")
-	}
-}
-
-func TestFocusBelowMinChars(t *testing.T) {
-	suggestions := []Suggestion{
-		{Value: "1", Label: "One"},
-	}
-	ac := New("test", WithSuggestions(suggestions), WithMinChars(3))
-	ac.Query = "o"
-
-	ac.Focus()
-
-	if ac.Open {
-		t.Error("Expected Open to be false when query below MinChars")
-	}
-}
-
-func TestBlur(t *testing.T) {
-	ac := New("test")
-	ac.Open = true
-	ac.HighlightedIndex = 2
-
-	ac.Blur()
-
-	if ac.Open {
-		t.Error("Expected Open to be false after Blur")
-	}
-	if ac.HighlightedIndex != -1 {
-		t.Errorf("Expected HighlightedIndex -1, got %d", ac.HighlightedIndex)
-	}
-}
-
 func TestHighlightNext(t *testing.T) {
 	suggestions := []Suggestion{
 		{Value: "1", Label: "One"},

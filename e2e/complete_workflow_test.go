@@ -198,8 +198,8 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 			validateNoTemplateExpressions("[data-lvt-id]"),
 
 			// Click Add button to open modal
-			chromedp.WaitVisible(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery),
-			chromedp.Click(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery),
+			chromedp.WaitVisible(`[data-lvt-target="#add-modal"]`, chromedp.ByQuery),
+			chromedp.Click(`[data-lvt-target="#add-modal"]`, chromedp.ByQuery),
 			// Wait for modal to open
 			waitFor(`document.querySelector('[role="dialog"]') && !document.querySelector('[role="dialog"]').hasAttribute('hidden')`, 3*time.Second),
 
@@ -243,7 +243,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 						return cells.length > 0 && cells[0].textContent.trim() === 'My First Blog Post';
 					});
 					if (targetRow) {
-						const editButton = targetRow.querySelector('button[lvt-click="edit"]');
+						const editButton = targetRow.querySelector('button[name="edit"]');
 						if (editButton) {
 							editButton.click();
 							return true;
@@ -262,8 +262,8 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 		err = chromedp.Run(ctx,
 			waitForCondition(ctx, `
 				(() => {
-					const form = document.querySelector('form[lvt-submit="update"]');
-					const input = document.querySelector('form[lvt-submit="update"] input[name="title"]');
+					const form = document.querySelector('form[name="update"]');
+					const input = document.querySelector('form[name="update"] input[name="title"]');
 					return form !== null && input !== null;
 				})()
 			`, 10*time.Second, shortDelay),
@@ -279,8 +279,8 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 
 		// Update title
 		err = chromedp.Run(ctx,
-			chromedp.Clear(`form[lvt-submit="update"] input[name="title"]`),
-			chromedp.SendKeys(`form[lvt-submit="update"] input[name="title"]`, "My Updated Blog Post", chromedp.ByQuery),
+			chromedp.Clear(`form[name="update"] input[name="title"]`),
+			chromedp.SendKeys(`form[name="update"] input[name="title"]`, "My Updated Blog Post", chromedp.ByQuery),
 		)
 		if err != nil {
 			t.Fatalf("Failed to update title: %v", err)
@@ -289,7 +289,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 
 		// Submit and wait for WebSocket update
 		err = chromedp.Run(ctx,
-			chromedp.Click(`form[lvt-submit="update"] button[type="submit"]`, chromedp.ByQuery),
+			chromedp.Click(`form[name="update"] button[type="submit"]`, chromedp.ByQuery),
 		)
 		if err != nil {
 			t.Fatalf("Failed to submit form: %v", err)
@@ -363,7 +363,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 		// Step 4: Wait for add button
 		t.Log("[Delete_Post] Step 4: Waiting for add button...")
 		err = chromedp.Run(ctx,
-			chromedp.WaitVisible(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery),
+			chromedp.WaitVisible(`[data-lvt-target="#add-modal"]`, chromedp.ByQuery),
 		)
 		if err != nil {
 			t.Fatalf("[Delete_Post] Step 4 failed (wait for add button): %v", err)
@@ -458,7 +458,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 				if (!addModal) {
 					return { success: false, error: 'Add modal not found' };
 				}
-				const form = addModal.querySelector('form[lvt-submit="add"]');
+				const form = addModal.querySelector('form[name="add"]');
 				if (!form) {
 					return { success: false, error: 'Add form not found in modal' };
 				}
@@ -493,7 +493,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 			chromedp.Evaluate(`(() => {
 				// Find the add modal form specifically
 				const addModal = document.querySelector('#add-modal');
-				const form = addModal?.querySelector('form[lvt-submit="add"]');
+				const form = addModal?.querySelector('form[name="add"]');
 				const submitBtn = form?.querySelector('button[type="submit"]');
 
 				if (!addModal) {
@@ -512,8 +512,8 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 				const formData = {
 					titleValue: titleInput?.value,
 					contentValue: contentInput?.value,
-					formAction: form.getAttribute('lvt-submit'),
-					allForms: Array.from(document.querySelectorAll('form')).map(f => f.getAttribute('lvt-submit'))
+					formAction: form.getAttribute('name'),
+					allForms: Array.from(document.querySelectorAll('form')).map(f => f.getAttribute('name'))
 				};
 
 				// Click submit
@@ -601,15 +601,15 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 					if (!targetRow) {
 						return { success: false, error: 'Target row not found' };
 					}
-					const editButton = targetRow.querySelector('button[lvt-click="edit"]');
+					const editButton = targetRow.querySelector('button[name="edit"]');
 					if (!editButton) {
 						return { success: false, error: 'Edit button not found' };
 					}
 
 					// Log button info
 					const buttonInfo = {
-						lvtClick: editButton.getAttribute('lvt-click'),
-						lvtDataId: editButton.getAttribute('lvt-data-id')
+						name: editButton.getAttribute('name'),
+						dataId: editButton.getAttribute('data-id')
 					};
 
 					// Create and dispatch a proper mouse event that will bubble
@@ -631,14 +631,14 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 		t.Logf("[Delete_Post] Step 10: Edit click result: %+v", editResult)
 
 		// Step 11: Wait for edit modal to show the CORRECT post
-		// The request_delete button's lvt-data-id should match our target post
+		// The delete button's data-id should match our target post
 		t.Logf("[Delete_Post] Step 11: Waiting for edit modal with correct data (target: %s)...", targetDataKey)
 		err = chromedp.Run(ctx,
 			waitFor(fmt.Sprintf(`
 				(() => {
-					const deleteBtn = document.querySelector('button[lvt-click="request_delete"]');
+					const deleteBtn = document.querySelector('button[lvt-on\\:click="delete"], button[name="delete"]');
 					if (!deleteBtn) return false;
-					const btnDataId = deleteBtn.getAttribute('lvt-data-id');
+					const btnDataId = deleteBtn.getAttribute('data-id');
 					return btnDataId === %q;
 				})()
 			`, targetDataKey), 10*time.Second),
@@ -649,12 +649,12 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 			chromedp.Run(ctx,
 				chromedp.Evaluate(fmt.Sprintf(`
 					(() => {
-						const deleteBtn = document.querySelector('button[lvt-click="request_delete"]');
-						const editForm = document.querySelector('form[lvt-submit="update"]');
+						const deleteBtn = document.querySelector('button[lvt-on\\:click="delete"], button[name="delete"]');
+						const editForm = document.querySelector('form[name="update"]');
 						const titleInput = editForm?.querySelector('input[name="title"]');
 						return {
 							expectedKey: %q,
-							actualDeleteBtnId: deleteBtn?.getAttribute('lvt-data-id'),
+							actualDeleteBtnId: deleteBtn?.getAttribute('data-id'),
 							formTitle: titleInput?.value,
 							formExists: editForm !== null,
 							deleteBtnExists: deleteBtn !== null
@@ -667,44 +667,25 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 		}
 		t.Log("[Delete_Post] Step 11: Edit modal opened with correct post data")
 
-		// Step 11b: Verify the edit modal state
-		var editModalState map[string]interface{}
-		chromedp.Run(ctx,
-			chromedp.Evaluate(fmt.Sprintf(`
-				(() => {
-					const deleteBtn = document.querySelector('button[lvt-click="request_delete"]');
-					const editForm = document.querySelector('form[lvt-submit="update"]');
-					const titleInput = editForm?.querySelector('input[name="title"]');
-					return {
-						expectedKey: %q,
-						deleteBtnDataId: deleteBtn?.getAttribute('lvt-data-id'),
-						formTitleValue: titleInput?.value,
-						formFound: editForm !== null,
-						idMatch: deleteBtn?.getAttribute('lvt-data-id') === %q
-					};
-				})()
-			`, targetDataKey, targetDataKey), &editModalState),
-		)
-		t.Logf("[Delete_Post] Step 11b: Edit modal state (verified): %+v", editModalState)
-
-		// Step 12: Click request_delete to open confirm modal, then click confirm_delete
-		t.Logf("[Delete_Post] Step 12: Clicking request_delete button (target: %s)...", targetDataKey)
+		// Step 12: Click delete button (override confirm() for headless Chrome)
+		t.Logf("[Delete_Post] Step 12: Clicking delete button (target: %s)...", targetDataKey)
 		var deleteResult map[string]interface{}
 		err = chromedp.Run(ctx,
-			// Click the request_delete button and verify it has the correct ID
 			chromedp.Evaluate(fmt.Sprintf(`
 				(() => {
-					const deleteButton = document.querySelector('button[lvt-click="request_delete"]');
+					// Override confirm() to auto-accept in headless Chrome
+					window.confirm = () => true;
+
+					const deleteButton = document.querySelector('button[lvt-on\\:click="delete"], button[name="delete"]');
 					if (!deleteButton) {
-						return { success: false, error: 'request_delete button not found' };
+						return { success: false, error: 'delete button not found' };
 					}
 
-					const buttonId = deleteButton.getAttribute('lvt-data-id');
+					const buttonId = deleteButton.getAttribute('data-id');
 					if (buttonId !== %q) {
-						return { success: false, error: 'request_delete button has wrong ID: ' + buttonId };
+						return { success: false, error: 'delete button has wrong ID: ' + buttonId };
 					}
 
-					// Click the request_delete button to open confirm modal
 					deleteButton.click();
 
 					return { success: true, buttonId: buttonId };
@@ -712,36 +693,9 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 			`, targetDataKey), &deleteResult),
 		)
 		if err != nil {
-			t.Fatalf("[Delete_Post] Step 12 failed (click request_delete): %v", err)
+			t.Fatalf("[Delete_Post] Step 12 failed (click delete): %v", err)
 		}
-		t.Logf("[Delete_Post] Step 12: request_delete button clicked: %+v", deleteResult)
-
-		// Step 12a: Wait for confirm modal and click confirm_delete
-		t.Log("[Delete_Post] Step 12a: Waiting for confirm modal...")
-		err = chromedp.Run(ctx,
-			waitFor(`document.querySelector('button[lvt-click="confirm_delete"]') !== null`, 5*time.Second),
-		)
-		if err != nil {
-			t.Fatalf("[Delete_Post] Step 12a failed (confirm modal did not appear): %v", err)
-		}
-
-		var confirmResult map[string]interface{}
-		err = chromedp.Run(ctx,
-			chromedp.Evaluate(`
-				(() => {
-					const confirmButton = document.querySelector('button[lvt-click="confirm_delete"]');
-					if (!confirmButton) {
-						return { success: false, error: 'confirm_delete button not found' };
-					}
-					confirmButton.click();
-					return { success: true };
-				})()
-			`, &confirmResult),
-		)
-		if err != nil {
-			t.Fatalf("[Delete_Post] Step 12a failed (click confirm_delete): %v", err)
-		}
-		t.Logf("[Delete_Post] Step 12a: confirm_delete clicked: %+v", confirmResult)
+		t.Logf("[Delete_Post] Step 12: delete button clicked: %+v", deleteResult)
 
 		// Step 12b: Wait for server response and check row count
 		time.Sleep(2 * time.Second)
@@ -762,34 +716,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 		}
 
 		// Step 13: Wait for row to disappear
-		t.Logf("[Delete_Post] Step 13: Waiting for row %s to disappear (30s timeout)...", targetDataKey)
-		time.Sleep(1 * time.Second) // Brief pause to let WebSocket message be processed
-
-		// Check row state periodically for debugging
-		for i := 0; i < 3; i++ {
-			var checkState map[string]interface{}
-			chromedp.Run(ctx,
-				chromedp.Evaluate(fmt.Sprintf(`
-					(() => {
-						const table = document.querySelector('table tbody');
-						const targetRow = table?.querySelector('tr[data-key=%q]');
-						const ws = window.liveTemplateClient?.ws;
-						const client = window.liveTemplateClient;
-						return {
-							rowExists: targetRow !== null,
-							tableRows: table?.querySelectorAll('tr').length || 0,
-							wsState: ws?.readyState,
-							messageCount: client?.messageCount
-						};
-					})()
-				`, targetDataKey), &checkState),
-			)
-			t.Logf("[Delete_Post] Step 13 check %d: %+v", i+1, checkState)
-			if checkState["rowExists"] == false {
-				break
-			}
-			time.Sleep(2 * time.Second)
-		}
+		t.Logf("[Delete_Post] Step 13: Waiting for row %s to disappear (20s timeout)...", targetDataKey)
 
 		err = chromedp.Run(ctx,
 			waitFor(fmt.Sprintf(`
@@ -842,10 +769,10 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 		}
 
 		if postStillExists {
-			t.Fatal("❌ Post still exists after deletion")
+			t.Fatal("Post still exists after deletion")
 		}
 
-		t.Log("✅ Post deleted successfully")
+		t.Log("Post deleted successfully")
 	})
 
 	// Test 11.5: Validation Errors
@@ -867,7 +794,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 			chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
 
 			// Open add modal via DOM manipulation (more reliable than click event delegation)
-			chromedp.WaitVisible(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery),
+			chromedp.WaitVisible(`[data-lvt-target="#add-modal"]`, chromedp.ByQuery),
 			chromedp.Evaluate(`
 				(() => {
 					const modal = document.querySelector('#add-modal');
@@ -879,12 +806,12 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 				})()
 			`, nil),
 			// Wait for form to be visible (modal is open)
-			chromedp.WaitVisible(`form[lvt-submit]`, chromedp.ByQuery),
+			chromedp.WaitVisible(`form[name]`, chromedp.ByQuery),
 
 			// Submit without filling fields
-			chromedp.WaitVisible(`form[lvt-submit]`, chromedp.ByQuery),
+			chromedp.WaitVisible(`form[name]`, chromedp.ByQuery),
 			chromedp.Evaluate(`
-				const form = document.querySelector('form[lvt-submit]');
+				const form = document.querySelector('form[name]');
 				if (form) {
 					// Bypass HTML5 validation to test server-side validation
 					form.noValidate = true;
@@ -897,7 +824,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 			// Wait for validation errors to appear (server responds with error messages)
 			waitFor(`
 				(() => {
-					const form = document.querySelector('form[lvt-submit]');
+					const form = document.querySelector('form[name]');
 					if (!form) return false;
 					// Look for validation error messages (small tags with error text)
 					const smallTags = form.querySelectorAll('small');
@@ -929,7 +856,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 			// Check for error messages
 			chromedp.Evaluate(`
 				(() => {
-					const form = document.querySelector('form[lvt-submit]');
+					const form = document.querySelector('form[name]');
 					if (!form) {
 						console.log('[DEBUG] Form not found!');
 						return false;

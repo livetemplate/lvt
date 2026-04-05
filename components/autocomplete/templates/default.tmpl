@@ -1,20 +1,23 @@
 {{define "lvt:autocomplete:default:v1"}}
 {{$c := .}}
-<div class="{{$c.Styles.Root}}" data-autocomplete="{{$c.ID}}">
+{{template "lvt:autocomplete:panel-css"}}
+<div class="{{$c.Styles.Root}} {{if $c.Open}}open{{end}}" data-autocomplete="{{$c.ID}}"
+     lvt-el:removeClass:on:click-away="open"
+     lvt-el:addClass:on:focusin="open"
+     lvt-el:removeClass:on:focusout="open">
   <div class="{{$c.Styles.InputWrapper}}">
     <input
       type="text"
       class="{{$c.Styles.Input}} {{if $c.Loading}}{{$c.Styles.InputLoading}}{{end}}"
       placeholder="{{$c.Placeholder}}"
       value="{{$c.Query}}"
-      lvt-input="query_{{$c.ID}}"
-      lvt-focus="focus_{{$c.ID}}"
-      lvt-keydown="keydown_{{$c.ID}}"
+      lvt-on:input="query_{{$c.ID}}"
+      lvt-on:keydown="keydown_{{$c.ID}}"
       autocomplete="off"
       aria-autocomplete="list"
       aria-haspopup="listbox"
       aria-expanded="{{$c.Open}}"
-      {{if $c.Open}}aria-controls="suggestions_{{$c.ID}}"{{end}}
+      aria-controls="suggestions_{{$c.ID}}"
     />
     {{if $c.Loading}}
     <div class="{{$c.Styles.LoadingWrapper}}">
@@ -27,7 +30,7 @@
     <button
       type="button"
       class="{{$c.Styles.ClearBtn}}"
-      lvt-click="clear_{{$c.ID}}"
+      name="clear_{{$c.ID}}"
       aria-label="Clear selection"
     >
       <svg class="{{$c.Styles.ClearIcon}}" viewBox="0 0 20 20" fill="currentColor">
@@ -37,20 +40,19 @@
     {{end}}
   </div>
 
-  {{if $c.Open}}
   <ul
     id="suggestions_{{$c.ID}}"
     class="{{$c.Styles.Dropdown}}"
+    data-autocomplete-panel
     role="listbox"
-    lvt-click-away="blur_{{$c.ID}}"
   >
     {{range $index, $suggestion := $c.FilteredSuggestions}}
     <li
       class="{{$c.Styles.Option}} {{if $suggestion.Disabled}}{{$c.Styles.OptionDisabled}}{{else if $c.IsHighlighted $index}}{{$c.Styles.OptionActive}}{{end}}"
       role="option"
       {{if not $suggestion.Disabled}}
-      lvt-click="select_{{$c.ID}}"
-      lvt-data-index="{{$index}}"
+      lvt-on:click="select_{{$c.ID}}"
+      data-index="{{$index}}"
       {{end}}
       aria-selected="{{$c.IsHighlighted $index}}"
       {{if $suggestion.Disabled}}aria-disabled="true"{{end}}
@@ -71,6 +73,5 @@
     <li class="{{$c.Styles.Empty}}">No suggestions found</li>
     {{end}}
   </ul>
-  {{end}}
 </div>
 {{end}}

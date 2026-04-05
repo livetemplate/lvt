@@ -20,9 +20,6 @@ func TestNew(t *testing.T) {
 		if d.Namespace() != "drawer" {
 			t.Errorf("expected namespace 'drawer', got %q", d.Namespace())
 		}
-		if d.Open {
-			t.Error("expected drawer to be closed by default")
-		}
 		if d.Position != PositionLeft {
 			t.Errorf("expected position left, got %v", d.Position)
 		}
@@ -52,7 +49,6 @@ func TestNew(t *testing.T) {
 			WithSize(SizeLg),
 			WithTitle("Settings"),
 			WithShowClose(false),
-			WithOpen(true),
 		)
 		if d.Position != PositionRight {
 			t.Errorf("expected position right, got %v", d.Position)
@@ -65,9 +61,6 @@ func TestNew(t *testing.T) {
 		}
 		if d.ShowClose {
 			t.Error("expected ShowClose false")
-		}
-		if !d.Open {
-			t.Error("expected drawer to be open")
 		}
 	})
 }
@@ -162,10 +155,9 @@ func TestWithPersistent(t *testing.T) {
 }
 
 func TestWithOpen(t *testing.T) {
+	// WithOpen is a no-op; open/close is client-side now
 	d := New("test", WithOpen(true))
-	if !d.Open {
-		t.Error("expected Open true")
-	}
+	_ = d // should not panic
 }
 
 func TestWithStyled(t *testing.T) {
@@ -183,61 +175,6 @@ func TestWithStyled(t *testing.T) {
 // =============================================================================
 // Method Tests
 // =============================================================================
-
-func TestToggle(t *testing.T) {
-	d := New("test")
-	if d.Open {
-		t.Error("expected initially closed")
-	}
-
-	d.Toggle()
-	if !d.Open {
-		t.Error("expected open after toggle")
-	}
-
-	d.Toggle()
-	if d.Open {
-		t.Error("expected closed after second toggle")
-	}
-}
-
-func TestShow(t *testing.T) {
-	d := New("test")
-	d.Show()
-	if !d.Open {
-		t.Error("expected open after Show")
-	}
-
-	// Show when already open should stay open
-	d.Show()
-	if !d.Open {
-		t.Error("expected still open after second Show")
-	}
-}
-
-func TestClose(t *testing.T) {
-	d := New("test", WithOpen(true))
-	d.Close()
-	if d.Open {
-		t.Error("expected closed after Close")
-	}
-}
-
-func TestCloseRespectsPersistent(t *testing.T) {
-	d := New("test", WithOpen(true), WithPersistent(true))
-	d.Close()
-	if !d.Open {
-		t.Error("expected still open because persistent")
-	}
-}
-
-func TestForceClose(t *testing.T) {
-	d := New("test", WithOpen(true), WithPersistent(true))
-	d.ForceClose()
-	if d.Open {
-		t.Error("expected closed after ForceClose even when persistent")
-	}
-}
 
 // =============================================================================
 // Position Helper Tests
@@ -398,28 +335,20 @@ func TestPositionClass(t *testing.T) {
 	}
 }
 
-func TestTransformClassOpen(t *testing.T) {
-	d := New("test", WithOpen(true))
-	expected := "translate-x-0 translate-y-0"
-	if d.TransformClass() != expected {
-		t.Errorf("expected TransformClass %q when open, got %q", expected, d.TransformClass())
-	}
-}
-
-func TestTransformClassClosed(t *testing.T) {
+func TestTransformClass(t *testing.T) {
 	tests := []struct {
 		position Position
 		expected string
 	}{
-		{PositionLeft, "-translate-x-full"},
-		{PositionRight, "translate-x-full"},
-		{PositionTop, "-translate-y-full"},
-		{PositionBottom, "translate-y-full"},
+		{PositionLeft, "translateX(-100%)"},
+		{PositionRight, "translateX(100%)"},
+		{PositionTop, "translateY(-100%)"},
+		{PositionBottom, "translateY(100%)"},
 	}
 
 	for _, tt := range tests {
 		t.Run(string(tt.position), func(t *testing.T) {
-			d := New("test", WithPosition(tt.position), WithOpen(false))
+			d := New("test", WithPosition(tt.position))
 			if d.TransformClass() != tt.expected {
 				t.Errorf("expected TransformClass %q, got %q", tt.expected, d.TransformClass())
 			}

@@ -6,8 +6,8 @@
     <button
       type="button"
       class="{{$c.Styles.PillTab}} {{if eq $c.ActiveID .ID}}{{$c.Styles.PillActive}}{{else}}{{$c.Styles.PillDefault}}{{end}} {{if .Disabled}}{{$c.Styles.PillDisabled}}{{end}}"
-      lvt-click="select_tab_{{$c.ID}}"
-      lvt-data-tab="{{.ID}}"
+      name="select_tab_{{$c.ID}}"
+      data-tab="{{.ID}}"
       role="tab"
       aria-selected="{{if eq $c.ActiveID .ID}}true{{else}}false{{end}}"
       {{if .Disabled}}disabled aria-disabled="true"{{end}}

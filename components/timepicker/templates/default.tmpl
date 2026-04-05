@@ -1,11 +1,13 @@
 {{define "lvt:timepicker:default:v1"}}
-<div class="{{.Styles.Root}}" data-timepicker="{{.ID}}">
+{{template "lvt:timepicker:panel-css"}}
+<div class="{{.Styles.Root}}" data-timepicker="{{.ID}}"
+     lvt-el:removeClass:on:click-away="open"
+     lvt-el:addClass:on:done="open">
   <button
     type="button"
     class="{{.Styles.TriggerBtn}}"
-    lvt-click="toggle_{{.ID}}"
+    lvt-el:toggleClass:on:click="open" data-lvt-target="closest:[data-timepicker]"
     aria-haspopup="dialog"
-    aria-expanded="{{.Open}}"
   >
     <span class="{{.Styles.TriggerText}}">
       <span class="{{if not .HasValue}}{{.Styles.Placeholder}}{{end}}">{{.DisplayValue}}</span>
@@ -15,10 +17,9 @@
     </span>
   </button>
 
-  {{if .Open}}
   <div
     class="{{.Styles.Dropdown}}"
-    lvt-click-away="close_{{.ID}}"
+    data-timepicker-panel
     role="dialog"
     aria-modal="true"
     aria-label="Choose time"
@@ -29,7 +30,7 @@
         <button
           type="button"
           class="{{.Styles.SpinnerBtn}}"
-          lvt-click="inc_hour_{{.ID}}"
+          name="inc_hour_{{.ID}}"
           aria-label="Increment hour"
         >
           <svg class="{{.Styles.SpinnerIcon}}" viewBox="0 0 20 20" fill="currentColor">
@@ -45,7 +46,7 @@
         <button
           type="button"
           class="{{.Styles.SpinnerBtn}}"
-          lvt-click="dec_hour_{{.ID}}"
+          name="dec_hour_{{.ID}}"
           aria-label="Decrement hour"
         >
           <svg class="{{.Styles.SpinnerIcon}}" viewBox="0 0 20 20" fill="currentColor">
@@ -61,7 +62,7 @@
         <button
           type="button"
           class="{{.Styles.SpinnerBtn}}"
-          lvt-click="inc_minute_{{.ID}}"
+          name="inc_minute_{{.ID}}"
           aria-label="Increment minute"
         >
           <svg class="{{.Styles.SpinnerIcon}}" viewBox="0 0 20 20" fill="currentColor">
@@ -77,7 +78,7 @@
         <button
           type="button"
           class="{{.Styles.SpinnerBtn}}"
-          lvt-click="dec_minute_{{.ID}}"
+          name="dec_minute_{{.ID}}"
           aria-label="Decrement minute"
         >
           <svg class="{{.Styles.SpinnerIcon}}" viewBox="0 0 20 20" fill="currentColor">
@@ -93,7 +94,7 @@
         <button
           type="button"
           class="{{.Styles.SpinnerBtn}}"
-          lvt-click="inc_second_{{.ID}}"
+          name="inc_second_{{.ID}}"
           aria-label="Increment second"
         >
           <svg class="{{.Styles.SpinnerIcon}}" viewBox="0 0 20 20" fill="currentColor">
@@ -109,7 +110,7 @@
         <button
           type="button"
           class="{{.Styles.SpinnerBtn}}"
-          lvt-click="dec_second_{{.ID}}"
+          name="dec_second_{{.ID}}"
           aria-label="Decrement second"
         >
           <svg class="{{.Styles.SpinnerIcon}}" viewBox="0 0 20 20" fill="currentColor">
@@ -125,16 +126,16 @@
         <button
           type="button"
           class="{{if eq .Period "AM"}}{{.Styles.PeriodActive}}{{else}}{{.Styles.PeriodDefault}}{{end}}"
-          lvt-click="set_period_{{.ID}}"
-          lvt-data-period="AM"
+          name="set_period_{{.ID}}"
+          data-period="AM"
         >
           AM
         </button>
         <button
           type="button"
           class="mt-1 {{if eq .Period "PM"}}{{.Styles.PeriodActive}}{{else}}{{.Styles.PeriodDefault}}{{end}}"
-          lvt-click="set_period_{{.ID}}"
-          lvt-data-period="PM"
+          name="set_period_{{.ID}}"
+          data-period="PM"
         >
           PM
         </button>
@@ -146,7 +147,7 @@
       <button
         type="button"
         class="{{.Styles.NowBtn}}"
-        lvt-click="now_{{.ID}}"
+        name="now_{{.ID}}"
       >
         Now
       </button>
@@ -154,13 +155,12 @@
       <button
         type="button"
         class="{{.Styles.ClearBtn}}"
-        lvt-click="clear_{{.ID}}"
+        name="clear_{{.ID}}"
       >
         Clear
       </button>
       {{end}}
     </div>
   </div>
-  {{end}}
 </div>
 {{end}}

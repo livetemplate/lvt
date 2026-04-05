@@ -1,11 +1,12 @@
 {{define "lvt:datepicker:single:v1"}}
-<div class="{{.Styles.Root}}" data-datepicker="{{.ID}}">
+{{template "lvt:datepicker:panel-css"}}
+<div class="{{.Styles.Root}}" data-datepicker="{{.ID}}"
+     lvt-el:removeClass:on:click-away="open">
   <button
     type="button"
     class="{{.Styles.TriggerBtn}}"
-    lvt-click="toggle_datepicker_{{.ID}}"
+    lvt-el:toggleClass:on:click="open" data-lvt-target="closest:[data-datepicker]"
     aria-haspopup="dialog"
-    aria-expanded="{{.Open}}"
   >
     <span class="{{.Styles.TriggerText}}">
       <span class="{{if not .Selected}}{{.Styles.Placeholder}}{{end}}">{{.DisplayValue}}</span>
@@ -15,17 +16,15 @@
     </span>
   </button>
 
-  {{if .Open}}
   <div
     class="{{.Styles.Dropdown}}"
-    lvt-click-away="close_datepicker_{{.ID}}"
+    data-datepicker-panel
     role="dialog"
     aria-modal="true"
     aria-label="Choose date"
   >
     {{template "lvt:datepicker:calendar" .}}
   </div>
-  {{end}}
 </div>
 {{end}}
 
@@ -36,7 +35,7 @@
     <button
       type="button"
       class="{{$c.Styles.NavBtn}}"
-      lvt-click="prev_month_{{$c.ID}}"
+      name="prev_month_{{$c.ID}}"
       aria-label="Previous month"
     >
       <svg class="{{$c.Styles.NavIcon}}" viewBox="0 0 20 20" fill="currentColor">
@@ -49,7 +48,7 @@
     <button
       type="button"
       class="{{$c.Styles.NavBtn}}"
-      lvt-click="next_month_{{$c.ID}}"
+      name="next_month_{{$c.ID}}"
       aria-label="Next month"
     >
       <svg class="{{$c.Styles.NavIcon}}" viewBox="0 0 20 20" fill="currentColor">
@@ -71,8 +70,8 @@
       type="button"
       class="{{$c.Styles.DayBtn}} {{if not .InMonth}}{{$c.Styles.DayOutMonth}}{{else if .IsDisabled}}{{$c.Styles.DayDisabled}}{{else if .IsSelected}}{{$c.Styles.DaySelected}}{{else if .IsToday}}{{$c.Styles.DayToday}}{{else}}{{$c.Styles.DayDefault}}{{end}}"
       {{if and .InMonth (not .IsDisabled)}}
-      lvt-click="select_date_{{$c.ID}}"
-      lvt-data-date="{{.DateString}}"
+      name="select_date_{{$c.ID}}"
+      data-date="{{.DateString}}"
       {{else}}
       disabled
       {{end}}
@@ -87,7 +86,7 @@
     <button
       type="button"
       class="{{$c.Styles.TodayBtn}}"
-      lvt-click="today_{{$c.ID}}"
+      name="today_{{$c.ID}}"
     >
       Today
     </button>
@@ -95,7 +94,7 @@
     <button
       type="button"
       class="{{$c.Styles.ClearBtn}}"
-      lvt-click="clear_date_{{$c.ID}}"
+      name="clear_date_{{$c.ID}}"
     >
       Clear
     </button>

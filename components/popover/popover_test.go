@@ -25,9 +25,6 @@ func TestNew(t *testing.T) {
 		if p.Trigger != TriggerClick {
 			t.Errorf("expected trigger click, got %v", p.Trigger)
 		}
-		if p.Open {
-			t.Error("expected popover to be closed by default")
-		}
 		if !p.Arrow {
 			t.Error("expected arrow true by default")
 		}
@@ -146,10 +143,9 @@ func TestWithWidth(t *testing.T) {
 }
 
 func TestWithOpen(t *testing.T) {
+	// WithOpen is a no-op; open/close is client-side now
 	p := New("test", WithOpen(true))
-	if !p.Open {
-		t.Error("expected Open true")
-	}
+	_ = p // should not panic
 }
 
 func TestWithStyled(t *testing.T) {
@@ -167,39 +163,6 @@ func TestWithStyled(t *testing.T) {
 // =============================================================================
 // Method Tests
 // =============================================================================
-
-func TestShow(t *testing.T) {
-	p := New("test")
-	p.Show()
-	if !p.Open {
-		t.Error("expected open after Show")
-	}
-}
-
-func TestHide(t *testing.T) {
-	p := New("test", WithOpen(true))
-	p.Hide()
-	if p.Open {
-		t.Error("expected closed after Hide")
-	}
-}
-
-func TestToggle(t *testing.T) {
-	p := New("test")
-	if p.Open {
-		t.Error("expected initially closed")
-	}
-
-	p.Toggle()
-	if !p.Open {
-		t.Error("expected open after toggle")
-	}
-
-	p.Toggle()
-	if p.Open {
-		t.Error("expected closed after second toggle")
-	}
-}
 
 // =============================================================================
 // Position Helper Tests

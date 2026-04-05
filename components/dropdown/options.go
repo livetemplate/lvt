@@ -29,11 +29,10 @@ func WithDisabled(disabled bool) Option {
 	}
 }
 
-// WithOpen sets the initial open state.
-func WithOpen(open bool) Option {
-	return func(d *Dropdown) {
-		d.Open = open
-	}
+// WithOpen is a no-op. Open/close is now handled client-side via CSS classes.
+// Deprecated: This option has no effect.
+func WithOpen(_ bool) Option {
+	return func(_ *Dropdown) {}
 }
 
 // WithStyled enables Tailwind CSS styling for the component.

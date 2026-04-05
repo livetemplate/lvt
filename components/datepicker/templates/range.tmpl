@@ -1,11 +1,13 @@
 {{define "lvt:datepicker:range:v1"}}
-<div class="{{.Styles.Root}}" data-datepicker="{{.ID}}" data-range="true">
+{{template "lvt:datepicker:panel-css"}}
+<div class="{{.Styles.Root}}" data-datepicker="{{.ID}}" data-range="true"
+     lvt-el:removeClass:on:click-away="open"
+     lvt-el:addClass:on:done="open">
   <button
     type="button"
     class="{{.Styles.TriggerBtn}}"
-    lvt-click="toggle_datepicker_{{.ID}}"
+    lvt-el:toggleClass:on:click="open" data-lvt-target="closest:[data-datepicker]"
     aria-haspopup="dialog"
-    aria-expanded="{{.Open}}"
   >
     <span class="{{.Styles.TriggerText}}">
       <span class="{{if not .StartDate}}{{.Styles.Placeholder}}{{end}}">{{.DisplayRangeValue}}</span>
@@ -15,10 +17,9 @@
     </span>
   </button>
 
-  {{if .Open}}
   <div
     class="{{.Styles.Dropdown}}"
-    lvt-click-away="close_datepicker_{{.ID}}"
+    data-datepicker-panel
     role="dialog"
     aria-modal="true"
     aria-label="Choose date range"
@@ -32,13 +33,12 @@
       <button
         type="button"
         class="{{.Styles.ClearBtn}}"
-        lvt-click="clear_range_{{.ID}}"
+        name="clear_range_{{.ID}}"
       >
         Clear range
       </button>
     </div>
     {{end}}
   </div>
-  {{end}}
 </div>
 {{end}}

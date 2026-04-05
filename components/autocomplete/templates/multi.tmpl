@@ -1,6 +1,10 @@
 {{define "lvt:autocomplete:multi:v1"}}
 {{$c := .}}
-<div class="{{$c.Styles.Root}}" data-autocomplete="{{$c.ID}}" data-multi="true">
+{{template "lvt:autocomplete:panel-css"}}
+<div class="{{$c.Styles.Root}} {{if $c.Open}}open{{end}}" data-autocomplete="{{$c.ID}}" data-multi="true"
+     lvt-el:removeClass:on:click-away="open"
+     lvt-el:addClass:on:focusin="open"
+     lvt-el:removeClass:on:focusout="open">
   <div class="{{$c.Styles.InputWrapper}}">
     {{range $c.SelectedItems}}
     <span class="{{$c.Styles.SelectedBadge}}">
@@ -8,8 +12,8 @@
       <button
         type="button"
         class="{{$c.Styles.SelectedBadgeBtn}}"
-        lvt-click="remove_{{$c.ID}}"
-        lvt-data-value="{{.Value}}"
+        name="remove_{{$c.ID}}"
+        data-value="{{.Value}}"
         aria-label="Remove {{.Label}}"
       >
         <svg class="{{$c.Styles.ClearIcon}}" viewBox="0 0 20 20" fill="currentColor">
@@ -23,9 +27,8 @@
       class="{{$c.Styles.Input}}"
       placeholder="{{if $c.HasSelectedItems}}{{else}}{{$c.Placeholder}}{{end}}"
       value="{{$c.Query}}"
-      lvt-input="query_{{$c.ID}}"
-      lvt-focus="focus_{{$c.ID}}"
-      lvt-keydown="keydown_{{$c.ID}}"
+      lvt-on:input="query_{{$c.ID}}"
+      lvt-on:keydown="keydown_{{$c.ID}}"
       autocomplete="off"
       aria-autocomplete="list"
       aria-haspopup="listbox"
@@ -42,7 +45,7 @@
     <button
       type="button"
       class="{{$c.Styles.ClearBtn}}"
-      lvt-click="clear_multi_{{$c.ID}}"
+      name="clear_multi_{{$c.ID}}"
       aria-label="Clear all"
     >
       <svg class="{{$c.Styles.ClearIcon}}" viewBox="0 0 20 20" fill="currentColor">
@@ -52,11 +55,10 @@
     {{end}}
   </div>
 
-  {{if $c.Open}}
   <ul
     class="{{$c.Styles.Dropdown}}"
+    data-autocomplete-panel
     role="listbox"
-    lvt-click-away="blur_{{$c.ID}}"
   >
     {{$filtered := $c.FilteredExcludingSelected}}
     {{range $index, $suggestion := $filtered}}
@@ -64,8 +66,8 @@
       class="{{$c.Styles.Option}} {{if $suggestion.Disabled}}{{$c.Styles.OptionDisabled}}{{else if $c.IsHighlighted $index}}{{$c.Styles.OptionActive}}{{end}}"
       role="option"
       {{if not $suggestion.Disabled}}
-      lvt-click="select_multi_{{$c.ID}}"
-      lvt-data-value="{{$suggestion.Value}}"
+      lvt-on:click="select_multi_{{$c.ID}}"
+      data-value="{{$suggestion.Value}}"
       {{end}}
       {{if $suggestion.Disabled}}aria-disabled="true"{{end}}
     >
@@ -85,6 +87,5 @@
     <li class="{{$c.Styles.Empty}}">No suggestions found</li>
     {{end}}
   </ul>
-  {{end}}
 </div>
 {{end}}

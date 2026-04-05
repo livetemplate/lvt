@@ -5,7 +5,7 @@
 //   - NewRange() creates a date range picker (template: "lvt:datepicker:range:v1")
 //   - NewInline() creates an inline calendar (template: "lvt:datepicker:inline:v1")
 //
-// Required lvt-* attributes: lvt-click
+// Required lvt-* attributes: name, lvt-el:removeClass:on:click-away
 //
 // Example usage:
 //
@@ -38,9 +38,6 @@ type DatePicker struct {
 
 	// Placeholder text shown when no date is selected
 	Placeholder string
-
-	// Open indicates whether the calendar popup is visible
-	Open bool
 
 	// MinDate is the earliest selectable date (nil for no limit)
 	MinDate *time.Time
@@ -108,21 +105,12 @@ func NewRange(id string, opts ...Option) *RangePicker {
 	}
 }
 
-// NewInline creates an inline calendar (always visible).
+// NewInline creates an inline calendar.
+// The consuming template should add the "open" class to the root element
+// to make the calendar panel always visible.
 func NewInline(id string, opts ...Option) *DatePicker {
 	dp := New(id, opts...)
-	dp.Open = true
 	return dp
-}
-
-// Toggle opens or closes the calendar.
-func (dp *DatePicker) Toggle() {
-	dp.Open = !dp.Open
-}
-
-// Close closes the calendar.
-func (dp *DatePicker) Close() {
-	dp.Open = false
 }
 
 // SelectDate selects a date.
@@ -131,7 +119,6 @@ func (dp *DatePicker) SelectDate(date time.Time) bool {
 		return false
 	}
 	dp.Selected = &date
-	dp.Open = false
 	return true
 }
 
@@ -319,7 +306,6 @@ func (rp *RangePicker) SelectRangeDate(date time.Time) bool {
 			rp.EndDate = &date
 		}
 		rp.SelectingEnd = false
-		rp.Open = false
 	}
 	return true
 }

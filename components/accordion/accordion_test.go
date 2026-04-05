@@ -324,8 +324,8 @@ func TestTemplateRendering(t *testing.T) {
 		if !strings.Contains(html, `data-accordion="faq"`) {
 			t.Error("expected data-accordion attribute")
 		}
-		if !strings.Contains(html, `lvt-click="toggle_accordion_faq"`) {
-			t.Error("expected lvt-click attribute")
+		if !strings.Contains(html, `name="toggle_accordion_faq"`) {
+			t.Error("expected name attribute for button routing")
 		}
 		if !strings.Contains(html, `aria-expanded="true"`) {
 			t.Error("expected aria-expanded=true for open item")

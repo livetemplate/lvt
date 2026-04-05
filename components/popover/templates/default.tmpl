@@ -1,29 +1,30 @@
 {{define "lvt:popover:default:v1"}}
-<div class="{{.Styles.Root}}" data-popover="{{.ID}}">
+<style>[data-popover]:not(.open) [data-popover-panel]{display:none}</style>
+<div class="{{.Styles.Root}}" data-popover="{{.ID}}"
+     {{if .CloseOnClickAway}}lvt-el:removeClass:on:click-away="open"{{end}}
+     {{if .IsHoverTrigger}}
+     lvt-el:addClass:on:mouseenter="open"
+     lvt-el:removeClass:on:mouseleave="open"
+     {{end}}
+     {{if .IsFocusTrigger}}
+     lvt-el:addClass:on:focusin="open"
+     lvt-el:removeClass:on:focusout="open"
+     {{end}}>
   {{/* Trigger element wrapper */}}
   <div
     {{if .IsClickTrigger}}
-    lvt-click="toggle_{{.ID}}"
-    {{end}}
-    {{if .IsHoverTrigger}}
-    lvt-mouseenter="show_{{.ID}}"
-    lvt-mouseleave="hide_{{.ID}}"
-    {{end}}
-    {{if .IsFocusTrigger}}
-    lvt-focus="show_{{.ID}}"
-    lvt-blur="hide_{{.ID}}"
+    lvt-el:toggleClass:on:click="open" data-lvt-target="closest:[data-popover]"
     {{end}}
   >
     {{/* Slot for trigger content */}}
   </div>
 
   {{/* Popover content */}}
-  {{if .Open}}
   <div
     class="{{.Styles.Panel}} {{.PositionClasses}}"
     style="width: {{.Width}}"
     role="dialog"
-    {{if .CloseOnClickAway}}lvt-click-away="hide_{{.ID}}"{{end}}
+    data-popover-panel
   >
     {{/* Header */}}
     {{if .HasHeader}}
@@ -37,7 +38,7 @@
       <button
         type="button"
         class="{{.Styles.CloseBtn}}"
-        lvt-click="hide_{{.ID}}"
+        lvt-el:removeClass:on:click="open" data-lvt-target="closest:[data-popover]"
         aria-label="Close"
       >
         <svg class="{{.Styles.CloseIcon}}" viewBox="0 0 20 20" fill="currentColor">
@@ -59,6 +60,5 @@
     <div class="{{.ArrowClasses}}"></div>
     {{end}}
   </div>
-  {{end}}
 </div>
 {{end}}

@@ -76,8 +76,6 @@ type GalleryState struct {
 	HasMore        bool                `json:"has_more"`        // Whether more items available
 	IsLoading      bool                `json:"is_loading"`      // Loading indicator
 	CSSFramework    string              `json:"-"`               // CSS framework for templates
-	DeleteConfirm   *modal.ConfirmModal `json:"delete_confirm"`
-	PendingDeleteID string              `json:"pending_delete_id" lvt:"transient"`
 	Toasts          *toast.Container    `json:"toasts"`
 	// Sort reversion protection: morphdom can trigger spurious change events
 	PrevSortBy   string                `json:"prev_sort_by" lvt:"transient"`   // Previous sort value before last change
@@ -330,28 +328,16 @@ func (c *GalleryController) Back(state GalleryState, _ *livetemplate.Context) (G
 	state.LastUpdated = formatTime()
 	return state, nil
 }
-// RequestDelete handles the "request_delete" action to show the delete confirmation modal
-func (c *GalleryController) RequestDelete(state GalleryState, ctx *livetemplate.Context) (GalleryState, error) {
+
+// Delete handles the "delete" action - deletes a resource after client-side confirmation.
+func (c *GalleryController) Delete(state GalleryState, ctx *livetemplate.Context) (GalleryState, error) {
 	var input IDInput
 	if err := ctx.BindAndValidate(&input, validate); err != nil {
 		return state, err
 	}
-
-	state.PendingDeleteID = input.ID
-	state.DeleteConfirm.Show()
-	state.LastUpdated = formatTime()
-	return state, nil
-}
-
-// ConfirmDelete handles the "confirm_delete" action from the confirmation modal
-func (c *GalleryController) ConfirmDelete(state GalleryState, _ *livetemplate.Context) (GalleryState, error) {
 	dbCtx := context.Background()
-
-	if state.PendingDeleteID == "" {
-		return state, nil
-	}
 	// Delete associated files from storage
-	if existing, err := c.Queries.GetGalleryByID(dbCtx, state.PendingDeleteID); err == nil {
+	if existing, err := c.Queries.GetGalleryByID(dbCtx, input.ID); err == nil {
 		if existing.Photo != "" {
 			_ = c.Store.Delete(dbCtx, existing.Photo)
 		}
@@ -360,13 +346,11 @@ func (c *GalleryController) ConfirmDelete(state GalleryState, _ *livetemplate.Co
 		}
 	}
 
-	err := c.Queries.DeleteGallery(dbCtx, state.PendingDeleteID)
+	err := c.Queries.DeleteGallery(dbCtx, input.ID)
 	if err != nil {
 		return state, fmt.Errorf("failed to delete gallery: %w", err)
 	}
 
-	state.DeleteConfirm.Hide()
-	state.PendingDeleteID = ""
 	state.EditingID = ""
 	state.EditingGallery = nil
 
@@ -377,13 +361,6 @@ func (c *GalleryController) ConfirmDelete(state GalleryState, _ *livetemplate.Co
 
 	state.Toasts.AddSuccess("Deleted", "Gallery deleted successfully")
 	state.LastUpdated = formatTime()
-	return state, nil
-}
-
-// CancelDelete handles the "cancel_delete" action to close the confirmation modal
-func (c *GalleryController) CancelDelete(state GalleryState, _ *livetemplate.Context) (GalleryState, error) {
-	state.DeleteConfirm.Hide()
-	state.PendingDeleteID = ""
 	return state, nil
 }
 
@@ -667,11 +644,6 @@ func Handler(queries *models.Queries, store storage.Store) http.Handler {
 		LastUpdated:    formatTime(),
 		CSSFramework:   "tailwind",
 	}
-	initialState.DeleteConfirm = modal.NewConfirm("delete",
-		modal.WithConfirmTitle("Delete Gallery"),
-		modal.WithConfirmMessage("Are you sure you want to delete this gallery? This action cannot be undone."),
-		modal.WithConfirmDestructive(true),
-	)
 	initialState.Toasts = toast.New("notifications",
 		toast.WithPosition(toast.TopRight),
 		toast.WithMaxVisible(3),

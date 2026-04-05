@@ -4,7 +4,7 @@
 //   - New() creates a toggle switch (template: "lvt:toggle:default:v1")
 //   - NewCheckbox() creates a styled checkbox (template: "lvt:toggle:checkbox:v1")
 //
-// Required lvt-* attributes: lvt-click, lvt-change
+// Required lvt-* attributes: lvt-on:click, lvt-on:change
 //
 // Example usage:
 //

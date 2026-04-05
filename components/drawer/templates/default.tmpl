@@ -1,18 +1,27 @@
 {{define "lvt:drawer:default:v1"}}
-{{if .Open}}
-<div class="{{.Styles.Root}}" data-drawer="{{.ID}}">
+<style>
+[data-drawer]:not(.open){pointer-events:none}
+[data-drawer]:not(.open) [data-drawer-overlay]{opacity:0}
+[data-drawer]:not(.open) [data-drawer-panel]{transform:var(--drawer-closed-transform)}
+[data-drawer].open [data-drawer-panel]{transform:translate(0,0)}
+</style>
+<div class="{{.Styles.Root}}" data-drawer="{{.ID}}"
+     style="--drawer-closed-transform:{{.TransformClass}}"
+     {{if .Persistent}}data-persistent="true"{{end}}>
   {{/* Overlay */}}
   {{if .ShowOverlay}}
   <div
     class="{{.Styles.Overlay}}"
-    {{if .CloseOnOverlay}}lvt-click="close_{{.ID}}"{{end}}
+    data-drawer-overlay
+    {{if .CloseOnOverlay}}onclick="var d=this.closest('[data-drawer]');if(!d.hasAttribute('data-persistent'))d.classList.remove('open')"{{end}}
     aria-hidden="true"
   ></div>
   {{end}}
 
   {{/* Drawer panel */}}
   <div
-    class="{{.Styles.PanelBase}} {{.PositionClass}} {{.SizeClass}} {{.TransformClass}}"
+    class="{{.Styles.PanelBase}} {{.PositionClass}} {{.SizeClass}}"
+    data-drawer-panel
     role="dialog"
     aria-modal="true"
     {{if .HasTitle}}aria-labelledby="drawer-title-{{.ID}}"{{end}}
@@ -29,7 +38,7 @@
       <button
         type="button"
         class="{{.Styles.CloseBtn}}"
-        lvt-click="close_{{.ID}}"
+        onclick="var d=this.closest('[data-drawer]');if(!d.hasAttribute('data-persistent'))d.classList.remove('open')"
         aria-label="Close drawer"
       >
         <svg class="{{.Styles.CloseIcon}}" viewBox="0 0 20 20" fill="currentColor">
@@ -46,5 +55,4 @@
     </div>
   </div>
 </div>
-{{end}}
 {{end}}

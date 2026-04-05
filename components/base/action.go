@@ -6,7 +6,7 @@ import (
 )
 
 // ActionContext provides context for component action handlers.
-// It wraps the data passed from lvt-data-* attributes and provides
+// It wraps the data passed from data-* attributes and provides
 // convenient accessor methods.
 //
 // Components receive ActionContext in their action methods:
@@ -23,7 +23,7 @@ type ActionContext struct {
 	// ComponentID is the ID of the component that triggered the action.
 	ComponentID string
 
-	// data holds the key-value pairs from lvt-data-* attributes.
+	// data holds the key-value pairs from data-* attributes.
 	data map[string]string
 }
 
@@ -41,11 +41,11 @@ func NewActionContext(action, componentID string, data map[string]string) *Actio
 }
 
 // Data returns the value for the given key, or empty string if not present.
-// Keys correspond to lvt-data-* attributes without the "lvt-data-" prefix.
+// Keys correspond to data-* attributes without the "data-" prefix.
 //
 // Example:
 //
-//	<button lvt-click="select_myid" lvt-data-value="option1">Click</button>
+//	<button name="select_myid" data-value="option1">Click</button>
 //
 //	// In action handler:
 //	value := ctx.Data("value") // returns "option1"

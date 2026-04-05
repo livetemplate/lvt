@@ -378,10 +378,10 @@ func TestToastAutoDismiss(t *testing.T) {
 
 		// Open add modal and submit a new item via the submit button (not native form submit)
 		err = chromedp.Run(bctx,
-			chromedp.Click(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery),
-			chromedp.WaitVisible(`form[lvt-submit="add"]`, chromedp.ByQuery),
+			chromedp.Click(`[data-lvt-target="#add-modal"]`, chromedp.ByQuery),
+			chromedp.WaitVisible(`form[name="add"]`, chromedp.ByQuery),
 			chromedp.SendKeys(`input[name="name"]`, "Test Item", chromedp.ByQuery),
-			chromedp.Click(`form[lvt-submit="add"] button[type="submit"]`, chromedp.ByQuery),
+			chromedp.Click(`form[name="add"] button[type="submit"]`, chromedp.ByQuery),
 		)
 		if err != nil {
 			t.Fatalf("Failed to create item: %v", err)

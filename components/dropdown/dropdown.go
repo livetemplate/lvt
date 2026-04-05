@@ -5,8 +5,8 @@
 //   - NewSearchable() creates a searchable dropdown (template: "lvt:dropdown:searchable:v1")
 //   - NewMulti() creates a multi-select dropdown (template: "lvt:dropdown:multi:v1")
 //
-// Required lvt-* attributes: lvt-click, lvt-click-away
-// Optional: lvt-debounce (for searchable), lvt-focus-trap
+// Open/close is handled client-side via CSS classes and onclick handlers.
+// Server actions handle data operations only (Select, Search, ToggleItem).
 //
 // Example usage:
 //
@@ -49,9 +49,6 @@ type Dropdown struct {
 	// Placeholder is shown when nothing is selected
 	Placeholder string
 
-	// Open indicates whether the dropdown menu is currently visible
-	Open bool
-
 	// Disabled prevents user interaction
 	Disabled bool
 }
@@ -83,22 +80,11 @@ func New(id string, options []Item, opts ...Option) *Dropdown {
 	return d
 }
 
-// Toggle opens or closes the dropdown.
-func (d *Dropdown) Toggle() {
-	d.Open = !d.Open
-}
-
-// Close closes the dropdown.
-func (d *Dropdown) Close() {
-	d.Open = false
-}
-
 // Select selects an item by value.
 func (d *Dropdown) Select(value string) {
 	for i := range d.Options {
 		if d.Options[i].Value == value {
 			d.Selected = &d.Options[i]
-			d.Open = false
 			return
 		}
 	}
@@ -145,6 +131,11 @@ type Searchable struct {
 
 	// MinChars is the minimum characters required before filtering starts
 	MinChars int
+
+	// Open is server-controlled for searchable dropdowns because visibility
+	// depends on whether the query meets MinChars and results exist.
+	// The template renders class="...{{if .Open}}open{{end}}" on the root.
+	Open bool
 }
 
 // NewSearchable creates a searchable dropdown.

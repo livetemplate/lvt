@@ -28,9 +28,6 @@ func TestNew(t *testing.T) {
 	if dp.FirstDayOfWeek != 0 {
 		t.Errorf("Expected default FirstDayOfWeek 0 (Sunday), got %d", dp.FirstDayOfWeek)
 	}
-	if dp.Open {
-		t.Error("Expected Open to be false by default")
-	}
 }
 
 func TestNewRange(t *testing.T) {
@@ -55,9 +52,6 @@ func TestNewInline(t *testing.T) {
 
 	if dp.ID() != "test-inline" {
 		t.Errorf("Expected ID 'test-inline', got '%s'", dp.ID())
-	}
-	if !dp.Open {
-		t.Error("Expected inline datepicker to have Open=true")
 	}
 }
 
@@ -155,41 +149,8 @@ func TestWithStyled(t *testing.T) {
 	}
 }
 
-func TestWithOpen(t *testing.T) {
-	dp := New("test", WithOpen(true))
-	if !dp.Open {
-		t.Error("Expected Open to be true")
-	}
-}
-
-func TestToggle(t *testing.T) {
-	dp := New("test")
-
-	if dp.Open {
-		t.Error("Expected initial Open to be false")
-	}
-
-	dp.Toggle()
-	if !dp.Open {
-		t.Error("Expected Open to be true after toggle")
-	}
-
-	dp.Toggle()
-	if dp.Open {
-		t.Error("Expected Open to be false after second toggle")
-	}
-}
-
-func TestClose(t *testing.T) {
-	dp := New("test", WithOpen(true))
-	dp.Close()
-	if dp.Open {
-		t.Error("Expected Open to be false after Close")
-	}
-}
-
 func TestSelectDate(t *testing.T) {
-	dp := New("test", WithOpen(true))
+	dp := New("test")
 	date := time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC)
 
 	result := dp.SelectDate(date)
@@ -202,9 +163,6 @@ func TestSelectDate(t *testing.T) {
 	}
 	if !sameDay(*dp.Selected, date) {
 		t.Errorf("Expected selected date %v, got %v", date, *dp.Selected)
-	}
-	if dp.Open {
-		t.Error("Expected Open to be false after selection")
 	}
 }
 
@@ -572,7 +530,7 @@ func TestSelectRangeDateStart(t *testing.T) {
 }
 
 func TestSelectRangeDateEnd(t *testing.T) {
-	rp := NewRange("test", WithOpen(true))
+	rp := NewRange("test")
 	startDate := time.Date(2024, 6, 10, 0, 0, 0, 0, time.UTC)
 	endDate := time.Date(2024, 6, 20, 0, 0, 0, 0, time.UTC)
 
@@ -590,9 +548,6 @@ func TestSelectRangeDateEnd(t *testing.T) {
 	}
 	if rp.SelectingEnd {
 		t.Error("Expected SelectingEnd to be false after complete selection")
-	}
-	if rp.Open {
-		t.Error("Expected Open to be false after completing range selection")
 	}
 }
 

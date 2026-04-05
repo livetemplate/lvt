@@ -9,7 +9,7 @@
       class="{{.Styles.FilterInput}}"
       placeholder="Search..."
       value="{{.FilterValue}}"
-      lvt-input="filter_{{dtID $dt}}"
+      lvt-on:input="filter_{{dtID $dt}}"
     />
   </div>
   {{end}}
@@ -33,7 +33,7 @@
               type="checkbox"
               class="{{.Styles.Checkbox}}"
               {{if dtAllSelected $dt}}checked{{end}}
-              lvt-click="toggle_all_{{dtID $dt}}"
+              lvt-on:click="toggle_all_{{dtID $dt}}"
             />
           </th>
           {{end}}
@@ -43,7 +43,7 @@
               {{if eq (colAlign $col) "center"}}{{$dt.Styles.ThAlignCenter}}{{else if eq (colAlign $col) "right"}}{{$dt.Styles.ThAlignRight}}{{end}}
               {{if colSortable $col}}{{$dt.Styles.ThSortable}}{{end}}"
             {{if colWidth $col}}style="width: {{colWidth $col}}"{{end}}
-            {{if colSortable $col}}lvt-click="sort_{{dtID $dt}}" lvt-data-column="{{colID $col}}"{{end}}
+            {{if colSortable $col}}lvt-on:click="sort_{{dtID $dt}}" data-column="{{colID $col}}"{{end}}
           >
             <span class="{{$dt.Styles.ThContent}} {{if eq (colAlign $col) "center"}}justify-center{{else if eq (colAlign $col) "right"}}justify-end{{end}}">
               {{colLabel $col}}
@@ -84,8 +84,8 @@
               class="{{$dt.Styles.Checkbox}}"
               {{if isRowSelected $row}}checked{{end}}
               {{if isRowDisabled $row}}disabled{{end}}
-              lvt-click="toggle_row_{{dtID $dt}}"
-              lvt-data-row="{{getRowID $row}}"
+              lvt-on:click="toggle_row_{{dtID $dt}}"
+              data-row="{{getRowID $row}}"
             />
           </td>
           {{end}}
@@ -93,8 +93,8 @@
           <td class="{{$dt.Styles.Td}} {{if $dt.Compact}}{{$dt.Styles.TdCompact}}{{end}}
             {{if eq (colAlign $col) "center"}}{{$dt.Styles.TdAlignCenter}}{{else if eq (colAlign $col) "right"}}{{$dt.Styles.TdAlignRight}}{{end}}"
             {{if and $dt.Selectable (not $dt.MultiSelect)}}
-            lvt-click="select_row_{{dtID $dt}}"
-            lvt-data-row="{{getRowID $row}}"
+            lvt-on:click="select_row_{{dtID $dt}}"
+            data-row="{{getRowID $row}}"
             {{end}}
           >
             {{getCellValue $row (colID $col)}}
@@ -117,14 +117,14 @@
       <button
         type="button"
         class="{{.Styles.PageBtn}} {{if not (dtHasPrev $dt)}}{{.Styles.PageBtnDisabled}}{{end}}"
-        {{if dtHasPrev $dt}}lvt-click="prev_page_{{dtID $dt}}"{{else}}disabled{{end}}
+        {{if dtHasPrev $dt}}name="prev_page_{{dtID $dt}}"{{else}}disabled{{end}}
       >
         Previous
       </button>
       <button
         type="button"
         class="{{.Styles.PageBtn}} {{if not (dtHasNext $dt)}}{{.Styles.PageBtnDisabled}}{{end}}"
-        {{if dtHasNext $dt}}lvt-click="next_page_{{dtID $dt}}"{{else}}disabled{{end}}
+        {{if dtHasNext $dt}}name="next_page_{{dtID $dt}}"{{else}}disabled{{end}}
       >
         Next
       </button>

@@ -3,15 +3,15 @@
   {{/* Trigger element wrapper */}}
   <div
     {{if .IsHoverTrigger}}
-    lvt-mouseenter="show_{{.ID}}"
-    lvt-mouseleave="hide_{{.ID}}"
+    lvt-on:mouseenter="show_{{.ID}}"
+    lvt-on:mouseleave="hide_{{.ID}}"
     {{end}}
     {{if .IsFocusTrigger}}
-    lvt-focus="show_{{.ID}}"
-    lvt-blur="hide_{{.ID}}"
+    lvt-on:focus="show_{{.ID}}"
+    lvt-on:blur="hide_{{.ID}}"
     {{end}}
     {{if .IsClickTrigger}}
-    lvt-click="toggle_{{.ID}}"
+    lvt-on:click="toggle_{{.ID}}"
     {{end}}
   >
     {{/* Slot for trigger content - use nested template */}}

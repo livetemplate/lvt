@@ -25,7 +25,7 @@
         <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
           <!-- Search -->
           <div style="flex: 1; min-width: 200px;">
-            <input[[if ne (inputClass .CSSFramework) ""]] class="[[inputClass .CSSFramework]]"[[end]] type="search" name="query" placeholder="Search [[.ResourceNameLower]]s..." value="{{.SearchQuery}}" lvt-change="search" lvt-debounce="300">
+            <input[[if ne (inputClass .CSSFramework) ""]] class="[[inputClass .CSSFramework]]"[[end]] type="search" name="query" placeholder="Search [[.ResourceNameLower]]s..." value="{{.SearchQuery}}" lvt-on:change="search" lvt-mod:debounce="300">
           </div>
 
           <!-- Sort -->
@@ -33,7 +33,7 @@
 [[- if ne (selectWrapperClass .CSSFramework) ""]]
             <div class="[[selectWrapperClass .CSSFramework]]">
 [[- end]]
-              <select[[if ne (selectClass .CSSFramework) ""]] class="[[selectClass .CSSFramework]]"[[end]] name="sort_by" lvt-change="sort" data-expected-value="{{.SortBy}}">
+              <select[[if ne (selectClass .CSSFramework) ""]] class="[[selectClass .CSSFramework]]"[[end]] name="sort_by" lvt-on:change="sort" data-expected-value="{{.SortBy}}">
                 <option value="" {{if eq .SortBy ""}}selected{{end}}>Newest First</option>
 [[- range $i, $f := .Fields]]
 [[- if and (eq $i 0) (eq $f.GoType "string")]]
@@ -49,7 +49,7 @@
           </div>
 
           <!-- Add Button -->
-          <button[[if ne (buttonClass .CSSFramework "primary") ""]] class="[[buttonClass .CSSFramework "primary"]]"[[end]] lvt-click="open_add">
+          <button[[if ne (buttonClass .CSSFramework "primary") ""]] class="[[buttonClass .CSSFramework "primary"]]"[[end]] name="open_add">
             + Add [[.ResourceName]]
           </button>
         </div>
@@ -77,7 +77,7 @@
           </div>
           {{end}}
 
-          <form lvt-submit="add">
+          <form name="add">
 [[- range .Fields]]
             <div[[if ne (fieldClass $.CSSFramework) ""]] class="[[fieldClass $.CSSFramework]]"[[end]]>
               <label[[if ne (labelClass $.CSSFramework) ""]] class="[[labelClass $.CSSFramework]]"[[end]]>[[.Name | title]]</label>
@@ -99,8 +99,8 @@
             </div>
 [[- end]]
             <div[[if ne (fieldClass .CSSFramework) ""]] class="[[fieldClass .CSSFramework]]"[[end]]>
-              <button[[if ne (buttonClass .CSSFramework "primary") ""]] class="[[buttonClass .CSSFramework "primary"]]"[[end]] type="submit" lvt-disable-with="Adding...">Add [[.ResourceName]]</button>
-              <button[[if ne (buttonClass .CSSFramework "secondary") ""]] class="[[buttonClass .CSSFramework "secondary"]]"[[end]] type="button" lvt-click="cancel_add">Cancel</button>
+              <button[[if ne (buttonClass .CSSFramework "primary") ""]] class="[[buttonClass .CSSFramework "primary"]]"[[end]] type="submit" lvt-form:disable-with="Adding...">Add [[.ResourceName]]</button>
+              <button[[if ne (buttonClass .CSSFramework "secondary") ""]] class="[[buttonClass .CSSFramework "secondary"]]"[[end]] type="button" name="cancel_add">Cancel</button>
             </div>
           </form>
 [[- if needsArticle .CSSFramework]]
@@ -129,7 +129,7 @@
           </div>
           {{end}}
 
-          <form lvt-submit="update">
+          <form name="update">
             <input type="hidden" name="id" value="{{.EditingID}}">
 [[- range .Fields]]
             <div[[if ne (fieldClass $.CSSFramework) ""]] class="[[fieldClass $.CSSFramework]]"[[end]]>
@@ -152,8 +152,8 @@
             </div>
 [[- end]]
             <div[[if ne (fieldClass .CSSFramework) ""]] class="[[fieldClass .CSSFramework]]"[[end]]>
-              <button[[if ne (buttonClass .CSSFramework "primary") ""]] class="[[buttonClass .CSSFramework "primary"]]"[[end]] type="submit" lvt-disable-with="Updating...">Update [[.ResourceName]]</button>
-              <button[[if ne (buttonClass .CSSFramework "secondary") ""]] class="[[buttonClass .CSSFramework "secondary"]]"[[end]] type="button" lvt-click="cancel_edit">Cancel</button>
+              <button[[if ne (buttonClass .CSSFramework "primary") ""]] class="[[buttonClass .CSSFramework "primary"]]"[[end]] type="submit" lvt-form:disable-with="Updating...">Update [[.ResourceName]]</button>
+              <button[[if ne (buttonClass .CSSFramework "secondary") ""]] class="[[buttonClass .CSSFramework "secondary"]]"[[end]] type="button" name="cancel_edit">Cancel</button>
             </div>
           </form>
 [[- if needsArticle .CSSFramework]]
@@ -198,10 +198,10 @@
 [[- end]]
                     </td>
                     <td style="white-space: nowrap;">
-                      <button[[if ne (buttonClass $.CSSFramework "secondary") ""]] class="[[buttonClass $.CSSFramework "secondary"]]"[[end]] lvt-click="edit" lvt-data-id="{{.ID}}">
+                      <button[[if ne (buttonClass $.CSSFramework "secondary") ""]] class="[[buttonClass $.CSSFramework "secondary"]]"[[end]] name="edit" data-id="{{.ID}}">
                         Edit
                       </button>
-                      <button[[if ne (buttonClass $.CSSFramework "danger") ""]] class="[[buttonClass $.CSSFramework "danger"]]"[[end]] lvt-click="delete" lvt-data-id="{{.ID}}">
+                      <button[[if ne (buttonClass $.CSSFramework "danger") ""]] class="[[buttonClass $.CSSFramework "danger"]]"[[end]] name="delete" data-id="{{.ID}}">
                         Delete
                       </button>
                     </td>
@@ -238,7 +238,7 @@
             {{if .IsLoading}}
               <div[[if ne (loadingClass .CSSFramework) ""]] class="[[loadingClass .CSSFramework]]"[[end]]>Loading...</div>
             {{else}}
-              <button[[if ne (buttonClass .CSSFramework "primary") ""]] class="[[buttonClass .CSSFramework "primary"]]"[[end]] lvt-click="load_more">
+              <button[[if ne (buttonClass .CSSFramework "primary") ""]] class="[[buttonClass .CSSFramework "primary"]]"[[end]] name="load_more">
                 Load More
               </button>
             {{end}}
@@ -250,7 +250,7 @@
 [[- else if eq .PaginationMode "numbers"]]
         {{if gt .TotalPages 1}}
           <nav[[if ne (paginationClass .CSSFramework) ""]] class="[[paginationClass .CSSFramework]]"[[end]] role="navigation" aria-label="pagination" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-top: 1rem;">
-            <button[[if ne (paginationButtonClass .CSSFramework) ""]] class="[[paginationButtonClass .CSSFramework]]"[[end]] lvt-click="prev_page" {{if eq .CurrentPage 1}}disabled{{end}}>
+            <button[[if ne (paginationButtonClass .CSSFramework) ""]] class="[[paginationButtonClass .CSSFramework]]"[[end]] name="prev_page" {{if eq .CurrentPage 1}}disabled{{end}}>
               &laquo; Prev
             </button>
 
@@ -258,7 +258,7 @@
               {{if eq .CurrentPage 1}}
                 <span[[if ne (paginationActiveClass .CSSFramework) ""]] class="[[paginationActiveClass .CSSFramework]]"[[end]] style="padding: 0.5rem 0.75rem; font-weight: bold;">1</span>
               {{else}}
-                <button[[if ne (paginationButtonClass .CSSFramework) ""]] class="[[paginationButtonClass .CSSFramework]]"[[end]] lvt-click="goto_page" lvt-data-page="1">1</button>
+                <button[[if ne (paginationButtonClass .CSSFramework) ""]] class="[[paginationButtonClass .CSSFramework]]"[[end]] name="goto_page" data-page="1">1</button>
               {{end}}
 
               {{if gt .TotalPages 2}}
@@ -268,7 +268,7 @@
 
                 {{if and (gt .CurrentPage 1) (lt .CurrentPage .TotalPages)}}
                   {{if gt .CurrentPage 2}}
-                    <button[[if ne (paginationButtonClass .CSSFramework) ""]] class="[[paginationButtonClass .CSSFramework]]"[[end]] lvt-click="goto_page" lvt-data-page="{{.CurrentPage}}">{{.CurrentPage}}</button>
+                    <button[[if ne (paginationButtonClass .CSSFramework) ""]] class="[[paginationButtonClass .CSSFramework]]"[[end]] name="goto_page" data-page="{{.CurrentPage}}">{{.CurrentPage}}</button>
                   {{end}}
                 {{end}}
 
@@ -281,12 +281,12 @@
                 {{if eq .CurrentPage .TotalPages}}
                   <span[[if ne (paginationActiveClass .CSSFramework) ""]] class="[[paginationActiveClass .CSSFramework]]"[[end]] style="padding: 0.5rem 0.75rem; font-weight: bold;">{{.TotalPages}}</span>
                 {{else}}
-                  <button[[if ne (paginationButtonClass .CSSFramework) ""]] class="[[paginationButtonClass .CSSFramework]]"[[end]] lvt-click="goto_page" lvt-data-page="{{.TotalPages}}">{{.TotalPages}}</button>
+                  <button[[if ne (paginationButtonClass .CSSFramework) ""]] class="[[paginationButtonClass .CSSFramework]]"[[end]] name="goto_page" data-page="{{.TotalPages}}">{{.TotalPages}}</button>
                 {{end}}
               {{end}}
             </div>
 
-            <button[[if ne (paginationButtonClass .CSSFramework) ""]] class="[[paginationButtonClass .CSSFramework]]"[[end]] lvt-click="next_page" {{if eq .CurrentPage .TotalPages}}disabled{{end}}>
+            <button[[if ne (paginationButtonClass .CSSFramework) ""]] class="[[paginationButtonClass .CSSFramework]]"[[end]] name="next_page" {{if eq .CurrentPage .TotalPages}}disabled{{end}}>
               Next &raquo;
             </button>
           </nav>
@@ -294,7 +294,7 @@
 [[- else]]
         {{if gt .TotalPages 1}}
           <nav[[if ne (paginationClass .CSSFramework) ""]] class="[[paginationClass .CSSFramework]]"[[end]] role="navigation" aria-label="pagination">
-            <button[[if ne (paginationButtonClass .CSSFramework) ""]] class="[[paginationButtonClass .CSSFramework]]"[[end]] lvt-click="prev_page" {{if eq .CurrentPage 1}}disabled{{end}}>
+            <button[[if ne (paginationButtonClass .CSSFramework) ""]] class="[[paginationButtonClass .CSSFramework]]"[[end]] name="prev_page" {{if eq .CurrentPage 1}}disabled{{end}}>
               Previous
             </button>
 [[- if ne (paginationInfoClass .CSSFramework) ""]]
@@ -307,7 +307,7 @@
                 Page {{.CurrentPage}} of {{.TotalPages}}
               </span>
             </div>
-            <button[[if ne (paginationButtonClass .CSSFramework) ""]] class="[[paginationButtonClass .CSSFramework]]"[[end]] lvt-click="next_page" {{if eq .CurrentPage .TotalPages}}disabled{{end}}>
+            <button[[if ne (paginationButtonClass .CSSFramework) ""]] class="[[paginationButtonClass .CSSFramework]]"[[end]] name="next_page" {{if eq .CurrentPage .TotalPages}}disabled{{end}}>
               Next
             </button>
           </nav>

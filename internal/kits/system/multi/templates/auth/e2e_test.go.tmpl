@@ -171,7 +171,7 @@ func TestAuthE2E(t *testing.T) {
 			chromedp.Navigate(e2etest.GetChromeTestURL(serverPort)+"/auth"),
 			chromedp.Sleep(2*time.Second),
 			// Click "Create account" button to switch to registration form
-			chromedp.Click(`button[lvt-click="SwitchToRegister"]`, chromedp.ByQuery),
+			chromedp.Click(`button[name="SwitchToRegister"]`, chromedp.ByQuery),
 			chromedp.Sleep(2*time.Second),
 			chromedp.OuterHTML(`body`, &pageHTML, chromedp.ByQuery),
 		)
@@ -207,7 +207,7 @@ func TestAuthE2E(t *testing.T) {
 		// Only click SwitchToRegister if we're on the login form
 		if strings.Contains(strings.ToLower(heading), "sign in") {
 			err = chromedp.Run(ctx,
-				chromedp.Click(`button[lvt-click="SwitchToRegister"]`, chromedp.ByQuery),
+				chromedp.Click(`button[name="SwitchToRegister"]`, chromedp.ByQuery),
 				chromedp.Sleep(3*time.Second),
 			)
 			if err != nil {
@@ -220,8 +220,8 @@ func TestAuthE2E(t *testing.T) {
 			chromedp.Clear(`input[name="email"]`, chromedp.ByQuery),
 			chromedp.SendKeys(`input[name="email"]`, testEmail, chromedp.ByQuery),
 			chromedp.SendKeys(`input[name="password"]`, "testpassword123", chromedp.ByQuery),
-			// Click the submit button (form has lvt-submit="Register")
-			chromedp.Click(`form[lvt-submit="Register"] button[type="submit"]`, chromedp.ByQuery),
+			// Click the submit button (form has name="Register")
+			chromedp.Click(`form[name="Register"] button[type="submit"]`, chromedp.ByQuery),
 			chromedp.Sleep(3*time.Second),
 			chromedp.OuterHTML(`body`, &pageHTML, chromedp.ByQuery),
 		)
