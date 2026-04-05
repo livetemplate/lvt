@@ -27,6 +27,7 @@
       value="{{$c.Query}}"
       lvt-on:input="query_{{$c.ID}}"
       onfocus="this.closest('[data-autocomplete]').classList.add('open')"
+      onfocusout="if(!this.closest('[data-autocomplete]').contains(event.relatedTarget))this.closest('[data-autocomplete]').classList.remove('open')"
       lvt-on:keydown="keydown_{{$c.ID}}"
       autocomplete="off"
       aria-autocomplete="list"
