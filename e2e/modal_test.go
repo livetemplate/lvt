@@ -139,6 +139,9 @@ func TestModalFunctionality(t *testing.T) {
 	ctx, timeoutCancel := context.WithTimeout(ctx, getBrowserTimeout())
 	defer timeoutCancel()
 
+	// Shared variable for modal hidden state checks across ActionFuncs
+	var hidden bool
+
 	// Run the tests
 	err = chromedp.Run(ctx,
 		// Enable Runtime to capture console logs
@@ -176,7 +179,6 @@ func TestModalFunctionality(t *testing.T) {
 
 		// Test 1: Modal should be hidden initially
 		chromedp.ActionFunc(func(ctx context.Context) error {
-			var hidden bool
 			if err := chromedp.Evaluate(`document.getElementById('add-modal').hasAttribute('hidden')`, &hidden).Do(ctx); err != nil {
 				return fmt.Errorf("failed to check hidden attribute: %v", err)
 			}
