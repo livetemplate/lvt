@@ -6,9 +6,8 @@
   <button
     type="button"
     class="{{$c.Styles.TriggerBtn}}"
-    onclick="var r=this.closest('[data-menu]');r.classList.toggle('open');this.setAttribute('aria-expanded',r.classList.contains('open'))"
+    lvt-el:toggleClass:on:click="open" data-lvt-target="closest:[data-menu]"
     aria-haspopup="true"
-    aria-expanded="false"
   >
     {{if $c.TriggerIcon}}<span>{{$c.TriggerIcon}}</span>{{end}}
     {{if $c.Trigger}}{{$c.Trigger}}{{else}}Menu{{end}}

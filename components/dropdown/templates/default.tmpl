@@ -6,10 +6,9 @@
   <button
     type="button"
     class="{{$c.Styles.TriggerBtn}}"
-    onclick="var r=this.closest('[data-dropdown]');r.classList.toggle('open');this.setAttribute('aria-expanded',r.classList.contains('open'))"
+    lvt-el:toggleClass:on:click="open" data-lvt-target="closest:[data-dropdown]"
     {{if $c.Disabled}}disabled{{end}}
     aria-haspopup="listbox"
-    aria-expanded="false"
   >
     <span class="{{$c.Styles.SelectedText}}">
       {{if $c.Selected}}{{$c.Selected.Label}}{{else}}{{$c.Placeholder}}{{end}}

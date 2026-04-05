@@ -49,7 +49,7 @@
           </div>
 
           <!-- Add Button -->
-          <button[[if ne (buttonClass .CSSFramework "primary") ""]] class="[[buttonClass .CSSFramework "primary"]]"[[end]] command="show-modal" commandfor="add-modal">
+          <button[[if ne (buttonClass .CSSFramework "primary") ""]] class="[[buttonClass .CSSFramework "primary"]]"[[end]] lvt-el:toggleAttr:on:click="hidden" data-lvt-target="#add-modal">
             + Add [[.ResourceName]]
           </button>
         </div>
@@ -70,7 +70,7 @@
 [[- end]]
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
             <h2[[if ne (subtitleClass .CSSFramework) ""]] class="[[subtitleClass .CSSFramework]]"[[end]] style="margin: 0;">Add New [[.ResourceName]]</h2>
-            <button type="button" command="close" commandfor="add-modal" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;" aria-label="Close">&times;</button>
+            <button type="button" lvt-el:toggleAttr:on:click="hidden" data-lvt-target="#add-modal" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;" aria-label="Close">&times;</button>
           </div>
 
           {{if .lvt.HasError "_general"}}
@@ -105,7 +105,7 @@
 [[- end]]
             <div[[if ne (fieldClass .CSSFramework) ""]] class="[[fieldClass .CSSFramework]]"[[end]]>
               <button[[if ne (buttonClass .CSSFramework "primary") ""]] class="[[buttonClass .CSSFramework "primary"]]"[[end]] type="submit" lvt-form:disable-with="Adding...">Add [[.ResourceName]]</button>
-              <button[[if ne (buttonClass .CSSFramework "secondary") ""]] class="[[buttonClass .CSSFramework "secondary"]]"[[end]] type="button" command="close" commandfor="add-modal">Cancel</button>
+              <button[[if ne (buttonClass .CSSFramework "secondary") ""]] class="[[buttonClass .CSSFramework "secondary"]]"[[end]] type="button" lvt-el:toggleAttr:on:click="hidden" data-lvt-target="#add-modal">Cancel</button>
             </div>
           </form>
 [[- if needsArticle .CSSFramework]]

@@ -507,8 +507,11 @@ func TestTemplateRendering(t *testing.T) {
 		if !strings.Contains(html, "Select...") {
 			t.Error("expected placeholder text")
 		}
-		if !strings.Contains(html, `onclick=`) {
-			t.Error("expected onclick attribute for client-side toggle")
+		if !strings.Contains(html, `lvt-el:toggleClass:on:click="open"`) {
+			t.Error("expected lvt-el:toggleClass:on:click attribute for client-side toggle")
+		}
+		if !strings.Contains(html, `data-lvt-target="closest:[data-dropdown]"`) {
+			t.Error("expected data-lvt-target attribute for cross-element targeting")
 		}
 	})
 

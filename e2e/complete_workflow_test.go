@@ -198,8 +198,8 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 			validateNoTemplateExpressions("[data-lvt-id]"),
 
 			// Click Add button to open modal
-			chromedp.WaitVisible(`[commandfor="add-modal"]`, chromedp.ByQuery),
-			chromedp.Click(`[commandfor="add-modal"]`, chromedp.ByQuery),
+			chromedp.WaitVisible(`[data-lvt-target="#add-modal"]`, chromedp.ByQuery),
+			chromedp.Click(`[data-lvt-target="#add-modal"]`, chromedp.ByQuery),
 			// Wait for modal to open
 			waitFor(`document.querySelector('[role="dialog"]') && !document.querySelector('[role="dialog"]').hasAttribute('hidden')`, 3*time.Second),
 
@@ -363,7 +363,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 		// Step 4: Wait for add button
 		t.Log("[Delete_Post] Step 4: Waiting for add button...")
 		err = chromedp.Run(ctx,
-			chromedp.WaitVisible(`[commandfor="add-modal"]`, chromedp.ByQuery),
+			chromedp.WaitVisible(`[data-lvt-target="#add-modal"]`, chromedp.ByQuery),
 		)
 		if err != nil {
 			t.Fatalf("[Delete_Post] Step 4 failed (wait for add button): %v", err)
@@ -867,7 +867,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 			chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
 
 			// Open add modal via DOM manipulation (more reliable than click event delegation)
-			chromedp.WaitVisible(`[commandfor="add-modal"]`, chromedp.ByQuery),
+			chromedp.WaitVisible(`[data-lvt-target="#add-modal"]`, chromedp.ByQuery),
 			chromedp.Evaluate(`
 				(() => {
 					const modal = document.querySelector('#add-modal');

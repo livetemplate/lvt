@@ -19,8 +19,7 @@
     <button
       type="button"
       class="{{$c.Styles.Item}} {{if $item.Active}}{{$c.Styles.ItemActive}}{{else}}{{$c.Styles.ItemDefault}}{{end}}"
-      onclick="var s=this.closest('[data-submenu]');s.classList.toggle('open');this.setAttribute('aria-expanded',s.classList.contains('open'))"
-      aria-expanded="false"
+      lvt-el:toggleClass:on:click="open" data-lvt-target="closest:[data-submenu]"
       aria-haspopup="true"
     >
       {{if $item.HasIcon}}<span>{{$item.Icon}}</span>{{end}}

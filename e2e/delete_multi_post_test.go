@@ -95,8 +95,8 @@ func TestDeleteWithMultiplePosts(t *testing.T) {
 			chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
 
 			// Create first post — retry modal click until event handlers are attached
-			chromedp.WaitVisible(`[commandfor="add-modal"]`, chromedp.ByQuery),
-			clickUntilModalOpens(`[commandfor="add-modal"]`, `input[name="title"]`, 15*time.Second),
+			chromedp.WaitVisible(`[data-lvt-target="#add-modal"]`, chromedp.ByQuery),
+			clickUntilModalOpens(`[data-lvt-target="#add-modal"]`, `input[name="title"]`, 15*time.Second),
 			chromedp.SendKeys(`input[name="title"]`, "First Post", chromedp.ByQuery),
 			chromedp.SendKeys(`textarea[name="content"]`, "Content of first post", chromedp.ByQuery),
 			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
@@ -131,8 +131,8 @@ func TestDeleteWithMultiplePosts(t *testing.T) {
 			chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
 
 			// Create second post — retry modal click until event handlers are attached
-			chromedp.WaitVisible(`[commandfor="add-modal"]`, chromedp.ByQuery),
-			clickUntilModalOpens(`[commandfor="add-modal"]`, `input[name="title"]`, 15*time.Second),
+			chromedp.WaitVisible(`[data-lvt-target="#add-modal"]`, chromedp.ByQuery),
+			clickUntilModalOpens(`[data-lvt-target="#add-modal"]`, `input[name="title"]`, 15*time.Second),
 			chromedp.SendKeys(`input[name="title"]`, "Second Post", chromedp.ByQuery),
 			chromedp.SendKeys(`textarea[name="content"]`, "Content of second post", chromedp.ByQuery),
 			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),

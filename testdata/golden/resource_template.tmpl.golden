@@ -92,7 +92,7 @@
 {{define "addForm"}}
   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
     <h2 class="text-xl font-semibold text-gray-700 mb-4" style="margin: 0;">Add New Post</h2>
-    <button type="button" command="close" commandfor="add-modal" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;" aria-label="Close">&times;</button>
+    <button type="button" lvt-el:toggleAttr:on:click="hidden" data-lvt-target="#add-modal" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;" aria-label="Close">&times;</button>
   </div>
 
   {{if .lvt.HasError "_general"}}
@@ -121,7 +121,7 @@
     </div>
     <div class="mb-4">
       <button class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50" style="margin-right: 8px; padding: 0.5rem 1rem; font-size: 1rem; min-width: 100px;" type="submit" lvt-form:disable-with="Adding...">Add Post</button>
-      <button class="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 disabled:opacity-50" style="padding: 0.5rem 1rem; font-size: 1rem; min-width: 100px;" type="button" command="close" commandfor="add-modal">Cancel</button>
+      <button class="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 disabled:opacity-50" style="padding: 0.5rem 1rem; font-size: 1rem; min-width: 100px;" type="button" lvt-el:toggleAttr:on:click="hidden" data-lvt-target="#add-modal">Cancel</button>
     </div>
   </form>
 {{end}}
@@ -131,7 +131,7 @@
   {{if ne .EditingID ""}}
   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
     <h2 class="text-xl font-semibold text-gray-700 mb-4" style="margin: 0;">Edit Post</h2>
-    <button type="button" command="close" commandfor="edit-modal" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;" aria-label="Close">&times;</button>
+    <button type="button" lvt-el:toggleAttr:on:click="hidden" data-lvt-target="#edit-modal" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;" aria-label="Close">&times;</button>
   </div>
 
   {{if .lvt.HasError "_general"}}
@@ -191,7 +191,7 @@
     </div>
 
     <!-- Add Button -->
-    <button class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50" command="show-modal" commandfor="add-modal">
+    <button class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50" lvt-el:toggleAttr:on:click="hidden" data-lvt-target="#add-modal">
       + Add Post
     </button>
   </div>

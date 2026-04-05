@@ -6,9 +6,8 @@
   <button
     type="button"
     class="{{.DurationStyles.TriggerBtn}}"
-    onclick="var r=this.closest('[data-timepicker]');r.classList.toggle('open');this.setAttribute('aria-expanded',r.classList.contains('open'))"
+    lvt-el:toggleClass:on:click="open" data-lvt-target="closest:[data-timepicker]"
     aria-haspopup="dialog"
-    aria-expanded="false"
   >
     <span class="{{.DurationStyles.TriggerText}}">
       <span class="{{if not .HasValue}}{{.DurationStyles.Placeholder}}{{end}}">{{.DisplayValue}}</span>

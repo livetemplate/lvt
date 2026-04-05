@@ -13,7 +13,7 @@
   {{/* Trigger element wrapper */}}
   <div
     {{if .IsClickTrigger}}
-    onclick="var r=this.closest('[data-popover]');r.classList.toggle('open')"
+    lvt-el:toggleClass:on:click="open" data-lvt-target="closest:[data-popover]"
     {{end}}
   >
     {{/* Slot for trigger content */}}
@@ -38,7 +38,7 @@
       <button
         type="button"
         class="{{.Styles.CloseBtn}}"
-        onclick="this.closest('[data-popover]').classList.remove('open')"
+        lvt-el:removeClass:on:click="open" data-lvt-target="closest:[data-popover]"
         aria-label="Close"
       >
         <svg class="{{.Styles.CloseIcon}}" viewBox="0 0 20 20" fill="currentColor">
