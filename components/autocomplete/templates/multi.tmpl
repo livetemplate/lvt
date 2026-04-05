@@ -1,6 +1,6 @@
 {{define "lvt:autocomplete:multi:v1"}}
 {{$c := .}}
-<style>[data-autocomplete]:not(.open) [data-autocomplete-panel]{display:none}</style>
+{{template "lvt:autocomplete:panel-css"}}
 <div class="{{$c.Styles.Root}} {{if $c.Open}}open{{end}}" data-autocomplete="{{$c.ID}}" data-multi="true"
      lvt-el:removeClass:on:click-away="open">
   <div class="{{$c.Styles.InputWrapper}}">

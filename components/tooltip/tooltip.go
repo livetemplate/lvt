@@ -3,7 +3,7 @@
 // Available variants:
 //   - New() creates a tooltip (template: "lvt:tooltip:default:v1")
 //
-// Required lvt-* attributes: lvt-mouseenter, lvt-mouseleave, lvt-focus, lvt-blur
+// Required lvt-* attributes: lvt-on:mouseenter, lvt-on:mouseleave, lvt-on:focus, lvt-on:blur
 //
 // Example usage:
 //

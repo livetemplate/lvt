@@ -46,7 +46,6 @@ const (
 )
 
 // Drawer is a slide-out panel component.
-// Open/close is handled client-side via CSS classes.
 // Use template "lvt:drawer:default:v1" to render.
 type Drawer struct {
 	base.Base

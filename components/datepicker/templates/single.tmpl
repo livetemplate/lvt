@@ -1,5 +1,5 @@
 {{define "lvt:datepicker:single:v1"}}
-<style>[data-datepicker]:not(.open) [data-datepicker-panel]{display:none}</style>
+{{template "lvt:datepicker:panel-css"}}
 <div class="{{.Styles.Root}}" data-datepicker="{{.ID}}"
      lvt-el:removeClass:on:click-away="open">
   <button
@@ -20,7 +20,6 @@
   <div
     class="{{.Styles.Dropdown}}"
     data-datepicker-panel
-    hidden
     role="dialog"
     aria-modal="true"
     aria-label="Choose date"

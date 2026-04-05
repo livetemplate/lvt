@@ -74,7 +74,6 @@ type Item struct {
 }
 
 // Menu is a dropdown/action menu component.
-// Open/close is handled client-side via CSS classes and onclick handlers.
 // Use template "lvt:menu:default:v1" to render.
 type Menu struct {
 	base.Base

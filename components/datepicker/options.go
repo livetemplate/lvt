@@ -69,8 +69,8 @@ func WithStyled(styled bool) Option {
 	}
 }
 
-// WithOpen is a no-op, retained for backward compatibility.
-// Open/close state is now managed client-side via CSS classes.
+// WithOpen is a no-op. Open/close is now handled client-side via CSS classes.
+// Deprecated: This option has no effect.
 func WithOpen(_ bool) Option {
 	return func(_ *DatePicker) {}
 }

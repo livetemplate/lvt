@@ -51,7 +51,6 @@ const (
 )
 
 // Popover is a rich content overlay component.
-// Open/close is handled client-side via CSS classes.
 // Use template "lvt:popover:default:v1" to render.
 type Popover struct {
 	base.Base

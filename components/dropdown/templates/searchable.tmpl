@@ -1,6 +1,6 @@
 {{define "lvt:dropdown:searchable:v1"}}
 {{$c := .}}
-<style>[data-dropdown]:not(.open) [data-dropdown-panel]{display:none}</style>
+{{template "lvt:dropdown:panel-css"}}
 <div class="{{$c.Styles.Root}} {{if $c.Open}}open{{end}}" data-dropdown="{{$c.ID}}"
      lvt-el:removeClass:on:click-away="open">
   <div class="{{$c.Styles.SearchWrapper}}">

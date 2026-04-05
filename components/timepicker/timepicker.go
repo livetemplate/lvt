@@ -4,7 +4,7 @@
 //   - New() creates a time picker (template: "lvt:timepicker:default:v1")
 //   - NewDuration() creates a duration picker (template: "lvt:timepicker:duration:v1")
 //
-// Required lvt-* attributes: lvt-click, lvt-input, lvt-el:removeClass:on:click-away, lvt-el:addClass:on:done
+// Required lvt-* attributes: name, lvt-on:input, lvt-el:removeClass:on:click-away, lvt-el:addClass:on:done
 //
 // Example usage:
 //

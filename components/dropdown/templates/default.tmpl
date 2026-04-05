@@ -1,6 +1,6 @@
 {{define "lvt:dropdown:default:v1"}}
 {{$c := .}}
-<style>[data-dropdown]:not(.open) [data-dropdown-panel]{display:none}</style>
+{{template "lvt:dropdown:panel-css"}}
 <div class="{{$c.Styles.Root}}" data-dropdown="{{$c.ID}}"
      lvt-el:removeClass:on:click-away="open">
   <button

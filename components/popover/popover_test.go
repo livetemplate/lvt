@@ -164,9 +164,6 @@ func TestWithStyled(t *testing.T) {
 // Method Tests
 // =============================================================================
 
-// Show, Hide, Toggle methods have been removed.
-// Open/close is now handled client-side via CSS classes.
-
 // =============================================================================
 // Position Helper Tests
 // =============================================================================

@@ -29,7 +29,8 @@ func WithDisabled(disabled bool) Option {
 	}
 }
 
-// WithOpen is deprecated and has no effect. Open/close is handled client-side.
+// WithOpen is a no-op. Open/close is now handled client-side via CSS classes.
+// Deprecated: This option has no effect.
 func WithOpen(_ bool) Option {
 	return func(_ *Dropdown) {}
 }

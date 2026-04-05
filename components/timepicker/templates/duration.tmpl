@@ -1,5 +1,5 @@
 {{define "lvt:timepicker:duration:v1"}}
-<style>[data-timepicker]:not(.open) [data-timepicker-panel]{display:none}</style>
+{{template "lvt:timepicker:panel-css"}}
 <div class="{{.DurationStyles.Root}}" data-timepicker="{{.ID}}" data-duration="true"
      lvt-el:removeClass:on:click-away="open"
      lvt-el:addClass:on:done="open">
@@ -21,7 +21,6 @@
   <div
     class="{{.DurationStyles.Dropdown}}"
     data-timepicker-panel
-    hidden
     role="dialog"
     aria-modal="true"
     aria-label="Choose duration"
