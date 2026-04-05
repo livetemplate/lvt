@@ -409,7 +409,7 @@ func TestTutorialE2E(t *testing.T) {
 			`, &modalHTML),
 			chromedp.Evaluate(`
 				(() => {
-					const deleteButton = document.querySelector('button[name="delete"]');
+					const deleteButton = document.querySelector('button[lvt-on\:click="delete"], button[name="delete"]');
 					return !!deleteButton;
 				})()
 			`, &deleteButtonInModal),
@@ -587,7 +587,7 @@ func TestTutorialE2E(t *testing.T) {
 			})()
 			`, targetTitle), &postExists),
 			// Wait for delete button to be ready in edit modal
-			waitFor(`document.querySelector('button[name="delete"]') !== null`, 10*time.Second),
+			waitFor(`document.querySelector('button[lvt-on\:click="delete"], button[name="delete"]') !== null`, 10*time.Second),
 		)
 		if err != nil {
 			t.Fatalf("Failed to open edit modal: %v", err)
@@ -598,7 +598,7 @@ func TestTutorialE2E(t *testing.T) {
 			chromedp.Evaluate(`
 				(() => {
 					window.confirm = () => true;
-					const deleteButton = document.querySelector('button[name="delete"]');
+					const deleteButton = document.querySelector('button[lvt-on\:click="delete"], button[name="delete"]');
 					if (deleteButton) {
 						deleteButton.click();
 						return true;
