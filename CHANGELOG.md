@@ -5,6 +5,15 @@ All notable changes to the LVT CLI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.2] - 2026-04-05
+
+### Changes
+
+- feat!: attribute reduction — client-side open/close + template migration (#292) (eb9cd54)
+- fix(release): auto-tag nested Go modules on release (9843894)
+
+
+
 ## [v0.1.0] - 2025-11-03
 
 Initial release of LVT CLI as a standalone package extracted from the LiveTemplate monorepo.
