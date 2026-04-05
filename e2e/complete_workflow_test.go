@@ -636,7 +636,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 		err = chromedp.Run(ctx,
 			waitFor(fmt.Sprintf(`
 				(() => {
-					const deleteBtn = document.querySelector('button[lvt-on\:click="delete"], button[name="delete"]');
+					const deleteBtn = document.querySelector('button[lvt-on\\:click="delete"], button[name="delete"]');
 					if (!deleteBtn) return false;
 					const btnDataId = deleteBtn.getAttribute('data-id');
 					return btnDataId === %q;
@@ -649,7 +649,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 			chromedp.Run(ctx,
 				chromedp.Evaluate(fmt.Sprintf(`
 					(() => {
-						const deleteBtn = document.querySelector('button[lvt-on\:click="delete"], button[name="delete"]');
+						const deleteBtn = document.querySelector('button[lvt-on\\:click="delete"], button[name="delete"]');
 						const editForm = document.querySelector('form[name="update"]');
 						const titleInput = editForm?.querySelector('input[name="title"]');
 						return {
@@ -676,7 +676,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 					// Override confirm() to auto-accept in headless Chrome
 					window.confirm = () => true;
 
-					const deleteButton = document.querySelector('button[lvt-on\:click="delete"], button[name="delete"]');
+					const deleteButton = document.querySelector('button[lvt-on\\:click="delete"], button[name="delete"]');
 					if (!deleteButton) {
 						return { success: false, error: 'delete button not found' };
 					}

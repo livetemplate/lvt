@@ -312,12 +312,12 @@ func TestDeleteWithMultiplePosts(t *testing.T) {
 
 		// Wait for edit modal and delete button
 		err = chromedp.Run(ctx,
-			waitFor(`document.querySelector('button[lvt-on\:click="delete"], button[name="delete"]') !== null`, 5*time.Second),
+			waitFor(`document.querySelector('button[lvt-on\\:click="delete"], button[name="delete"]') !== null`, 5*time.Second),
 
 			// Check if delete button exists
 			chromedp.Evaluate(`
 				(() => {
-					const deleteBtn = document.querySelector('button[lvt-on\:click="delete"], button[name="delete"]');
+					const deleteBtn = document.querySelector('button[lvt-on\\:click="delete"], button[name="delete"]');
 					if (deleteBtn) {
 						console.log('[DELETE TEST] delete button found');
 						console.log('[DELETE TEST] delete button data-id:', deleteBtn.getAttribute('data-id'));
@@ -339,7 +339,7 @@ func TestDeleteWithMultiplePosts(t *testing.T) {
 			chromedp.Evaluate(`
 				(() => {
 					window.confirm = () => true;
-					const deleteButton = document.querySelector('button[lvt-on\:click="delete"], button[name="delete"]');
+					const deleteButton = document.querySelector('button[lvt-on\\:click="delete"], button[name="delete"]');
 					if (deleteButton) {
 						console.log('[DELETE TEST] Clicking delete button...');
 						deleteButton.click();
