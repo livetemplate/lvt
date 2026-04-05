@@ -103,12 +103,12 @@ const wireFormatTemplate = `<!DOCTYPE html>
 		<li data-key="{{.ID}}" class="item">{{.Name}}{{if .Done}} ✓{{end}}</li>
 		{{end}}
 	</ul>
-	<button id="btn-increment" lvt-click="increment">+</button>
-	<button id="btn-toggle" lvt-click="toggle">Toggle</button>
-	<button id="btn-add" lvt-click="add_item" lvt-data-id="item-4" lvt-data-name="Delta">Add</button>
-	<button id="btn-remove" lvt-click="remove_item" lvt-data-id="item-2">Remove</button>
-	<button id="btn-update" lvt-click="update_item" lvt-data-id="item-1" lvt-data-name="Alpha Updated">Update</button>
-	<button id="btn-reorder" lvt-click="reorder_items">Reorder</button>
+	<button id="btn-increment" name="increment">+</button>
+	<button id="btn-toggle" name="toggle">Toggle</button>
+	<button id="btn-add" name="add_item" data-id="item-4" data-name="Delta">Add</button>
+	<button id="btn-remove" name="remove_item" data-id="item-2">Remove</button>
+	<button id="btn-update" name="update_item" data-id="item-1" data-name="Alpha Updated">Update</button>
+	<button id="btn-reorder" name="reorder_items">Reorder</button>
 	<script src="/client.js"></script>
 </body>
 </html>`

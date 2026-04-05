@@ -106,7 +106,7 @@ func TestEditModalReopenFix(t *testing.T) {
 	t.Log("Step 1: Click Edit on first post...")
 	err = chromedp.Run(ctx,
 		// Click the Edit button on the first post
-		chromedp.Click(`button[lvt-click="edit"]`, chromedp.ByQuery),
+		chromedp.Click(`button[name="edit"]`, chromedp.ByQuery),
 
 		// Wait for edit modal overlay to appear (it uses position:fixed with rgba background)
 		// The template uses {{if ne .EditingID ""}} so the modal div only exists when editing
@@ -139,7 +139,7 @@ func TestEditModalReopenFix(t *testing.T) {
 	t.Log("Step 2: Clicking Save to close modal...")
 	err = chromedp.Run(ctx,
 		// Click Save button (inside the modal form)
-		chromedp.Click(`form[lvt-submit="update"] button[type="submit"]`, chromedp.ByQuery),
+		chromedp.Click(`form[name="update"] button[type="submit"]`, chromedp.ByQuery),
 
 		// Wait for modal to close (the div should no longer exist since template uses {{if}})
 		chromedp.Sleep(2*time.Second),
@@ -171,7 +171,7 @@ func TestEditModalReopenFix(t *testing.T) {
 	t.Log("Step 3: Clicking Edit again (the bug scenario)...")
 	err = chromedp.Run(ctx,
 		// Click the Edit button again
-		chromedp.Click(`button[lvt-click="edit"]`, chromedp.ByQuery),
+		chromedp.Click(`button[name="edit"]`, chromedp.ByQuery),
 
 		// Wait for edit modal to open
 		waitFor(`!!document.querySelector('div[style*="position: fixed"][style*="rgba(0,0,0,0.5)"]:not([id="add-modal"])')`, 10*time.Second),
@@ -257,7 +257,7 @@ func TestEditModalReopenFix(t *testing.T) {
 
 	// Clean up - close the modal
 	chromedp.Run(ctx,
-		chromedp.Click(`button[lvt-click="cancel_edit"]`, chromedp.ByQuery),
+		chromedp.Click(`button[name="cancel_edit"]`, chromedp.ByQuery),
 		chromedp.Sleep(1*time.Second),
 	)
 }

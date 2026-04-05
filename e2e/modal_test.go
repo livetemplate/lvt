@@ -58,7 +58,7 @@ func TestModalFunctionality(t *testing.T) {
 </head>
 <body>
     <div data-lvt-id="test-wrapper">
-        <button id="open-btn" lvt-modal-open="add-modal">Add Product</button>
+        <button id="open-btn" command="show-modal" commandfor="add-modal">Add Product</button>
 
         <!-- Modal -->
         <div id="add-modal" hidden aria-hidden="true" role="dialog" data-modal-backdrop data-modal-id="add-modal"
@@ -66,7 +66,7 @@ func TestModalFunctionality(t *testing.T) {
             <div style="background: white; border-radius: 8px; padding: 2rem; max-width: 600px; width: 90%;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                     <h2>Add New Product</h2>
-                    <button id="close-x" type="button" lvt-modal-close="add-modal"
+                    <button id="close-x" type="button" command="close" commandfor="add-modal"
                             style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
                 </div>
 
@@ -77,7 +77,7 @@ func TestModalFunctionality(t *testing.T) {
                     </div>
                     <div>
                         <button type="submit">Add Product</button>
-                        <button id="cancel-btn" type="button" lvt-modal-close="add-modal">Cancel</button>
+                        <button id="cancel-btn" type="button" command="close" commandfor="add-modal">Cancel</button>
                     </div>
                 </form>
             </div>

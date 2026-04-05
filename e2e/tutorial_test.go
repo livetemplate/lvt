@@ -219,8 +219,8 @@ func TestTutorialE2E(t *testing.T) {
 			validateNoTemplateExpressions("[data-lvt-id]"), // Validate no raw template expressions
 
 			// Click the "+ Add Posts" button in toolbar to open modal
-			chromedp.WaitVisible(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery),
-			chromedp.Click(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery),
+			chromedp.WaitVisible(`[commandfor="add-modal"]`, chromedp.ByQuery),
+			chromedp.Click(`[commandfor="add-modal"]`, chromedp.ByQuery),
 			// Wait for modal to appear
 			waitFor(`document.querySelector('[role="dialog"]') && !document.querySelector('[role="dialog"]').hasAttribute('hidden')`, 10*time.Second),
 
@@ -375,7 +375,7 @@ func TestTutorialE2E(t *testing.T) {
 						return cells.length > 0 && cells[0].textContent.trim() === 'My First Blog Post';
 					});
 					if (targetRow) {
-						const deleteButton = targetRow.querySelector('button[lvt-click="request_delete"]');
+						const deleteButton = targetRow.querySelector('button[name="request_delete"]');
 						return !!deleteButton;
 					}
 					return false;
@@ -405,7 +405,7 @@ func TestTutorialE2E(t *testing.T) {
 						return cells.length > 0 && cells[0].textContent.trim() === 'My First Blog Post';
 					});
 					if (targetRow) {
-						const editButton = targetRow.querySelector('button[lvt-click="edit"]');
+						const editButton = targetRow.querySelector('button[name="edit"]');
 						if (editButton) {
 							editButton.click();
 							return true;
@@ -414,8 +414,8 @@ func TestTutorialE2E(t *testing.T) {
 					return false;
 				})()
 			`, &editButtonFound),
-			// Wait for EDIT modal to open (has lvt-submit="update", not "add")
-			waitFor(`document.querySelector('form[lvt-submit="update"]') !== null`, 10*time.Second),
+			// Wait for EDIT modal to open (has name="update", not "add")
+			waitFor(`document.querySelector('form[name="update"]') !== null`, 10*time.Second),
 		)
 		if err != nil {
 			t.Fatalf("Failed to click edit button: %v", err)
@@ -433,13 +433,13 @@ func TestTutorialE2E(t *testing.T) {
 			// Capture the edit form HTML for debugging (not add modal)
 			chromedp.Evaluate(`
 				(() => {
-					const editForm = document.querySelector('form[lvt-submit="update"]');
+					const editForm = document.querySelector('form[name="update"]');
 					return editForm ? editForm.outerHTML : 'Edit form not found';
 				})()
 			`, &modalHTML),
 			chromedp.Evaluate(`
 				(() => {
-					const deleteButton = document.querySelector('button[lvt-click="request_delete"]');
+					const deleteButton = document.querySelector('button[name="request_delete"]');
 					return !!deleteButton;
 				})()
 			`, &requestDeleteInModal),
@@ -459,7 +459,7 @@ func TestTutorialE2E(t *testing.T) {
 		err = chromedp.Run(testCtx,
 			chromedp.Evaluate(`
 				(() => {
-					const deleteButton = document.querySelector('button[lvt-click="request_delete"]');
+					const deleteButton = document.querySelector('button[name="request_delete"]');
 					if (deleteButton) {
 						deleteButton.click();
 						return true;
@@ -468,8 +468,8 @@ func TestTutorialE2E(t *testing.T) {
 				})()
 			`, nil),
 			// Wait for confirm modal to appear with confirm_delete button
-			waitFor(`document.querySelector('button[lvt-click="confirm_delete"]') !== null`, 5*time.Second),
-			chromedp.Evaluate(`document.querySelector('button[lvt-click="confirm_delete"]') !== null`, &confirmModalAppeared),
+			waitFor(`document.querySelector('button[name="confirm_delete"]') !== null`, 5*time.Second),
+			chromedp.Evaluate(`document.querySelector('button[name="confirm_delete"]') !== null`, &confirmModalAppeared),
 		)
 		if err != nil {
 			t.Fatalf("Failed to verify confirm modal: %v", err)
@@ -484,7 +484,7 @@ func TestTutorialE2E(t *testing.T) {
 		// Also verify cancel_delete button exists in the confirm modal
 		var cancelDeleteExists bool
 		err = chromedp.Run(testCtx,
-			chromedp.Evaluate(`document.querySelector('button[lvt-click="cancel_delete"]') !== null`, &cancelDeleteExists),
+			chromedp.Evaluate(`document.querySelector('button[name="cancel_delete"]') !== null`, &cancelDeleteExists),
 		)
 		if err != nil {
 			t.Fatalf("Failed to check cancel_delete button: %v", err)
@@ -649,7 +649,7 @@ func TestTutorialE2E(t *testing.T) {
 					return cells.length > 0 && cells[0].textContent.trim() === %q;
 					});
 					if (targetRow) {
-						const editButton = targetRow.querySelector('button[lvt-click="edit"]');
+						const editButton = targetRow.querySelector('button[name="edit"]');
 						if (editButton) {
 							editButton.click();
 							return true;
@@ -659,7 +659,7 @@ func TestTutorialE2E(t *testing.T) {
 			})()
 			`, targetTitle), &postExists),
 			// Wait for modal controls to be ready before continuing
-			waitFor(`document.querySelector('button[lvt-click="request_delete"]') !== null`, 10*time.Second),
+			waitFor(`document.querySelector('button[name="request_delete"]') !== null`, 10*time.Second),
 		)
 		if err != nil {
 			t.Fatalf("Failed to open edit modal: %v", err)
@@ -787,7 +787,7 @@ func TestTutorialE2E(t *testing.T) {
 		err = chromedp.Run(testCtx,
 			chromedp.Evaluate(`
 				(() => {
-					const deleteButton = document.querySelector('button[lvt-click="request_delete"]');
+					const deleteButton = document.querySelector('button[name="request_delete"]');
 					if (deleteButton) {
 						deleteButton.click();
 						return true;
@@ -802,10 +802,10 @@ func TestTutorialE2E(t *testing.T) {
 
 		// Wait for confirm modal to appear, then click confirm_delete
 		err = chromedp.Run(testCtx,
-			waitFor(`document.querySelector('button[lvt-click="confirm_delete"]') !== null`, 5*time.Second),
+			waitFor(`document.querySelector('button[name="confirm_delete"]') !== null`, 5*time.Second),
 			chromedp.Evaluate(`
 				(() => {
-					const confirmButton = document.querySelector('button[lvt-click="confirm_delete"]');
+					const confirmButton = document.querySelector('button[name="confirm_delete"]');
 					if (confirmButton) {
 						confirmButton.click();
 						return true;
@@ -939,7 +939,7 @@ func TestTutorialE2E(t *testing.T) {
 			validateNoTemplateExpressions("[data-lvt-id]"), // Validate no raw template expressions
 
 			// Open add modal via DOM manipulation (more reliable than click event delegation)
-			chromedp.WaitVisible(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery),
+			chromedp.WaitVisible(`[commandfor="add-modal"]`, chromedp.ByQuery),
 			chromedp.Evaluate(`
 				(() => {
 					const modal = document.querySelector('#add-modal');
@@ -951,11 +951,11 @@ func TestTutorialE2E(t *testing.T) {
 				})()
 			`, nil),
 			// Wait for form to be visible (modal is open)
-			chromedp.WaitVisible(`form[lvt-submit]`, chromedp.ByQuery),
+			chromedp.WaitVisible(`form[name]`, chromedp.ByQuery),
 
 			// Submit form WITHOUT filling required fields
 			chromedp.Evaluate(`
-				const form = document.querySelector('form[lvt-submit]');
+				const form = document.querySelector('form[name]');
 				if (form) {
 					// Bypass HTML5 validation to test server-side validation
 					form.noValidate = true;
@@ -966,7 +966,7 @@ func TestTutorialE2E(t *testing.T) {
 			// Wait for validation errors to appear (server responds with error messages)
 			waitFor(`
 				(() => {
-					const form = document.querySelector('form[lvt-submit]');
+					const form = document.querySelector('form[name]');
 					if (!form) return false;
 					const smallTags = form.querySelectorAll('small');
 					return smallTags.length > 0 && Array.from(smallTags).some(el =>
@@ -976,13 +976,13 @@ func TestTutorialE2E(t *testing.T) {
 			`, 10*time.Second),
 
 			// Debug: Capture the form HTML
-			chromedp.Evaluate(`document.querySelector('form[lvt-submit]')?.outerHTML || 'Form not found'`, &formHTML),
+			chromedp.Evaluate(`document.querySelector('form[name]')?.outerHTML || 'Form not found'`, &formHTML),
 
 			// Check if error messages are visible in the UI (rendered server-side)
 			chromedp.Evaluate(`
 				(() => {
 					// Look for error messages in <small> tags (server-side rendered via .lvt.HasError)
-					const form = document.querySelector('form[lvt-submit]');
+					const form = document.querySelector('form[name]');
 					if (!form) return false;
 					const smallTags = Array.from(form.querySelectorAll('small'));
 					return smallTags.some(el => el.textContent.includes('required') || el.textContent.includes('is required'));
@@ -992,7 +992,7 @@ func TestTutorialE2E(t *testing.T) {
 			// Get specific error texts (server-side rendered)
 			chromedp.Evaluate(`
 				(() => {
-					const form = document.querySelector('form[lvt-submit]');
+					const form = document.querySelector('form[name]');
 					if (!form) return '';
 					// Find the small tag near the title input
 					const titleDiv = Array.from(form.querySelectorAll('div')).find(div => {
@@ -1004,7 +1004,7 @@ func TestTutorialE2E(t *testing.T) {
 			`, &titleErrorText),
 			chromedp.Evaluate(`
 				(() => {
-					const form = document.querySelector('form[lvt-submit]');
+					const form = document.querySelector('form[name]');
 					if (!form) return '';
 					// Find the small tag near the content input
 					const contentDiv = Array.from(form.querySelectorAll('div')).find(div => {
@@ -1141,9 +1141,9 @@ func ensureTutorialPostExists(ctx context.Context, baseURL string) error {
 		chromedp.Navigate(baseURL+"/posts"),
 		waitForWebSocketReady(30*time.Second),
 		chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
-		chromedp.WaitVisible(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery),
+		chromedp.WaitVisible(`[commandfor="add-modal"]`, chromedp.ByQuery),
 		// Retry modal click until event handlers are attached
-		clickUntilModalOpens(`[lvt-modal-open="add-modal"]`, `input[name="title"]`, 15*time.Second),
+		clickUntilModalOpens(`[commandfor="add-modal"]`, `input[name="title"]`, 15*time.Second),
 		chromedp.Evaluate(`document.querySelector('input[name="title"]').value = ''`, nil),
 		chromedp.Evaluate(`document.querySelector('textarea[name="content"]').value = ''`, nil),
 		chromedp.SendKeys(`input[name="title"]`, title, chromedp.ByQuery),

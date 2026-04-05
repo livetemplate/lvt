@@ -95,8 +95,8 @@ func TestDeleteWithMultiplePosts(t *testing.T) {
 			chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
 
 			// Create first post — retry modal click until event handlers are attached
-			chromedp.WaitVisible(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery),
-			clickUntilModalOpens(`[lvt-modal-open="add-modal"]`, `input[name="title"]`, 15*time.Second),
+			chromedp.WaitVisible(`[commandfor="add-modal"]`, chromedp.ByQuery),
+			clickUntilModalOpens(`[commandfor="add-modal"]`, `input[name="title"]`, 15*time.Second),
 			chromedp.SendKeys(`input[name="title"]`, "First Post", chromedp.ByQuery),
 			chromedp.SendKeys(`textarea[name="content"]`, "Content of first post", chromedp.ByQuery),
 			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
@@ -131,8 +131,8 @@ func TestDeleteWithMultiplePosts(t *testing.T) {
 			chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
 
 			// Create second post — retry modal click until event handlers are attached
-			chromedp.WaitVisible(`[lvt-modal-open="add-modal"]`, chromedp.ByQuery),
-			clickUntilModalOpens(`[lvt-modal-open="add-modal"]`, `input[name="title"]`, 15*time.Second),
+			chromedp.WaitVisible(`[commandfor="add-modal"]`, chromedp.ByQuery),
+			clickUntilModalOpens(`[commandfor="add-modal"]`, `input[name="title"]`, 15*time.Second),
 			chromedp.SendKeys(`input[name="title"]`, "Second Post", chromedp.ByQuery),
 			chromedp.SendKeys(`textarea[name="content"]`, "Content of second post", chromedp.ByQuery),
 			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
@@ -177,7 +177,7 @@ func TestDeleteWithMultiplePosts(t *testing.T) {
 						return cells.length > 0 && cells[0].textContent.trim() === 'First Post';
 					});
 					if (targetRow) {
-						const editButton = targetRow.querySelector('button[lvt-click="edit"]');
+						const editButton = targetRow.querySelector('button[name="edit"]');
 						if (editButton) {
 							editButton.click();
 							return true;
@@ -188,14 +188,14 @@ func TestDeleteWithMultiplePosts(t *testing.T) {
 			`, nil),
 
 			// Wait for edit form
-			waitFor(`document.querySelector('form[lvt-submit="update"] input[name="title"]') !== null`, 5*time.Second),
+			waitFor(`document.querySelector('form[name="update"] input[name="title"]') !== null`, 5*time.Second),
 
 			// Update title
-			chromedp.Clear(`form[lvt-submit="update"] input[name="title"]`),
-			chromedp.SendKeys(`form[lvt-submit="update"] input[name="title"]`, "First Post - Edited", chromedp.ByQuery),
+			chromedp.Clear(`form[name="update"] input[name="title"]`),
+			chromedp.SendKeys(`form[name="update"] input[name="title"]`, "First Post - Edited", chromedp.ByQuery),
 
 			// Submit
-			chromedp.Click(`form[lvt-submit="update"] button[type="submit"]`, chromedp.ByQuery),
+			chromedp.Click(`form[name="update"] button[type="submit"]`, chromedp.ByQuery),
 
 			// Wait for update in table
 			waitFor(`
@@ -287,7 +287,7 @@ func TestDeleteWithMultiplePosts(t *testing.T) {
 
 					if (targetRow) {
 						console.log('[DELETE TEST] Found target row for Second Post');
-						const editButton = targetRow.querySelector('button[lvt-click="edit"]');
+						const editButton = targetRow.querySelector('button[name="edit"]');
 						if (editButton) {
 							console.log('[DELETE TEST] Found edit button, clicking...');
 							editButton.click();
@@ -312,15 +312,15 @@ func TestDeleteWithMultiplePosts(t *testing.T) {
 
 		// Wait for edit modal and request_delete button
 		err = chromedp.Run(ctx,
-			waitFor(`document.querySelector('button[lvt-click="request_delete"]') !== null`, 5*time.Second),
+			waitFor(`document.querySelector('button[name="request_delete"]') !== null`, 5*time.Second),
 
 			// Check if request_delete button exists
 			chromedp.Evaluate(`
 				(() => {
-					const deleteBtn = document.querySelector('button[lvt-click="request_delete"]');
+					const deleteBtn = document.querySelector('button[name="request_delete"]');
 					if (deleteBtn) {
 						console.log('[DELETE TEST] request_delete button found');
-						console.log('[DELETE TEST] request_delete button data-id:', deleteBtn.getAttribute('lvt-data-id'));
+						console.log('[DELETE TEST] request_delete button data-id:', deleteBtn.getAttribute('data-id'));
 						console.log('[DELETE TEST] request_delete button outerHTML:', deleteBtn.outerHTML.substring(0, 300));
 						return true;
 					}
@@ -338,7 +338,7 @@ func TestDeleteWithMultiplePosts(t *testing.T) {
 		err = chromedp.Run(ctx,
 			chromedp.Evaluate(`
 				(() => {
-					const deleteButton = document.querySelector('button[lvt-click="request_delete"]');
+					const deleteButton = document.querySelector('button[name="request_delete"]');
 					if (deleteButton) {
 						console.log('[DELETE TEST] Clicking request_delete button...');
 						deleteButton.click();
@@ -355,10 +355,10 @@ func TestDeleteWithMultiplePosts(t *testing.T) {
 
 		// Wait for confirm modal and click confirm_delete
 		err = chromedp.Run(ctx,
-			waitFor(`document.querySelector('button[lvt-click="confirm_delete"]') !== null`, 5*time.Second),
+			waitFor(`document.querySelector('button[name="confirm_delete"]') !== null`, 5*time.Second),
 			chromedp.Evaluate(`
 				(() => {
-					const confirmButton = document.querySelector('button[lvt-click="confirm_delete"]');
+					const confirmButton = document.querySelector('button[name="confirm_delete"]');
 					if (confirmButton) {
 						console.log('[DELETE TEST] Clicking confirm_delete button...');
 						confirmButton.click();
@@ -395,7 +395,7 @@ func TestDeleteWithMultiplePosts(t *testing.T) {
 							title: cells[0]?.textContent.trim(),
 							content: cells[1]?.textContent.trim(),
 							published: cells[2]?.textContent.trim(),
-							id: row.querySelector('[lvt-data-id]')?.getAttribute('lvt-data-id') || 'NO-ID'
+							id: row.querySelector('[data-id]')?.getAttribute('data-id') || 'NO-ID'
 						};
 					});
 				})()

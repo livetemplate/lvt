@@ -1407,7 +1407,7 @@ func TestFocusPreservation(t *testing.T) {
 		<input type="email" name="email" id="email" placeholder="Type your email...">
 		<textarea name="bio" id="bio" placeholder="Type your bio..."></textarea>
 		<input type="number" name="age" id="age" placeholder="Enter age">
-		<button type="button" id="increment-btn" lvt-click="increment">Increment Counter</button>
+		<button type="button" id="increment-btn" name="increment">Increment Counter</button>
 	</form>
 	<script src="/client.js"></script>
 </body>
@@ -1536,7 +1536,7 @@ func TestFocusPreservationMultipleInputs(t *testing.T) {
 	<form>
 		<textarea name="notes" id="notes" placeholder="Type notes..."></textarea>
 		<input type="email" name="contact" id="contact" placeholder="your@email.com">
-		<button type="button" id="trigger-btn" lvt-click="increment">Trigger Update</button>
+		<button type="button" id="trigger-btn" name="increment">Trigger Update</button>
 	</form>
 	<script src="/client.js"></script>
 </body>

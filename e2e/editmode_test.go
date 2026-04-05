@@ -78,7 +78,7 @@ func TestEditModePage(t *testing.T) {
 
 	// Verify NO edit buttons in table rows (page mode difference from modal mode)
 	// In page mode, you click the row to view, not an edit button
-	rowEditPattern := `<tr.*lvt-click="edit"`
+	rowEditPattern := `<tr.*name="edit"`
 	if strings.Contains(tmplStr, rowEditPattern) {
 		t.Error("❌ Template has edit buttons in table rows (should use view in page mode)")
 	} else {
