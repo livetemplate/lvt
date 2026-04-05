@@ -124,7 +124,7 @@ const parentTmplTemplate = `{{define "detailPage"}}
   <!-- View Mode -->
   <div style="display: flex;">
     <a href="/posts">Back</a>
-    <button lvt-click="request_delete" lvt-data-id="{{.EditingID}}">Delete</button>
+    <button lvt-click="delete" lvt-data-id="{{.EditingID}}" onclick="return confirm('Are you sure?')">Delete</button>
   </div>
 
   <!-- Detail Content -->

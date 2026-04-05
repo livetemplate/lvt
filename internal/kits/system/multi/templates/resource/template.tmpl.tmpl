@@ -211,7 +211,7 @@
                       <button[[if ne (buttonClass $.CSSFramework "secondary") ""]] class="[[buttonClass $.CSSFramework "secondary"]]"[[end]] name="edit" data-id="{{.ID}}">
                         Edit
                       </button>
-                      <button[[if ne (buttonClass $.CSSFramework "danger") ""]] class="[[buttonClass $.CSSFramework "danger"]]"[[end]] name="delete" data-id="{{.ID}}">
+                      <button[[if ne (buttonClass $.CSSFramework "danger") ""]] class="[[buttonClass $.CSSFramework "danger"]]"[[end]] name="delete" data-id="{{.ID}}" onclick="return confirm('Are you sure?')">
                         Delete
                       </button>
                     </td>

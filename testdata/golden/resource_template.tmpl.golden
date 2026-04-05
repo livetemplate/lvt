@@ -162,7 +162,7 @@
     <div class="mb-4" style="display: flex; gap: 8px; margin-top: 1.5rem;">
       <button class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50" type="submit" lvt-form:disable-with="Updating...">Save</button>
       <button class="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 disabled:opacity-50" type="button" name="cancel_edit">Cancel</button>
-      <button class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:opacity-50" type="button" name="request_delete" data-id="{{.EditingID}}" style="margin-left: auto;">Delete</button>
+      <button class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:opacity-50" type="button" name="delete" data-id="{{.EditingID}}" style="margin-left: auto;" onclick="return confirm('Are you sure you want to delete this post? This action cannot be undone.')">Delete</button>
     </div>
   </form>
   {{end}}
@@ -402,7 +402,7 @@
     <a href="/post/{{.EditingID}}/edit" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50" style="text-decoration: none;">
       Edit
     </a>
-    <button class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:opacity-50" name="request_delete" data-id="{{.EditingID}}">
+    <button class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:opacity-50" name="delete" data-id="{{.EditingID}}" onclick="return confirm('Are you sure?')">
       Delete
     </button>
   </div>
@@ -430,7 +430,6 @@
 
 
 {{define "content"}}
-  {{if .DeleteConfirm}}{{template "lvt:modal:confirm:v1" .DeleteConfirm}}{{end}}
   {{if .Toasts}}{{template "lvt:toast:container:v1" .Toasts}}{{end}}
   <!-- Modal mode: List with modals -->
   {{template "toolbar" .}}

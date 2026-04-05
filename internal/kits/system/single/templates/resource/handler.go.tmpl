@@ -123,10 +123,6 @@ type [[.ResourceName]]State struct {
 	HasMore        bool                `json:"has_more"`        // Whether more items available
 	IsLoading      bool                `json:"is_loading"`      // Loading indicator
 	CSSFramework    string              `json:"-"`               // CSS framework for templates
-[[- if .Components.UseModal]]
-	DeleteConfirm   *modal.ConfirmModal `json:"delete_confirm"`
-	PendingDeleteID string              `json:"pending_delete_id" lvt:"transient"`
-[[- end]]
 [[- if .Components.UseToast]]
 	Toasts          *toast.Container    `json:"toasts"`
 [[- end]]
@@ -399,51 +395,21 @@ func (c *[[.ResourceName]]Controller) Back(state [[.ResourceName]]State, _ *live
 	return state, nil
 }
 
-[[- if not .Components.UseModal]]
-// Delete handles the "delete" action to remove a resource.
-// NOTE: Currently unreachable because UseModal is always true. This branch is
-// preserved as a future escape hatch for headless/API resources that don't need
-// a confirmation modal.
+// Delete handles the "delete" action - deletes a resource after client-side confirmation.
 func (c *[[.ResourceName]]Controller) Delete(state [[.ResourceName]]State, ctx *livetemplate.Context) ([[.ResourceName]]State, error) {
+	var input IDInput
+	if err := ctx.BindAndValidate(&input, validate); err != nil {
+		return state, err
+	}
 	dbCtx := context.Background()
-
-	var input IDInput
-	if err := ctx.BindAndValidate(&input, validate); err != nil {
-		return state, err
-	}
-
-	err := c.Queries.Delete[[.ResourceNameSingular]](dbCtx, input.ID)
-	if err != nil {
-		return state, fmt.Errorf("failed to delete [[.ResourceNameLower]]: %w", err)
-	}
-
-	// Clear editing state (for page mode)
-	state.EditingID = ""
-	state.Editing[[.ResourceName]] = nil
-
-	state, err = c.load[[.ResourceName]]s(state, dbCtx)
-	if err != nil {
-		return state, err
-	}
-
-	state.LastUpdated = formatTime()
-	return state, nil
-}
-[[- end]]
-
-[[- if .Components.UseModal]]
-// RequestDelete handles the "request_delete" action to show the delete confirmation modal
-func (c *[[.ResourceName]]Controller) RequestDelete(state [[.ResourceName]]State, ctx *livetemplate.Context) ([[.ResourceName]]State, error) {
-	var input IDInput
-	if err := ctx.BindAndValidate(&input, validate); err != nil {
-		return state, err
-	}
 
 [[- if .WithAuthz]]
 	// Check authorization
-	if item, err := c.Queries.Get[[.ResourceNameSingular]]ByID(context.Background(), input.ID); err == nil {
-		user := authz.UserFrom(ctx.UserID(), c.getUserRole(context.Background(), ctx.UserID()))
-		if !authz.Can(user, authz.ActionDelete, "[[.TableName]]", authz.OwnedBy(item.CreatedBy)) {
+	if deleteItem, err := c.Queries.Get[[.ResourceNameSingular]]ByID(dbCtx, input.ID); err != nil {
+		return state, fmt.Errorf("[[.ResourceNameLower]] not found: %w", err)
+	} else {
+		user := authz.UserFrom(ctx.UserID(), c.getUserRole(dbCtx, ctx.UserID()))
+		if !authz.Can(user, authz.ActionDelete, "[[.TableName]]", authz.OwnedBy(deleteItem.CreatedBy)) {
 [[- if .Components.UseToast]]
 			state.Toasts.AddError("Forbidden", "You don't have permission to delete this [[.ResourceNameLower]]")
 			return state, nil
@@ -454,44 +420,9 @@ func (c *[[.ResourceName]]Controller) RequestDelete(state [[.ResourceName]]State
 	}
 [[- end]]
 
-	state.PendingDeleteID = input.ID
-	state.DeleteConfirm.Show()
-	state.LastUpdated = formatTime()
-	return state, nil
-}
-
-// ConfirmDelete handles the "confirm_delete" action from the confirmation modal
-[[- if .WithAuthz]]
-func (c *[[.ResourceName]]Controller) ConfirmDelete(state [[.ResourceName]]State, ctx *livetemplate.Context) ([[.ResourceName]]State, error) {
-[[- else]]
-func (c *[[.ResourceName]]Controller) ConfirmDelete(state [[.ResourceName]]State, _ *livetemplate.Context) ([[.ResourceName]]State, error) {
-[[- end]]
-	dbCtx := context.Background()
-
-	if state.PendingDeleteID == "" {
-		return state, nil
-	}
-
-[[- if .WithAuthz]]
-	// Re-check authorization before destructive action
-	if deleteItem, err := c.Queries.Get[[.ResourceNameSingular]]ByID(dbCtx, state.PendingDeleteID); err != nil {
-		return state, fmt.Errorf("[[.ResourceNameLower]] not found: %w", err)
-	} else {
-		user := authz.UserFrom(ctx.UserID(), c.getUserRole(dbCtx, ctx.UserID()))
-		if !authz.Can(user, authz.ActionDelete, "[[.TableName]]", authz.OwnedBy(deleteItem.CreatedBy)) {
-			state.DeleteConfirm.Hide()
-			state.PendingDeleteID = ""
-[[- if .Components.UseToast]]
-			state.Toasts.AddError("Forbidden", "You don't have permission to delete this [[.ResourceNameLower]]")
-[[- end]]
-			return state, nil
-		}
-	}
-[[- end]]
-
 [[- if .Components.UseUpload]]
 	// Delete associated files from storage
-	if existing, err := c.Queries.Get[[.ResourceNameSingular]]ByID(dbCtx, state.PendingDeleteID); err == nil {
+	if existing, err := c.Queries.Get[[.ResourceNameSingular]]ByID(dbCtx, input.ID); err == nil {
 [[- range .FileFields]]
 		if existing.[[.Name | camelCase]] != "" {
 			_ = c.Store.Delete(dbCtx, existing.[[.Name | camelCase]])
@@ -500,13 +431,11 @@ func (c *[[.ResourceName]]Controller) ConfirmDelete(state [[.ResourceName]]State
 	}
 [[- end]]
 
-	err := c.Queries.Delete[[.ResourceNameSingular]](dbCtx, state.PendingDeleteID)
+	err := c.Queries.Delete[[.ResourceNameSingular]](dbCtx, input.ID)
 	if err != nil {
 		return state, fmt.Errorf("failed to delete [[.ResourceNameLower]]: %w", err)
 	}
 
-	state.DeleteConfirm.Hide()
-	state.PendingDeleteID = ""
 	state.EditingID = ""
 	state.Editing[[.ResourceName]] = nil
 
@@ -521,14 +450,6 @@ func (c *[[.ResourceName]]Controller) ConfirmDelete(state [[.ResourceName]]State
 	state.LastUpdated = formatTime()
 	return state, nil
 }
-
-// CancelDelete handles the "cancel_delete" action to close the confirmation modal
-func (c *[[.ResourceName]]Controller) CancelDelete(state [[.ResourceName]]State, _ *livetemplate.Context) ([[.ResourceName]]State, error) {
-	state.DeleteConfirm.Hide()
-	state.PendingDeleteID = ""
-	return state, nil
-}
-[[- end]]
 [[- if .Components.UseToast]]
 
 // DismissToastNotifications handles the "dismiss_toast_notifications" action
@@ -881,13 +802,6 @@ func Handler(queries *models.Queries) http.Handler {
 		CSSFramework:   "[[.CSSFramework]]",
 	}
 
-[[- if .Components.UseModal]]
-	initialState.DeleteConfirm = modal.NewConfirm("delete",
-		modal.WithConfirmTitle("Delete [[.ResourceNameSingular]]"),
-		modal.WithConfirmMessage("Are you sure you want to delete this [[.ResourceNameLower]]? This action cannot be undone."),
-		modal.WithConfirmDestructive(true),
-	)
-[[- end]]
 [[- if .Components.UseToast]]
 	initialState.Toasts = toast.New("notifications",
 		toast.WithPosition(toast.TopRight),
