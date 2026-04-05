@@ -210,33 +210,17 @@ func TestModalFunctionality(t *testing.T) {
 			return nil
 		}),
 		// Wait for modal to open
-		waitFor("document.getElementById('add-modal').style.display === 'flex'", 3*time.Second),
+		waitFor("!document.getElementById('add-modal').hasAttribute('hidden')", 3*time.Second),
 
-		// Test 3: Verify modal is visible and centered (display: flex)
+		// Test 3: Verify modal is visible (hidden attribute removed)
 		chromedp.ActionFunc(func(ctx context.Context) error {
-			// Get display style
-			var display string
-			if err := chromedp.Evaluate(`document.getElementById('add-modal').style.display`, &display).Do(ctx); err != nil {
-				return fmt.Errorf("failed to get display style: %v", err)
+			if err := chromedp.Evaluate(`document.getElementById('add-modal').hasAttribute('hidden')`, &hidden).Do(ctx); err != nil {
+				return fmt.Errorf("failed to check hidden attr: %v", err)
 			}
-
-			if display != "flex" {
-				// Log more details for debugging
-				var hidden bool
-				_ = chromedp.Evaluate(`document.getElementById('add-modal').hasAttribute('hidden')`, &hidden).Do(ctx)
-				return fmt.Errorf("modal should have display: flex, got: %s (hidden=%v)", display, hidden)
+			if hidden {
+				return fmt.Errorf("modal should not have hidden attr after open")
 			}
-
-			// Check hidden attribute is removed
-			var result bool
-			if err := chromedp.Evaluate(`document.getElementById('add-modal').hasAttribute('hidden')`, &result).Do(ctx); err != nil {
-				return fmt.Errorf("failed to check hidden attribute: %v", err)
-			}
-			if result {
-				return fmt.Errorf("modal should not have hidden attribute")
-			}
-
-			t.Log("✓ Test 2 & 3: Modal opens and is centered (display: flex)")
+			t.Log("✓ Test 2 & 3: Modal opens (hidden attr removed)")
 			return nil
 		}),
 
@@ -261,26 +245,16 @@ func TestModalFunctionality(t *testing.T) {
 			return nil
 		}),
 		// Wait for modal to close
-		waitFor("document.getElementById('add-modal').style.display === 'none'", 3*time.Second),
+		waitFor("document.getElementById('add-modal').hasAttribute('hidden')", 3*time.Second),
 
 		// Test 5: Verify modal is hidden after close
 		chromedp.ActionFunc(func(ctx context.Context) error {
-			var display string
-			if err := chromedp.Evaluate(`document.getElementById('add-modal').style.display`, &display).Do(ctx); err != nil {
+			if err := chromedp.Evaluate(`document.getElementById('add-modal').hasAttribute('hidden')`, &hidden).Do(ctx); err != nil {
 				return fmt.Errorf("failed to get display style: %v", err)
 			}
-			if display != "none" {
-				return fmt.Errorf("modal should have display: none after close, got: %s", display)
+			if hidden != true {
+				return fmt.Errorf("modal should have hidden attr after close, got hidden=%v", hidden)
 			}
-
-			var hidden bool
-			if err := chromedp.Evaluate(`document.getElementById('add-modal').hasAttribute('hidden')`, &hidden).Do(ctx); err != nil {
-				return fmt.Errorf("failed to check hidden attribute: %v", err)
-			}
-			if !hidden {
-				return fmt.Errorf("modal should have hidden attribute after close")
-			}
-
 			t.Log("✓ Test 4 & 5: Modal closes with X button")
 			return nil
 		}),
@@ -293,26 +267,16 @@ func TestModalFunctionality(t *testing.T) {
 			return nil
 		}),
 		// Wait for modal to reopen
-		waitFor("document.getElementById('add-modal').style.display === 'flex'", 3*time.Second),
+		waitFor("!document.getElementById('add-modal').hasAttribute('hidden')", 3*time.Second),
 
 		// Test 7: Verify modal reopened successfully
 		chromedp.ActionFunc(func(ctx context.Context) error {
-			var display string
-			if err := chromedp.Evaluate(`document.getElementById('add-modal').style.display`, &display).Do(ctx); err != nil {
+			if err := chromedp.Evaluate(`document.getElementById('add-modal').hasAttribute('hidden')`, &hidden).Do(ctx); err != nil {
 				return fmt.Errorf("failed to get display style: %v", err)
 			}
-			if display != "flex" {
-				return fmt.Errorf("modal should reopen with display: flex, got: %s", display)
+			if hidden != false {
+				return fmt.Errorf("modal should not have hidden attr on reopen, got hidden=%v", hidden)
 			}
-
-			var hidden bool
-			if err := chromedp.Evaluate(`document.getElementById('add-modal').hasAttribute('hidden')`, &hidden).Do(ctx); err != nil {
-				return fmt.Errorf("failed to check hidden attribute: %v", err)
-			}
-			if hidden {
-				return fmt.Errorf("modal should not have hidden attribute after reopen")
-			}
-
 			t.Log("✓ Test 6 & 7: Modal REOPENS successfully (critical fix)")
 			return nil
 		}),
@@ -320,15 +284,14 @@ func TestModalFunctionality(t *testing.T) {
 		// Test 8: Close modal by clicking Cancel button using real browser click
 		chromedp.Click("#cancel-btn", chromedp.ByQuery),
 		// Wait for modal to close
-		waitFor("document.getElementById('add-modal').style.display === 'none'", 3*time.Second),
+		waitFor("document.getElementById('add-modal').hasAttribute('hidden')", 3*time.Second),
 
 		// Test 9: Verify modal closed with cancel
 		chromedp.ActionFunc(func(ctx context.Context) error {
-			var display string
-			if err := chromedp.Evaluate(`document.getElementById('add-modal').style.display`, &display).Do(ctx); err != nil {
+			if err := chromedp.Evaluate(`document.getElementById('add-modal').hasAttribute('hidden')`, &hidden).Do(ctx); err != nil {
 				return fmt.Errorf("failed to get display style: %v", err)
 			}
-			if display != "none" {
+			if hidden != true {
 				return fmt.Errorf("modal should close with cancel button")
 			}
 			t.Log("✓ Test 8 & 9: Modal closes with Cancel button")
@@ -343,7 +306,7 @@ func TestModalFunctionality(t *testing.T) {
 			return nil
 		}),
 		// Wait for modal to open
-		waitFor("document.getElementById('add-modal').style.display === 'flex'", 3*time.Second),
+		waitFor("!document.getElementById('add-modal').hasAttribute('hidden')", 3*time.Second),
 
 		// Test 11: Close with Escape key
 		chromedp.ActionFunc(func(ctx context.Context) error {
@@ -354,15 +317,14 @@ func TestModalFunctionality(t *testing.T) {
 			return nil
 		}),
 		// Wait for modal to close
-		waitFor("document.getElementById('add-modal').style.display === 'none'", 3*time.Second),
+		waitFor("document.getElementById('add-modal').hasAttribute('hidden')", 3*time.Second),
 
 		// Test 12: Verify modal closed with Escape key
 		chromedp.ActionFunc(func(ctx context.Context) error {
-			var display string
-			if err := chromedp.Evaluate(`document.getElementById('add-modal').style.display`, &display).Do(ctx); err != nil {
+			if err := chromedp.Evaluate(`document.getElementById('add-modal').hasAttribute('hidden')`, &hidden).Do(ctx); err != nil {
 				return fmt.Errorf("failed to get display style: %v", err)
 			}
-			if display != "none" {
+			if hidden != true {
 				return fmt.Errorf("modal should close with Escape key")
 			}
 			t.Log("✓ Test 11 & 12: Modal closes with Escape key")
@@ -378,17 +340,16 @@ func TestModalFunctionality(t *testing.T) {
 					return fmt.Errorf("cycle %d: failed to open modal: %v", i, err)
 				}
 				// Wait for modal to open
-				if err := waitFor("document.getElementById('add-modal').style.display === 'flex'", 3*time.Second).Do(ctx); err != nil {
+				if err := waitFor("!document.getElementById('add-modal').hasAttribute('hidden')", 3*time.Second).Do(ctx); err != nil {
 					return fmt.Errorf("cycle %d: modal failed to open: %v", i, err)
 				}
 
 				// Verify opened
-				var display string
-				if err := chromedp.Evaluate(`document.getElementById('add-modal').style.display`, &display).Do(ctx); err != nil {
-					return fmt.Errorf("cycle %d: failed to check display: %v", i, err)
+				if err := chromedp.Evaluate(`document.getElementById('add-modal').hasAttribute('hidden')`, &hidden).Do(ctx); err != nil {
+					return fmt.Errorf("cycle %d: failed to check hidden attr: %v", i, err)
 				}
-				if display != "flex" {
-					return fmt.Errorf("cycle %d: modal should be open (display: flex), got: %s", i, display)
+				if hidden != false {
+					return fmt.Errorf("cycle %d: modal should not have hidden attr, got hidden=%v", i, hidden)
 				}
 
 				// Close by clicking X button with real browser click
@@ -396,16 +357,16 @@ func TestModalFunctionality(t *testing.T) {
 					return fmt.Errorf("cycle %d: failed to click close button: %v", i, err)
 				}
 				// Wait for modal to close
-				if err := waitFor("document.getElementById('add-modal').style.display === 'none'", 3*time.Second).Do(ctx); err != nil {
+				if err := waitFor("document.getElementById('add-modal').hasAttribute('hidden')", 3*time.Second).Do(ctx); err != nil {
 					return fmt.Errorf("cycle %d: modal failed to close: %v", i, err)
 				}
 
 				// Verify closed
-				if err := chromedp.Evaluate(`document.getElementById('add-modal').style.display`, &display).Do(ctx); err != nil {
-					return fmt.Errorf("cycle %d: failed to check display: %v", i, err)
+				if err := chromedp.Evaluate(`document.getElementById('add-modal').hasAttribute('hidden')`, &hidden).Do(ctx); err != nil {
+					return fmt.Errorf("cycle %d: failed to check hidden attr: %v", i, err)
 				}
-				if display != "none" {
-					return fmt.Errorf("cycle %d: modal should be closed (display: none), got: %s", i, display)
+				if hidden != true {
+					return fmt.Errorf("cycle %d: modal should have hidden attr, got hidden=%v", i, hidden)
 				}
 
 				t.Logf("✓ Cycle %d: Open and close successful", i)

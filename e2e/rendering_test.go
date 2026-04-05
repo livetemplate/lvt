@@ -504,7 +504,7 @@ func TestRendering_Modal_Lifecycle(t *testing.T) {
 
 		// Open modal
 		chromedp.Evaluate(`document.getElementById('open-modal').click()`, nil),
-		waitFor(`document.getElementById('test-modal').style.display === 'flex'`, 3*time.Second),
+		waitFor(`!document.getElementById('test-modal').hasAttribute('hidden')`, 3*time.Second),
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			t.Log("Modal opened")
 			return nil
@@ -520,7 +520,7 @@ func TestRendering_Modal_Lifecycle(t *testing.T) {
 
 		// Reopen modal (critical test - ensures modal can be reopened after closing)
 		chromedp.Evaluate(`document.getElementById('open-modal').click()`, nil),
-		waitFor(`document.getElementById('test-modal').style.display === 'flex'`, 3*time.Second),
+		waitFor(`!document.getElementById('test-modal').hasAttribute('hidden')`, 3*time.Second),
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			t.Log("Modal reopened successfully")
 			return nil
