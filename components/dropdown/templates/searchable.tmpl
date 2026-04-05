@@ -2,7 +2,8 @@
 {{$c := .}}
 {{template "lvt:dropdown:panel-css"}}
 <div class="{{$c.Styles.Root}} {{if $c.Open}}open{{end}}" data-dropdown="{{$c.ID}}"
-     lvt-el:removeClass:on:click-away="open">
+     lvt-el:removeClass:on:click-away="open"
+     lvt-el:addClass:on:focusin="open">
   <div class="{{$c.Styles.SearchWrapper}}">
     <input
       type="text"
@@ -11,7 +12,6 @@
       value="{{$c.Query}}"
       lvt-on:input="search_{{$c.ID}}"
       lvt-mod:debounce="150"
-      onfocus="this.closest('[data-dropdown]').classList.add('open');this.setAttribute('aria-expanded','true')"
       {{if $c.Disabled}}disabled{{end}}
       autocomplete="off"
       aria-haspopup="listbox"

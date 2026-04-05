@@ -2,7 +2,9 @@
 {{$c := .}}
 {{template "lvt:autocomplete:panel-css"}}
 <div class="{{$c.Styles.Root}} {{if $c.Open}}open{{end}}" data-autocomplete="{{$c.ID}}" data-multi="true"
-     lvt-el:removeClass:on:click-away="open">
+     lvt-el:removeClass:on:click-away="open"
+     lvt-el:addClass:on:focusin="open"
+     lvt-el:removeClass:on:focusout="open">
   <div class="{{$c.Styles.InputWrapper}}">
     {{range $c.SelectedItems}}
     <span class="{{$c.Styles.SelectedBadge}}">
@@ -26,8 +28,6 @@
       placeholder="{{if $c.HasSelectedItems}}{{else}}{{$c.Placeholder}}{{end}}"
       value="{{$c.Query}}"
       lvt-on:input="query_{{$c.ID}}"
-      onfocus="this.closest('[data-autocomplete]').classList.add('open')"
-      onfocusout="if(!this.closest('[data-autocomplete]').contains(event.relatedTarget))this.closest('[data-autocomplete]').classList.remove('open')"
       lvt-on:keydown="keydown_{{$c.ID}}"
       autocomplete="off"
       aria-autocomplete="list"

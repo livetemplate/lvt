@@ -1,19 +1,19 @@
 {{define "lvt:popover:default:v1"}}
 <style>[data-popover]:not(.open) [data-popover-panel]{display:none}</style>
 <div class="{{.Styles.Root}}" data-popover="{{.ID}}"
-     {{if .CloseOnClickAway}}lvt-el:removeClass:on:click-away="open"{{end}}>
+     {{if .CloseOnClickAway}}lvt-el:removeClass:on:click-away="open"{{end}}
+     {{if .IsHoverTrigger}}
+     lvt-el:addClass:on:mouseenter="open"
+     lvt-el:removeClass:on:mouseleave="open"
+     {{end}}
+     {{if .IsFocusTrigger}}
+     lvt-el:addClass:on:focusin="open"
+     lvt-el:removeClass:on:focusout="open"
+     {{end}}>
   {{/* Trigger element wrapper */}}
   <div
     {{if .IsClickTrigger}}
     onclick="var r=this.closest('[data-popover]');r.classList.toggle('open')"
-    {{end}}
-    {{if .IsHoverTrigger}}
-    onmouseenter="this.closest('[data-popover]').classList.add('open')"
-    onmouseleave="this.closest('[data-popover]').classList.remove('open')"
-    {{end}}
-    {{if .IsFocusTrigger}}
-    onfocusin="this.closest('[data-popover]').classList.add('open')"
-    onfocusout="this.closest('[data-popover]').classList.remove('open')"
     {{end}}
   >
     {{/* Slot for trigger content */}}
