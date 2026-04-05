@@ -667,12 +667,15 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 		}
 		t.Log("[Delete_Post] Step 11: Edit modal opened with correct post data")
 
-		// Step 12: Click delete button (browser confirm() auto-accepts in headless Chrome)
+		// Step 12: Click delete button (override confirm() for headless Chrome)
 		t.Logf("[Delete_Post] Step 12: Clicking delete button (target: %s)...", targetDataKey)
 		var deleteResult map[string]interface{}
 		err = chromedp.Run(ctx,
 			chromedp.Evaluate(fmt.Sprintf(`
 				(() => {
+					// Override confirm() to auto-accept in headless Chrome
+					window.confirm = () => true;
+
 					const deleteButton = document.querySelector('button[name="delete"]');
 					if (!deleteButton) {
 						return { success: false, error: 'delete button not found' };

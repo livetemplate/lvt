@@ -334,10 +334,11 @@ func TestDeleteWithMultiplePosts(t *testing.T) {
 		}
 		t.Log("delete button found")
 
-		// Click delete button (browser confirm() auto-accepts in headless Chrome)
+		// Click delete button (override confirm() for headless Chrome)
 		err = chromedp.Run(ctx,
 			chromedp.Evaluate(`
 				(() => {
+					window.confirm = () => true;
 					const deleteButton = document.querySelector('button[name="delete"]');
 					if (deleteButton) {
 						console.log('[DELETE TEST] Clicking delete button...');
