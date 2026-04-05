@@ -4,7 +4,7 @@
 //   - New() creates a time picker (template: "lvt:timepicker:default:v1")
 //   - NewDuration() creates a duration picker (template: "lvt:timepicker:duration:v1")
 //
-// Required lvt-* attributes: name, lvt-on:input, lvt-el:removeClass:on:click-away, lvt-el:addClass:on:done
+// Open/close is handled client-side. Server actions handle time adjustments only.
 //
 // Example usage:
 //

@@ -105,7 +105,9 @@ func NewRange(id string, opts ...Option) *RangePicker {
 	}
 }
 
-// NewInline creates an inline calendar (always visible).
+// NewInline creates an inline calendar.
+// The consuming template should add the "open" class to the root element
+// to make the calendar panel always visible.
 func NewInline(id string, opts ...Option) *DatePicker {
 	dp := New(id, opts...)
 	return dp

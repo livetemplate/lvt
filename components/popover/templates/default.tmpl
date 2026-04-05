@@ -12,8 +12,8 @@
     onmouseleave="this.closest('[data-popover]').classList.remove('open')"
     {{end}}
     {{if .IsFocusTrigger}}
-    onfocus="this.closest('[data-popover]').classList.add('open')"
-    onblur="this.closest('[data-popover]').classList.remove('open')"
+    onfocusin="this.closest('[data-popover]').classList.add('open')"
+    onfocusout="this.closest('[data-popover]').classList.remove('open')"
     {{end}}
   >
     {{/* Slot for trigger content */}}
