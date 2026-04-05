@@ -310,37 +310,37 @@ func TestDeleteWithMultiplePosts(t *testing.T) {
 		}
 		t.Log("✅ Clicked edit button")
 
-		// Wait for edit modal and request_delete button
+		// Wait for edit modal and delete button
 		err = chromedp.Run(ctx,
-			waitFor(`document.querySelector('button[name="request_delete"]') !== null`, 5*time.Second),
+			waitFor(`document.querySelector('button[name="delete"]') !== null`, 5*time.Second),
 
-			// Check if request_delete button exists
+			// Check if delete button exists
 			chromedp.Evaluate(`
 				(() => {
-					const deleteBtn = document.querySelector('button[name="request_delete"]');
+					const deleteBtn = document.querySelector('button[name="delete"]');
 					if (deleteBtn) {
-						console.log('[DELETE TEST] request_delete button found');
-						console.log('[DELETE TEST] request_delete button data-id:', deleteBtn.getAttribute('data-id'));
-						console.log('[DELETE TEST] request_delete button outerHTML:', deleteBtn.outerHTML.substring(0, 300));
+						console.log('[DELETE TEST] delete button found');
+						console.log('[DELETE TEST] delete button data-id:', deleteBtn.getAttribute('data-id'));
+						console.log('[DELETE TEST] delete button outerHTML:', deleteBtn.outerHTML.substring(0, 300));
 						return true;
 					}
-					console.log('[DELETE TEST] request_delete button NOT found');
+					console.log('[DELETE TEST] delete button NOT found');
 					return false;
 				})()
 			`, &foundDeleteButton),
 		)
 		if err != nil || !foundDeleteButton {
-			t.Fatalf("request_delete button not found: %v", err)
+			t.Fatalf("delete button not found: %v", err)
 		}
-		t.Log("✅ request_delete button found")
+		t.Log("delete button found")
 
-		// Click request_delete to open confirm modal
+		// Click delete button (browser confirm() auto-accepts in headless Chrome)
 		err = chromedp.Run(ctx,
 			chromedp.Evaluate(`
 				(() => {
-					const deleteButton = document.querySelector('button[name="request_delete"]');
+					const deleteButton = document.querySelector('button[name="delete"]');
 					if (deleteButton) {
-						console.log('[DELETE TEST] Clicking request_delete button...');
+						console.log('[DELETE TEST] Clicking delete button...');
 						deleteButton.click();
 						return true;
 					}
@@ -349,30 +349,9 @@ func TestDeleteWithMultiplePosts(t *testing.T) {
 			`, &clickedDelete),
 		)
 		if err != nil || !clickedDelete {
-			t.Fatalf("Failed to click request_delete button: %v", err)
+			t.Fatalf("Failed to click delete button: %v", err)
 		}
-		t.Log("✅ Clicked request_delete button")
-
-		// Wait for confirm modal and click confirm_delete
-		err = chromedp.Run(ctx,
-			waitFor(`document.querySelector('button[name="confirm_delete"]') !== null`, 5*time.Second),
-			chromedp.Evaluate(`
-				(() => {
-					const confirmButton = document.querySelector('button[name="confirm_delete"]');
-					if (confirmButton) {
-						console.log('[DELETE TEST] Clicking confirm_delete button...');
-						confirmButton.click();
-						return true;
-					}
-					console.log('[DELETE TEST] confirm_delete button NOT found');
-					return false;
-				})()
-			`, nil),
-		)
-		if err != nil {
-			t.Fatalf("Failed to click confirm_delete button: %v", err)
-		}
-		t.Log("✅ Clicked confirm_delete button")
+		t.Log("Clicked delete button")
 
 		// Capture DOM state before waiting for deletion
 		var tableHTML string

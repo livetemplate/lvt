@@ -631,12 +631,12 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 		t.Logf("[Delete_Post] Step 10: Edit click result: %+v", editResult)
 
 		// Step 11: Wait for edit modal to show the CORRECT post
-		// The request_delete button's data-id should match our target post
+		// The delete button's data-id should match our target post
 		t.Logf("[Delete_Post] Step 11: Waiting for edit modal with correct data (target: %s)...", targetDataKey)
 		err = chromedp.Run(ctx,
 			waitFor(fmt.Sprintf(`
 				(() => {
-					const deleteBtn = document.querySelector('button[name="request_delete"]');
+					const deleteBtn = document.querySelector('button[name="delete"]');
 					if (!deleteBtn) return false;
 					const btnDataId = deleteBtn.getAttribute('data-id');
 					return btnDataId === %q;
@@ -649,7 +649,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 			chromedp.Run(ctx,
 				chromedp.Evaluate(fmt.Sprintf(`
 					(() => {
-						const deleteBtn = document.querySelector('button[name="request_delete"]');
+						const deleteBtn = document.querySelector('button[name="delete"]');
 						const editForm = document.querySelector('form[name="update"]');
 						const titleInput = editForm?.querySelector('input[name="title"]');
 						return {
@@ -667,44 +667,22 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 		}
 		t.Log("[Delete_Post] Step 11: Edit modal opened with correct post data")
 
-		// Step 11b: Verify the edit modal state
-		var editModalState map[string]interface{}
-		chromedp.Run(ctx,
-			chromedp.Evaluate(fmt.Sprintf(`
-				(() => {
-					const deleteBtn = document.querySelector('button[name="request_delete"]');
-					const editForm = document.querySelector('form[name="update"]');
-					const titleInput = editForm?.querySelector('input[name="title"]');
-					return {
-						expectedKey: %q,
-						deleteBtnDataId: deleteBtn?.getAttribute('data-id'),
-						formTitleValue: titleInput?.value,
-						formFound: editForm !== null,
-						idMatch: deleteBtn?.getAttribute('data-id') === %q
-					};
-				})()
-			`, targetDataKey, targetDataKey), &editModalState),
-		)
-		t.Logf("[Delete_Post] Step 11b: Edit modal state (verified): %+v", editModalState)
-
-		// Step 12: Click request_delete to open confirm modal, then click confirm_delete
-		t.Logf("[Delete_Post] Step 12: Clicking request_delete button (target: %s)...", targetDataKey)
+		// Step 12: Click delete button (browser confirm() auto-accepts in headless Chrome)
+		t.Logf("[Delete_Post] Step 12: Clicking delete button (target: %s)...", targetDataKey)
 		var deleteResult map[string]interface{}
 		err = chromedp.Run(ctx,
-			// Click the request_delete button and verify it has the correct ID
 			chromedp.Evaluate(fmt.Sprintf(`
 				(() => {
-					const deleteButton = document.querySelector('button[name="request_delete"]');
+					const deleteButton = document.querySelector('button[name="delete"]');
 					if (!deleteButton) {
-						return { success: false, error: 'request_delete button not found' };
+						return { success: false, error: 'delete button not found' };
 					}
 
 					const buttonId = deleteButton.getAttribute('data-id');
 					if (buttonId !== %q) {
-						return { success: false, error: 'request_delete button has wrong ID: ' + buttonId };
+						return { success: false, error: 'delete button has wrong ID: ' + buttonId };
 					}
 
-					// Click the request_delete button to open confirm modal
 					deleteButton.click();
 
 					return { success: true, buttonId: buttonId };
@@ -712,36 +690,9 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 			`, targetDataKey), &deleteResult),
 		)
 		if err != nil {
-			t.Fatalf("[Delete_Post] Step 12 failed (click request_delete): %v", err)
+			t.Fatalf("[Delete_Post] Step 12 failed (click delete): %v", err)
 		}
-		t.Logf("[Delete_Post] Step 12: request_delete button clicked: %+v", deleteResult)
-
-		// Step 12a: Wait for confirm modal and click confirm_delete
-		t.Log("[Delete_Post] Step 12a: Waiting for confirm modal...")
-		err = chromedp.Run(ctx,
-			waitFor(`document.querySelector('button[name="confirm_delete"]') !== null`, 5*time.Second),
-		)
-		if err != nil {
-			t.Fatalf("[Delete_Post] Step 12a failed (confirm modal did not appear): %v", err)
-		}
-
-		var confirmResult map[string]interface{}
-		err = chromedp.Run(ctx,
-			chromedp.Evaluate(`
-				(() => {
-					const confirmButton = document.querySelector('button[name="confirm_delete"]');
-					if (!confirmButton) {
-						return { success: false, error: 'confirm_delete button not found' };
-					}
-					confirmButton.click();
-					return { success: true };
-				})()
-			`, &confirmResult),
-		)
-		if err != nil {
-			t.Fatalf("[Delete_Post] Step 12a failed (click confirm_delete): %v", err)
-		}
-		t.Logf("[Delete_Post] Step 12a: confirm_delete clicked: %+v", confirmResult)
+		t.Logf("[Delete_Post] Step 12: delete button clicked: %+v", deleteResult)
 
 		// Step 12b: Wait for server response and check row count
 		time.Sleep(2 * time.Second)
@@ -762,34 +713,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 		}
 
 		// Step 13: Wait for row to disappear
-		t.Logf("[Delete_Post] Step 13: Waiting for row %s to disappear (30s timeout)...", targetDataKey)
-		time.Sleep(1 * time.Second) // Brief pause to let WebSocket message be processed
-
-		// Check row state periodically for debugging
-		for i := 0; i < 3; i++ {
-			var checkState map[string]interface{}
-			chromedp.Run(ctx,
-				chromedp.Evaluate(fmt.Sprintf(`
-					(() => {
-						const table = document.querySelector('table tbody');
-						const targetRow = table?.querySelector('tr[data-key=%q]');
-						const ws = window.liveTemplateClient?.ws;
-						const client = window.liveTemplateClient;
-						return {
-							rowExists: targetRow !== null,
-							tableRows: table?.querySelectorAll('tr').length || 0,
-							wsState: ws?.readyState,
-							messageCount: client?.messageCount
-						};
-					})()
-				`, targetDataKey), &checkState),
-			)
-			t.Logf("[Delete_Post] Step 13 check %d: %+v", i+1, checkState)
-			if checkState["rowExists"] == false {
-				break
-			}
-			time.Sleep(2 * time.Second)
-		}
+		t.Logf("[Delete_Post] Step 13: Waiting for row %s to disappear (20s timeout)...", targetDataKey)
 
 		err = chromedp.Run(ctx,
 			waitFor(fmt.Sprintf(`
@@ -842,10 +766,10 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 		}
 
 		if postStillExists {
-			t.Fatal("❌ Post still exists after deletion")
+			t.Fatal("Post still exists after deletion")
 		}
 
-		t.Log("✅ Post deleted successfully")
+		t.Log("Post deleted successfully")
 	})
 
 	// Test 11.5: Validation Errors
