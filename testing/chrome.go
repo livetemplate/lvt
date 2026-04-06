@@ -23,10 +23,10 @@ const (
 	// Override with the LVT_CLIENT_CDN_URL environment variable to pin a specific version.
 	defaultClientCDNURL = "https://unpkg.com/@livetemplate/client@latest/dist/livetemplate-client.browser.js"
 	// defaultCSSCDNURL is the unpkg.com URL for the shared LiveTemplate CSS.
-	defaultCSSCDNURL = "https://unpkg.com/@livetemplate/client@latest/livetemplate.css"
-	clientCacheTTL   = 1 * time.Hour
-	clientCacheFile  = "livetemplate-client-latest.js"
-	cssCacheFile     = "livetemplate-latest.css"
+	defaultCSSCDNURL   = "https://unpkg.com/@livetemplate/client@latest/livetemplate.css"
+	clientCacheTTL     = 1 * time.Hour
+	clientCacheFile    = "livetemplate-client-latest.js"
+	cssCacheFile       = "livetemplate-latest.css"
 	clientFetchTimeout = 30 * time.Second
 )
 
