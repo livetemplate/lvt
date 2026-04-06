@@ -65,18 +65,7 @@ jobs:
           cd /tmp/test-import
           go mod init example.com/test-import
           go mod edit -replace github.com/livetemplate/lvt/components=$GITHUB_WORKSPACE/components
-          cat > main.go <<'GOEOF'
-package main
-
-import (
-	"fmt"
-	"github.com/livetemplate/lvt/components"
-)
-
-func main() {
-	fmt.Println(components.Version())
-}
-GOEOF
+          printf 'package main\n\nimport (\n\t"fmt"\n\t"github.com/livetemplate/lvt/components"\n)\n\nfunc main() {\n\tfmt.Println(components.Version())\n}\n' > main.go
           GOWORK=off go mod tidy
           GOWORK=off go build .
           GOWORK=off go run .
