@@ -22,15 +22,22 @@ const (
 	// defaultClientCDNURL is the unpkg.com URL for the latest LiveTemplate client library.
 	// Override with the LVT_CLIENT_CDN_URL environment variable to pin a specific version.
 	defaultClientCDNURL = "https://unpkg.com/@livetemplate/client@latest/dist/livetemplate-client.browser.js"
-	clientCacheTTL      = 1 * time.Hour
-	clientCacheFile     = "livetemplate-client-latest.js"
-	clientFetchTimeout  = 30 * time.Second
+	// defaultCSSCDNURL is the unpkg.com URL for the shared LiveTemplate CSS.
+	defaultCSSCDNURL = "https://unpkg.com/@livetemplate/client@latest/livetemplate.css"
+	clientCacheTTL   = 1 * time.Hour
+	clientCacheFile  = "livetemplate-client-latest.js"
+	cssCacheFile     = "livetemplate-latest.css"
+	clientFetchTimeout = 30 * time.Second
 )
 
 var (
 	clientOnce     sync.Once
 	clientBytes    []byte
 	clientFetchErr error
+
+	cssOnce     sync.Once
+	cssBytes    []byte
+	cssFetchErr error
 )
 
 func getClientCDNURL() string {
@@ -486,6 +493,139 @@ func ServeClientLibrary(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/javascript")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Write(GetClientLibraryJS())
+}
+
+func getCSSCDNURL() string {
+	if url := os.Getenv("LVT_CSS_CDN_URL"); url != "" {
+		return url
+	}
+	return defaultCSSCDNURL
+}
+
+// GetClientCSS returns the shared LiveTemplate CSS fetched from CDN.
+// The result is cached in memory (per-process) and on disk (with TTL).
+// On CDN failure, falls back to an expired disk cache if available.
+func GetClientCSS() []byte {
+	cssOnce.Do(func() {
+		cssBytes, cssFetchErr = fetchCSS()
+	})
+	if cssFetchErr != nil {
+		panic(fmt.Sprintf("failed to fetch CSS from CDN: %v", cssFetchErr))
+	}
+	return cssBytes
+}
+
+func readCachedCSSFrom(dir string) []byte {
+	if dir == "" {
+		return nil
+	}
+	data, err := os.ReadFile(filepath.Join(dir, cssCacheFile))
+	if err != nil || len(data) == 0 {
+		return nil
+	}
+	return data
+}
+
+// findLocalCSS walks up from the working directory looking for client/livetemplate.css.
+// This is a fallback for development when the CSS hasn't been published to npm yet.
+func findLocalCSS() []byte {
+	dir, err := os.Getwd()
+	if err != nil {
+		return nil
+	}
+	for {
+		candidate := filepath.Join(dir, "client", "livetemplate.css")
+		if data, err := os.ReadFile(candidate); err == nil && len(data) > 0 {
+			log.Printf("[lvt/testing] Using local CSS from %s (%d bytes)", candidate, len(data))
+			return data
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return nil
+		}
+		dir = parent
+	}
+}
+
+func fetchCSS() ([]byte, error) {
+	// Try local file first (instant, no network latency)
+	if data := findLocalCSS(); data != nil {
+		return data, nil
+	}
+
+	cacheDir := clientCacheDir()
+
+	// Check fresh disk cache
+	if cacheDir != "" {
+		cachePath := filepath.Join(cacheDir, cssCacheFile)
+		info, err := os.Stat(cachePath)
+		if err == nil && time.Since(info.ModTime()) < clientCacheTTL {
+			if data, err := os.ReadFile(cachePath); err == nil && len(data) > 0 {
+				log.Printf("[lvt/testing] Using cached CSS (%d bytes, age: %v)", len(data), time.Since(info.ModTime()).Round(time.Second))
+				return data, nil
+			}
+		}
+	}
+
+	// Fetch from CDN
+	cdnURL := getCSSCDNURL()
+	log.Printf("[lvt/testing] Fetching CSS from %s", cdnURL)
+
+	httpClient := &http.Client{Timeout: clientFetchTimeout}
+	resp, err := httpClient.Get(cdnURL)
+	if err != nil {
+		if cached := readCachedCSSFrom(cacheDir); cached != nil {
+			log.Printf("[lvt/testing] CSS CDN fetch failed (%v), using expired cache", err)
+			return cached, nil
+		}
+		// Fall back to local file (for pre-publish development)
+		if data := findLocalCSS(); data != nil {
+			return data, nil
+		}
+		return nil, fmt.Errorf("CSS CDN fetch failed (no cache or local file available): %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
+		if cached := readCachedCSSFrom(cacheDir); cached != nil {
+			log.Printf("[lvt/testing] CSS CDN returned status %d, using expired cache", resp.StatusCode)
+			return cached, nil
+		}
+		// Fall back to local file (for pre-publish development)
+		if data := findLocalCSS(); data != nil {
+			return data, nil
+		}
+		return nil, fmt.Errorf("CSS CDN returned status %d for %s (no cache or local file available)", resp.StatusCode, cdnURL)
+	}
+
+	const maxSize = 1 << 20 // 1MB guard
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxSize))
+	if err != nil {
+		return nil, fmt.Errorf("failed to read CSS CDN response: %w", err)
+	}
+	if len(data) == 0 {
+		return nil, fmt.Errorf("CSS CDN returned empty response for %s", cdnURL)
+	}
+
+	resolvedURL := resp.Request.URL.String()
+	log.Printf("[lvt/testing] Fetched CSS from CDN (%d bytes, resolved: %s)", len(data), resolvedURL)
+
+	// Write to disk cache atomically (best-effort)
+	if cacheDir != "" {
+		_ = os.MkdirAll(cacheDir, 0755)
+		_ = writeFileAtomic(filepath.Join(cacheDir, cssCacheFile), data)
+	}
+
+	return data, nil
+}
+
+// ServeCSS serves the shared LiveTemplate CSS fetched from CDN.
+// This is for development/testing purposes only. In production, serve from CDN directly.
+func ServeCSS(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/css")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Write(GetClientCSS())
 }
 
 // WaitForServer polls an HTTP server until it responds or timeout is reached.
