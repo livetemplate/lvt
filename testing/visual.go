@@ -61,11 +61,18 @@ func ValidateScreenshotWithLLM(t *testing.T, ctx context.Context, pageDescriptio
 		t.Fatalf("Failed to capture screenshot: %v", err)
 	}
 
-	// Save to temp file
-	screenshotPath := filepath.Join(t.TempDir(), "screenshot.png")
+	// Save to working directory (not temp) so Claude CLI can access it.
+	// The CLI sandbox restricts access to the project tree — /var/folders temp
+	// dirs are outside the sandbox.
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get working directory: %v", err)
+	}
+	screenshotPath := filepath.Join(cwd, ".visual-check-screenshot.png")
 	if err := os.WriteFile(screenshotPath, buf, 0644); err != nil {
 		t.Fatalf("Failed to write screenshot: %v", err)
 	}
+	defer os.Remove(screenshotPath)
 
 	t.Logf("Captured screenshot: %d bytes → %s", len(buf), screenshotPath)
 
@@ -94,8 +101,7 @@ func ValidateScreenshotWithLLM(t *testing.T, ctx context.Context, pageDescriptio
 
 	var issues []VisualIssue
 	if err := json.Unmarshal([]byte(jsonStr), &issues); err != nil {
-		t.Logf("Warning: could not parse LLM response as JSON: %v", err)
-		t.Logf("Raw response: %s", responseText)
+		t.Errorf("LLM did not return valid JSON — response may indicate an error:\n%s", responseText)
 		return
 	}
 
