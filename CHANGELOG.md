@@ -5,6 +5,20 @@ All notable changes to the LVT CLI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.3] - 2026-04-10
+
+### Changes
+
+- fix: exclude .worktrees/ from nested module tag discovery in release script (0e77a6d)
+- fix: save screenshot to working directory for Claude CLI sandbox access (2ac2581)
+- refactor: use claude CLI instead of Anthropic SDK for visual checks (ae46a2f)
+- feat: add ValidateScreenshotWithLLM() for LLM-powered visual UI review (03fb143)
+- feat: add ValidatePicoCSS() chromedp action for Pico CSS convention checking (82dce8c)
+- fix(ci): fix YAML parse error in components-independence workflow (#310) (e7c8582)
+- feat(testing): add ServeCSS for shared LiveTemplate CSS (1e9976a)
+
+
+
 ## [v0.1.2] - 2026-04-05
 
 ### Changes
