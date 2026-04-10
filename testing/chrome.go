@@ -953,3 +953,60 @@ func WaitForUpdateEvent(actionName string, timeout time.Duration) chromedp.Actio
 
 	return WaitFor(condition, timeout)
 }
+
+// ValidatePicoCSS returns a chromedp.Action that checks the rendered DOM against
+// Pico CSS conventions. Returns an error listing all violations found.
+// Rules checked:
+//  1. Forms with text input + button should use <fieldset role="group">
+//  2. No unstyled <output data-flash> — use <ins>/<del> instead of FlashTag
+//  3. No inline styles except <ins>/<del> block pattern and component internals
+//  4. No style="display:none" — use hidden attribute instead
+func ValidatePicoCSS() chromedp.Action {
+	return chromedp.ActionFunc(func(ctx context.Context) error {
+		var violations string
+		if err := chromedp.Evaluate(`(() => {
+			const v = [];
+
+			// Rule 1: Forms with text input + button should use fieldset[role="group"]
+			document.querySelectorAll('form').forEach(form => {
+				const textInput = form.querySelector('input[type="text"], input[type="search"], input:not([type])');
+				const button = form.querySelector('button');
+				if (textInput && button) {
+					const fieldset = form.querySelector('fieldset[role="group"]');
+					if (!fieldset || !fieldset.contains(textInput) || !fieldset.contains(button)) {
+						v.push('form "' + (form.name || 'unnamed') + '": input + button should be inside <fieldset role="group">');
+					}
+				}
+			});
+
+			// Rule 2: No unstyled <output data-flash>
+			document.querySelectorAll('output[data-flash]').forEach(el => {
+				v.push('<output data-flash="' + el.dataset.flash + '"> should use <ins>/<del> instead of FlashTag');
+			});
+
+			// Rule 3: No inline styles (except <ins>/<del> block pattern and component internals)
+			document.querySelectorAll('[style]').forEach(el => {
+				if (el.tagName === 'INS' || el.tagName === 'DEL') return;
+				if (el.closest('[data-modal]') || el.closest('[data-lvt-toast-stack]')) return;
+				v.push('inline style on <' + el.tagName.toLowerCase() + '>');
+			});
+
+			// Rule 4: No style="display:none" — use hidden attribute
+			document.querySelectorAll('[style]').forEach(el => {
+				const s = el.getAttribute('style') || '';
+				if (s.includes('display') && s.includes('none') && !el.closest('[data-modal]') && !el.closest('[data-lvt-toast-stack]')) {
+					v.push('<' + el.tagName.toLowerCase() + '> uses style="display:none" — use hidden attribute');
+				}
+			});
+
+			return v.join('; ');
+		})()`, &violations).Do(ctx); err != nil {
+			return fmt.Errorf("ValidatePicoCSS failed: %w", err)
+		}
+
+		if violations != "" {
+			return fmt.Errorf("Pico CSS violations: %s", violations)
+		}
+		return nil
+	})
+}
