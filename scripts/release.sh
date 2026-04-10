@@ -165,7 +165,7 @@ Release LVT CLI v$new_version
             log_step "Creating nested module tag ${subdir}/v${new_version}"
             git tag -a "${subdir}/v${new_version}" -m "Release ${subdir}/v${new_version}"
         fi
-    done < <(find . -name "go.mod" -not -path "./vendor/*" -not -path "./.git/*" | grep -v "^\./go.mod$" | sort)
+    done < <(find . -name "go.mod" -not -path "./vendor/*" -not -path "./.git/*" -not -path "./.worktrees/*" | grep -v "^\./go.mod$" | sort)
 
     log_info "Committed and tagged v$new_version"
 }
@@ -267,7 +267,7 @@ publish_github() {
         if [ "$subdir" != "." ]; then
             git push origin "${subdir}/v${new_version}"
         fi
-    done < <(find . -name "go.mod" -not -path "./vendor/*" -not -path "./.git/*" | grep -v "^\./go.mod$" | sort)
+    done < <(find . -name "go.mod" -not -path "./vendor/*" -not -path "./.git/*" -not -path "./.worktrees/*" | grep -v "^\./go.mod$" | sort)
 
     log_info "Pushed to GitHub"
 
