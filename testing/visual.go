@@ -2,14 +2,14 @@ package testing
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/chromedp/chromedp"
 )
 
@@ -21,7 +21,7 @@ type VisualIssue struct {
 }
 
 const visualCheckPrompt = `You are a UI/UX reviewer for a web application using Pico CSS (https://picocss.com).
-Analyze this screenshot for visual issues.
+Analyze the screenshot at %s for visual issues.
 
 Page description: %s
 
@@ -38,8 +38,8 @@ Example: [{"severity":"HIGH","category":"ALIGNMENT","description":"Input and but
 If no issues found, respond with: []`
 
 // ValidateScreenshotWithLLM captures a full-page screenshot and sends it to
-// Claude for visual analysis. Skipped unless LVT_VISUAL_CHECK=true is set.
-// Requires ANTHROPIC_API_KEY environment variable.
+// the Claude CLI for visual analysis. Skipped unless LVT_VISUAL_CHECK=true is set.
+// Requires the 'claude' CLI to be installed and authenticated.
 //
 // Fails the test if any HIGH or CRITICAL severity issues are found.
 // MEDIUM and LOW issues are logged as warnings.
@@ -50,8 +50,9 @@ func ValidateScreenshotWithLLM(t *testing.T, ctx context.Context, pageDescriptio
 		t.Skip("LLM visual check disabled — set LVT_VISUAL_CHECK=true to enable")
 	}
 
-	if os.Getenv("ANTHROPIC_API_KEY") == "" {
-		t.Skip("ANTHROPIC_API_KEY not set — required for LLM visual check")
+	// Check claude CLI is available
+	if _, err := exec.LookPath("claude"); err != nil {
+		t.Skip("claude CLI not found — install Claude Code to enable LLM visual check")
 	}
 
 	// Capture screenshot
@@ -60,49 +61,31 @@ func ValidateScreenshotWithLLM(t *testing.T, ctx context.Context, pageDescriptio
 		t.Fatalf("Failed to capture screenshot: %v", err)
 	}
 
-	t.Logf("Captured screenshot: %d bytes", len(buf))
+	// Save to temp file
+	screenshotPath := filepath.Join(t.TempDir(), "screenshot.png")
+	if err := os.WriteFile(screenshotPath, buf, 0644); err != nil {
+		t.Fatalf("Failed to write screenshot: %v", err)
+	}
 
-	// Encode as base64 for the API
-	b64 := base64.StdEncoding.EncodeToString(buf)
+	t.Logf("Captured screenshot: %d bytes → %s", len(buf), screenshotPath)
 
-	// Call Anthropic API
-	client := anthropic.NewClient()
-	prompt := fmt.Sprintf(visualCheckPrompt, pageDescription)
+	// Build prompt with screenshot path
+	prompt := fmt.Sprintf(visualCheckPrompt, screenshotPath, pageDescription)
 
-	message, err := client.Messages.New(ctx, anthropic.MessageNewParams{
-		Model:     anthropic.ModelClaudeHaiku4_5,
-		MaxTokens: 1024,
-		Messages: []anthropic.MessageParam{
-			anthropic.NewUserMessage(
-				anthropic.NewImageBlockBase64("image/png", b64),
-				anthropic.NewTextBlock(prompt),
-			),
-		},
-	})
+	// Run claude CLI in non-interactive mode
+	cmd := exec.Command("claude", "-p", prompt, "--output-format", "text")
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Fatalf("Anthropic API call failed: %v", err)
+		t.Fatalf("claude CLI failed: %v\nOutput: %s", err, output)
 	}
 
-	// Extract text response
-	var responseText string
-	for _, block := range message.Content {
-		if block.Type == "text" {
-			responseText = block.Text
-			break
-		}
-	}
-
-	if responseText == "" {
-		t.Fatal("Empty response from LLM")
-	}
-
+	responseText := strings.TrimSpace(string(output))
 	t.Logf("LLM response: %s", responseText)
 
 	// Parse JSON — strip markdown code fence if present
-	jsonStr := strings.TrimSpace(responseText)
+	jsonStr := responseText
 	if strings.HasPrefix(jsonStr, "```") {
 		lines := strings.Split(jsonStr, "\n")
-		// Remove first and last lines (code fence markers)
 		if len(lines) > 2 {
 			jsonStr = strings.Join(lines[1:len(lines)-1], "\n")
 		}
