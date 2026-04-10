@@ -510,7 +510,8 @@ func GetClientCSS() []byte {
 		cssBytes, cssFetchErr = fetchCSS()
 	})
 	if cssFetchErr != nil {
-		panic(fmt.Sprintf("failed to fetch CSS from CDN: %v", cssFetchErr))
+		log.Printf("[lvt/testing] Warning: CSS not available: %v", cssFetchErr)
+		return nil
 	}
 	return cssBytes
 }
@@ -623,9 +624,14 @@ func fetchCSS() ([]byte, error) {
 // ServeCSS serves the shared LiveTemplate CSS fetched from CDN.
 // This is for development/testing purposes only. In production, serve from CDN directly.
 func ServeCSS(w http.ResponseWriter, r *http.Request) {
+	css := GetClientCSS()
+	if css == nil {
+		http.Error(w, "CSS not available", http.StatusNotFound)
+		return
+	}
 	w.Header().Set("Content-Type", "text/css")
 	w.Header().Set("Cache-Control", "no-cache")
-	w.Write(GetClientCSS())
+	w.Write(css)
 }
 
 // WaitForServer polls an HTTP server until it responds or timeout is reached.
