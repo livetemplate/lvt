@@ -222,7 +222,7 @@ func TestTutorialE2E(t *testing.T) {
 			chromedp.WaitVisible(`[command="show-modal"][commandfor="add-modal"]`, chromedp.ByQuery),
 			chromedp.Click(`[command="show-modal"][commandfor="add-modal"]`, chromedp.ByQuery),
 			// Wait for modal to appear
-			waitFor(`document.querySelector('[role="dialog"]') && !document.querySelector('[role="dialog"]').hasAttribute('hidden')`, 10*time.Second),
+			waitFor(`document.querySelector('dialog#add-modal')?.open === true`, 10*time.Second),
 
 			// Fill in the form in the modal
 			chromedp.WaitVisible(`input[name="title"]`, chromedp.ByQuery),
