@@ -219,8 +219,8 @@ func TestTutorialE2E(t *testing.T) {
 			validateNoTemplateExpressions("[data-lvt-id]"), // Validate no raw template expressions
 
 			// Click the "+ Add Posts" button in toolbar to open modal
-			chromedp.WaitVisible(`[data-lvt-target="#add-modal"]`, chromedp.ByQuery),
-			chromedp.Click(`[data-lvt-target="#add-modal"]`, chromedp.ByQuery),
+			chromedp.WaitVisible(`[command="show-modal"][commandfor="add-modal"]`, chromedp.ByQuery),
+			chromedp.Click(`[command="show-modal"][commandfor="add-modal"]`, chromedp.ByQuery),
 			// Wait for modal to appear
 			waitFor(`document.querySelector('[role="dialog"]') && !document.querySelector('[role="dialog"]').hasAttribute('hidden')`, 10*time.Second),
 
@@ -678,14 +678,12 @@ func TestTutorialE2E(t *testing.T) {
 			validateNoTemplateExpressions("[data-lvt-id]"), // Validate no raw template expressions
 
 			// Open add modal via DOM manipulation (more reliable than click event delegation)
-			chromedp.WaitVisible(`[data-lvt-target="#add-modal"]`, chromedp.ByQuery),
+			chromedp.WaitVisible(`[command="show-modal"][commandfor="add-modal"]`, chromedp.ByQuery),
 			chromedp.Evaluate(`
 				(() => {
-					const modal = document.querySelector('#add-modal');
-					if (modal) {
-						modal.removeAttribute('hidden');
-						modal.style.display = 'flex';
-						modal.setAttribute('aria-hidden', 'false');
+					const modal = document.querySelector('dialog#add-modal');
+					if (modal && !modal.open) {
+						modal.showModal();
 					}
 				})()
 			`, nil),
@@ -880,9 +878,9 @@ func ensureTutorialPostExists(ctx context.Context, baseURL string) error {
 		chromedp.Navigate(baseURL+"/posts"),
 		waitForWebSocketReady(30*time.Second),
 		chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
-		chromedp.WaitVisible(`[data-lvt-target="#add-modal"]`, chromedp.ByQuery),
+		chromedp.WaitVisible(`[command="show-modal"][commandfor="add-modal"]`, chromedp.ByQuery),
 		// Retry modal click until event handlers are attached
-		clickUntilModalOpens(`[data-lvt-target="#add-modal"]`, `input[name="title"]`, 15*time.Second),
+		clickUntilModalOpens(`[command="show-modal"][commandfor="add-modal"]`, `input[name="title"]`, 15*time.Second),
 		chromedp.Evaluate(`document.querySelector('input[name="title"]').value = ''`, nil),
 		chromedp.Evaluate(`document.querySelector('textarea[name="content"]').value = ''`, nil),
 		chromedp.SendKeys(`input[name="title"]`, title, chromedp.ByQuery),

@@ -277,9 +277,17 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 		}
 		t.Log("✅ Edit form appeared")
 
+		// Ensure add dialog is fully closed before interacting with edit form
+		err = chromedp.Run(ctx,
+			waitFor(`!document.querySelector('dialog#add-modal')?.open`, 3*time.Second),
+		)
+		if err != nil {
+			t.Logf("Warning: add dialog may still be open: %v", err)
+		}
+
 		// Update title
 		err = chromedp.Run(ctx,
-			chromedp.Clear(`form[name="update"] input[name="title"]`),
+			chromedp.Clear(`form[name="update"] input[name="title"]`, chromedp.ByQuery),
 			chromedp.SendKeys(`form[name="update"] input[name="title"]`, "My Updated Blog Post", chromedp.ByQuery),
 		)
 		if err != nil {
