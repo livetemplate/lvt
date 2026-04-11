@@ -285,27 +285,23 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 			t.Logf("Warning: add dialog may still be open: %v", err)
 		}
 
-		// Update title — use JavaScript to clear and set value, then dispatch input event
-		// (chromedp.Clear can fail with "not focusable" after a dialog was in the top layer)
+		// Update title and submit — use JavaScript for reliability
+		// (chromedp.Clear/Click can fail with "not focusable" when a dialog
+		// was recently in the top layer, affecting the edit modal overlay)
 		err = chromedp.Run(ctx,
 			chromedp.Evaluate(`
 				(() => {
-					const input = document.querySelector('form[name="update"] input[name="title"]');
-					if (!input) return false;
+					const form = document.querySelector('form[name="update"]');
+					const input = form?.querySelector('input[name="title"]');
+					if (!form || !input) return false;
+					input.focus();
 					input.value = 'My Updated Blog Post';
 					input.dispatchEvent(new Event('input', { bubbles: true }));
+					const submitBtn = form.querySelector('button[type="submit"]');
+					if (submitBtn) submitBtn.click();
 					return true;
 				})()
 			`, nil),
-		)
-		if err != nil {
-			t.Fatalf("Failed to update title: %v", err)
-		}
-		t.Log("✅ Title updated in form")
-
-		// Submit and wait for WebSocket update
-		err = chromedp.Run(ctx,
-			chromedp.Click(`form[name="update"] button[type="submit"]`, chromedp.ByQuery),
 		)
 		if err != nil {
 			t.Fatalf("Failed to submit form: %v", err)
