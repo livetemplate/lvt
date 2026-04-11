@@ -36,7 +36,7 @@
     </div>
 
     <!-- Add Button -->
-    <button[[if ne (buttonClass .CSSFramework "primary") ""]] class="[[buttonClass .CSSFramework "primary"]]"[[end]] lvt-el:toggleAttr:on:click="hidden" data-lvt-target="#add-modal">
+    <button[[if ne (buttonClass .CSSFramework "primary") ""]] class="[[buttonClass .CSSFramework "primary"]]"[[end]] command="show-modal" commandfor="add-modal">
       + Add [[.ResourceNameSingular]]
     </button>
   </div>

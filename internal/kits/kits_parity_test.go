@@ -21,7 +21,7 @@ func TestKitFeatureParity(t *testing.T) {
 		{"cancel edit button", `name="cancel_edit"`},
 		{"update form submission", `name="update"`},
 		{"add form submission", `name="add"`},
-		{"add modal open button", `data-lvt-target="#add-modal"`},
+		{"add modal open button", `commandfor="add-modal"`},
 		{"edit button in table", `name="edit"`},
 	}
 
