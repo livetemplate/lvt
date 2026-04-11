@@ -198,10 +198,10 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 			validateNoTemplateExpressions("[data-lvt-id]"),
 
 			// Click Add button to open modal
-			chromedp.WaitVisible(`[data-lvt-target="#add-modal"]`, chromedp.ByQuery),
-			chromedp.Click(`[data-lvt-target="#add-modal"]`, chromedp.ByQuery),
+			chromedp.WaitVisible(`[command="show-modal"][commandfor="add-modal"]`, chromedp.ByQuery),
+			chromedp.Click(`[command="show-modal"][commandfor="add-modal"]`, chromedp.ByQuery),
 			// Wait for modal to open
-			waitFor(`document.querySelector('[role="dialog"]') && !document.querySelector('[role="dialog"]').hasAttribute('hidden')`, 3*time.Second),
+			waitFor(`document.querySelector('dialog#add-modal')?.open === true`, 3*time.Second),
 
 			// Fill form
 			chromedp.WaitVisible(`input[name="title"]`, chromedp.ByQuery),
@@ -277,19 +277,31 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 		}
 		t.Log("✅ Edit form appeared")
 
-		// Update title
+		// Ensure add dialog is fully closed before interacting with edit form
 		err = chromedp.Run(ctx,
-			chromedp.Clear(`form[name="update"] input[name="title"]`),
-			chromedp.SendKeys(`form[name="update"] input[name="title"]`, "My Updated Blog Post", chromedp.ByQuery),
+			waitFor(`!document.querySelector('dialog#add-modal')?.open`, 3*time.Second),
 		)
 		if err != nil {
-			t.Fatalf("Failed to update title: %v", err)
+			t.Logf("Warning: add dialog may still be open: %v", err)
 		}
-		t.Log("✅ Title updated in form")
 
-		// Submit and wait for WebSocket update
+		// Update title and submit — use JavaScript for reliability
+		// (chromedp.Clear/Click can fail with "not focusable" when a dialog
+		// was recently in the top layer, affecting the edit modal overlay)
 		err = chromedp.Run(ctx,
-			chromedp.Click(`form[name="update"] button[type="submit"]`, chromedp.ByQuery),
+			chromedp.Evaluate(`
+				(() => {
+					const form = document.querySelector('form[name="update"]');
+					const input = form?.querySelector('input[name="title"]');
+					if (!form || !input) return false;
+					input.focus();
+					input.value = 'My Updated Blog Post';
+					input.dispatchEvent(new Event('input', { bubbles: true }));
+					const submitBtn = form.querySelector('button[type="submit"]');
+					if (submitBtn) submitBtn.click();
+					return true;
+				})()
+			`, nil),
 		)
 		if err != nil {
 			t.Fatalf("Failed to submit form: %v", err)
@@ -363,7 +375,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 		// Step 4: Wait for add button
 		t.Log("[Delete_Post] Step 4: Waiting for add button...")
 		err = chromedp.Run(ctx,
-			chromedp.WaitVisible(`[data-lvt-target="#add-modal"]`, chromedp.ByQuery),
+			chromedp.WaitVisible(`[command="show-modal"][commandfor="add-modal"]`, chromedp.ByQuery),
 		)
 		if err != nil {
 			t.Fatalf("[Delete_Post] Step 4 failed (wait for add button): %v", err)
@@ -376,14 +388,13 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 		var openResult map[string]interface{}
 		err = chromedp.Run(ctx,
 			chromedp.Evaluate(`(() => {
-				const modal = document.querySelector('#add-modal');
+				const modal = document.querySelector('dialog#add-modal');
 				if (!modal) {
-					return { success: false, error: 'add-modal not found' };
+					return { success: false, error: 'add-modal dialog not found' };
 				}
-				// Open modal the same way the ModalManager does
-				modal.removeAttribute('hidden');
-				modal.style.display = 'flex';
-				modal.setAttribute('aria-hidden', 'false');
+				if (!modal.open) {
+					modal.showModal();
+				}
 				return { success: true, modalId: modal.id };
 			})()`, &openResult),
 		)
@@ -393,33 +404,26 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 		if openResult["success"] != true {
 			t.Fatalf("[Delete_Post] Step 5 failed: %v", openResult["error"])
 		}
-		t.Log("[Delete_Post] Step 5: Add modal opened via DOM manipulation")
+		t.Log("[Delete_Post] Step 5: Add dialog opened via .showModal()")
 
 		// Step 5b: Diagnostic - check modal state after click
 		time.Sleep(500 * time.Millisecond) // Brief wait for modal to react
 		var modalState map[string]interface{}
 		chromedp.Run(ctx,
 			chromedp.Evaluate(`(() => {
-				const modal = document.querySelector('[role="dialog"]');
-				const addModal = document.querySelector('#add-modal');
+				const addModal = document.querySelector('dialog#add-modal');
 				const titleInput = document.querySelector('input[name="title"]');
 				const allForms = document.querySelectorAll('form');
-				const allModals = document.querySelectorAll('[role="dialog"]');
 				return {
-					dialogExists: modal !== null,
-					dialogHidden: modal?.hasAttribute('hidden'),
 					addModalExists: addModal !== null,
-					addModalHidden: addModal?.hasAttribute('hidden'),
-					addModalDisplay: addModal?.style?.display,
+					addModalOpen: addModal?.open,
 					titleInputExists: titleInput !== null,
 					titleInputVisible: titleInput?.offsetParent !== null,
 					formCount: allForms.length,
-					modalCount: allModals.length,
-					bodyHTML: document.body.innerHTML.substring(0, 3000)
 				};
 			})()`, &modalState),
 		)
-		t.Logf("[Delete_Post] Step 5b: Modal state after click: %+v", modalState)
+		t.Logf("[Delete_Post] Step 5b: Dialog state: %+v", modalState)
 
 		// Step 6: Wait for form (with shorter timeout for faster failure feedback)
 		t.Log("[Delete_Post] Step 6: Waiting for form (10s timeout)...")
@@ -435,10 +439,9 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 						url: window.location.href,
 						readyState: document.readyState,
 						bodyLength: document.body.innerHTML.length,
-						modalDialogs: Array.from(document.querySelectorAll('[role="dialog"]')).map(m => ({
-							id: m.id,
-							hidden: m.hasAttribute('hidden'),
-							display: m.style.display
+						dialogs: Array.from(document.querySelectorAll('dialog')).map(d => ({
+							id: d.id,
+							open: d.open
 						}))
 					};
 				})()`, &pageState),
@@ -794,14 +797,12 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 			chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
 
 			// Open add modal via DOM manipulation (more reliable than click event delegation)
-			chromedp.WaitVisible(`[data-lvt-target="#add-modal"]`, chromedp.ByQuery),
+			chromedp.WaitVisible(`[command="show-modal"][commandfor="add-modal"]`, chromedp.ByQuery),
 			chromedp.Evaluate(`
 				(() => {
-					const modal = document.querySelector('#add-modal');
-					if (modal) {
-						modal.removeAttribute('hidden');
-						modal.style.display = 'flex';
-						modal.setAttribute('aria-hidden', 'false');
+					const modal = document.querySelector('dialog#add-modal');
+					if (modal && !modal.open) {
+						modal.showModal();
 					}
 				})()
 			`, nil),

@@ -1,17 +1,16 @@
 {{/* Add Modal - Modal wrapper for add form */}}
 {{define "addModal"}}
-  <div id="add-modal" hidden aria-hidden="true" role="dialog" data-modal-backdrop data-modal-id="add-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;">
-    <div style="background: white; border-radius: 8px; padding: 2rem; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto;">
-      {{template "addForm" .}}
-    </div>
-  </div>
+  <style>dialog#add-modal::backdrop { background: rgba(0,0,0,0.5); }</style>
+  <dialog id="add-modal" style="max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto; border-radius: 8px; padding: 2rem;">
+    {{template "addForm" .}}
+  </dialog>
 {{end}}
 
 {{/* Add form for resource */}}
 {{define "addForm"}}
   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
     <h2[[if ne (subtitleClass .CSSFramework) ""]] class="[[subtitleClass .CSSFramework]]"[[end]] style="margin: 0;">Add New [[.ResourceName]]</h2>
-    <button type="button" lvt-el:toggleAttr:on:click="hidden" data-lvt-target="#add-modal" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;" aria-label="Close">&times;</button>
+    <button type="button" command="close" commandfor="add-modal" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;" aria-label="Close">&times;</button>
   </div>
 
   {{if .lvt.HasError "_general"}}
@@ -75,7 +74,7 @@
 [[- end]]
     <div[[if ne (fieldClass .CSSFramework) ""]] class="[[fieldClass .CSSFramework]]"[[end]]>
       <button[[if ne (buttonClass .CSSFramework "primary") ""]] class="[[buttonClass .CSSFramework "primary"]]"[[end]] style="margin-right: 8px; padding: 0.5rem 1rem; font-size: 1rem; min-width: 100px;" type="submit" lvt-form:disable-with="Adding...">Add [[.ResourceName]]</button>
-      <button[[if ne (buttonClass .CSSFramework "secondary") ""]] class="[[buttonClass .CSSFramework "secondary"]]"[[end]] style="padding: 0.5rem 1rem; font-size: 1rem; min-width: 100px;" type="button" lvt-el:toggleAttr:on:click="hidden" data-lvt-target="#add-modal">Cancel</button>
+      <button[[if ne (buttonClass .CSSFramework "secondary") ""]] class="[[buttonClass .CSSFramework "secondary"]]"[[end]] style="padding: 0.5rem 1rem; font-size: 1rem; min-width: 100px;" type="button" command="close" commandfor="add-modal">Cancel</button>
     </div>
   </form>
 {{end}}

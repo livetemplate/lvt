@@ -55,33 +55,31 @@ func TestModalFunctionality(t *testing.T) {
 <head>
     <meta charset="UTF-8">
     <title>Modal Test</title>
+    <style>dialog#add-modal::backdrop { background: rgba(0,0,0,0.5); }</style>
 </head>
 <body>
     <div data-lvt-id="test-wrapper">
-        <button id="open-btn" lvt-el:toggleAttr:on:click="hidden" data-lvt-target="#add-modal">Add Product</button>
+        <button id="open-btn" command="show-modal" commandfor="add-modal">Add Product</button>
 
         <!-- Modal -->
-        <div id="add-modal" hidden aria-hidden="true" role="dialog" data-modal-backdrop data-modal-id="add-modal"
-             style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;">
-            <div style="background: white; border-radius: 8px; padding: 2rem; max-width: 600px; width: 90%;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <h2>Add New Product</h2>
-                    <button id="close-x" type="button" lvt-el:toggleAttr:on:click="hidden" data-lvt-target="#add-modal"
-                            style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
-                </div>
-
-                <form>
-                    <div style="margin-bottom: 1rem;">
-                        <label>Name</label>
-                        <input type="text" name="name" placeholder="Enter name" required>
-                    </div>
-                    <div>
-                        <button type="submit">Add Product</button>
-                        <button id="cancel-btn" type="button" lvt-el:toggleAttr:on:click="hidden" data-lvt-target="#add-modal">Cancel</button>
-                    </div>
-                </form>
+        <dialog id="add-modal" style="max-width: 600px; width: 90%; border-radius: 8px; padding: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h2>Add New Product</h2>
+                <button id="close-x" type="button" command="close" commandfor="add-modal"
+                        style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
             </div>
-        </div>
+
+            <form>
+                <div style="margin-bottom: 1rem;">
+                    <label>Name</label>
+                    <input type="text" name="name" placeholder="Enter name" required>
+                </div>
+                <div>
+                    <button type="submit">Add Product</button>
+                    <button id="cancel-btn" type="button" command="close" commandfor="add-modal">Cancel</button>
+                </div>
+            </form>
+        </dialog>
     </div>
 
 	<script>
@@ -139,8 +137,8 @@ func TestModalFunctionality(t *testing.T) {
 	ctx, timeoutCancel := context.WithTimeout(ctx, getBrowserTimeout())
 	defer timeoutCancel()
 
-	// Shared variable for modal hidden state checks across ActionFuncs
-	var hidden bool
+	// Shared variable for modal open state checks across ActionFuncs
+	var dialogOpen bool
 
 	// Run the tests
 	err = chromedp.Run(ctx,
@@ -177,15 +175,15 @@ func TestModalFunctionality(t *testing.T) {
 		// Wait for client to fully initialize
 		waitFor(`typeof window.liveTemplateClient !== 'undefined'`, 15*time.Second),
 
-		// Test 1: Modal should be hidden initially
+		// Test 1: Dialog should be closed initially
 		chromedp.ActionFunc(func(ctx context.Context) error {
-			if err := chromedp.Evaluate(`document.getElementById('add-modal').hasAttribute('hidden')`, &hidden).Do(ctx); err != nil {
-				return fmt.Errorf("failed to check hidden attribute: %v", err)
+			if err := chromedp.Evaluate(`document.getElementById('add-modal').open`, &dialogOpen).Do(ctx); err != nil {
+				return fmt.Errorf("failed to check dialog open state: %v", err)
 			}
-			if !hidden {
-				return fmt.Errorf("modal should be hidden initially")
+			if dialogOpen {
+				return fmt.Errorf("dialog should be closed initially")
 			}
-			t.Log("✓ Test 1: Modal is hidden initially")
+			t.Log("✓ Test 1: Dialog is closed initially")
 			return nil
 		}),
 
@@ -211,18 +209,18 @@ func TestModalFunctionality(t *testing.T) {
 			t.Log("✓ Clicked open button")
 			return nil
 		}),
-		// Wait for modal to open
-		waitFor("!document.getElementById('add-modal').hasAttribute('hidden')", 3*time.Second),
+		// Wait for dialog to open
+		waitFor("document.getElementById('add-modal').open === true", 3*time.Second),
 
-		// Test 3: Verify modal is visible (hidden attribute removed)
+		// Test 3: Verify dialog is open
 		chromedp.ActionFunc(func(ctx context.Context) error {
-			if err := chromedp.Evaluate(`document.getElementById('add-modal').hasAttribute('hidden')`, &hidden).Do(ctx); err != nil {
-				return fmt.Errorf("failed to check hidden attr: %v", err)
+			if err := chromedp.Evaluate(`document.getElementById('add-modal').open`, &dialogOpen).Do(ctx); err != nil {
+				return fmt.Errorf("failed to check dialog open state: %v", err)
 			}
-			if hidden {
-				return fmt.Errorf("modal should not have hidden attr after open")
+			if !dialogOpen {
+				return fmt.Errorf("dialog should be open after clicking show-modal button")
 			}
-			t.Log("✓ Test 2 & 3: Modal opens (hidden attr removed)")
+			t.Log("✓ Test 2 & 3: Dialog opens via command='show-modal' polyfill")
 			return nil
 		}),
 
@@ -246,57 +244,57 @@ func TestModalFunctionality(t *testing.T) {
 			t.Log("✓ Clicked close button successfully")
 			return nil
 		}),
-		// Wait for modal to close
-		waitFor("document.getElementById('add-modal').hasAttribute('hidden')", 3*time.Second),
+		// Wait for dialog to close
+		waitFor("document.getElementById('add-modal').open === false", 3*time.Second),
 
-		// Test 5: Verify modal is hidden after close
+		// Test 5: Verify dialog is closed after close
 		chromedp.ActionFunc(func(ctx context.Context) error {
-			if err := chromedp.Evaluate(`document.getElementById('add-modal').hasAttribute('hidden')`, &hidden).Do(ctx); err != nil {
-				return fmt.Errorf("failed to get display style: %v", err)
+			if err := chromedp.Evaluate(`document.getElementById('add-modal').open`, &dialogOpen).Do(ctx); err != nil {
+				return fmt.Errorf("failed to check dialog open state: %v", err)
 			}
-			if hidden != true {
-				return fmt.Errorf("modal should have hidden attr after close, got hidden=%v", hidden)
+			if dialogOpen {
+				return fmt.Errorf("dialog should be closed after clicking close button")
 			}
-			t.Log("✓ Test 4 & 5: Modal closes with X button")
+			t.Log("✓ Test 4 & 5: Dialog closes with X button")
 			return nil
 		}),
 
-		// Test 6: Reopen modal (critical test - was broken before)
+		// Test 6: Reopen dialog (critical test - was broken before)
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			if err := chromedp.Evaluate(`document.getElementById('open-btn').click()`, nil).Do(ctx); err != nil {
-				return fmt.Errorf("failed to reopen modal: %v", err)
+				return fmt.Errorf("failed to reopen dialog: %v", err)
 			}
 			return nil
 		}),
-		// Wait for modal to reopen
-		waitFor("!document.getElementById('add-modal').hasAttribute('hidden')", 3*time.Second),
+		// Wait for dialog to reopen
+		waitFor("document.getElementById('add-modal').open === true", 3*time.Second),
 
-		// Test 7: Verify modal reopened successfully
+		// Test 7: Verify dialog reopened successfully
 		chromedp.ActionFunc(func(ctx context.Context) error {
-			if err := chromedp.Evaluate(`document.getElementById('add-modal').hasAttribute('hidden')`, &hidden).Do(ctx); err != nil {
-				return fmt.Errorf("failed to get display style: %v", err)
+			if err := chromedp.Evaluate(`document.getElementById('add-modal').open`, &dialogOpen).Do(ctx); err != nil {
+				return fmt.Errorf("failed to check dialog open state: %v", err)
 			}
-			if hidden != false {
-				return fmt.Errorf("modal should not have hidden attr on reopen, got hidden=%v", hidden)
+			if !dialogOpen {
+				return fmt.Errorf("dialog should be open on reopen")
 			}
-			t.Log("✓ Test 6 & 7: Modal REOPENS successfully (critical fix)")
+			t.Log("✓ Test 6 & 7: Dialog REOPENS successfully (critical fix)")
 			return nil
 		}),
 
-		// Test 8: Close modal by clicking Cancel button using real browser click
+		// Test 8: Close dialog by clicking Cancel button using real browser click
 		chromedp.Click("#cancel-btn", chromedp.ByQuery),
-		// Wait for modal to close
-		waitFor("document.getElementById('add-modal').hasAttribute('hidden')", 3*time.Second),
+		// Wait for dialog to close
+		waitFor("document.getElementById('add-modal').open === false", 3*time.Second),
 
-		// Test 9: Verify modal closed with cancel
+		// Test 9: Verify dialog closed with cancel
 		chromedp.ActionFunc(func(ctx context.Context) error {
-			if err := chromedp.Evaluate(`document.getElementById('add-modal').hasAttribute('hidden')`, &hidden).Do(ctx); err != nil {
-				return fmt.Errorf("failed to get display style: %v", err)
+			if err := chromedp.Evaluate(`document.getElementById('add-modal').open`, &dialogOpen).Do(ctx); err != nil {
+				return fmt.Errorf("failed to check dialog open state: %v", err)
 			}
-			if hidden != true {
-				return fmt.Errorf("modal should close with cancel button")
+			if dialogOpen {
+				return fmt.Errorf("dialog should be closed after cancel button")
 			}
-			t.Log("✓ Test 8 & 9: Modal closes with Cancel button")
+			t.Log("✓ Test 8 & 9: Dialog closes with Cancel button")
 			return nil
 		}),
 
@@ -324,12 +322,11 @@ func TestModalFunctionality(t *testing.T) {
 		t.Fatalf("Browser automation failed: %v", err)
 	}
 
-	t.Log("\n✅ ALL MODAL TESTS PASSED!")
-	t.Log("   ✓ Modal opens centered (display: flex)")
-	t.Log("   ✓ Modal closes with X button")
-	t.Log("   ✓ Modal closes with Cancel button")
-	t.Log("   ✓ Modal closes with Escape key")
-	t.Log("   ✓ Modal can reopen after closing (CRITICAL FIX)")
+	t.Log("\n✅ ALL DIALOG TESTS PASSED!")
+	t.Log("   ✓ Dialog opens via command='show-modal' polyfill (.showModal())")
+	t.Log("   ✓ Dialog closes with X button (command='close')")
+	t.Log("   ✓ Dialog closes with Cancel button (command='close')")
+	t.Log("   ✓ Dialog can reopen after closing (CRITICAL FIX)")
 	t.Log("   ✓ Multiple open/close cycles work")
 
 	// Print console logs even on success for debugging
