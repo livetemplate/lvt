@@ -55,6 +55,7 @@ func TestModalFunctionality(t *testing.T) {
 <head>
     <meta charset="UTF-8">
     <title>Modal Test</title>
+    <style>dialog#add-modal::backdrop { background: rgba(0,0,0,0.5); }</style>
 </head>
 <body>
     <div data-lvt-id="test-wrapper">
@@ -68,7 +69,7 @@ func TestModalFunctionality(t *testing.T) {
                         style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
             </div>
 
-            <form method="dialog">
+            <form>
                 <div style="margin-bottom: 1rem;">
                     <label>Name</label>
                     <input type="text" name="name" placeholder="Enter name" required>

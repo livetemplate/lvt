@@ -1,5 +1,6 @@
 {{/* Add Modal - Modal wrapper for add form */}}
 {{define "addModal"}}
+  <style>dialog#add-modal::backdrop { background: rgba(0,0,0,0.5); }</style>
   <dialog id="add-modal" style="max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto; border-radius: 8px; padding: 2rem;">
     {{template "addForm" .}}
   </dialog>
@@ -18,7 +19,7 @@
   </div>
   {{end}}
 
-  <form method="dialog" name="add">
+  <form name="add">
 [[- range .Fields]]
     <div[[if ne (fieldClass $.CSSFramework) ""]] class="[[fieldClass $.CSSFramework]]"[[end]]>
       <label[[if ne (labelClass $.CSSFramework) ""]] class="[[labelClass $.CSSFramework]]"[[end]]>[[.Name | title]]</label>
