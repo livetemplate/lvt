@@ -828,7 +828,7 @@ func TestTutorialE2E(t *testing.T) {
 		}
 
 		tmplStr := string(tmplContent)
-		if !strings.Contains(tmplStr, `lvt-scroll-sentinel`) {
+		if !strings.Contains(tmplStr, `<div lvt-scroll-sentinel`) {
 			t.Error("❌ Template does not contain lvt-scroll-sentinel element")
 		} else {
 			t.Log("✅ Template contains lvt-scroll-sentinel element for infinite scroll")

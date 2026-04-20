@@ -908,7 +908,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 			t.Fatalf("Failed to read template: %v", err)
 		}
 
-		if !strings.Contains(string(tmplContent), `lvt-scroll-sentinel`) {
+		if !strings.Contains(string(tmplContent), `<div lvt-scroll-sentinel`) {
 			t.Error("❌ Template missing lvt-scroll-sentinel")
 		} else {
 			t.Log("✅ Scroll sentinel element present")
