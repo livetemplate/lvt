@@ -673,22 +673,17 @@ func TestTutorialE2E(t *testing.T) {
 			chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
 			validateNoTemplateExpressions("[data-lvt-id]"),
 
-			// Open add modal
+			// Open add modal via real click (matches working "Add Post" pattern)
 			chromedp.WaitVisible(`[command="show-modal"][commandfor="add-modal"]`, chromedp.ByQuery),
-			chromedp.Evaluate(`
-				(() => {
-					const modal = document.querySelector('dialog#add-modal');
-					if (modal && !modal.open) {
-						modal.showModal();
-					}
-				})()
-			`, nil),
-			chromedp.WaitVisible(`form[name]`, chromedp.ByQuery),
+			chromedp.Click(`[command="show-modal"][commandfor="add-modal"]`, chromedp.ByQuery),
+			waitFor(`document.querySelector('dialog#add-modal')?.open === true`, 10*time.Second),
 
+			// Wait for form inputs to be interactive
+			chromedp.WaitVisible(`input[name="title"]`, chromedp.ByQuery),
 			// Bypass HTML5 validation so empty submit reaches the server
 			chromedp.Evaluate(`document.querySelector('form[name]').noValidate = true`, nil),
-			// Real click triggers proper WebSocket send (dispatchEvent does not)
-			chromedp.Click(`dialog#add-modal button[type="submit"]`, chromedp.ByQuery),
+			// Submit empty form
+			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
 
 			// Wait for validation errors to appear (server responds with error messages)
 			waitFor(`
