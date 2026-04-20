@@ -241,7 +241,7 @@
               Loading more...
             </div>
           {{end}}
-          <div id="scroll-sentinel" style="height: 1px;"></div>
+          <div lvt-scroll-sentinel style="height: 1px;"></div>
         {{end}}
 [[- else if eq .PaginationMode "load-more"]]
         {{if .HasMore}}
@@ -402,7 +402,7 @@
         }
 
         function setupInfiniteScroll() {
-          const sentinel = document.getElementById('scroll-sentinel');
+          const sentinel = document.querySelector('[lvt-scroll-sentinel]');
           if (!sentinel) return;
 
           const observer = new IntersectionObserver(function(entries) {

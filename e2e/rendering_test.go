@@ -1288,7 +1288,7 @@ func TestRendering_InfiniteScroll(t *testing.T) {
 <style>
 	#scroll-container { height: 200px; overflow-y: auto; border: 1px solid #ccc; }
 	.item { height: 40px; padding: 10px; border-bottom: 1px solid #eee; }
-	#scroll-sentinel { height: 1px; }
+	[lvt-scroll-sentinel] { height: 1px; }
 	#loading { display: none; padding: 10px; text-align: center; }
 </style>
 </head>
@@ -1301,7 +1301,7 @@ func TestRendering_InfiniteScroll(t *testing.T) {
 			<div class="item">Item 3</div>
 			<div class="item">Item 4</div>
 			<div class="item">Item 5</div>
-			<div id="scroll-sentinel"></div>
+			<div lvt-scroll-sentinel></div>
 		</div>
 		<div id="loading">Loading more...</div>
 	</div>
@@ -1310,7 +1310,7 @@ func TestRendering_InfiniteScroll(t *testing.T) {
 		let isLoading = false;
 
 		const container = document.getElementById('scroll-container');
-		const sentinel = document.getElementById('scroll-sentinel');
+		const sentinel = document.querySelector('[lvt-scroll-sentinel]');
 		const loading = document.getElementById('loading');
 
 		// Intersection Observer for infinite scroll
