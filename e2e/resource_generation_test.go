@@ -187,8 +187,8 @@ func TestResourceGen_PaginationInfinite(t *testing.T) {
 		t.Fatalf("Failed to read template: %v", err)
 	}
 
-	if !strings.Contains(string(tmpl), `id="scroll-sentinel"`) {
-		t.Error("Template missing scroll-sentinel element")
+	if !strings.Contains(string(tmpl), `<div lvt-scroll-sentinel`) {
+		t.Error("Template missing lvt-scroll-sentinel element")
 	}
 
 	// Validate generated code compiles
