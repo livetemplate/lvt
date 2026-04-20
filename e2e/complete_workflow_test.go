@@ -779,9 +779,13 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 	})
 
 	// Test 11.5: Validation Errors
+	// Bug was fixed on 2025-10-24 - see BUG-VALIDATION-CONDITIONALS.md:409
 	t.Run("Validation Errors", func(t *testing.T) {
 		ctx, cancel := createBrowserContext()
 		defer cancel()
+		// Use 180s timeout - validation test does multiple operations and can be slow
+		// Running against Docker container adds significant overhead compared to local server.
+		// Increased from 120s to 180s to handle Docker networking and resource contention.
 		ctx, timeoutCancel := context.WithTimeout(ctx, 180*time.Second)
 		defer timeoutCancel()
 
@@ -792,7 +796,7 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 			waitForWebSocketReady(5*time.Second),
 			chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
 
-			// Open add modal
+			// Open add modal via DOM manipulation (more reliable than click event delegation)
 			chromedp.WaitVisible(`[command="show-modal"][commandfor="add-modal"]`, chromedp.ByQuery),
 			chromedp.Evaluate(`
 				(() => {
@@ -802,18 +806,28 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 					}
 				})()
 			`, nil),
+			// Wait for form to be visible (modal is open)
 			chromedp.WaitVisible(`form[name]`, chromedp.ByQuery),
 
-			// Bypass HTML5 validation so empty submit reaches the server
-			chromedp.Evaluate(`document.querySelector('form[name]').noValidate = true`, nil),
-			// Real click triggers proper WebSocket send (dispatchEvent does not)
-			chromedp.Click(`dialog#add-modal button[type="submit"]`, chromedp.ByQuery),
-
-			// Wait for validation errors to appear
+			// Submit without filling fields
+			chromedp.WaitVisible(`form[name]`, chromedp.ByQuery),
+			chromedp.Evaluate(`
+				const form = document.querySelector('form[name]');
+				if (form) {
+					// Bypass HTML5 validation to test server-side validation
+					form.noValidate = true;
+					// Reset debug flags
+					window.__lvtSubmitListenerTriggered = false;
+					window.__lvtActionFound = null;
+					form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+				}
+			`, nil),
+			// Wait for validation errors to appear (server responds with error messages)
 			waitFor(`
 				(() => {
 					const form = document.querySelector('form[name]');
 					if (!form) return false;
+					// Look for validation error messages (small tags with error text)
 					const smallTags = form.querySelectorAll('small');
 					return smallTags.length > 0 && Array.from(smallTags).some(el =>
 						el.textContent.includes('required') || el.textContent.includes('is required')
@@ -821,11 +835,42 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 				})()
 			`, 10*time.Second),
 
+			// Check debug flags to see if submit was captured
+			chromedp.Evaluate(`
+				(() => {
+					console.log('[DEBUG] Submit listener triggered: ' + window.__lvtSubmitListenerTriggered);
+					console.log('[DEBUG] Action found: ' + window.__lvtActionFound);
+					console.log('[DEBUG] In wrapper: ' + window.__lvtInWrapper);
+					console.log('[DEBUG] Wrapper element: ' + window.__lvtWrapperElement);
+					console.log('[DEBUG] Before handleAction: ' + window.__lvtBeforeHandleAction);
+					console.log('[DEBUG] After handleAction: ' + window.__lvtAfterHandleAction);
+					return {
+						listenerTriggered: window.__lvtSubmitListenerTriggered,
+						actionFound: window.__lvtActionFound,
+						inWrapper: window.__lvtInWrapper,
+						beforeHandle: window.__lvtBeforeHandleAction,
+						afterHandle: window.__lvtAfterHandleAction
+					};
+				})()
+			`, nil),
+
+			// Check for error messages
 			chromedp.Evaluate(`
 				(() => {
 					const form = document.querySelector('form[name]');
-					if (!form) return false;
+					if (!form) {
+						console.log('[DEBUG] Form not found!');
+						return false;
+					}
+					console.log('[DEBUG] Form HTML (first 1000 chars): ' + form.outerHTML.substring(0, 1000));
 					const smallTags = Array.from(form.querySelectorAll('small'));
+					console.log('[DEBUG] Found ' + smallTags.length + ' small tags');
+					smallTags.forEach(el => console.log('[DEBUG] Small text: ' + el.textContent));
+
+					// Also check for any elements with aria-invalid
+					const invalidFields = Array.from(form.querySelectorAll('[aria-invalid="true"]'));
+					console.log('[DEBUG] Found ' + invalidFields.length + ' invalid fields');
+
 					return smallTags.some(el => el.textContent.includes('required') || el.textContent.includes('is required'));
 				})()
 			`, &errorsVisible),
