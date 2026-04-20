@@ -658,8 +658,6 @@ func TestTutorialE2E(t *testing.T) {
 		// Create per-subtest context with individual timeout
 		testCtx, cancel := chromedp.NewContext(ctx)
 		defer cancel()
-		// Use 180s timeout - validation test does multiple operations and can be slow
-		// in CI with Docker Chrome. Matches complete_workflow_test.go timeout.
 		testCtx, timeoutCancel := context.WithTimeout(testCtx, 180*time.Second)
 		defer timeoutCancel()
 
@@ -667,17 +665,15 @@ func TestTutorialE2E(t *testing.T) {
 			errorsVisible    bool
 			titleErrorText   string
 			contentErrorText string
-			formHTML         string
 		)
 
 		err := chromedp.Run(testCtx,
-			// Navigate to /posts
 			chromedp.Navigate(testURL+"/posts"),
-			waitForWebSocketReady(30*time.Second), // Wait for WebSocket init and first update
+			waitForWebSocketReady(30*time.Second),
 			chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
-			validateNoTemplateExpressions("[data-lvt-id]"), // Validate no raw template expressions
+			validateNoTemplateExpressions("[data-lvt-id]"),
 
-			// Open add modal via DOM manipulation (more reliable than click event delegation)
+			// Open add modal
 			chromedp.WaitVisible(`[command="show-modal"][commandfor="add-modal"]`, chromedp.ByQuery),
 			chromedp.Evaluate(`
 				(() => {
@@ -687,18 +683,12 @@ func TestTutorialE2E(t *testing.T) {
 					}
 				})()
 			`, nil),
-			// Wait for form to be visible (modal is open)
 			chromedp.WaitVisible(`form[name]`, chromedp.ByQuery),
 
-			// Submit form WITHOUT filling required fields
-			chromedp.Evaluate(`
-				const form = document.querySelector('form[name]');
-				if (form) {
-					// Bypass HTML5 validation to test server-side validation
-					form.noValidate = true;
-					form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-				}
-			`, nil),
+			// Bypass HTML5 validation so empty submit reaches the server
+			chromedp.Evaluate(`document.querySelector('form[name]').noValidate = true`, nil),
+			// Real click triggers proper WebSocket send (dispatchEvent does not)
+			chromedp.Click(`dialog#add-modal button[type="submit"]`, chromedp.ByQuery),
 
 			// Wait for validation errors to appear (server responds with error messages)
 			waitFor(`
@@ -712,13 +702,9 @@ func TestTutorialE2E(t *testing.T) {
 				})()
 			`, 10*time.Second),
 
-			// Debug: Capture the form HTML
-			chromedp.Evaluate(`document.querySelector('form[name]')?.outerHTML || 'Form not found'`, &formHTML),
-
-			// Check if error messages are visible in the UI (rendered server-side)
+			// Check if error messages are visible
 			chromedp.Evaluate(`
 				(() => {
-					// Look for error messages in <small> tags (server-side rendered via .lvt.HasError)
 					const form = document.querySelector('form[name]');
 					if (!form) return false;
 					const smallTags = Array.from(form.querySelectorAll('small'));
@@ -726,12 +712,11 @@ func TestTutorialE2E(t *testing.T) {
 				})()
 			`, &errorsVisible),
 
-			// Get specific error texts (server-side rendered)
+			// Get specific error texts
 			chromedp.Evaluate(`
 				(() => {
 					const form = document.querySelector('form[name]');
 					if (!form) return '';
-					// Find the small tag near the title input
 					const titleDiv = Array.from(form.querySelectorAll('div')).find(div => {
 						const label = div.querySelector('label');
 						return label && label.textContent.includes('Title');
@@ -743,7 +728,6 @@ func TestTutorialE2E(t *testing.T) {
 				(() => {
 					const form = document.querySelector('form[name]');
 					if (!form) return '';
-					// Find the small tag near the content input
 					const contentDiv = Array.from(form.querySelectorAll('div')).find(div => {
 						const label = div.querySelector('label');
 						return label && label.textContent.includes('Content');
@@ -756,36 +740,11 @@ func TestTutorialE2E(t *testing.T) {
 			t.Fatalf("Failed to test validation: %v", err)
 		}
 
-		// Debug: Check what the client has
-		var lastWSMessage, clientErrors, activeFormStatus, handleResponseCalled, renderCalled, responseMeta, allWSMessages, errorElementsCount string
-		chromedp.Run(testCtx,
-			chromedp.Evaluate(`window.__lastWSMessage || 'No WS message'`, &lastWSMessage),
-			chromedp.Evaluate(`JSON.stringify(window.liveTemplateClient?.errors || {})`, &clientErrors),
-			chromedp.Evaluate(`window.liveTemplateClient?.formLifecycleManager?.activeForm ? 'active' : 'not-active'`, &activeFormStatus),
-			chromedp.Evaluate(`window.__lvtHandleResponseCalled ? 'yes' : 'no'`, &handleResponseCalled),
-			chromedp.Evaluate(`window.__lvtRenderFieldErrorsCalled ? 'yes' : 'no'`, &renderCalled),
-			chromedp.Evaluate(`JSON.stringify(window.__lvtResponseMeta || {})`, &responseMeta),
-			chromedp.Evaluate(`JSON.stringify(window.__wsMessages?.slice(-5) || [])`, &allWSMessages),
-			chromedp.Evaluate(`document.querySelectorAll('small[data-lvt-error]').length.toString()`, &errorElementsCount),
-		)
-
-		t.Logf("Last WS message: %s", lastWSMessage)
-		t.Logf("All WS messages (last 5): %s", allWSMessages)
-		t.Logf("Client errors state: %s", clientErrors)
-		t.Logf("Active form status: %s", activeFormStatus)
-		t.Logf("HandleResponse called: %s", handleResponseCalled)
-		t.Logf("RenderFieldErrors called: %s", renderCalled)
-		t.Logf("Response meta: %s", responseMeta)
-		t.Logf("Error elements count: %s", errorElementsCount)
-		t.Logf("Form HTML (first 500 chars): %s", formHTML[:min(500, len(formHTML))])
-
-		// Verify errors are displayed in the UI (server-side rendered)
 		if !errorsVisible {
 			t.Error("❌ Error messages are not visible in the UI")
 		}
 		t.Log("✅ Error messages are visible in the UI")
 
-		// Verify specific field errors
 		if titleErrorText == "" {
 			t.Error("❌ Title field error not displayed")
 		} else {
