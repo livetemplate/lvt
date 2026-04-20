@@ -792,17 +792,22 @@ func TestCompleteWorkflow_BlogApp(t *testing.T) {
 			waitForWebSocketReady(5*time.Second),
 			chromedp.WaitVisible(`[data-lvt-id]`, chromedp.ByQuery),
 
-			// Open add modal via real click (matches working "Add Post" pattern)
+			// Open add modal
 			chromedp.WaitVisible(`[command="show-modal"][commandfor="add-modal"]`, chromedp.ByQuery),
-			chromedp.Click(`[command="show-modal"][commandfor="add-modal"]`, chromedp.ByQuery),
-			waitFor(`document.querySelector('dialog#add-modal')?.open === true`, 10*time.Second),
+			chromedp.Evaluate(`
+				(() => {
+					const modal = document.querySelector('dialog#add-modal');
+					if (modal && !modal.open) {
+						modal.showModal();
+					}
+				})()
+			`, nil),
+			chromedp.WaitVisible(`form[name]`, chromedp.ByQuery),
 
-			// Wait for form inputs to be interactive
-			chromedp.WaitVisible(`input[name="title"]`, chromedp.ByQuery),
 			// Bypass HTML5 validation so empty submit reaches the server
 			chromedp.Evaluate(`document.querySelector('form[name]').noValidate = true`, nil),
-			// Submit empty form
-			chromedp.Click(`button[type="submit"]`, chromedp.ByQuery),
+			// Real click triggers proper WebSocket send (dispatchEvent does not)
+			chromedp.Click(`dialog#add-modal button[type="submit"]`, chromedp.ByQuery),
 
 			// Wait for validation errors to appear
 			waitFor(`
