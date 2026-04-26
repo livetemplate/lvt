@@ -5,6 +5,17 @@ All notable changes to the LVT CLI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.4] - 2026-04-26
+
+### Changes
+
+- fix(testing): un-throttle Chrome container so server-pushed renders apply at 1Hz (#314) (e187813)
+- refactor: replace scroll-sentinel id with lvt-scroll-sentinel attribute (#313) (03bca0d)
+- feat: migrate add modal to native dialog + command/commandfor (#312) (1f01b84)
+- fix: gracefully handle missing CSS instead of panicking (2f54313)
+
+
+
 ## [v0.1.3] - 2026-04-10
 
 ### Changes
