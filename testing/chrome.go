@@ -343,17 +343,37 @@ func StartDockerChrome(t *testing.T, debugPort int) error {
 	t.Log("Starting Chrome headless Docker container...")
 	portMapping := fmt.Sprintf("%d:9222", debugPort)
 
-	// Run in detached mode (-d) to avoid process I/O issues during cleanup
-	// Use --rm for automatic cleanup when container stops
-	// Memory and CPU limits prevent resource exhaustion (4 containers × 512MB = 2GB max)
+	// Run in detached mode (-d) to avoid process I/O issues during cleanup.
+	// Use --rm for automatic cleanup when container stops.
+	//
+	// Resource limits: --memory 512m guards against runaway containers; the
+	// previous --cpus 0.5 limit was removed because it caused reproducible
+	// flakes in any test that relied on server-pushed renders (TriggerAction-
+	// based patterns: ServerPush, LivePreview, ProgressBar, AsyncOperations,
+	// LazyLoading). At 0.5 CPU, headless Chrome's renderer couldn't keep up
+	// with WS message processing AND morphdom application, so pushed updates
+	// queued for ~7s and then burst — long enough that chromedp WaitFor calls
+	// timed out. Removing the cap (full host CPU available, but Chrome rarely
+	// exceeds 1 CPU on these test pages) lets renders apply at 1Hz cadence.
+	//
+	// Trailing flags (passed to headless-shell's run.sh as $@) disable
+	// Chrome's tab backgrounding heuristics. In headless mode the renderer
+	// is never visible, so without these flags Chrome treats every tab as
+	// backgrounded and applies aggressive throttling. The flags are
+	// complementary to the CPU change above — both are needed because
+	// Chrome's throttling and the CPU squeeze produce similar symptoms but
+	// have different root causes.
 	cmd := exec.Command("docker", "run", "-d",
 		"--rm",
 		"--memory", "512m",
-		"--cpus", "0.5",
 		"-p", portMapping,
 		"--name", containerName,
 		"--add-host", "host.docker.internal:host-gateway",
 		dockerImage,
+		"--disable-background-timer-throttling",
+		"--disable-renderer-backgrounding",
+		"--disable-backgrounding-occluded-windows",
+		"--disable-features=IntensiveWakeUpThrottling,CalculateNativeWinOcclusion",
 	)
 
 	// Use Output() instead of Run() to properly close pipes and avoid I/O wait
