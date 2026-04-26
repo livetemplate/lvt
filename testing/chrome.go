@@ -343,17 +343,35 @@ func StartDockerChrome(t *testing.T, debugPort int) error {
 	t.Log("Starting Chrome headless Docker container...")
 	portMapping := fmt.Sprintf("%d:9222", debugPort)
 
-	// Run in detached mode (-d) to avoid process I/O issues during cleanup
-	// Use --rm for automatic cleanup when container stops
-	// Memory and CPU limits prevent resource exhaustion (4 containers × 512MB = 2GB max)
+	// Run in detached mode (-d) to avoid I/O wait, --rm for auto-cleanup.
+	//
+	// Resource limits: --memory 512m guards runaway containers; --shm-size
+	// 256m bumps the default 64m /dev/shm so renderers don't crash under
+	// high-frequency DOM updates. CPU is intentionally uncapped — the
+	// previous --cpus 0.5 caused server-pushed renders (TriggerAction-
+	// driven) to queue for ~7s and then burst, and even --cpus 2 leaves a
+	// narrower flake window for animation-cleanup-timing-sensitive tests
+	// like TestHighlightOnChange. Chrome rarely exceeds 1 CPU on these
+	// test pages in practice, so the unbounded ceiling is a near no-op
+	// for typical runs while eliminating the flake. See livetemplate/lvt#314
+	// for reproducer traces and tradeoff discussion.
+	//
+	// Trailing flags (passed to headless-shell's run.sh as $@) disable
+	// Chrome's tab backgrounding heuristics — in headless mode the renderer
+	// is never visible, so default Chrome treats every tab as backgrounded
+	// and applies aggressive WS/timer throttling.
 	cmd := exec.Command("docker", "run", "-d",
 		"--rm",
 		"--memory", "512m",
-		"--cpus", "0.5",
+		"--shm-size", "256m",
 		"-p", portMapping,
 		"--name", containerName,
 		"--add-host", "host.docker.internal:host-gateway",
 		dockerImage,
+		"--disable-background-timer-throttling",
+		"--disable-renderer-backgrounding",
+		"--disable-backgrounding-occluded-windows",
+		"--disable-features=IntensiveWakeUpThrottling",
 	)
 
 	// Use Output() instead of Run() to properly close pipes and avoid I/O wait
