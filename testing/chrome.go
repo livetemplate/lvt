@@ -371,7 +371,7 @@ func StartDockerChrome(t *testing.T, debugPort int) error {
 		"--disable-background-timer-throttling",
 		"--disable-renderer-backgrounding",
 		"--disable-backgrounding-occluded-windows",
-		"--disable-features=IntensiveWakeUpThrottling,CalculateNativeWinOcclusion",
+		"--disable-features=IntensiveWakeUpThrottling",
 	)
 
 	// Use Output() instead of Run() to properly close pipes and avoid I/O wait
