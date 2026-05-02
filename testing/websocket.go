@@ -31,6 +31,17 @@ func NewWSMessageLogger() *WSMessageLogger {
 	}
 }
 
+// RecordWSFrames is the canonical entry point for capturing WebSocket frames
+// in chromedp tests. Equivalent to NewWSMessageLogger followed by Start, it
+// exists so per-test setup is one line and bounded-size assertions across
+// suites share a single implementation. The capture stops when ctx is
+// cancelled (typically via t.Cleanup of the chromedp context).
+func RecordWSFrames(ctx context.Context) *WSMessageLogger {
+	logger := NewWSMessageLogger()
+	logger.Start(ctx)
+	return logger
+}
+
 func (wl *WSMessageLogger) Start(ctx context.Context) {
 	chromedp.ListenTarget(ctx, func(ev interface{}) {
 		switch ev := ev.(type) {
