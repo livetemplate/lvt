@@ -2,6 +2,8 @@
 
 A Phoenix-inspired code generator for LiveTemplate applications with CRUD functionality and interactive TUI wizards.
 
+📚 **Framework documentation:** **<https://livetemplate.fly.dev>** — guides, recipes, patterns catalog. The `/cli` section covers `lvt` specifically.
+
 ## Installation
 
 ```bash
