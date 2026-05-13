@@ -2393,7 +2393,7 @@ func (c *SubmitterTestController) Delete(state SubmitterTestState, _ *livetempla
 // cannot pass.
 func TestExplicitSubmitter_E2E(t *testing.T) {
 	controller := &SubmitterTestController{}
-	state := &SubmitterTestState{Counter: 0, Status: "idle"}
+	state := &SubmitterTestState{Status: "idle"}
 
 	tmpl := livetemplate.Must(livetemplate.New("submitter-e2e"))
 	templateStr := `<!DOCTYPE html>
@@ -2461,9 +2461,13 @@ func TestExplicitSubmitter_E2E(t *testing.T) {
 
 	// Click "save" — dispatch must hit Save() so status flips to "saved" and
 	// counter becomes 1. The WS frame must carry the explicit submitter field.
+	// Clear the frame log first so the assertion only sees frames produced by
+	// this click, making the ordering contract explicit instead of relying on
+	// "save" and "delete" being disjoint substrings.
+	wsLog.Clear()
 	if err := chromedp.Run(ctx,
 		chromedp.Click(`#btn-save`, chromedp.ByID),
-		e2etest.WaitFor(`document.getElementById('status').textContent === 'saved'`, 5*time.Second),
+		e2etest.WaitFor(`document.getElementById('status').textContent.trim() === 'saved'`, 5*time.Second),
 	); err != nil {
 		wsLog.Print()
 		t.Fatalf("save click: %v", err)
@@ -2489,9 +2493,10 @@ func TestExplicitSubmitter_E2E(t *testing.T) {
 
 	// Click "delete" — dispatch must hit Delete() (opposite mutation),
 	// proving the resolution is button-specific and not stuck on "save".
+	wsLog.Clear()
 	if err := chromedp.Run(ctx,
 		chromedp.Click(`#btn-delete`, chromedp.ByID),
-		e2etest.WaitFor(`document.getElementById('status').textContent === 'deleted'`, 5*time.Second),
+		e2etest.WaitFor(`document.getElementById('status').textContent.trim() === 'deleted'`, 5*time.Second),
 	); err != nil {
 		wsLog.Print()
 		t.Fatalf("delete click: %v", err)
@@ -2503,6 +2508,9 @@ func TestExplicitSubmitter_E2E(t *testing.T) {
 	}
 	if got, _ := delMsg.Parsed["submitter"].(string); got != "delete" {
 		t.Errorf(`WS submitter: got %q, want "delete"`, got)
+	}
+	if got, _ := delMsg.Parsed["action"].(string); got != "delete" {
+		t.Errorf(`WS action: got %q, want "delete"`, got)
 	}
 	var counterAfterDelete string
 	if err := chromedp.Run(ctx, chromedp.Text(`#counter`, &counterAfterDelete, chromedp.ByID)); err != nil {
