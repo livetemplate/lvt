@@ -2410,7 +2410,7 @@ func TestExplicitSubmitter_E2E(t *testing.T) {
 </body>
 </html>`
 	if _, err := tmpl.Parse(templateStr); err != nil {
-		t.Fatalf("parse template: %v", err)
+		t.Fatalf("Failed to parse template: %v", err)
 	}
 
 	mux := http.NewServeMux()
@@ -2419,12 +2419,12 @@ func TestExplicitSubmitter_E2E(t *testing.T) {
 
 	port, err := e2etest.GetFreePort()
 	if err != nil {
-		t.Fatalf("get free port: %v", err)
+		t.Fatalf("Failed to get free port: %v", err)
 	}
 	server := &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: mux}
 	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Printf("server error: %v", err)
+			log.Printf("Server error: %v", err)
 		}
 	}()
 	e2etest.WaitForServer(t, fmt.Sprintf("http://localhost:%d", port), 10*time.Second)
@@ -2472,10 +2472,14 @@ func TestExplicitSubmitter_E2E(t *testing.T) {
 		wsLog.Print()
 		t.Fatalf("save click: %v", err)
 	}
-	saveMsg, err := wsLog.WaitForSentMessage(`"submitter":"save"`, 3*time.Second)
+	// Match on the field key only and assert the value via Parsed so the test
+	// doesn't couple to JSON serialization spacing (e.g. `"submitter":"save"`
+	// vs `"submitter": "save"`). Clear() above guarantees this matches the
+	// click-induced frame, not earlier handshake traffic.
+	saveMsg, err := wsLog.WaitForSentMessage(`"submitter"`, 3*time.Second)
 	if err != nil {
 		wsLog.PrintLast(10)
-		t.Fatalf(`expected WS sent frame containing "submitter":"save": %v`, err)
+		t.Fatalf(`expected WS sent frame containing "submitter" field: %v`, err)
 	}
 	if got, _ := saveMsg.Parsed["submitter"].(string); got != "save" {
 		t.Errorf(`WS submitter: got %q, want "save"`, got)
@@ -2501,10 +2505,10 @@ func TestExplicitSubmitter_E2E(t *testing.T) {
 		wsLog.Print()
 		t.Fatalf("delete click: %v", err)
 	}
-	delMsg, err := wsLog.WaitForSentMessage(`"submitter":"delete"`, 3*time.Second)
+	delMsg, err := wsLog.WaitForSentMessage(`"submitter"`, 3*time.Second)
 	if err != nil {
 		wsLog.PrintLast(10)
-		t.Fatalf(`expected WS sent frame containing "submitter":"delete": %v`, err)
+		t.Fatalf(`expected WS sent frame containing "submitter" field: %v`, err)
 	}
 	if got, _ := delMsg.Parsed["submitter"].(string); got != "delete" {
 		t.Errorf(`WS submitter: got %q, want "delete"`, got)
