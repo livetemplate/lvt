@@ -2353,3 +2353,162 @@ func TestTemplate_E2E_ComponentBased(t *testing.T) {
 		t.Logf("✅ Component-based template updates work - JSON length: %d bytes", len(updateJSON))
 	})
 }
+
+// SubmitterTestController is a singleton for the explicit-submitter E2E test.
+type SubmitterTestController struct{}
+
+// SubmitterTestState is the pure-data state for SubmitterTestController.
+type SubmitterTestState struct {
+	Counter int
+	Status  string
+}
+
+// Save runs when the form submits via <button name="save">. Reaching this
+// method is the round-trip assertion: the server resolved ctx.Action()=="save"
+// from the explicit submitter the client emitted, not from any heuristic.
+func (c *SubmitterTestController) Save(state SubmitterTestState, _ *livetemplate.Context) (SubmitterTestState, error) {
+	state.Counter++
+	state.Status = "saved"
+	return state, nil
+}
+
+// Delete runs when the form submits via <button name="delete">.
+func (c *SubmitterTestController) Delete(state SubmitterTestState, _ *livetemplate.Context) (SubmitterTestState, error) {
+	state.Counter = 0
+	state.Status = "deleted"
+	return state, nil
+}
+
+// TestExplicitSubmitter_E2E pins the round-trip contract for the explicit
+// submitter wire field documented in docs/proposals/explicit-submitter.md
+// (livetemplate#237, Verification item 3).
+//
+// With @livetemplate/client v0.9.0+, a form submission via a named submit
+// button auto-intercepts onto the WebSocket and emits an explicit "submitter"
+// JSON field carrying the button's name. The server then dispatches via
+// resolveSubmitterFallback so ctx.Action() equals the button name — no
+// reliance on the empty-value heuristic that the explicit field replaces for
+// JS-enabled clients. Two distinct clicks (save, delete) move state in
+// opposite directions, so a stuck dispatch (always "save" or always "delete")
+// cannot pass.
+func TestExplicitSubmitter_E2E(t *testing.T) {
+	controller := &SubmitterTestController{}
+	state := &SubmitterTestState{Counter: 0, Status: "idle"}
+
+	tmpl := livetemplate.Must(livetemplate.New("submitter-e2e"))
+	templateStr := `<!DOCTYPE html>
+<html>
+<head><title>Submitter E2E</title></head>
+<body>
+	<div>Counter: <span id="counter">{{.Counter}}</span></div>
+	<div>Status: <span id="status">{{.Status}}</span></div>
+	<form id="actions">
+		<button type="submit" name="save" id="btn-save">Save</button>
+		<button type="submit" name="delete" id="btn-delete">Delete</button>
+	</form>
+	<script src="/client.js"></script>
+</body>
+</html>`
+	if _, err := tmpl.Parse(templateStr); err != nil {
+		t.Fatalf("parse template: %v", err)
+	}
+
+	mux := http.NewServeMux()
+	mux.Handle("/", tmpl.Handle(controller, livetemplate.AsState(state)))
+	mux.HandleFunc("/client.js", e2etest.ServeClientLibrary)
+
+	port, err := e2etest.GetFreePort()
+	if err != nil {
+		t.Fatalf("get free port: %v", err)
+	}
+	server := &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: mux}
+	go func() {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Printf("server error: %v", err)
+		}
+	}()
+	e2etest.WaitForServer(t, fmt.Sprintf("http://localhost:%d", port), 10*time.Second)
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := server.Shutdown(shutdownCtx); err != nil {
+			t.Logf("server shutdown warning: %v", err)
+		}
+	}()
+
+	chromeCtx, cleanup := e2etest.SetupDockerChrome(t, 30*time.Second)
+	defer cleanup()
+	ctx := chromeCtx.Context
+
+	chromedp.ListenTarget(ctx, func(ev interface{}) {
+		if ev, ok := ev.(*runtime.EventConsoleAPICalled); ok {
+			for _, arg := range ev.Args {
+				log.Printf("Console: %s", string(arg.Value))
+			}
+		}
+	})
+
+	wsLog := e2etest.RecordWSFrames(ctx)
+	pageURL := e2etest.GetChromeTestURL(port)
+
+	if err := chromedp.Run(ctx,
+		chromedp.Navigate(pageURL),
+		chromedp.WaitVisible(`#btn-save`, chromedp.ByID),
+		e2etest.WaitFor(`typeof window.liveTemplateClient !== 'undefined'`, 5*time.Second),
+	); err != nil {
+		t.Fatalf("boot: %v", err)
+	}
+
+	// Click "save" — dispatch must hit Save() so status flips to "saved" and
+	// counter becomes 1. The WS frame must carry the explicit submitter field.
+	if err := chromedp.Run(ctx,
+		chromedp.Click(`#btn-save`, chromedp.ByID),
+		e2etest.WaitFor(`document.getElementById('status').textContent === 'saved'`, 5*time.Second),
+	); err != nil {
+		wsLog.Print()
+		t.Fatalf("save click: %v", err)
+	}
+	saveMsg, err := wsLog.WaitForMessage(`"submitter":"save"`, 3*time.Second)
+	if err != nil {
+		wsLog.PrintLast(10)
+		t.Fatalf(`expected WS sent frame containing "submitter":"save": %v`, err)
+	}
+	if got, _ := saveMsg.Parsed["submitter"].(string); got != "save" {
+		t.Errorf(`WS submitter: got %q, want "save"`, got)
+	}
+	if got, _ := saveMsg.Parsed["action"].(string); got != "save" {
+		t.Errorf(`WS action: got %q, want "save"`, got)
+	}
+	var counterAfterSave string
+	if err := chromedp.Run(ctx, chromedp.Text(`#counter`, &counterAfterSave, chromedp.ByID)); err != nil {
+		t.Fatal(err)
+	}
+	if counterAfterSave != "1" {
+		t.Errorf("counter after save: got %q, want %q", counterAfterSave, "1")
+	}
+
+	// Click "delete" — dispatch must hit Delete() (opposite mutation),
+	// proving the resolution is button-specific and not stuck on "save".
+	if err := chromedp.Run(ctx,
+		chromedp.Click(`#btn-delete`, chromedp.ByID),
+		e2etest.WaitFor(`document.getElementById('status').textContent === 'deleted'`, 5*time.Second),
+	); err != nil {
+		wsLog.Print()
+		t.Fatalf("delete click: %v", err)
+	}
+	delMsg, err := wsLog.WaitForMessage(`"submitter":"delete"`, 3*time.Second)
+	if err != nil {
+		wsLog.PrintLast(10)
+		t.Fatalf(`expected WS sent frame containing "submitter":"delete": %v`, err)
+	}
+	if got, _ := delMsg.Parsed["submitter"].(string); got != "delete" {
+		t.Errorf(`WS submitter: got %q, want "delete"`, got)
+	}
+	var counterAfterDelete string
+	if err := chromedp.Run(ctx, chromedp.Text(`#counter`, &counterAfterDelete, chromedp.ByID)); err != nil {
+		t.Fatal(err)
+	}
+	if counterAfterDelete != "0" {
+		t.Errorf("counter after delete: got %q, want %q", counterAfterDelete, "0")
+	}
+}
