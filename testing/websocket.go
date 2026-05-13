@@ -243,14 +243,25 @@ func (wl *WSMessageLogger) WaitForMessage(pattern string, timeout time.Duration)
 	return WSMessage{}, fmt.Errorf("timeout waiting for message matching '%s'", pattern)
 }
 
+// FindSentMessage scans browser→server frames for pattern.
+func (wl *WSMessageLogger) FindSentMessage(pattern string) (WSMessage, bool) {
+	wl.mu.RLock()
+	defer wl.mu.RUnlock()
+
+	for _, msg := range wl.messages {
+		if msg.Direction == "sent" && strings.Contains(msg.Data, pattern) {
+			return msg, true
+		}
+	}
+	return WSMessage{}, false
+}
+
 // WaitForSentMessage is WaitForMessage restricted to browser→server frames.
 func (wl *WSMessageLogger) WaitForSentMessage(pattern string, timeout time.Duration) (WSMessage, error) {
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
-		for _, msg := range wl.GetSent() {
-			if strings.Contains(msg.Data, pattern) {
-				return msg, nil
-			}
+		if msg, found := wl.FindSentMessage(pattern); found {
+			return msg, nil
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
