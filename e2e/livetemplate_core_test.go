@@ -2451,10 +2451,19 @@ func TestExplicitSubmitter_E2E(t *testing.T) {
 	wsLog := e2etest.RecordWSFrames(ctx)
 	pageURL := e2etest.GetChromeTestURL(port)
 
+	// Wait for the wrapper's data-lvt-loading attribute to clear — that's the
+	// framework's "WS connected, client initialized" signal (set server-side,
+	// removed by the JS client once the socket handshake completes). Waiting
+	// on `typeof window.liveTemplateClient !== 'undefined'` would fire after
+	// the script tag evaluates but before the WS is open, so a fast click
+	// could be swallowed silently.
 	if err := chromedp.Run(ctx,
 		chromedp.Navigate(pageURL),
 		chromedp.WaitVisible(`#btn-save`, chromedp.ByID),
-		e2etest.WaitFor(`typeof window.liveTemplateClient !== 'undefined'`, 5*time.Second),
+		e2etest.WaitFor(`(() => {
+			const w = document.querySelector('[data-lvt-id]');
+			return w && !w.hasAttribute('data-lvt-loading');
+		})()`, 5*time.Second),
 	); err != nil {
 		t.Fatalf("boot: %v", err)
 	}
