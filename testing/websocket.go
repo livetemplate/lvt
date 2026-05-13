@@ -243,6 +243,23 @@ func (wl *WSMessageLogger) WaitForMessage(pattern string, timeout time.Duration)
 	return WSMessage{}, fmt.Errorf("timeout waiting for message matching '%s'", pattern)
 }
 
+// WaitForSentMessage is like WaitForMessage but restricts the search to
+// browser→server frames. Use this when asserting on a wire-contract field
+// the client emits — direction-blind matching can otherwise pass against a
+// server frame that happens to echo the same substring.
+func (wl *WSMessageLogger) WaitForSentMessage(pattern string, timeout time.Duration) (WSMessage, error) {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		for _, msg := range wl.GetSent() {
+			if strings.Contains(msg.Data, pattern) {
+				return msg, nil
+			}
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	return WSMessage{}, fmt.Errorf("timeout waiting for sent message matching '%s'", pattern)
+}
+
 func (wl *WSMessageLogger) Print() {
 	wl.mu.RLock()
 	defer wl.mu.RUnlock()

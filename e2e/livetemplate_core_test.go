@@ -2472,7 +2472,7 @@ func TestExplicitSubmitter_E2E(t *testing.T) {
 		wsLog.Print()
 		t.Fatalf("save click: %v", err)
 	}
-	saveMsg, err := wsLog.WaitForMessage(`"submitter":"save"`, 3*time.Second)
+	saveMsg, err := wsLog.WaitForSentMessage(`"submitter":"save"`, 3*time.Second)
 	if err != nil {
 		wsLog.PrintLast(10)
 		t.Fatalf(`expected WS sent frame containing "submitter":"save": %v`, err)
@@ -2501,7 +2501,7 @@ func TestExplicitSubmitter_E2E(t *testing.T) {
 		wsLog.Print()
 		t.Fatalf("delete click: %v", err)
 	}
-	delMsg, err := wsLog.WaitForMessage(`"submitter":"delete"`, 3*time.Second)
+	delMsg, err := wsLog.WaitForSentMessage(`"submitter":"delete"`, 3*time.Second)
 	if err != nil {
 		wsLog.PrintLast(10)
 		t.Fatalf(`expected WS sent frame containing "submitter":"delete": %v`, err)
