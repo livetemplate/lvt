@@ -157,13 +157,21 @@ func installConsoleLogger(t *testing.T, ctx context.Context) {
 
 // waitForCondition polls a JS expression until it returns true or the timeout
 // elapses. Used for "DOM should reflect X after WS round-trip" assertions.
+//
+// A cancelled chromedp context (e.g. browser crash, Docker shutdown) is fatal
+// immediately — without that early return the loop would silently treat
+// context.Canceled as "condition not yet true" and report a misleading timeout.
 func waitForCondition(t *testing.T, ctx context.Context, jsExpr string, timeout time.Duration, why string) {
 	t.Helper()
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
 		var ok bool
-		if err := chromedp.Run(ctx, chromedp.Evaluate(jsExpr, &ok)); err == nil && ok {
+		err := chromedp.Run(ctx, chromedp.Evaluate(jsExpr, &ok))
+		if err == nil && ok {
 			return
+		}
+		if ctx.Err() != nil {
+			t.Fatalf("chromedp context cancelled waiting for %s: %v", why, ctx.Err())
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
@@ -213,9 +221,8 @@ func TestE2E_IsInitialMount_RendersInInitialHTML(t *testing.T) {
 // =============================================================================
 
 func TestE2E_IsReconnect_ReflectsStateRestoration(t *testing.T) {
-	baseURL, port, shutdown := startLifecycleE2EServer(t)
+	_, port, shutdown := startLifecycleE2EServer(t)
 	defer shutdown()
-	_ = baseURL
 
 	chromeCtx, cleanup := e2etest.SetupDockerChrome(t, 45*time.Second)
 	defer cleanup()
@@ -266,9 +273,8 @@ func TestE2E_IsReconnect_ReflectsStateRestoration(t *testing.T) {
 // =============================================================================
 
 func TestE2E_ClearAllFlash_RemovesAllFlashFromDOM(t *testing.T) {
-	baseURL, port, shutdown := startLifecycleE2EServer(t)
+	_, port, shutdown := startLifecycleE2EServer(t)
 	defer shutdown()
-	_ = baseURL
 
 	chromeCtx, cleanup := e2etest.SetupDockerChrome(t, 30*time.Second)
 	defer cleanup()
