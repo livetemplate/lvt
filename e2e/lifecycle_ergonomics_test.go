@@ -1,5 +1,12 @@
 //go:build browser
 
+// NOTE: this file declares `package e2e_test` (external test package) rather
+// than `package e2e` because the `e2e` package already contains a different
+// `waitForCondition` helper (in `helpers.go`) and a `waitForCondition` helper (in
+// `rendering_test.go`) with chromedp.Action signatures. Moving this file in
+// would require renaming the fatal-test-helper polling loop, and the directory
+// already mixes both package forms (e.g., `livetemplate_core_test.go` is
+// `package e2e_test` too).
 package e2e_test
 
 import (
@@ -21,12 +28,15 @@ import (
 )
 
 // =============================================================================
-// E2E coverage for the lifecycle-ergonomics batch (#339, #340, #341, #345).
+// E2E coverage for the browser-observable parts of the lifecycle-ergonomics
+// batch: #339 (ErrSessionDisconnected), #340 (IsInitialMount / IsReconnect),
+// #345 (ClearAllFlash). Issue #341 (validateLifecycleSignatures warn-at-boot)
+// is server-startup-time, not browser-observable, and is covered by the
+// upstream livetemplate unit tests.
 //
-// Verifies the browser-observable behavior end-to-end against a real Chromium
-// and a real livetemplate http.Handler. Per CLAUDE.md (global): chromedp e2e
-// tests surface (1) browser console, (2) server logs, (3) websocket messages,
-// (4) rendered HTML.
+// Verifies behavior end-to-end against a real Chromium and a real livetemplate
+// http.Handler. Per CLAUDE.md (global): chromedp e2e tests surface (1) browser
+// console, (2) server logs, (3) websocket messages, (4) rendered HTML.
 //
 // Important semantic note observed during test development:
 //
@@ -249,9 +259,10 @@ func TestE2E_IsReconnect_ReflectsStateRestoration(t *testing.T) {
 
 	// Reload: a fresh HTTP GET re-renders im=YES (initial mount) and rc=YES
 	// (state restored from prior visit). The WS then reconnects and OnConnect
-	// runs again, flipping the DOM back to im=NO rc=YES. We rely on the WS
-	// frame counter (not OnConnect-incremented state, which isn't persisted)
-	// to prove the reconnect round-trip happened.
+	// runs again, flipping the DOM back to im=NO rc=YES. We assert the WS
+	// frame counter advanced (a direct, unambiguous "re-dialed" signal) rather
+	// than reasoning about post-reload count values, which race with the
+	// in-flight WS connect.
 	if err := chromedp.Run(ctx, chromedp.Reload()); err != nil {
 		t.Fatalf("reload: %v", err)
 	}
@@ -311,13 +322,16 @@ func TestE2E_ClearAllFlash_RemovesAllFlashFromDOM(t *testing.T) {
 		5*time.Second,
 		"both flashes to clear from DOM after ClearAllFlash")
 
-	// Sanity: ClearAllFlash must NOT touch non-flash state — count must remain.
+	// Sanity: ClearAllFlash must NOT touch non-flash state. OnConnect's
+	// `state.Count++` has run at least once by now, so count must be ≥ 1 —
+	// asserting "count=0" would catch a regression where ClearAllFlash zeroed
+	// numeric state instead of just flash keys.
 	var count string
 	if err := chromedp.Run(ctx, chromedp.Text("#count", &count, chromedp.NodeVisible, chromedp.ByID)); err != nil {
 		t.Fatalf("read count: %v", err)
 	}
-	if !strings.Contains(count, "count=") {
-		t.Errorf("count tag missing after ClearAllFlash — non-flash state was wiped")
+	if !strings.Contains(count, "count=") || count == "count=0" {
+		t.Errorf("count tag missing or zeroed after ClearAllFlash — non-flash state was wiped (got %q)", count)
 	}
 
 	// WS log: at least one frame round-tripped during the click sequence.
@@ -351,6 +365,7 @@ func TestE2E_ErrSessionDisconnected_HappyPathStillWorks(t *testing.T) {
 		t.Fatalf("initial frame read: %v", err)
 	}
 
+	_ = conn.SetWriteDeadline(time.Now().Add(3 * time.Second))
 	msg, _ := json.Marshal(map[string]interface{}{"action": "SetFlashes", "data": map[string]interface{}{}})
 	if err := conn.WriteMessage(websocket.TextMessage, msg); err != nil {
 		t.Fatalf("ws write: %v", err)
