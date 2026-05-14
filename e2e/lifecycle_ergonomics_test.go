@@ -334,22 +334,29 @@ func TestE2E_ClearAllFlash_RemovesAllFlashFromDOM(t *testing.T) {
 		t.Errorf("count tag missing or zeroed after ClearAllFlash — non-flash state was wiped (got %q)", count)
 	}
 
-	// WS log: at least one frame round-tripped during the click sequence.
-	if wsLog.CountByDirection("sent") < 2 {
+	// WS log: at least one frame round-tripped each way during the click sequence.
+	// Sent: one frame per click (SetFlashes, ClearFlashes). Received: server's
+	// state-update response for each action.
+	if sent := wsLog.CountByDirection("sent"); sent < 2 {
 		wsLog.PrintLast(10)
-		t.Errorf("expected at least 2 WS frames sent (one per click), got %d", wsLog.CountByDirection("sent"))
+		t.Errorf("expected at least 2 WS frames sent (one per click), got %d", sent)
+	}
+	if received := wsLog.CountByDirection("received"); received < 2 {
+		wsLog.PrintLast(10)
+		t.Errorf("expected at least 2 WS frames received (one response per click), got %d", received)
 	}
 }
 
 // =============================================================================
-// Test 4 — Issue #339: ErrSessionDisconnected via a raw-WS smoke test.
-// The sentinel itself is server-side; the Go integration test
-// TestLocalSession_TriggerActionDisconnectedReturnsError already asserts
-// errors.Is on the sentinel. Here we just confirm the WS happy path doesn't
-// regress after the sentinel-wrapping change.
+// Test 4 — Issue #339: regression check that wrapping the "no connected
+// sessions" error with the ErrSessionDisconnected sentinel didn't break the
+// WS happy path. The sentinel itself (and its errors.Is wiring) is asserted
+// in livetemplate's TestLocalSession_TriggerActionDisconnectedReturnsError;
+// this test only verifies that a fresh WS connect + action round-trip still
+// works post-change.
 // =============================================================================
 
-func TestE2E_ErrSessionDisconnected_HappyPathStillWorks(t *testing.T) {
+func TestE2E_WS_HappyPathRegressionAfterSentinelWrap(t *testing.T) {
 	baseURL, _, shutdown := startLifecycleE2EServer(t)
 	defer shutdown()
 
@@ -360,12 +367,16 @@ func TestE2E_ErrSessionDisconnected_HappyPathStillWorks(t *testing.T) {
 	}
 	defer func() { _ = conn.Close() }()
 
-	_ = conn.SetReadDeadline(time.Now().Add(3 * time.Second))
+	if err := conn.SetReadDeadline(time.Now().Add(3 * time.Second)); err != nil {
+		t.Fatalf("set read deadline: %v", err)
+	}
 	if _, _, err := conn.ReadMessage(); err != nil {
 		t.Fatalf("initial frame read: %v", err)
 	}
 
-	_ = conn.SetWriteDeadline(time.Now().Add(3 * time.Second))
+	if err := conn.SetWriteDeadline(time.Now().Add(3 * time.Second)); err != nil {
+		t.Fatalf("set write deadline: %v", err)
+	}
 	msg, _ := json.Marshal(map[string]interface{}{"action": "SetFlashes", "data": map[string]interface{}{}})
 	if err := conn.WriteMessage(websocket.TextMessage, msg); err != nil {
 		t.Fatalf("ws write: %v", err)
