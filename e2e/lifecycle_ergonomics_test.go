@@ -1,12 +1,12 @@
 //go:build browser
 
 // NOTE: this file declares `package e2e_test` (external test package) rather
-// than `package e2e` because the `e2e` package already contains a different
-// `waitForCondition` helper (in `helpers.go`) and a `waitForCondition` helper (in
-// `rendering_test.go`) with chromedp.Action signatures. Moving this file in
-// would require renaming the fatal-test-helper polling loop, and the directory
-// already mixes both package forms (e.g., `livetemplate_core_test.go` is
-// `package e2e_test` too).
+// than `package e2e` because the `e2e` package already exposes its own
+// `chromedp.Action`-returning polling helpers — `waitForCondition` in
+// `helpers.go` and `waitForDOM` in `rendering_test.go`. Moving this file in
+// would force renaming the local fatal-test-helper polling loop, and the
+// directory already mixes both package forms (e.g., `livetemplate_core_test.go`
+// is `package e2e_test` too).
 package e2e_test
 
 import (
@@ -183,7 +183,9 @@ func waitForCondition(t *testing.T, ctx context.Context, jsExpr string, timeout 
 		if ctx.Err() != nil {
 			t.Fatalf("chromedp context cancelled waiting for %s: %v", why, ctx.Err())
 		}
-		time.Sleep(50 * time.Millisecond)
+		// 100ms matches lvt/testing's WaitFor convention — chosen there for
+		// stability and to avoid CPU thrashing on slow CI runners.
+		time.Sleep(100 * time.Millisecond)
 	}
 	var html string
 	_ = chromedp.Run(ctx, chromedp.OuterHTML("body", &html, chromedp.ByQuery))
@@ -380,6 +382,11 @@ func TestE2E_WS_HappyPathRegressionAfterSentinelWrap(t *testing.T) {
 	msg, _ := json.Marshal(map[string]interface{}{"action": "SetFlashes", "data": map[string]interface{}{}})
 	if err := conn.WriteMessage(websocket.TextMessage, msg); err != nil {
 		t.Fatalf("ws write: %v", err)
+	}
+	// Refresh the read deadline — the one set before the first ReadMessage has
+	// been consumed by the write round-trip and may be near-expired on slow CI.
+	if err := conn.SetReadDeadline(time.Now().Add(3 * time.Second)); err != nil {
+		t.Fatalf("refresh read deadline: %v", err)
 	}
 	if _, _, err := conn.ReadMessage(); err != nil {
 		t.Fatalf("ws read after action: %v", err)
