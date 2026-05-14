@@ -379,15 +379,23 @@ func TestE2E_WS_HappyPathRegressionAfterSentinelWrap(t *testing.T) {
 	if err := conn.SetWriteDeadline(time.Now().Add(3 * time.Second)); err != nil {
 		t.Fatalf("set write deadline: %v", err)
 	}
-	msg, _ := json.Marshal(map[string]interface{}{"action": "SetFlashes", "data": map[string]interface{}{}})
+	msg, err := json.Marshal(map[string]interface{}{"action": "SetFlashes", "data": map[string]interface{}{}})
+	if err != nil {
+		t.Fatalf("marshal action payload: %v", err)
+	}
 	if err := conn.WriteMessage(websocket.TextMessage, msg); err != nil {
 		t.Fatalf("ws write: %v", err)
 	}
-	// Refresh the read deadline — the one set before the first ReadMessage has
-	// been consumed by the write round-trip and may be near-expired on slow CI.
+	// Refresh the read deadline — wall-clock time has elapsed during the write
+	// round-trip, so the remaining time on the deadline set before the first
+	// ReadMessage may be too short for a slow CI runner.
 	if err := conn.SetReadDeadline(time.Now().Add(3 * time.Second)); err != nil {
 		t.Fatalf("refresh read deadline: %v", err)
 	}
+	// This read only confirms the server replied to the action — we don't
+	// inspect frame contents because the sentinel's behavioral surface is
+	// covered by livetemplate's unit tests. The test name's "Regression"
+	// part is literal: prove the WS happy path still works post-wrap.
 	if _, _, err := conn.ReadMessage(); err != nil {
 		t.Fatalf("ws read after action: %v", err)
 	}
