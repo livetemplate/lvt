@@ -1,12 +1,11 @@
 //go:build browser
 
-// NOTE: this file declares `package e2e_test` (external test package) rather
-// than `package e2e` because the `e2e` package already exposes its own
-// `chromedp.Action`-returning polling helpers — `waitForCondition` in
-// `helpers.go` and `waitForDOM` in `rendering_test.go`. Moving this file in
-// would force renaming the local fatal-test-helper polling loop, and the
-// directory already mixes both package forms (e.g., `livetemplate_core_test.go`
-// is `package e2e_test` too).
+// NOTE: this file declares `package e2e_test` (external test package) to match
+// the convention used by `livetemplate_core_test.go`. The local
+// `requireCondition` helper uses the `require*` prefix (Go testing convention
+// for "fatal on failure") to distinguish it from the `chromedp.Action`-returning
+// `waitForCondition` in `helpers.go` and `waitForDOM` in `rendering_test.go`,
+// which return errors instead of calling `t.Fatalf`.
 package e2e_test
 
 import (
@@ -135,6 +134,10 @@ func startLifecycleE2EServer(t *testing.T) (baseURL string, port int, shutdown f
 	server := &http.Server{Addr: fmt.Sprintf(":%d", p), Handler: mux}
 
 	go func() {
+		// log.Printf (not t.Logf) because calling t.Logf from a goroutine
+		// after the test has finished panics. ListenAndServe errors are rare
+		// in practice, and the stdout log is good enough for the cases that
+		// do happen (port-bind race, etc.).
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Printf("server: %v", err)
 		}
@@ -165,13 +168,13 @@ func installConsoleLogger(t *testing.T, ctx context.Context) {
 	})
 }
 
-// waitForCondition polls a JS expression until it returns true or the timeout
+// requireCondition polls a JS expression until it returns true or the timeout
 // elapses. Used for "DOM should reflect X after WS round-trip" assertions.
 //
 // A cancelled chromedp context (e.g. browser crash, Docker shutdown) is fatal
 // immediately — without that early return the loop would silently treat
 // context.Canceled as "condition not yet true" and report a misleading timeout.
-func waitForCondition(t *testing.T, ctx context.Context, jsExpr string, timeout time.Duration, why string) {
+func requireCondition(t *testing.T, ctx context.Context, jsExpr string, timeout time.Duration, why string) {
 	t.Helper()
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
@@ -256,7 +259,7 @@ func TestE2E_IsReconnect_ReflectsStateRestoration(t *testing.T) {
 	if err := chromedp.Run(ctx, chromedp.Navigate(chromeURL)); err != nil {
 		t.Fatalf("first navigate: %v", err)
 	}
-	waitForCondition(t, ctx,
+	requireCondition(t, ctx,
 		`document.getElementById('rc').innerText.includes('rc=YES')
 		 && document.getElementById('im').innerText.includes('im=NO')`,
 		5*time.Second,
@@ -273,7 +276,7 @@ func TestE2E_IsReconnect_ReflectsStateRestoration(t *testing.T) {
 	if err := chromedp.Run(ctx, chromedp.Reload()); err != nil {
 		t.Fatalf("reload: %v", err)
 	}
-	waitForCondition(t, ctx,
+	requireCondition(t, ctx,
 		`document.getElementById('rc').innerText.includes('rc=YES')
 		 && document.getElementById('im').innerText.includes('im=NO')`,
 		10*time.Second,
@@ -313,7 +316,7 @@ func TestE2E_ClearAllFlash_RemovesAllFlashFromDOM(t *testing.T) {
 	if err := chromedp.Run(ctx, chromedp.Click("#set-flashes", chromedp.ByID)); err != nil {
 		t.Fatalf("click set-flashes: %v", err)
 	}
-	waitForCondition(t, ctx,
+	requireCondition(t, ctx,
 		`document.getElementById('flash-success').innerText.includes('Saved!')
 		 && document.getElementById('flash-info').innerText.includes('Heads up')`,
 		5*time.Second,
@@ -323,7 +326,7 @@ func TestE2E_ClearAllFlash_RemovesAllFlashFromDOM(t *testing.T) {
 	if err := chromedp.Run(ctx, chromedp.Click("#clear-flashes", chromedp.ByID)); err != nil {
 		t.Fatalf("click clear-flashes: %v", err)
 	}
-	waitForCondition(t, ctx,
+	requireCondition(t, ctx,
 		`document.getElementById('flash-success').innerText.trim() === ''
 		 && document.getElementById('flash-info').innerText.trim() === ''`,
 		5*time.Second,
@@ -367,6 +370,12 @@ func TestE2E_WS_HappyPathRegressionAfterSentinelWrap(t *testing.T) {
 	baseURL, _, shutdown := startLifecycleE2EServer(t)
 	defer shutdown()
 
+	// Dial WS directly without a prior HTTP GET. livetemplate accepts a raw
+	// WS-only connect and initializes a fresh session group with no persisted
+	// state — i.e., this exercises the new-connect path (vs. the
+	// HTTP-then-WS-reconnect path that Test 2 covers). If livetemplate ever
+	// requires a session cookie or prior HTTP handshake, this test will break
+	// on the dial.
 	wsURL := "ws" + strings.TrimPrefix(baseURL, "http") + "/"
 	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
 	if err != nil {
