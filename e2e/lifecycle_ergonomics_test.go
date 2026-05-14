@@ -206,7 +206,12 @@ func TestE2E_IsInitialMount_RendersInInitialHTML(t *testing.T) {
 	// 1. The server-rendered HTML — captured BEFORE any WS connects — must
 	// reflect IsInitialMount()=true. http.Get takes no WS round-trip, so
 	// this isolates the HTTP-path Mount classification.
-	resp, err := http.Get(baseURL)
+	//
+	// Use an explicit 5s client timeout instead of http.DefaultClient, which
+	// has no timeout — a slow CI runner could otherwise hang until the test
+	// binary's -timeout fires, making the failure diagnostic-poor.
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Get(baseURL)
 	if err != nil {
 		t.Fatalf("http.Get: %v", err)
 	}
