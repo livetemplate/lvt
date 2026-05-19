@@ -11,6 +11,16 @@ require github.com/livetemplate/livetemplate v0.9.1
 // resolves this into a real version pin (proposal §"Phase 5"); until then the
 // lvt Phase-4 branch is intentionally not independently mergeable / CI-runnable
 // — see docs learnings/phase-4.md cross-repo release order.
+//
+// !!! DO NOT RUN `go mod tidy` OR `go build ./...` ON THIS BRANCH !!!
+// The replace path is relative to *this go.mod*; it only resolves on a
+// developer machine where the umbrella workspace has both
+// <umbrella>/lvt/.worktrees/broadcast-redesign-phase-4 (here) AND
+// <umbrella>/livetemplate/.worktrees/broadcast-redesign-phase-4 (target).
+// Other contributors / CI will see `module not found` and `go mod tidy`
+// would corrupt go.sum trying to resolve it. To work on this branch
+// safely use the documented worktree layout, or set the replace to a
+// real version pin first (which is Phase 5's deliverable).
 replace github.com/livetemplate/livetemplate => ../../../livetemplate/.worktrees/broadcast-redesign-phase-4
 
 replace github.com/livetemplate/lvt/components => ./components

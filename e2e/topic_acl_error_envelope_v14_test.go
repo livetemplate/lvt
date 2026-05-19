@@ -100,17 +100,34 @@ document.addEventListener('lvt:error', function (e) { window.__lvtErrors.push(e.
 // CDN and would not contain the unreleased lvt:error branch — and whose 1h
 // disk cache can shadow LVT_CLIENT_CDN_URL anyway). Phase 5/6 reverts this to
 // ServeClientLibrary after @livetemplate/client publishes.
+//
+// Bundle resolution order — both honor the cross-repo Phase-4 setup the
+// proposal's release order assumes:
+//   1. LVT_CLIENT_BUNDLE_PATH env var (explicit override)
+//   2. Repo-relative convention path (assumes both worktrees live at
+//      <repo>/.worktrees/broadcast-redesign-phase-4 — the standing rule)
+//
+// If neither resolves, t.Skip — this test is gated on the Phase-4 cross-repo
+// setup. NOT a t.Fatalf: failing the whole -tags=browser run for a
+// contributor not set up for V14 / Phase 4 would be a hostile default, and
+// the proposal's release order explicitly says this e2e is intentionally
+// not CI-runnable until Phase 5's pin bump. The skip message points at the
+// learnings doc for setup.
 func serveLocalPhase4ClientBundle(t *testing.T) http.HandlerFunc {
 	t.Helper()
+	const repoRelativeDefault = "../../../../client/.worktrees/broadcast-redesign-phase-4/dist/livetemplate-client.browser.js"
 	path := os.Getenv("LVT_CLIENT_BUNDLE_PATH")
 	if path == "" {
-		path = "/home/adnaan/code/livetemplate/client/.worktrees/broadcast-redesign-phase-4/dist/livetemplate-client.browser.js"
+		path = repoRelativeDefault
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
-		t.Fatalf("V14 e2e needs the Phase-4 client bundle. Set LVT_CLIENT_BUNDLE_PATH "+
-			"or build it: (cd client/.worktrees/broadcast-redesign-phase-4 && npm run build). "+
-			"read %q: %v", path, err)
+		t.Skipf("V14 e2e gated on the Phase-4 client bundle (cross-repo, not CI-runnable "+
+			"until livetemplate Phase 5's pin bump — see docs/proposals/broadcast-action-"+
+			"redesign-proposal/learnings/phase-4.md). Set LVT_CLIENT_BUNDLE_PATH or build "+
+			"the bundle at the repo-relative default %q: (cd <umbrella>/client/.worktrees/"+
+			"broadcast-redesign-phase-4 && npm run build). read %q: %v",
+			repoRelativeDefault, path, err)
 	}
 	return func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/javascript")
@@ -233,7 +250,22 @@ func TestE2E_V14_TopicACLDeniedEmitsLvtErrorAndKeepsWSOpen(t *testing.T) {
 		"lvt:error CustomEvent {code:topic_forbidden, topic:private/admin}",
 	)
 
-	// (b) The WS is OPEN AND FUNCTIONAL: a real action round-trips and
+	// (b) Verify the server actually took the Phase-4 keep-open code path —
+	// not just that the client happened to stay connected. The server-side
+	// WARN log is the load-bearing signal that mount.go's *TopicForbiddenError
+	// branch (Option B fall-through) ran instead of the pre-Phase-4 return.
+	// Guards against silent regressions where the log message changes or the
+	// WARN is removed without the corresponding behavior change.
+	if !serverLogger.HasLog("connection kept open") {
+		dump()
+		t.Fatal("expected server to log the Phase-4 keep-open WARN " +
+			"('Mount Subscribe denied by topic ACL; surfaced to client, " +
+			"connection kept open') after ACL denial — the WARN is the proof " +
+			"the server took the keep-open code path, not just that the " +
+			"client happened to stay connected")
+	}
+
+	// (c) The WS is OPEN AND FUNCTIONAL: a real action round-trips and
 	// re-renders. If the server had closed the socket (pre-Phase-4 behavior),
 	// the client's auto-reconnect would re-Mount → re-deny → loop, and #pong
 	// would never become PONG over a live WS.
