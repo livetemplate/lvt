@@ -178,6 +178,12 @@ func startV14ACLServer(t *testing.T) (port int, shutdown func()) {
 }
 
 func TestE2E_V14_TopicACLDeniedEmitsLvtErrorAndKeepsWSOpen(t *testing.T) {
+	// Not parallel: this test mutates the process-global slog.Default. Other
+	// tests in this package that also touch slog.Default (or that observe
+	// livetemplate's internal logging via the same global) would race if
+	// this ran via t.Parallel(). Sibling browser e2es (e.g.
+	// lifecycle_ergonomics_test.go) follow the same non-parallel convention.
+
 	// Artifact 2/4 — server logs. livetemplate logs via the global slog
 	// default (incl. the new "Mount Subscribe denied … connection kept open"
 	// WARN). Tee into a captured buffer; restore the default in Cleanup
@@ -265,8 +271,15 @@ func TestE2E_V14_TopicACLDeniedEmitsLvtErrorAndKeepsWSOpen(t *testing.T) {
 	// not just that the client happened to stay connected. The server-side
 	// WARN log is the load-bearing signal that mount.go's *TopicForbiddenError
 	// branch (Option B fall-through) ran instead of the pre-Phase-4 return.
-	// Guards against silent regressions where the log message changes or the
-	// WARN is removed without the corresponding behavior change.
+	// Guards against silent regressions where the WARN is removed without the
+	// corresponding behavior change.
+	//
+	// Coupling: substring of the WARN message in livetemplate's
+	// mount.go (grep anchor: `slog.Warn("Mount Subscribe denied by topic ACL`).
+	// If that prose is reworded, update both here and the
+	// livetemplate-side log call together. A future hardening would be to
+	// switch the server WARN to a structured `slog.String("event", "<key>")`
+	// and assert on the structured key — tracked for Phase 5/6.
 	if !serverLogger.HasLog("connection kept open") {
 		dump()
 		t.Fatal("expected server to log the Phase-4 keep-open WARN " +
