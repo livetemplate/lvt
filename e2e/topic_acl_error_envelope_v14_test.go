@@ -26,7 +26,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -157,8 +156,11 @@ func startV14ACLServer(t *testing.T) (port int, shutdown func()) {
 	}
 	server := &http.Server{Addr: fmt.Sprintf(":%d", p), Handler: mux}
 	go func() {
+		// slog (not log.Printf) so a startup error lands in the
+		// serverLogger-captured stream the test surfaces on failure,
+		// not in the default process stderr.
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Printf("v14 server: %v", err)
+			slog.Error("v14 server ListenAndServe failed", slog.Any("error", err))
 		}
 	}()
 
@@ -166,7 +168,12 @@ func startV14ACLServer(t *testing.T) (port int, shutdown func()) {
 	return p, func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		_ = server.Shutdown(ctx)
+		// Log shutdown failures so flaky teardown on slow CI is diagnosable
+		// once Phase 5 makes this CI-runnable (currently captured via
+		// serverLogger / surfaced on test failure).
+		if err := server.Shutdown(ctx); err != nil {
+			slog.Error("v14 server Shutdown failed", slog.Any("error", err))
+		}
 	}
 }
 
