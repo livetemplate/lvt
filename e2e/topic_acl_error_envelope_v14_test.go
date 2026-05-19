@@ -178,6 +178,10 @@ func TestE2E_V14_TopicACLDeniedEmitsLvtErrorAndKeepsWSOpen(t *testing.T) {
 	// tests in this package).
 	serverLogger := e2etest.NewServerLogger()
 	serverLogger.Start()
+	// Teardown ordering matters: `defer serverLogger.Stop()` runs at function
+	// return (LIFO with other defers), while `t.Cleanup` runs *after* all
+	// defers. So slog.SetDefault is restored *after* the logger pipe closes —
+	// no late writes from a shut-down logger into the global slog.
 	defer serverLogger.Stop()
 	prevSlog := slog.Default()
 	slog.SetDefault(slog.New(slog.NewTextHandler(
@@ -287,7 +291,9 @@ func TestE2E_V14_TopicACLDeniedEmitsLvtErrorAndKeepsWSOpen(t *testing.T) {
 		t.Fatalf("read __lvtErrors.length: %v", err)
 	}
 	if errCount != 1 {
+		var errsJSON string
+		_ = chromedp.Run(ctx, chromedp.Evaluate(`JSON.stringify(window.__lvtErrors)`, &errsJSON))
 		dump()
-		t.Fatalf("expected exactly one lvt:error, got %d", errCount)
+		t.Fatalf("expected exactly one lvt:error, got %d; window.__lvtErrors = %s", errCount, errsJSON)
 	}
 }

@@ -21,6 +21,14 @@ require github.com/livetemplate/livetemplate v0.9.1
 // would corrupt go.sum trying to resolve it. To work on this branch
 // safely use the documented worktree layout, or set the replace to a
 // real version pin first (which is Phase 5's deliverable).
+//
+// Convention note: CONTRIBUTING.md lists Go Workspace as the *Recommended*
+// cross-repo dev path and Manual Replace Directives as the *Alternative*
+// (per-branch). This PR uses the Alternative because (a) it scopes the
+// cross-repo dependency to this branch's git history (a workspace
+// modification doesn't), and (b) it makes the Phase-5 conversion to a real
+// version pin a single-line diff at one greppable anchor. `go.sum` is
+// unchanged from main (filesystem replaces add no sum entries — verified).
 replace github.com/livetemplate/livetemplate => ../../../livetemplate/.worktrees/broadcast-redesign-phase-4
 
 replace github.com/livetemplate/lvt/components => ./components
