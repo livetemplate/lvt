@@ -4,6 +4,15 @@ go 1.26.0
 
 require github.com/livetemplate/livetemplate v0.9.1
 
+// Phase 4 (broadcast-action-redesign #415, V14): the lvt V14 chromedp e2e
+// exercises the topic-ACL keep-open behavior, which only exists in the
+// unreleased Phase-0..4 livetemplate. This filesystem replace points at the
+// Phase-4 worktree so the e2e compiles+runs cross-repo. Phase 5's deliverable
+// resolves this into a real version pin (proposal §"Phase 5"); until then the
+// lvt Phase-4 branch is intentionally not independently mergeable / CI-runnable
+// — see docs learnings/phase-4.md cross-repo release order.
+replace github.com/livetemplate/livetemplate => ../../../livetemplate/.worktrees/broadcast-redesign-phase-4
+
 replace github.com/livetemplate/lvt/components => ./components
 
 require (
