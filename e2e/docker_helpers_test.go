@@ -124,15 +124,6 @@ func setupLocalClientLibrary(t *testing.T, appDir string) {
 	writeClientLibrary(t, appDir)
 }
 
-// copyFile copies a file from src to dst
-func copyFile(src, dst string) error {
-	data, err := os.ReadFile(src)
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(dst, data, 0644)
-}
-
 // buildDockerImage builds a Docker image from the app directory
 func buildDockerImage(t *testing.T, appDir, imageName string) {
 	t.Helper()
@@ -233,89 +224,6 @@ func runDockerContainer(t *testing.T, imageName string, port int) *DockerContain
 
 	t.Logf("Container started: %s", containerID)
 	return handle
-}
-
-// ensureDockerfile creates a Dockerfile if it doesn't exist
-func ensureDockerfile(t *testing.T, appDir string) {
-	t.Helper()
-
-	dockerfilePath := filepath.Join(appDir, "Dockerfile")
-	if _, err := os.Stat(dockerfilePath); err == nil {
-		return // Already exists
-	}
-
-	t.Log("Generating Dockerfile...")
-
-	// Use the multi-stage Dockerfile pattern from testing/deployment.go
-	dockerfile := `# Build stage
-FROM golang:1.26-alpine AS builder
-
-WORKDIR /app
-
-# Install build dependencies
-RUN apk add --no-cache git gcc musl-dev sqlite-dev curl
-
-# Install sqlc for database code generation
-RUN ARCH=$(uname -m) && \
-    if [ "$ARCH" = "aarch64" ]; then SQLC_ARCH="arm64"; else SQLC_ARCH="amd64"; fi && \
-    curl -L https://github.com/sqlc-dev/sqlc/releases/download/v1.27.0/sqlc_1.27.0_linux_${SQLC_ARCH}.tar.gz | tar -xz -C /usr/local/bin
-
-# Copy go mod files
-COPY go.mod ./
-COPY go.sum* ./
-
-# Download dependencies
-RUN go mod download
-
-# Copy source code
-COPY . .
-
-# Tidy after copying source (in case source files affect dependencies)
-RUN go mod tidy
-
-# Generate sqlc models if sqlc.yaml exists (multi kit with database)
-RUN if [ -f database/sqlc.yaml ]; then \
-      echo "Running sqlc generate..." && \
-      sqlc generate -f database/sqlc.yaml; \
-    fi
-
-# Build binary with CGO enabled for SQLite
-# Auto-detect if main.go is in root (simple kit) or cmd/ (multi kit)
-RUN if [ -f main.go ]; then \
-      CGO_ENABLED=1 GOOS=linux go build -o main .; \
-    else \
-      CGO_ENABLED=1 GOOS=linux go build -o main ./cmd/*; \
-    fi
-
-# Runtime stage
-FROM alpine:latest
-
-RUN apk --no-cache add ca-certificates sqlite-libs
-
-WORKDIR /app
-
-# Copy binary from builder
-COPY --from=builder /app/main .
-
-# Copy all source files needed at runtime
-COPY --from=builder /app .
-
-# Clean up build artifacts we don't need at runtime
-RUN rm -rf /app/cmd /app/go.mod /app/go.sum /app/README.md /app/.git* 2>/dev/null || true
-
-# Create data directory for SQLite
-RUN mkdir -p /app/data
-
-EXPOSE 8080
-
-CMD ["./main"]
-`
-
-	if err := os.WriteFile(dockerfilePath, []byte(dockerfile), 0644); err != nil {
-		t.Fatalf("Failed to write Dockerfile: %v", err)
-	}
-
-	t.Log("Dockerfile generated")
 }
 
 // buildAndRunNative builds the app natively and starts it on the specified port

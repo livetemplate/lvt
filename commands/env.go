@@ -362,8 +362,10 @@ func EnvSet(args []string) error {
 		return fmt.Errorf("failed to write %s: %w", envFile, err)
 	}
 
-	// Ensure .env is in .gitignore
-	ensureGitignore(".env")
+	// Ensure .env is in .gitignore (best-effort; env value already persisted).
+	if err := ensureGitignore(".env"); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: failed to update .gitignore: %v\n", err)
+	}
 
 	if oldValue == "" {
 		fmt.Printf("✅ Set %s=%s\n", key, maskValue(key, value))
@@ -845,7 +847,7 @@ func ensureGitignore(pattern string) error {
 	if len(content) > 0 && !strings.HasSuffix(string(content), "\n") {
 		f.WriteString("\n")
 	}
-	f.WriteString(fmt.Sprintf("\n# Environment variables (added by lvt)\n%s\n", pattern))
+	fmt.Fprintf(f, "\n# Environment variables (added by lvt)\n%s\n", pattern)
 
 	return nil
 }

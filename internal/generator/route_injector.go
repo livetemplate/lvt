@@ -503,17 +503,15 @@ func InjectAPIRegistration(mainGoPath, importPath string) error {
 	// Add import
 	importLine := fmt.Sprintf("\t\"%s\"", importPath)
 	if !strings.Contains(content, importLine) {
-		// Find the import block and add the import
+		// Find the import block and add the import. strings.Replace is a no-op
+		// when the marker isn't present, so the explicit Contains guard is
+		// redundant.
 		importMarker := "\"golang.org/x/time/rate\""
-		if strings.Contains(content, importMarker) {
-			content = strings.Replace(content, importMarker, importLine+"\n\n\t"+importMarker, 1)
-		}
+		content = strings.Replace(content, importMarker, importLine+"\n\n\t"+importMarker, 1)
 	}
 
-	// Enable queries variable if needed
-	if strings.Contains(content, "_, err := database.InitDB(dbPath)") {
-		content = strings.Replace(content, "_, err := database.InitDB(dbPath)", "queries, err := database.InitDB(dbPath)", 1)
-	}
+	// Enable queries variable if needed (no-op when the pattern is absent).
+	content = strings.Replace(content, "_, err := database.InitDB(dbPath)", "queries, err := database.InitDB(dbPath)", 1)
 
 	// Add RegisterRoutes call at the TODO marker
 	todoMarker := "// TODO: Add routes here"

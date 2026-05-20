@@ -39,10 +39,9 @@ func (f *FlyClient) Launch(appName, region string) error {
 		"--org", f.OrgSlug,
 	}
 
-	if region != "" {
-		// Note: region is set during deployment, not during app creation
-		// We'll store it for later use
-	}
+	// Note: `region` (if set) is applied during deployment, not during app
+	// creation — Fly's API requires the region to be set on the machine
+	// itself rather than the app. Intentionally not passed to `apps create`.
 
 	cmd := f.buildCommand(args...)
 	output, err := cmd.CombinedOutput()

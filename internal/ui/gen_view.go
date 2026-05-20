@@ -61,7 +61,8 @@ func (m genViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case tea.KeyEnter:
-			if m.stage == 0 {
+			switch m.stage {
+			case 0:
 				// Input stage -> Confirm stage
 				m.viewName = strings.TrimSpace(m.textInput.Value())
 
@@ -77,11 +78,11 @@ func (m genViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.validationWarn = result.Warning
 				m.stage = 1
 				return m, nil
-			} else if m.stage == 1 {
+			case 1:
 				// Confirm stage -> Generate
 				m.stage = 2
 				return m, m.generateView
-			} else if m.stage == 3 {
+			case 3:
 				// Success -> Exit
 				return m, tea.Quit
 			}

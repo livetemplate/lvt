@@ -1,0 +1,48 @@
+# golangci-lint v2 configuration for lvt.
+# Mirrors scripts/pre-commit.sh's enabled set; adds build-tag awareness so
+# helpers gated behind //go:build browser/http/deployment/integration aren't
+# flagged as unused.
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - unused
+    - staticcheck
+    - ineffassign
+  exclusions:
+    rules:
+      # Canonical defer cleanup and best-effort writes in production code:
+      # errors at these sites are structurally non-actionable. The project
+      # convention is to elide them here rather than spread
+      # `defer func() { _ = X() }()` boilerplate. Real error-returning
+      # call sites still must be handled — these patterns are scoped to
+      # specific function names that match the canonical idiom.
+      - linters: [errcheck]
+        text: "Error return value of `.*\\.Close` is not checked"
+      - linters: [errcheck]
+        text: "Error return value of `.*\\.WriteString` is not checked"
+      - linters: [errcheck]
+        text: "Error return value of `fmt\\.(Fprintf|Fprintln|Fprint|Scanf)` is not checked"
+      - linters: [errcheck]
+        text: "Error return value of `os\\.(Chdir|Remove|RemoveAll)` is not checked"
+      - linters: [errcheck]
+        text: "Error return value of `filepath\\.Walk` is not checked"
+      - linters: [errcheck]
+        text: "Error return value of `png\\.Encode` is not checked"
+      - linters: [errcheck]
+        text: "Error return value of `.*\\.Write` is not checked"
+
+      # Test files: allow lax errcheck (Go convention — tests usually
+      # don't propagate cleanup/setup errors; t.Errorf is the canonical
+      # way to fail). Production code is still strictly checked.
+      - path: '_test\.go'
+        linters: [errcheck]
+
+run:
+  build-tags:
+    - browser
+    - http
+    - deployment
+    - integration

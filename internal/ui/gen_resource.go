@@ -74,7 +74,8 @@ func (m genResourceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case tea.KeyEnter:
-			if m.stage == 0 {
+			switch m.stage {
+			case 0:
 				// Resource name -> Field entry
 				m.resourceName = strings.TrimSpace(m.textInput.Value())
 
@@ -93,7 +94,7 @@ func (m genResourceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.textInput.Placeholder = "name, email, age:int, ..."
 				return m, nil
 
-			} else if m.stage == 1 {
+			case 1:
 				// Add field or finish
 				input := strings.TrimSpace(m.textInput.Value())
 				if input == "" {
@@ -138,12 +139,12 @@ func (m genResourceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.validationWarn = result.Warning
 				return m, nil
 
-			} else if m.stage == 2 {
+			case 2:
 				// Confirm -> Generate
 				m.stage = 3
 				return m, m.generateResource
 
-			} else if m.stage == 4 {
+			case 4:
 				// Success -> Exit
 				return m, tea.Quit
 			}
@@ -166,7 +167,8 @@ func (m genResourceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Real-time validation if value changed
 		if oldValue != newValue && newValue != "" {
-			if m.stage == 0 {
+			switch m.stage {
+			case 0:
 				// Validate resource name
 				result := IsValidResourceName(newValue)
 				if result.Valid {
@@ -176,7 +178,7 @@ func (m genResourceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.validationError = result.Error
 					m.validationWarn = result.Warning
 				}
-			} else if m.stage == 1 {
+			case 1:
 				// Validate field name (parse first)
 				name, _ := ParseFieldInput(newValue)
 				result := IsValidFieldName(name)

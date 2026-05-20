@@ -871,7 +871,7 @@ func TestRendering_WebSocket_Reconnect(t *testing.T) {
 		if e, ok := ev.(*runtime.EventConsoleAPICalled); ok {
 			logMutex.Lock()
 			for _, arg := range e.Args {
-				consoleLogs = append(consoleLogs, fmt.Sprintf("%s", arg.Value))
+				consoleLogs = append(consoleLogs, string(arg.Value))
 			}
 			logMutex.Unlock()
 		}

@@ -117,7 +117,9 @@ func GenerateAPI(basePath, moduleName, resourceName string, fields []parser.Fiel
 			return fmt.Errorf("failed to load kit: %w", err)
 		}
 		if kit.Helpers == nil {
-			kit.SetHelpersForFramework("tailwind")
+			if err := kit.SetHelpersForFramework("tailwind"); err != nil {
+				return fmt.Errorf("failed to set kit helpers: %w", err)
+			}
 		}
 
 		// Generate migration
@@ -183,7 +185,9 @@ func GenerateAPI(basePath, moduleName, resourceName string, fields []parser.Fiel
 			return fmt.Errorf("failed to load kit: %w", err)
 		}
 		if kit.Helpers == nil {
-			kit.SetHelpersForFramework("tailwind")
+			if err := kit.SetHelpersForFramework("tailwind"); err != nil {
+				return fmt.Errorf("failed to set kit helpers: %w", err)
+			}
 		}
 		if err := appendToFile(string(apiQueriesTmpl), data, queriesPath, "\n", kit); err != nil {
 			return fmt.Errorf("failed to append API queries: %w", err)

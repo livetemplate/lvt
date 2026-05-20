@@ -6,9 +6,9 @@ import (
 	"sort"
 	"strings"
 
-	// Register both adapters so they're available for listing.
+	// Register adapters so they're available for listing. `unstyled` is
+	// already imported below for direct use, which also runs its init.
 	_ "github.com/livetemplate/lvt/components/styles/tailwind"
-	_ "github.com/livetemplate/lvt/components/styles/unstyled"
 
 	"github.com/livetemplate/lvt/components/styles"
 	unstyledpkg "github.com/livetemplate/lvt/components/styles/unstyled"
@@ -84,13 +84,14 @@ func stylesInfo(name string) error {
 	fmt.Printf("Style Adapter: %s\n", adapter.Name())
 	fmt.Println()
 
-	if name == "unstyled" {
+	switch name {
+	case "unstyled":
 		count := unstyledpkg.ClassCount()
 		fmt.Printf("  BEM class names: %d\n", count)
 		fmt.Println("  Convention: lvt-{component}__{element}--{modifier}")
 		fmt.Println()
 		fmt.Println("  Use 'lvt styles scaffold' to generate a CSS file with all class stubs.")
-	} else if name == "tailwind" {
+	case "tailwind":
 		fmt.Println("  Framework: Tailwind CSS")
 		fmt.Println("  All component classes use Tailwind utility classes.")
 		fmt.Println("  No additional CSS file needed.")

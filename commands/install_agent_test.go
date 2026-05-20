@@ -147,12 +147,9 @@ func TestInstallAgent_ForceOverwrite(t *testing.T) {
 		t.Fatalf("InstallAgent with --force failed: %v", err)
 	}
 
-	// Verify .claude directory was overwritten (test file should still be there though)
-	// The force flag creates the directory but doesn't remove existing content first
-	if _, err := os.Stat(testFile); os.IsNotExist(err) {
-		// This is actually expected - our implementation doesn't clean the directory
-		// It just allows writing to existing .claude directory
-	}
+	// Note: the force flag installs over an existing .claude directory without
+	// removing prior content first — whether testFile still exists is an
+	// implementation choice, not an invariant. Intentionally not asserted.
 
 	// Verify new files were installed
 	essentialFile := filepath.Join(tmpDir, ".claude/settings.json")

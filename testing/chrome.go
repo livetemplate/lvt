@@ -409,7 +409,7 @@ func StartDockerChrome(t *testing.T, debugPort int) error {
 
 		// Clean up the container since Chrome didn't start properly
 		_, _ = exec.Command("docker", "rm", "-f", containerName).CombinedOutput()
-		return fmt.Errorf("Chrome failed to start within 60 seconds: %w", lastErr)
+		return fmt.Errorf("chrome failed to start within 60 seconds: %w", lastErr)
 	}
 
 	t.Log("✅ Chrome headless Docker container ready")
@@ -867,7 +867,7 @@ func ValidateNoTemplateExpressions(selector string) chromedp.Action {
 				}
 				context := innerHTML[start:end]
 
-				return fmt.Errorf("raw template expression '%s' found in HTML. Context: ...%s...", expr, context)
+				return fmt.Errorf("raw template expression %q found in HTML (context: ...%s...)", expr, context)
 			}
 		}
 
@@ -1027,7 +1027,7 @@ func ValidatePicoCSS() chromedp.Action {
 		}
 
 		if violations != "" {
-			return fmt.Errorf("Pico CSS violations: %s", violations)
+			return fmt.Errorf("pico CSS violations: %s", violations)
 		}
 		return nil
 	})

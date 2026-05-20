@@ -195,5 +195,5 @@ func findDatabasePath() (string, error) {
 		currentDir = parent
 	}
 
-	return "", fmt.Errorf("database not found (looking for %s). Run this command from your project root.", defaultDBPath)
+	return "", fmt.Errorf("database not found (looking for %s); run this command from your project root", defaultDBPath)
 }

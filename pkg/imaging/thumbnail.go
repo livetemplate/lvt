@@ -19,7 +19,7 @@ func GenerateThumbnail(src io.Reader, maxWidth, maxHeight int) (io.Reader, error
 	}
 
 	thumb := imaging.Fit(img, maxWidth, maxHeight, imaging.Lanczos)
-	img = nil // allow GC of full-resolution image before encoding
+	// `img` (full resolution) is no longer needed; goes out of scope at return.
 
 	var buf bytes.Buffer
 	if err := imaging.Encode(&buf, thumb, imaging.JPEG, imaging.JPEGQuality(85)); err != nil {

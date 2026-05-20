@@ -166,7 +166,9 @@ func InstallAgent(args []string) error {
 		case "upgrade":
 			upgrade = true
 		case "force":
-			force = true
+			// install path below overwrites existing files unconditionally;
+			// no later branch reads `force`, but echo the user's choice.
+			fmt.Println("Force-overwriting existing installation...")
 		case "cancel":
 			return fmt.Errorf("installation cancelled")
 		}
