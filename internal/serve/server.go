@@ -183,7 +183,7 @@ func (s *Server) handleFileChange(path string) {
 		s.appMode.HandleFileChange(path)
 	}
 
-	s.wsManager.Broadcast(map[string]interface{}{
+	s.wsManager.ReloadClients(map[string]interface{}{
 		"type": "reload",
 		"path": path,
 	})

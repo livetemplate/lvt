@@ -120,10 +120,15 @@ func (wsm *WebSocketManager) HandleWebSocket(w http.ResponseWriter, r *http.Requ
 	go client.readPump()
 }
 
-func (wsm *WebSocketManager) Broadcast(data interface{}) {
+// ReloadClients fans out a dev-mode reload payload to every connected client
+// in this WebSocketManager. The old name (Broadcast) was a carryover that
+// conflicted in spirit with the livetemplate v0.10.0 broadcast-action removal
+// — this manager fans out lvt's internal dev-server reload signal over its
+// own WS, not livetemplate's removed broadcast primitive.
+func (wsm *WebSocketManager) ReloadClients(data interface{}) {
 	message, err := json.Marshal(data)
 	if err != nil {
-		log.Printf("Failed to marshal broadcast message: %v", err)
+		log.Printf("Failed to marshal reload message: %v", err)
 		return
 	}
 
