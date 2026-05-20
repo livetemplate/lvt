@@ -31,6 +31,7 @@ else
 fi
 
 # Step 2: Run golangci-lint (if available)
+# Requires golangci-lint >= 2.0 (uses --default=none, renamed from v1's --disable-all).
 if command -v golangci-lint >/dev/null 2>&1; then
     echo "🔍 Running golangci-lint..."
     if golangci-lint run --default=none --enable=errcheck,unused,staticcheck,ineffassign; then
