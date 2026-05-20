@@ -31,7 +31,11 @@ else
 fi
 
 # Step 2: Run golangci-lint (if available)
-# Requires golangci-lint >= 2.0 (uses --default=none, renamed from v1's --disable-all).
+# Requires golangci-lint >= 2.0 (`--default=none` replaced v1's `--disable-all`).
+# If blocked here on v1, upgrade: https://golangci-lint.run/welcome/install/
+# `gosimple` is intentionally omitted: in v2 its S1xxx checks live under
+# `staticcheck`, so they still run; keeping `gosimple` enabled triggers a
+# "linter not found" warning.
 if command -v golangci-lint >/dev/null 2>&1; then
     echo "🔍 Running golangci-lint..."
     if golangci-lint run --default=none --enable=errcheck,unused,staticcheck,ineffassign; then
