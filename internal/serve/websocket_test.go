@@ -25,7 +25,7 @@ func TestWebSocketManager_CreateAndClose(t *testing.T) {
 	}
 }
 
-func TestWebSocketManager_Broadcast(t *testing.T) {
+func TestWebSocketManager_ReloadClients(t *testing.T) {
 	wsm := NewWebSocketManager()
 	defer wsm.Close()
 
@@ -51,7 +51,7 @@ func TestWebSocketManager_Broadcast(t *testing.T) {
 		"data": "hello",
 	}
 
-	wsm.Broadcast(testData)
+	wsm.ReloadClients(testData)
 
 	_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
 	_, message, err := conn.ReadMessage()
@@ -99,7 +99,7 @@ func TestWebSocketManager_MultipleClients(t *testing.T) {
 		t.Errorf("Expected 2 clients, got %d", wsm.ClientCount())
 	}
 
-	wsm.Broadcast(map[string]string{"message": "broadcast"})
+	wsm.ReloadClients(map[string]string{"message": "broadcast"})
 
 	for i, conn := range []*websocket.Conn{conn1, conn2} {
 		_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
