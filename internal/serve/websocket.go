@@ -29,7 +29,7 @@ type Client struct {
 
 type WebSocketManager struct {
 	clients    map[*Client]bool
-	broadcast  chan []byte
+	reload     chan []byte
 	register   chan *Client
 	unregister chan *Client
 	mu         sync.RWMutex
@@ -40,7 +40,7 @@ type WebSocketManager struct {
 func NewWebSocketManager() *WebSocketManager {
 	wsm := &WebSocketManager{
 		clients:    make(map[*Client]bool),
-		broadcast:  make(chan []byte, 256),
+		reload:     make(chan []byte, 256),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
 		stop:       make(chan struct{}),
@@ -80,7 +80,7 @@ func (wsm *WebSocketManager) run() {
 			}
 			wsm.mu.Unlock()
 
-		case message := <-wsm.broadcast:
+		case message := <-wsm.reload:
 			wsm.mu.RLock()
 			clients := make([]*Client, 0, len(wsm.clients))
 			for client := range wsm.clients {
@@ -120,11 +120,7 @@ func (wsm *WebSocketManager) HandleWebSocket(w http.ResponseWriter, r *http.Requ
 	go client.readPump()
 }
 
-// ReloadClients fans out a dev-mode reload payload to every connected client
-// in this WebSocketManager. The old name (Broadcast) was a carryover that
-// conflicted in spirit with the livetemplate v0.10.0 broadcast-action removal
-// — this manager fans out lvt's internal dev-server reload signal over its
-// own WS, not livetemplate's removed broadcast primitive.
+// ReloadClients fans out a dev-mode reload payload to all connected clients.
 func (wsm *WebSocketManager) ReloadClients(data interface{}) {
 	message, err := json.Marshal(data)
 	if err != nil {
@@ -132,7 +128,7 @@ func (wsm *WebSocketManager) ReloadClients(data interface{}) {
 		return
 	}
 
-	wsm.broadcast <- message
+	wsm.reload <- message
 }
 
 func (wsm *WebSocketManager) Close() {
