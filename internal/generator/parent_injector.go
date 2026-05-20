@@ -364,10 +364,11 @@ func findClosingBrace(src string, startIdx int) int {
 	depth := 0
 	started := false
 	for i := startIdx; i < len(src); i++ {
-		if src[i] == '{' {
+		switch src[i] {
+		case '{':
 			depth++
 			started = true
-		} else if src[i] == '}' {
+		case '}':
 			depth--
 			if started && depth == 0 {
 				return i

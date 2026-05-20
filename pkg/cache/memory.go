@@ -54,7 +54,10 @@ func (c *MemoryCache) Get(_ context.Context, key string) ([]byte, bool, error) {
 	entry := elem.Value.(*memoryEntry)
 	if time.Now().After(entry.expiresAt) {
 		c.mu.RUnlock()
-		c.Delete(context.Background(), key)
+		// Best-effort eviction on read; a failed delete here just means
+		// the entry will be re-checked on the next access — not an error
+		// the caller can act on.
+		_ = c.Delete(context.Background(), key)
 		return nil, false, nil
 	}
 	// Copy value to avoid data races

@@ -18,9 +18,6 @@ import (
 const (
 	// shortDelay is used for brief pauses between operations (e.g., after clicking buttons)
 	shortDelay = 500 * time.Millisecond
-
-	// quickPollDelay is used for rapid polling checks (e.g., waiting for server readiness)
-	quickPollDelay = 200 * time.Millisecond
 )
 
 // waitForCondition polls a JavaScript condition until it returns true or times out

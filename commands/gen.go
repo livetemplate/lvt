@@ -197,7 +197,7 @@ func GenResource(args []string) error {
 		// Check parent handler exists
 		parentHandlerPath := filepath.Join(basePath, "app", parentResource, parentResource+".go")
 		if _, err := os.Stat(parentHandlerPath); os.IsNotExist(err) {
-			return fmt.Errorf("parent resource %q not found: %s does not exist.\nGenerate the parent first: lvt gen resource %s ...", parentResource, parentHandlerPath, parentResource)
+			return fmt.Errorf("parent resource %q not found: %s does not exist (generate the parent first: lvt gen resource %s ...)", parentResource, parentHandlerPath, parentResource)
 		}
 		// Check child has a reference field pointing to the parent table
 		hasRef := false

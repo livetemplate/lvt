@@ -61,7 +61,8 @@ func (m newAppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case tea.KeyEnter:
-			if m.stage == 0 {
+			switch m.stage {
+			case 0:
 				// Input stage
 				if m.focusIndex == 0 {
 					// Move to module input
@@ -98,11 +99,11 @@ func (m newAppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.stage = 1
 					return m, nil
 				}
-			} else if m.stage == 1 {
+			case 1:
 				// Confirm -> Generate
 				m.stage = 2
 				return m, m.generateApp
-			} else if m.stage == 3 {
+			case 3:
 				// Success -> Exit
 				return m, tea.Quit
 			}

@@ -119,18 +119,25 @@ func (p *ChromePool) resetChrome(container *ChromeContainer) {
 	ctx, cancel := chromedp.NewContext(allocCtx)
 	defer cancel()
 
-	// Clear cookies, storage, navigate to blank
-	chromedp.Run(ctx,
+	// Clear cookies, storage, navigate to blank. Best-effort reset between
+	// tests; if the cleanup fails the next test will still allocate a fresh
+	// context, so we log and move on rather than fail the calling test.
+	if err := chromedp.Run(ctx,
 		chromedp.ActionFunc(func(ctx context.Context) error {
-			// Clear storage
-			chromedp.Evaluate(`
+			// Storage-clear best-effort: a clear failure leaves stale state
+			// that the next test's fresh context handles anyway.
+			if err := chromedp.Evaluate(`
 				localStorage.clear();
 				sessionStorage.clear();
-			`, nil).Do(ctx)
+			`, nil).Do(ctx); err != nil {
+				log.Printf("chrome pool: storage-clear failed: %v", err)
+			}
 			return nil
 		}),
 		chromedp.Navigate("about:blank"),
-	)
+	); err != nil {
+		log.Printf("chrome pool: reset between tests failed: %v", err)
+	}
 }
 
 // Cleanup stops all Chrome containers

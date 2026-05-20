@@ -3,6 +3,7 @@ package cache
 import (
 	"context"
 	"database/sql"
+	"log"
 	"time"
 )
 
@@ -82,7 +83,12 @@ func (c *SQLiteCache) cleanup(interval time.Duration) {
 		case <-c.stop:
 			return
 		case <-ticker.C:
-			c.db.Exec(`DELETE FROM _cache WHERE expires_at < ?`, time.Now())
+			// Best-effort periodic eviction. A failed exec here is harmless —
+			// expired rows remain and get cleaned on the next tick or filtered
+			// out on read.
+			if _, err := c.db.Exec(`DELETE FROM _cache WHERE expires_at < ?`, time.Now()); err != nil {
+				log.Printf("sqlite cache: expired-row cleanup failed: %v", err)
+			}
 		}
 	}
 }
