@@ -5,6 +5,21 @@ All notable changes to the LVT CLI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.7] - 2026-05-20
+
+### Changes
+
+- feat(broadcast)!: Phase 5 — pin livetemplate v0.10.0; rename Broadcast→ReloadClients; integrate V14 e2e (#330) (92b0848)
+- chore: clear pre-existing lint baseline + add .golangci.yml config (#329) (3bd71f2)
+- chore(scripts): fix pre-commit lint invocation for golangci-lint v2 (#328) (d2ffa33)
+- test(e2e): chromedp coverage for lifecycle ergonomics (livetemplate#408) (#323) (e9f6628)
+- test(e2e): pin explicit-submitter round-trip via chromedp (#321) (2ead2a9)
+- chore: bump livetemplate to v0.9.0 (#320) (9cdf846)
+- docs(README): cross-link to https://livetemplate.fly.dev docs site (#319) (f488d41)
+- ci: dispatch livetemplate/docs sync on release tag (#318) (9c2715b)
+
+
+
 ## [v0.1.6] - 2026-05-02
 
 ### Changes
