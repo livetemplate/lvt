@@ -33,7 +33,7 @@ fi
 # Step 2: Run golangci-lint (if available)
 if command -v golangci-lint >/dev/null 2>&1; then
     echo "🔍 Running golangci-lint..."
-    if golangci-lint run --disable-all --enable=errcheck,unused,staticcheck,gosimple,ineffassign; then
+    if golangci-lint run --default=none --enable=errcheck,unused,staticcheck,ineffassign; then
         echo "✅ Linting passed"
     else
         echo "❌ Linting failed - commit blocked"
