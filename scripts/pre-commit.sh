@@ -13,12 +13,18 @@ if [ -d "commands/internal" ]; then
     rm -rf commands/internal/
 fi
 
+# All `go` invocations below run with GOWORK=off so the hook is portable
+# across nested-worktree dev setups (e.g. .worktrees/<feature-branch>/),
+# where the workspace's go.work doesn't include the worktree's local module
+# and `go list ./...` otherwise reports "directory prefix . does not contain
+# modules listed in go.work or their selected dependencies". Intentional
+# policy: the hook always tests the module in isolation, ignoring any
+# sibling-module replace directives a contributor may have configured in
+# their workspace go.work. From the main checkout this is a no-op; from a
+# worktree it's the gate that makes the hook self-contained.
+
 # Step 1: Auto-format Go code before validation
 echo "📝 Auto-formatting Go code..."
-# GOWORK=off so nested-worktree runs (e.g. .worktrees/<feature-branch>) don't
-# fail with "directory prefix . does not contain modules listed in go.work
-# or their selected dependencies". When run from the main checkout this is a
-# no-op because the workspace's go.work already includes the lvt module.
 if GOWORK=off go fmt ./...; then
     echo "✅ Code formatting completed"
 

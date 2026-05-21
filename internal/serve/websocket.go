@@ -264,8 +264,7 @@ func generateClientID() string {
 	clientCounterMu.Lock()
 	defer clientCounterMu.Unlock()
 	clientCounter++
-	// strconv.FormatUint, not string(rune(...)): the old form converted the
-	// counter to a UTF-8 codepoint (clientCounter=1 → "\x01" control char),
-	// rendering IDs unprintable. Fixes lvt#331.
+	// string(rune(n)) converts to a UTF-8 codepoint (n=1 → "\x01"), making IDs
+	// unprintable. strconv.FormatUint produces the decimal string. Fixes lvt#331.
 	return time.Now().Format("20060102150405") + "-" + strconv.FormatUint(clientCounter, 10)
 }

@@ -1,11 +1,11 @@
 //go:build browser
 
 // NOTE: this file declares `package e2e_test` (external test package) to match
-// the convention used by `livetemplate_core_test.go`. The local
-// `requireCondition` helper uses the `require*` prefix (Go testing convention
-// for "fatal on failure") to distinguish it from the `chromedp.Action`-returning
-// `waitForCondition` in `helpers.go` and `waitForDOM` in `rendering_test.go`,
-// which return errors instead of calling `t.Fatalf`.
+// the convention used by `livetemplate_core_test.go`. Tests poll for DOM
+// settling via `e2e.PollUntil` (the canonical dump-aware poll helper in
+// `e2e/helpers.go`), which `t.Fatalf`s on timeout — distinct from the
+// `chromedp.Action`-returning `waitForCondition` in `helpers.go` and
+// `waitForDOM` in `rendering_test.go`, which return errors instead.
 package e2e_test
 
 import (
@@ -168,11 +168,6 @@ func installConsoleLogger(t *testing.T, ctx context.Context) {
 		}
 	})
 }
-
-// (requireCondition was promoted to PollUntil in e2e/helpers.go as the
-// canonical dump-aware poll helper for browser e2e tests. Callers below pass
-// nil for the onTimeout dump callback — the helper still emits body-OuterHTML
-// in the Fatalf message, matching the previous behavior.)
 
 // =============================================================================
 // Test 1 — Issue #340: IsInitialMount fires on the initial HTTP GET.

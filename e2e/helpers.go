@@ -89,14 +89,25 @@ func PollUntil(t *testing.T, ctx context.Context, jsExpr string, timeout time.Du
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
 		var ok bool
-		if err := chromedp.Run(ctx, chromedp.Evaluate(jsExpr, &ok)); err == nil && ok {
+		err := chromedp.Run(ctx, chromedp.Evaluate(jsExpr, &ok))
+		if err == nil && ok {
 			return
 		}
+		// Context cancellation is fatal immediately — never wait for the
+		// timeout in that case.
 		if ctx.Err() != nil {
 			if onTimeout != nil {
 				onTimeout()
 			}
 			t.Fatalf("chromedp context cancelled waiting for %s: %v", why, ctx.Err())
+		}
+		// Non-cancellation chromedp errors (e.g. detached frame, JS syntax
+		// error, evaluation panic) are surfaced as warnings rather than
+		// swallowed — without this a real error gets misreported as a
+		// generic timeout. We still keep polling: transient errors (DOM not
+		// ready yet, navigation in progress) are expected.
+		if err != nil {
+			t.Logf("PollUntil[%s]: chromedp error (will retry): %v", why, err)
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
