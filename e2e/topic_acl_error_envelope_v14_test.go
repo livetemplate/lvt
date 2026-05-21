@@ -29,6 +29,7 @@ import (
 
 	"github.com/chromedp/chromedp"
 	"github.com/livetemplate/livetemplate"
+	"github.com/livetemplate/lvt/e2e"
 	e2etest "github.com/livetemplate/lvt/testing"
 )
 
@@ -184,24 +185,6 @@ func TestE2E_V14_TopicACLDeniedEmitsLvtErrorAndKeepsWSOpen(t *testing.T) {
 			t.Logf("(rendered HTML capture failed: %v)", err)
 		}
 	}
-	poll := func(jsExpr string, timeout time.Duration, why string) {
-		t.Helper()
-		deadline := time.Now().Add(timeout)
-		for time.Now().Before(deadline) {
-			var ok bool
-			if err := chromedp.Run(ctx, chromedp.Evaluate(jsExpr, &ok)); err == nil && ok {
-				return
-			}
-			if ctx.Err() != nil {
-				dump()
-				t.Fatalf("chrome ctx cancelled waiting for %s: %v", why, ctx.Err())
-			}
-			time.Sleep(100 * time.Millisecond)
-		}
-		dump()
-		t.Fatalf("timed out waiting for %s", why)
-	}
-
 	chromeURL := e2etest.GetChromeTestURL(port)
 	if err := chromedp.Run(ctx,
 		chromedp.Navigate(chromeURL),
@@ -213,12 +196,13 @@ func TestE2E_V14_TopicACLDeniedEmitsLvtErrorAndKeepsWSOpen(t *testing.T) {
 
 	// (a) The denied Subscribe surfaced as an lvt:error CustomEvent on the
 	// wrapper with the exact {code,topic} the server emitted.
-	poll(
+	e2e.PollUntil(t, ctx,
 		`Array.isArray(window.__lvtErrors) && window.__lvtErrors.length === 1
 		 && window.__lvtErrors[0].code === 'topic_forbidden'
 		 && window.__lvtErrors[0].topic === 'private/admin'`,
 		10*time.Second,
 		"lvt:error CustomEvent {code:topic_forbidden, topic:private/admin}",
+		dump,
 	)
 
 	// (b) Verify the server actually took the Phase-4 keep-open code path —
@@ -228,19 +212,18 @@ func TestE2E_V14_TopicACLDeniedEmitsLvtErrorAndKeepsWSOpen(t *testing.T) {
 	// Guards against silent regressions where the WARN is removed without the
 	// corresponding behavior change.
 	//
-	// Coupling: substring of the WARN message in livetemplate's
-	// mount.go (grep anchor: `slog.Warn("Mount Subscribe denied by topic ACL`).
-	// If that prose is reworded, update both here and the
-	// livetemplate-side log call together. A future hardening would be to
-	// switch the server WARN to a structured `slog.String("event", "<key>")`
-	// and assert on the structured key — tracked for Phase 6.
-	if !serverLogger.HasLog("connection kept open") {
+	// Coupling: the structured slog attribute `event=topic_acl_denied_keep_open`
+	// emitted by livetemplate's mount.go (grep anchor: `slog.String("event",
+	// "topic_acl_denied_keep_open")` near the `*TopicForbiddenError` branch).
+	// Structured-key assertion is the v0.10.1+ hardening of the previous
+	// substring-of-message coupling — robust against prose rewordings of the
+	// WARN message itself.
+	if !serverLogger.HasLog("event=topic_acl_denied_keep_open") {
 		dump()
-		t.Fatal("expected server to log the Phase-4 keep-open WARN " +
-			"('Mount Subscribe denied by topic ACL; surfaced to client, " +
-			"connection kept open') after ACL denial — the WARN is the proof " +
-			"the server took the keep-open code path, not just that the " +
-			"client happened to stay connected")
+		t.Fatal("expected server to log the keep-open WARN with structured " +
+			"attribute event=topic_acl_denied_keep_open after ACL denial — " +
+			"the attribute is the proof the server took the keep-open code " +
+			"path, not just that the client happened to stay connected")
 	}
 
 	// (c) The WS is OPEN AND FUNCTIONAL: a real action round-trips and
@@ -251,10 +234,11 @@ func TestE2E_V14_TopicACLDeniedEmitsLvtErrorAndKeepsWSOpen(t *testing.T) {
 		dump()
 		t.Fatalf("click #ping: %v", err)
 	}
-	poll(
+	e2e.PollUntil(t, ctx,
 		`document.getElementById('pong') && document.getElementById('pong').textContent === 'PONG'`,
 		10*time.Second,
 		"#pong === 'PONG' (WS action round-trip after the error envelope)",
+		dump,
 	)
 
 	// Sanity: the envelope did NOT also drive a spurious second lvt:error or

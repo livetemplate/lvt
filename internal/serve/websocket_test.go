@@ -7,9 +7,47 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode"
 
 	"github.com/gorilla/websocket"
 )
+
+// TestGenerateClientID guards lvt#331: the prior implementation used
+// `string(rune(clientCounter))` which converted the counter to a UTF-8
+// codepoint (clientCounter=1 → "\x01" SOH), making IDs unprintable. The
+// fix uses strconv.FormatUint to produce the decimal string. This test
+// asserts (a) IDs contain no non-printable bytes, (b) consecutive IDs
+// are unique, and (c) the suffix is the decimal counter (not a rune).
+func TestGenerateClientID(t *testing.T) {
+	// Generate a small sequence; uniqueness + printability is the contract.
+	seen := make(map[string]bool, 8)
+	for i := 0; i < 8; i++ {
+		id := generateClientID()
+		for _, r := range id {
+			if !unicode.IsPrint(r) {
+				t.Fatalf("ID %q contains non-printable rune %U; lvt#331 regression", id, r)
+			}
+		}
+		if seen[id] {
+			t.Fatalf("duplicate ID %q at iteration %d", id, i)
+		}
+		seen[id] = true
+		// Suffix is "-<decimal>"; the last segment should parse as a positive int.
+		if dash := strings.LastIndex(id, "-"); dash >= 0 {
+			suffix := id[dash+1:]
+			if suffix == "" {
+				t.Fatalf("ID %q has empty suffix after '-'", id)
+			}
+			for _, r := range suffix {
+				if r < '0' || r > '9' {
+					t.Fatalf("ID %q suffix %q is not all decimal digits; lvt#331 regression", id, suffix)
+				}
+			}
+		} else {
+			t.Fatalf("ID %q has no '-' separator", id)
+		}
+	}
+}
 
 func TestWebSocketManager_CreateAndClose(t *testing.T) {
 	wsm := NewWebSocketManager()

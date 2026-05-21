@@ -13,9 +13,19 @@ if [ -d "commands/internal" ]; then
     rm -rf commands/internal/
 fi
 
+# All `go` invocations below run with GOWORK=off so the hook is portable
+# across nested-worktree dev setups (e.g. .worktrees/<feature-branch>/),
+# where the workspace's go.work doesn't include the worktree's local module
+# and `go list ./...` otherwise reports "directory prefix . does not contain
+# modules listed in go.work or their selected dependencies". Intentional
+# policy: the hook always tests the module in isolation, ignoring any
+# sibling-module replace directives a contributor may have configured in
+# their workspace go.work. From the main checkout this is a no-op; from a
+# worktree it's the gate that makes the hook self-contained.
+
 # Step 1: Auto-format Go code before validation
 echo "📝 Auto-formatting Go code..."
-if go fmt ./...; then
+if GOWORK=off go fmt ./...; then
     echo "✅ Code formatting completed"
 
     # Add any formatted files to the commit
@@ -38,7 +48,7 @@ fi
 # "linter not found" warning.
 if command -v golangci-lint >/dev/null 2>&1; then
     echo "🔍 Running golangci-lint..."
-    if golangci-lint run --default=none --enable=errcheck,unused,staticcheck,ineffassign; then
+    if GOWORK=off golangci-lint run --default=none --enable=errcheck,unused,staticcheck,ineffassign; then
         echo "✅ Linting passed"
     else
         echo "❌ Linting failed - commit blocked"
@@ -51,7 +61,7 @@ fi
 
 # Step 3: Run all Go tests with timeout
 echo "🧪 Running Go tests..."
-if go test -v ./... -timeout=120s; then
+if GOWORK=off go test -v ./... -timeout=120s; then
     echo "✅ All tests passed"
 else
     echo "❌ Tests failed - commit blocked"
