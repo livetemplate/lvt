@@ -15,7 +15,11 @@ fi
 
 # Step 1: Auto-format Go code before validation
 echo "📝 Auto-formatting Go code..."
-if go fmt ./...; then
+# GOWORK=off so nested-worktree runs (e.g. .worktrees/<feature-branch>) don't
+# fail with "directory prefix . does not contain modules listed in go.work
+# or their selected dependencies". When run from the main checkout this is a
+# no-op because the workspace's go.work already includes the lvt module.
+if GOWORK=off go fmt ./...; then
     echo "✅ Code formatting completed"
 
     # Add any formatted files to the commit
@@ -38,7 +42,7 @@ fi
 # "linter not found" warning.
 if command -v golangci-lint >/dev/null 2>&1; then
     echo "🔍 Running golangci-lint..."
-    if golangci-lint run --default=none --enable=errcheck,unused,staticcheck,ineffassign; then
+    if GOWORK=off golangci-lint run --default=none --enable=errcheck,unused,staticcheck,ineffassign; then
         echo "✅ Linting passed"
     else
         echo "❌ Linting failed - commit blocked"
@@ -51,7 +55,7 @@ fi
 
 # Step 3: Run all Go tests with timeout
 echo "🧪 Running Go tests..."
-if go test -v ./... -timeout=120s; then
+if GOWORK=off go test -v ./... -timeout=120s; then
     echo "✅ All tests passed"
 else
     echo "❌ Tests failed - commit blocked"

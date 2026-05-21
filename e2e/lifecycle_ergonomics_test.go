@@ -23,6 +23,7 @@ import (
 	"github.com/chromedp/chromedp"
 	"github.com/gorilla/websocket"
 	"github.com/livetemplate/livetemplate"
+	"github.com/livetemplate/lvt/e2e"
 	e2etest "github.com/livetemplate/lvt/testing"
 )
 
@@ -168,32 +169,10 @@ func installConsoleLogger(t *testing.T, ctx context.Context) {
 	})
 }
 
-// requireCondition polls a JS expression until it returns true or the timeout
-// elapses. Used for "DOM should reflect X after WS round-trip" assertions.
-//
-// A cancelled chromedp context (e.g. browser crash, Docker shutdown) is fatal
-// immediately — without that early return the loop would silently treat
-// context.Canceled as "condition not yet true" and report a misleading timeout.
-func requireCondition(t *testing.T, ctx context.Context, jsExpr string, timeout time.Duration, why string) {
-	t.Helper()
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		var ok bool
-		err := chromedp.Run(ctx, chromedp.Evaluate(jsExpr, &ok))
-		if err == nil && ok {
-			return
-		}
-		if ctx.Err() != nil {
-			t.Fatalf("chromedp context cancelled waiting for %s: %v", why, ctx.Err())
-		}
-		// 100ms matches lvt/testing's WaitFor convention — chosen there for
-		// stability and to avoid CPU thrashing on slow CI runners.
-		time.Sleep(100 * time.Millisecond)
-	}
-	var html string
-	_ = chromedp.Run(ctx, chromedp.OuterHTML("body", &html, chromedp.ByQuery))
-	t.Fatalf("timed out waiting for %s. Final DOM:\n%s", why, html)
-}
+// (requireCondition was promoted to PollUntil in e2e/helpers.go as the
+// canonical dump-aware poll helper for browser e2e tests. Callers below pass
+// nil for the onTimeout dump callback — the helper still emits body-OuterHTML
+// in the Fatalf message, matching the previous behavior.)
 
 // =============================================================================
 // Test 1 — Issue #340: IsInitialMount fires on the initial HTTP GET.
@@ -259,11 +238,11 @@ func TestE2E_IsReconnect_ReflectsStateRestoration(t *testing.T) {
 	if err := chromedp.Run(ctx, chromedp.Navigate(chromeURL)); err != nil {
 		t.Fatalf("first navigate: %v", err)
 	}
-	requireCondition(t, ctx,
+	e2e.PollUntil(t, ctx,
 		`document.getElementById('rc').innerText.includes('rc=YES')
 		 && document.getElementById('im').innerText.includes('im=NO')`,
 		5*time.Second,
-		"first WS connect to settle (rc=YES, im=NO)")
+		"first WS connect to settle (rc=YES, im=NO)", nil)
 
 	receivedBefore := wsLog.CountByDirection("received")
 
@@ -276,11 +255,11 @@ func TestE2E_IsReconnect_ReflectsStateRestoration(t *testing.T) {
 	if err := chromedp.Run(ctx, chromedp.Reload()); err != nil {
 		t.Fatalf("reload: %v", err)
 	}
-	requireCondition(t, ctx,
+	e2e.PollUntil(t, ctx,
 		`document.getElementById('rc').innerText.includes('rc=YES')
 		 && document.getElementById('im').innerText.includes('im=NO')`,
 		10*time.Second,
-		"reload + WS reconnect to settle (rc=YES, im=NO)")
+		"reload + WS reconnect to settle (rc=YES, im=NO)", nil)
 
 	if got := wsLog.CountByDirection("received") - receivedBefore; got == 0 {
 		wsLog.PrintLast(5)
@@ -316,21 +295,21 @@ func TestE2E_ClearAllFlash_RemovesAllFlashFromDOM(t *testing.T) {
 	if err := chromedp.Run(ctx, chromedp.Click("#set-flashes", chromedp.ByID)); err != nil {
 		t.Fatalf("click set-flashes: %v", err)
 	}
-	requireCondition(t, ctx,
+	e2e.PollUntil(t, ctx,
 		`document.getElementById('flash-success').innerText.includes('Saved!')
 		 && document.getElementById('flash-info').innerText.includes('Heads up')`,
 		5*time.Second,
-		"both flashes to land in DOM after SetFlashes")
+		"both flashes to land in DOM after SetFlashes", nil)
 
 	// 2. Click "Clear all" — invokes ctx.ClearAllFlash. Both flashes vanish.
 	if err := chromedp.Run(ctx, chromedp.Click("#clear-flashes", chromedp.ByID)); err != nil {
 		t.Fatalf("click clear-flashes: %v", err)
 	}
-	requireCondition(t, ctx,
+	e2e.PollUntil(t, ctx,
 		`document.getElementById('flash-success').innerText.trim() === ''
 		 && document.getElementById('flash-info').innerText.trim() === ''`,
 		5*time.Second,
-		"both flashes to clear from DOM after ClearAllFlash")
+		"both flashes to clear from DOM after ClearAllFlash", nil)
 
 	// Sanity: ClearAllFlash must NOT touch non-flash state. OnConnect's
 	// `state.Count++` has run at least once by now, so count must be ≥ 1 —

@@ -6,6 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"testing"
 	"time"
 
 	"github.com/chromedp/chromedp"
@@ -64,6 +65,47 @@ func waitForCondition(ctx context.Context, jsCondition string, timeout time.Dura
 			}
 		}
 	}
+}
+
+// PollUntil polls a JS expression against the chromedp ctx until it returns
+// true or the timeout elapses. On failure (timeout or chromedp context
+// cancellation), it invokes the optional onTimeout callback for diagnostic
+// artifact dumping (server logs, WS frames, rendered HTML, etc.) and then
+// calls t.Fatalf with a descriptive message.
+//
+// This is the canonical "dump-aware poll" helper for browser e2e tests. Pass
+// nil for onTimeout if no extra diagnostic dumping is needed beyond the body
+// OuterHTML printed in the Fatalf message.
+//
+// A cancelled chromedp context (browser crash, Docker shutdown, parent test
+// timeout) is fatal immediately — without that early return the loop would
+// silently treat context.Canceled as "condition not yet true" and report a
+// misleading timeout.
+//
+// 100ms poll interval matches lvt/testing's WaitFor convention — chosen there
+// for stability and to avoid CPU thrashing on slow CI runners.
+func PollUntil(t *testing.T, ctx context.Context, jsExpr string, timeout time.Duration, why string, onTimeout func()) {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		var ok bool
+		if err := chromedp.Run(ctx, chromedp.Evaluate(jsExpr, &ok)); err == nil && ok {
+			return
+		}
+		if ctx.Err() != nil {
+			if onTimeout != nil {
+				onTimeout()
+			}
+			t.Fatalf("chromedp context cancelled waiting for %s: %v", why, ctx.Err())
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	if onTimeout != nil {
+		onTimeout()
+	}
+	var html string
+	_ = chromedp.Run(ctx, chromedp.OuterHTML("body", &html, chromedp.ByQuery))
+	t.Fatalf("timed out waiting for %s. Final DOM body:\n%s", why, html)
 }
 
 // seedTestData seeds test data into SQLite database using parameterized queries

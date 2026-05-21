@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
@@ -263,5 +264,8 @@ func generateClientID() string {
 	clientCounterMu.Lock()
 	defer clientCounterMu.Unlock()
 	clientCounter++
-	return time.Now().Format("20060102150405") + "-" + string(rune(clientCounter))
+	// strconv.FormatUint, not string(rune(...)): the old form converted the
+	// counter to a UTF-8 codepoint (clientCounter=1 → "\x01" control char),
+	// rendering IDs unprintable. Fixes lvt#331.
+	return time.Now().Format("20060102150405") + "-" + strconv.FormatUint(clientCounter, 10)
 }
