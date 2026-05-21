@@ -5,6 +5,14 @@ All notable changes to the LVT CLI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.8] - 2026-05-21
+
+### Changes
+
+- Phase 6: lvt#331 fix + GOWORK=off + PollUntil helper + V14 key-assertion (v0.1.8-prep) (#332) (e3b78fa)
+
+
+
 ## [v0.1.7] - 2026-05-20
 
 ### Changes
