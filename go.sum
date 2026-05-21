@@ -162,8 +162,8 @@ github.com/ledongthuc/pdf v0.0.0-20220302134840-0c2507a12d80 h1:6Yzfa6GP0rIo/kUL
 github.com/ledongthuc/pdf v0.0.0-20220302134840-0c2507a12d80/go.mod h1:imJHygn/1yfhB7XSJJKlFZKl/J+dCPAknuiaGOshXAs=
 github.com/leodido/go-urn v1.4.0 h1:WT9HwE9SGECu3lg4d/dIA+jxlljEa1/ffXKmRjqdmIQ=
 github.com/leodido/go-urn v1.4.0/go.mod h1:bvxc+MVxLKB4z00jd1z+Dvzr47oO32F/QSNjSBOlFxI=
-github.com/livetemplate/livetemplate v0.10.1-0.20260521170319-9b4c60c2ac5a h1:5qa9fhaoLOAJDTkNSRBFHKda3obdBSHMjTdCd6exono=
-github.com/livetemplate/livetemplate v0.10.1-0.20260521170319-9b4c60c2ac5a/go.mod h1:GMvZKyPUq8LSGfgD3pftKOHa6v+I+RDYyff2mNjeAYs=
+github.com/livetemplate/livetemplate v0.10.1 h1:pFOYbx1TE1G7Qp4ebIDvYlOBf8ZpKAWdJdU07Of+sE4=
+github.com/livetemplate/livetemplate v0.10.1/go.mod h1:GMvZKyPUq8LSGfgD3pftKOHa6v+I+RDYyff2mNjeAYs=
 github.com/lucasb-eyer/go-colorful v1.2.0 h1:1nnpGOrhyZZuNyfu1QjKiUICQ74+3FNCN69Aj6K7nkY=
 github.com/lucasb-eyer/go-colorful v1.2.0/go.mod h1:R4dSotOR9KMtayYi1e77YzuveK+i7ruzyGqttikkLy0=
 github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 h1:6E+4a0GO5zZEnZ81pIr0yLvtUWk2if982qA3F3QD6H4=

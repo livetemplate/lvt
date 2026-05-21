@@ -2,19 +2,11 @@ module github.com/livetemplate/lvt
 
 go 1.26.0
 
-// PHASE 6 / v0.10.1-prep: pseudo-version pinned to livetemplate's Phase-6
-// branch (commit 9b4c60c2 on broadcast-redesign-phase-6), which carries the
-// new structured slog attribute `event=topic_acl_denied_keep_open` on
-// mount.go:691 that the V14 e2e test asserts against. This pseudo-version
-// resolves into a real `v0.10.1` pin once the livetemplate Phase-6 PR merges
-// and `release.sh` cuts v0.10.1. Matches the Phase-4/Phase-5 cross-repo
-// dependency-resolution pattern documented in
-// docs/proposals/broadcast-action-redesign-proposal/learnings/phase-4.md
-// (Deviation 3: "committed-`replace`-resolved-by-pin-bump shape"), upgraded
-// here from a worktree-local `replace` (which would not resolve on CI) to a
-// public-branch pseudo-version so the lvt PR's CI runs against the same
-// livetemplate commit the local Phase-6 worktree was tested against.
-require github.com/livetemplate/livetemplate v0.10.1-0.20260521170319-9b4c60c2ac5a
+// v0.10.1 introduces the structured slog attribute
+// `event=topic_acl_denied_keep_open` on the Mount Subscribe-denied
+// keep-open WARN; the V14 e2e test in e2e/topic_acl_error_envelope_v14_test.go
+// asserts against that key.
+require github.com/livetemplate/livetemplate v0.10.1
 
 replace github.com/livetemplate/lvt/components => ./components
 
