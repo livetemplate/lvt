@@ -348,9 +348,9 @@ Additionally, several features often listed as "missing" are already partially o
 
 ### 4.3 WebSocket Channels / PubSub
 
-**Priority**: Medium — lvt already has a solid WebSocket manager (gorilla/websocket with client management, transport-level broadcast, ping/pong), but it only sends to all clients indiscriminately. Topic-based routing is needed for multi-user features.
+**Priority**: Medium — lvt already has a solid WebSocket manager (gorilla/websocket with client management, transport-level broadcast, ping/pong), but it only sends to all connected clients. Topic-based routing is needed for multi-user features.
 
-> **Terminology note**: lvt's "broadcast" here is the transport-level fan-out (the WebSocket manager's send-to-all-clients primitive). It is *not* the same thing as the livetemplate framework's session-group-scoped `ctx.Publish(topic, ...)` peer fan-out, which routes by topic subscriptions and is opt-in per connection. Section 4.3 below adds the topic-routing layer on top of lvt's transport broadcast, narrowing the conceptual gap.
+> **Terminology note**: lvt's "broadcast" here is the transport-level fan-out (the WebSocket manager's send-to-all-clients primitive). It is *not* the same thing as the livetemplate framework's session-group-scoped `ctx.Publish(topic, ...)` peer fan-out, which routes by topic subscriptions and is opt-in per connection. The acceptance criteria below add the topic-routing layer on top of lvt's transport-level broadcast, closing this gap.
 
 **Current state**: ~75% complete. `WebSocketManager` with client registration, transport broadcast, JSON messaging, and proper cleanup all work. The gap is channel/topic routing.
 
