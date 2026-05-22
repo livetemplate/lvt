@@ -352,7 +352,7 @@ Additionally, several features often listed as "missing" are already partially o
 
 > **Terminology note**: lvt's "broadcast" here is the transport-level fan-out (the WebSocket manager's send-to-all-clients primitive). It is *not* the same thing as the livetemplate framework's `ctx.Publish(topic, ...)`, which routes messages to topic subscribers and is opt-in per connection. The acceptance criteria below add the topic-routing layer on top of lvt's transport-level broadcast, closing the feature gap this section tracks.
 
-**Current state**: ~75% complete. `WebSocketManager` with client registration, transport broadcast, JSON messaging, and proper cleanup all work. The gap is channel/topic routing.
+**Current state**: ~75% complete. `WebSocketManager` with client registration, transport-level broadcast, JSON messaging, and proper cleanup all work. The gap is channel/topic routing.
 
 **What competitors offer**:
 - Phoenix: Channels with topics, presence tracking, distributed PubSub across nodes
