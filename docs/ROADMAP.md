@@ -348,9 +348,11 @@ Additionally, several features often listed as "missing" are already partially o
 
 ### 4.3 WebSocket Channels / PubSub
 
-**Priority**: Medium — lvt already has a solid WebSocket manager (gorilla/websocket with client management, broadcasting, ping/pong), but it only broadcasts to all clients. Topic-based routing is needed for multi-user features.
+**Priority**: Medium — lvt already has a solid WebSocket manager (gorilla/websocket with client management, transport-level broadcast, ping/pong), but it only sends to all connected clients. Topic-based routing is needed for multi-user features.
 
-**Current state**: ~75% complete. `WebSocketManager` with client registration, broadcast, JSON messaging, and proper cleanup all work. The gap is channel/topic routing.
+> **Terminology note**: lvt's "broadcast" here is the transport-level fan-out (the WebSocket manager's send-to-all-clients primitive). It is *not* the same thing as the livetemplate framework's `ctx.Publish(topic, ...)`, which routes messages to topic subscribers and is opt-in per connection. The acceptance criteria below add the topic-routing layer on top of lvt's transport-level broadcast, closing the feature gap this section tracks.
+
+**Current state**: ~75% complete. `WebSocketManager` with client registration, transport-level broadcast, JSON messaging, and proper cleanup all work. The gap is channel/topic routing.
 
 **What competitors offer**:
 - Phoenix: Channels with topics, presence tracking, distributed PubSub across nodes
@@ -360,7 +362,7 @@ Additionally, several features often listed as "missing" are already partially o
 **Acceptance Criteria**:
 - [ ] Topic/channel abstraction on top of existing WebSocket manager
 - [ ] Client can subscribe to specific channels (e.g., `room:123`, `user:456`)
-- [ ] Server-side broadcast to channel (only subscribers receive messages)
+- [ ] Server-side publish to channel (only subscribers receive messages)
 - [ ] Presence tracking (who's currently viewing a page/channel)
 - [ ] Private channels with authorization checks
 - [ ] Updated client-side JavaScript library to support channel subscriptions
