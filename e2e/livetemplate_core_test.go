@@ -2659,7 +2659,12 @@ func TestIssue414_WrapperInjection_HeadWithBodyDecoy(t *testing.T) {
 	// snapshotHTML below at failure time to reflect the post-click state.
 	var renderedHTML string
 	snapshotHTML := func() {
-		_ = chromedp.Run(ctx, chromedp.OuterHTML(`html`, &renderedHTML, chromedp.ByQuery))
+		// Best-effort: if ctx is already cancelled (e.g., test timeout),
+		// renderedHTML will hold its previous value and we log the cause
+		// so failure triage can tell stale-snapshot from fresh-snapshot.
+		if err := chromedp.Run(ctx, chromedp.OuterHTML(`html`, &renderedHTML, chromedp.ByQuery)); err != nil {
+			t.Logf("snapshotHTML: %v (renderedHTML may be stale)", err)
+		}
 	}
 
 	// Helper: dump observability on any subsequent failure. Closes over
@@ -2733,6 +2738,15 @@ func TestIssue414_WrapperInjection_HeadWithBodyDecoy(t *testing.T) {
 		snapshotHTML()
 		dumpDiagnostics("lvt-on:click never propagated (livetemplate#414 regression)")
 		t.Fatalf("click did not propagate to counter update: %v", err)
+	}
+
+	// Fail fast on unexpected JS exceptions or console errors that
+	// might have occurred even though the counter update succeeded —
+	// catches a class of silent regression where the patch lands but
+	// also throws asynchronously.
+	if consoleLog.HasErrors() {
+		dumpDiagnostics("unexpected JS errors during test")
+		t.Errorf("browser logged JS errors during test (see WS+console dumps above)")
 	}
 
 	t.Logf("✅ wrapper ancestor present, lvt-on:click fired through head decoy")
