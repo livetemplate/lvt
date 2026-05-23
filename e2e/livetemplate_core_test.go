@@ -2533,3 +2533,221 @@ func TestExplicitSubmitter_E2E(t *testing.T) {
 		t.Errorf("counter after delete: got %q, want %q", counterAfterDelete, "0")
 	}
 }
+
+// Issue414Controller / Issue414State drive the wrapper-injection regression
+// test below.
+type Issue414Controller struct{}
+
+type Issue414State struct {
+	Counter int
+}
+
+// Bump handles "bump" lvt-on:click events.
+func (c *Issue414Controller) Bump(state Issue414State, _ *livetemplate.Context) (Issue414State, error) {
+	state.Counter++
+	return state, nil
+}
+
+// TestIssue414_WrapperInjection_HeadWithBodyDecoy is the end-to-end regression
+// guard for livetemplate#414. It serves a full-HTML template whose <head>
+// contains a CSS comment with a literal "<body>" string — exactly the
+// pattern that previously caused the wrapper injection to mis-position
+// itself and silently break ALL lvt-on:* delegation. The test asserts:
+//
+//  1. The wrapper [data-lvt-id] element exists and is an ANCESTOR of the
+//     interactive button (i.e., wrapper is placed correctly in the DOM).
+//  2. The lvt-on:click handler actually fires end-to-end (counter increments
+//     after click). Before the fix this assertion would fail because the
+//     client-side `inWrapper` ancestor check would reject every click.
+//
+// Observability per CLAUDE.md e2e mandate: browser console + server logs +
+// the rendered HTML are all dumped on failure for fast triage.
+func TestIssue414_WrapperInjection_HeadWithBodyDecoy(t *testing.T) {
+	// Concurrency-safe server-log capture: the server goroutine writes via
+	// log.Printf while dumpDiagnostics reads from the test goroutine.
+	//
+	// NOTE: log.SetOutput is process-global, which is broader than ideal —
+	// any goroutine in the same test binary writing via the std log will
+	// also land in serverLogs for the test's duration. livetemplate itself
+	// uses slog (not std log), so the practical leakage is small and
+	// scoped to other tests' own log.Printf calls. The defer restores
+	// os.Stderr immediately when the test returns. Pattern matches
+	// TestExplicitSubmitter_E2E in this file. Do NOT add t.Parallel() to
+	// this test — global log capture is incompatible with parallel
+	// execution and would silently interleave or lose logs.
+	serverLogs := e2etest.NewSafeBuffer()
+	log.SetOutput(serverLogs)
+	defer log.SetOutput(os.Stderr)
+
+	controller := &Issue414Controller{}
+	state := &Issue414State{}
+
+	tmpl := livetemplate.Must(livetemplate.New("issue-414"))
+
+	// The {{.Counter}} directive forces the string-fallback wrapper-injection
+	// path. Two independent decoys exercise different parse contexts:
+	//   1. <style>...<body>...</style> — RAWTEXT content where text inside
+	//      a <style> tag would fool a naive strings.Index but is skipped
+	//      by html.Tokenizer.
+	//   2. <meta content="contains a <body literal"> — attribute-value
+	//      content, parsed differently from RAWTEXT but equally invisible
+	//      to a naive scan that doesn't track attribute boundaries.
+	// Both patterns were observed in the wild on the original bug report
+	// and must remain unescaped in the fixture so the regression test
+	// actually exercises the substring match.
+	templateStr := `<!DOCTYPE html>
+<html>
+<head>
+	<title>Issue 414 Regression</title>
+	<style>
+		/* layout sits between <body> and the footer */
+		body { font-family: sans-serif; }
+	</style>
+	<meta property="og:description" content="contains a <body literal">
+</head>
+<body>
+	<h1>Wrapper Regression Test</h1>
+	<p>Counter: <strong id="counter">{{.Counter}}</strong></p>
+	<button type="button" id="bump-btn" lvt-on:click="bump">Bump</button>
+	<script src="/client.js"></script>
+</body>
+</html>`
+
+	if _, err := tmpl.Parse(templateStr); err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+
+	mux := http.NewServeMux()
+	mux.Handle("/", tmpl.Handle(controller, livetemplate.AsState(state)))
+	mux.HandleFunc("/client.js", e2etest.ServeClientLibrary)
+
+	port, err := e2etest.GetFreePort()
+	if err != nil {
+		t.Fatalf("GetFreePort: %v", err)
+	}
+	server := &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: mux}
+	go func() {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Printf("Server error: %v", err)
+		}
+	}()
+	e2etest.WaitForServer(t, fmt.Sprintf("http://localhost:%d", port), 10*time.Second)
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := server.Shutdown(shutdownCtx); err != nil {
+			t.Logf("Server shutdown warning: %v", err)
+		}
+	}()
+
+	chromeCtx, cleanup := e2etest.SetupDockerChrome(t, 30*time.Second)
+	defer cleanup()
+	ctx := chromeCtx.Context
+
+	// Concurrency-safe browser-console capture via project helper; this also
+	// surfaces EventExceptionThrown that a manual EventConsoleAPICalled
+	// listener would miss.
+	consoleLog := e2etest.NewConsoleLogger()
+	consoleLog.Start(ctx)
+
+	// WebSocket frame capture — the click round-trips over WS; if delegation
+	// breaks, no frame is sent. WS frames are the smoking gun.
+	wsLog := e2etest.RecordWSFrames(ctx)
+
+	// Rendered DOM snapshot for failure diagnostics. Populated initially
+	// from inside the chromedp.Run sequence (pre-click) and refreshed by
+	// snapshotHTML below at failure time to reflect the post-click state.
+	var renderedHTML string
+	snapshotHTML := func() {
+		// Best-effort: if ctx is already cancelled (e.g., test timeout),
+		// renderedHTML will hold its previous value and we log the cause
+		// so failure triage can tell stale-snapshot from fresh-snapshot.
+		if err := chromedp.Run(ctx, chromedp.OuterHTML(`html`, &renderedHTML, chromedp.ByQuery)); err != nil {
+			t.Logf("snapshotHTML: %v (renderedHTML may be stale)", err)
+		}
+	}
+
+	// Helper: dump observability on any subsequent failure. Closes over
+	// all four capture sources for a consistent call-site contract.
+	dumpDiagnostics := func(label string) {
+		t.Logf("=== %s ===", label)
+		logs := consoleLog.GetLogs()
+		t.Logf("--- BROWSER CONSOLE (%d entries) ---", len(logs))
+		for _, e := range logs {
+			t.Logf("console [%s]> %s", e.Type, e.Message)
+		}
+		t.Logf("--- SERVER LOGS ---")
+		t.Logf("%s", serverLogs.String())
+		wsFrames := wsLog.GetMessages()
+		t.Logf("--- WEBSOCKET FRAMES (%d) ---", len(wsFrames))
+		for _, m := range wsFrames {
+			t.Logf("ws %s> %s", m.Direction, m.Data)
+		}
+		t.Logf("--- RENDERED HTML ---")
+		t.Logf("%s", renderedHTML)
+	}
+
+	url := e2etest.GetChromeTestURL(port)
+
+	var wrapperAncestorOK bool
+
+	// Segment 1: navigate, wait for WS connect, run the structural
+	// assertion, and snapshot the pre-click DOM. Splitting click+wait
+	// into Segment 2 lets the click-propagation failure carry a more
+	// specific diagnostic label than the generic "chromedp.Run failed".
+	if err := chromedp.Run(ctx,
+		chromedp.Navigate(url),
+		chromedp.WaitVisible(`#bump-btn`, chromedp.ByID),
+		// Wait for the framework's "WS connected" signal — data-lvt-loading
+		// is set server-side and cleared by the client only AFTER the WS
+		// handshake completes. The window.liveTemplateClient defined check
+		// fires too early (after the script tag evaluates but before the
+		// socket is open), so a fast click could be swallowed silently.
+		// Mirrors the pattern documented in TestExplicitSubmitter_E2E.
+		e2etest.WaitFor(`(() => {
+			const w = document.querySelector('[data-lvt-id]');
+			return w && !w.hasAttribute('data-lvt-loading');
+		})()`, 5*time.Second),
+		// Assertion 1: the bump button has a [data-lvt-id] ancestor —
+		// the canonical structural check the client uses for inWrapper.
+		chromedp.Evaluate(
+			`document.getElementById('bump-btn').closest('[data-lvt-id]') !== null`,
+			&wrapperAncestorOK,
+		),
+		chromedp.OuterHTML(`html`, &renderedHTML, chromedp.ByQuery),
+	); err != nil {
+		snapshotHTML()
+		dumpDiagnostics("setup / structural-check phase failed")
+		t.Fatalf("chromedp.Run (setup): %v", err)
+	}
+
+	if !wrapperAncestorOK {
+		dumpDiagnostics("wrapper ancestor missing (livetemplate#414 regression)")
+		t.Fatalf("bump-btn has no [data-lvt-id] ancestor — wrapper was mis-injected (livetemplate#414)")
+	}
+
+	// Segment 2: click and wait for the counter to reach "1". A failure
+	// here (WaitFor timeout) means the click was dropped or the WS patch
+	// didn't apply — the canonical #414 symptom. The WaitFor itself is
+	// the assertion; no follow-up text comparison is needed because a
+	// successful WaitFor proves the DOM already shows "1".
+	if err := chromedp.Run(ctx,
+		chromedp.Click(`#bump-btn`, chromedp.ByID),
+		e2etest.WaitFor(`document.getElementById('counter').textContent === '1'`, 3*time.Second),
+	); err != nil {
+		snapshotHTML()
+		dumpDiagnostics("lvt-on:click never propagated (livetemplate#414 regression)")
+		t.Fatalf("click did not propagate to counter update: %v", err)
+	}
+
+	// Fail fast on unexpected JS exceptions or console errors that
+	// might have occurred even though the counter update succeeded —
+	// catches a class of silent regression where the patch lands but
+	// also throws asynchronously.
+	if consoleLog.HasErrors() {
+		dumpDiagnostics("unexpected JS errors during test")
+		t.Errorf("browser logged JS errors during test (see WS+console dumps above)")
+	}
+
+	t.Logf("✅ wrapper ancestor present, lvt-on:click fired through head decoy")
+}

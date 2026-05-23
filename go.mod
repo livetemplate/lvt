@@ -2,11 +2,11 @@ module github.com/livetemplate/lvt
 
 go 1.26.0
 
-// v0.10.1 introduces the structured slog attribute
-// `event=topic_acl_denied_keep_open` on the Mount Subscribe-denied
-// keep-open WARN; the V14 e2e test in e2e/topic_acl_error_envelope_v14_test.go
-// asserts against that key.
-require github.com/livetemplate/livetemplate v0.10.1
+// v0.11.1 ships the html.Tokenizer-based wrapper injection fix
+// (livetemplate#414); the chromedp E2E test in
+// e2e/livetemplate_core_test.go (TestIssue414_WrapperInjection_HeadWithBodyDecoy)
+// requires this version to assert the fix end-to-end.
+require github.com/livetemplate/livetemplate v0.11.1
 
 replace github.com/livetemplate/lvt/components => ./components
 
