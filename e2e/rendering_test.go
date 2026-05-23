@@ -886,10 +886,14 @@ func TestRendering_WebSocket_Reconnect(t *testing.T) {
 		// Verify client is loaded (WebSocket behavior depends on having a real server)
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			var clientLoaded bool
-			chromedp.Evaluate(`(() => {
+			if err := chromedp.Evaluate(`(() => {
 				const w = document.querySelector('[data-lvt-id]');
-				return w !== null && !w.hasAttribute('data-lvt-loading');
-			})()`, &clientLoaded).Do(ctx)
+				const client = window.liveTemplateClient;
+				const ready = typeof client?.isReady === 'function' ? client.isReady() : false;
+				return w !== null && !w.hasAttribute('data-lvt-loading') && ready;
+			})()`, &clientLoaded).Do(ctx); err != nil {
+				return fmt.Errorf("failed to evaluate client ready state: %w", err)
+			}
 			if !clientLoaded {
 				return fmt.Errorf("client not loaded")
 			}

@@ -192,7 +192,9 @@ func TestModalFunctionality(t *testing.T) {
 			var clientLoaded bool
 			if err := chromedp.Evaluate(`(() => {
 				const w = document.querySelector('[data-lvt-id]');
-				return w !== null && !w.hasAttribute('data-lvt-loading');
+				const client = window.liveTemplateClient;
+				const ready = typeof client?.isReady === 'function' ? client.isReady() : false;
+				return w !== null && !w.hasAttribute('data-lvt-loading') && ready;
 			})()`, &clientLoaded).Do(ctx); err != nil {
 				return fmt.Errorf("failed to check client: %v", err)
 			}
