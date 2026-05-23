@@ -2563,9 +2563,10 @@ func (c *Issue414Controller) Bump(state Issue414State, _ *livetemplate.Context) 
 // Observability per CLAUDE.md e2e mandate: browser console + server logs +
 // the rendered HTML are all dumped on failure for fast triage.
 func TestIssue414_WrapperInjection_HeadWithBodyDecoy(t *testing.T) {
-	// Server-side log capture for failure diagnostics.
-	var serverLogs bytes.Buffer
-	log.SetOutput(&serverLogs)
+	// Concurrency-safe server-log capture: the server goroutine writes via
+	// log.Printf while dumpDiagnostics reads from the test goroutine.
+	serverLogs := e2etest.NewSafeBuffer()
+	log.SetOutput(serverLogs)
 	defer log.SetOutput(os.Stderr)
 
 	controller := &Issue414Controller{}
@@ -2627,26 +2628,32 @@ func TestIssue414_WrapperInjection_HeadWithBodyDecoy(t *testing.T) {
 	defer cleanup()
 	ctx := chromeCtx.Context
 
-	// Browser console capture.
-	var consoleLines []string
-	chromedp.ListenTarget(ctx, func(ev interface{}) {
-		if api, ok := ev.(*runtime.EventConsoleAPICalled); ok {
-			for _, arg := range api.Args {
-				consoleLines = append(consoleLines, string(arg.Value))
-			}
-		}
-	})
+	// Concurrency-safe browser-console capture via project helper; this also
+	// surfaces EventExceptionThrown that a manual EventConsoleAPICalled
+	// listener would miss.
+	consoleLog := e2etest.NewConsoleLogger()
+	consoleLog.Start(ctx)
 
 	// WebSocket frame capture — the click round-trips over WS; if delegation
 	// breaks, no frame is sent. WS frames are the smoking gun.
 	wsLog := e2etest.RecordWSFrames(ctx)
 
-	// Helper: dump observability on any subsequent failure.
-	dumpDiagnostics := func(label string, renderedHTML string) {
+	// Rendered DOM snapshot for failure diagnostics. Populated initially
+	// from inside the chromedp.Run sequence (pre-click) and refreshed by
+	// snapshotHTML below at failure time to reflect the post-click state.
+	var renderedHTML string
+	snapshotHTML := func() {
+		_ = chromedp.Run(ctx, chromedp.OuterHTML(`html`, &renderedHTML, chromedp.ByQuery))
+	}
+
+	// Helper: dump observability on any subsequent failure. Closes over
+	// all four capture sources for a consistent call-site contract.
+	dumpDiagnostics := func(label string) {
 		t.Logf("=== %s ===", label)
-		t.Logf("--- BROWSER CONSOLE (%d lines) ---", len(consoleLines))
-		for _, line := range consoleLines {
-			t.Logf("console> %s", line)
+		logs := consoleLog.GetLogs()
+		t.Logf("--- BROWSER CONSOLE (%d entries) ---", len(logs))
+		for _, e := range logs {
+			t.Logf("console [%s]> %s", e.Type, e.Message)
 		}
 		t.Logf("--- SERVER LOGS ---")
 		t.Logf("%s", serverLogs.String())
@@ -2663,13 +2670,6 @@ func TestIssue414_WrapperInjection_HeadWithBodyDecoy(t *testing.T) {
 
 	var wrapperAncestorOK bool
 	var counterBefore, counterAfter string
-	var renderedHTML string
-
-	// Helper: snapshot the current DOM into renderedHTML, swallowing the
-	// chromedp error (best-effort capture for failure diagnostics).
-	snapshotHTML := func() {
-		_ = chromedp.Run(ctx, chromedp.OuterHTML(`html`, &renderedHTML, chromedp.ByQuery))
-	}
 
 	err = chromedp.Run(ctx,
 		chromedp.Navigate(url),
@@ -2700,21 +2700,21 @@ func TestIssue414_WrapperInjection_HeadWithBodyDecoy(t *testing.T) {
 	)
 	if err != nil {
 		snapshotHTML()
-		dumpDiagnostics("chromedp Run failed", renderedHTML)
+		dumpDiagnostics("chromedp Run failed")
 		t.Fatalf("chromedp.Run: %v", err)
 	}
 
 	if !wrapperAncestorOK {
-		dumpDiagnostics("wrapper ancestor missing (livetemplate#414 regression)", renderedHTML)
+		dumpDiagnostics("wrapper ancestor missing (livetemplate#414 regression)")
 		t.Fatalf("bump-btn has no [data-lvt-id] ancestor — wrapper was mis-injected (livetemplate#414)")
 	}
 	if counterBefore != "0" {
-		dumpDiagnostics("unexpected initial counter", renderedHTML)
+		dumpDiagnostics("unexpected initial counter")
 		t.Fatalf("initial counter: got %q, want %q", counterBefore, "0")
 	}
 	if counterAfter != "1" {
 		snapshotHTML()
-		dumpDiagnostics("lvt-on:click never propagated (livetemplate#414 regression)", renderedHTML)
+		dumpDiagnostics("lvt-on:click never propagated (livetemplate#414 regression)")
 		t.Fatalf("counter after click: got %q, want %q — click handler was silently dropped", counterAfter, "1")
 	}
 
