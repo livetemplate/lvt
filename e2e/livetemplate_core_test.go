@@ -2569,7 +2569,7 @@ func TestIssue414_WrapperInjection_HeadWithBodyDecoy(t *testing.T) {
 	defer log.SetOutput(os.Stderr)
 
 	controller := &Issue414Controller{}
-	state := &Issue414State{Counter: 0}
+	state := &Issue414State{}
 
 	tmpl := livetemplate.Must(livetemplate.New("issue-414"))
 
@@ -2665,10 +2665,25 @@ func TestIssue414_WrapperInjection_HeadWithBodyDecoy(t *testing.T) {
 	var counterBefore, counterAfter string
 	var renderedHTML string
 
+	// Helper: snapshot the current DOM into renderedHTML, swallowing the
+	// chromedp error (best-effort capture for failure diagnostics).
+	snapshotHTML := func() {
+		_ = chromedp.Run(ctx, chromedp.OuterHTML(`html`, &renderedHTML, chromedp.ByQuery))
+	}
+
 	err = chromedp.Run(ctx,
 		chromedp.Navigate(url),
 		chromedp.WaitVisible(`#bump-btn`, chromedp.ByID),
-		e2etest.WaitFor(`typeof window.liveTemplateClient !== 'undefined'`, 5*time.Second),
+		// Wait for the framework's "WS connected" signal — data-lvt-loading
+		// is set server-side and cleared by the client only AFTER the WS
+		// handshake completes. The window.liveTemplateClient defined check
+		// fires too early (after the script tag evaluates but before the
+		// socket is open), so a fast click could be swallowed silently.
+		// Mirrors the pattern documented in TestExplicitSubmitter_E2E.
+		e2etest.WaitFor(`(() => {
+			const w = document.querySelector('[data-lvt-id]');
+			return w && !w.hasAttribute('data-lvt-loading');
+		})()`, 5*time.Second),
 		// Assertion 1: the bump button has a [data-lvt-id] ancestor —
 		// the canonical structural check the client uses for inWrapper.
 		chromedp.Evaluate(
@@ -2684,6 +2699,7 @@ func TestIssue414_WrapperInjection_HeadWithBodyDecoy(t *testing.T) {
 		chromedp.Text(`#counter`, &counterAfter, chromedp.ByID),
 	)
 	if err != nil {
+		snapshotHTML()
 		dumpDiagnostics("chromedp Run failed", renderedHTML)
 		t.Fatalf("chromedp.Run: %v", err)
 	}
@@ -2697,6 +2713,7 @@ func TestIssue414_WrapperInjection_HeadWithBodyDecoy(t *testing.T) {
 		t.Fatalf("initial counter: got %q, want %q", counterBefore, "0")
 	}
 	if counterAfter != "1" {
+		snapshotHTML()
 		dumpDiagnostics("lvt-on:click never propagated (livetemplate#414 regression)", renderedHTML)
 		t.Fatalf("counter after click: got %q, want %q — click handler was silently dropped", counterAfter, "1")
 	}
