@@ -1473,7 +1473,7 @@ func TestFocusPreservation(t *testing.T) {
 		chromedp.Navigate(url),
 		chromedp.WaitVisible(`#username`, chromedp.ByID),
 		chromedp.WaitVisible(`#increment-btn`, chromedp.ByID),
-		e2etest.WaitFor(`typeof window.liveTemplateClient !== 'undefined'`, 5*time.Second),
+		e2etest.WaitForWebSocketReady(5*time.Second),
 		chromedp.SendKeys(`#username`, "HelloWorld", chromedp.ByID),
 		chromedp.Evaluate(`
 			(function() {
@@ -1599,7 +1599,7 @@ func TestFocusPreservationMultipleInputs(t *testing.T) {
 	err = chromedp.Run(ctx,
 		chromedp.Navigate(url),
 		chromedp.WaitVisible(`#notes`, chromedp.ByID),
-		e2etest.WaitFor(`typeof window.liveTemplateClient !== 'undefined'`, 5*time.Second),
+		e2etest.WaitForWebSocketReady(5*time.Second),
 		chromedp.SendKeys(`#notes`, "First line\nSecond line", chromedp.ByID),
 		chromedp.Evaluate(`
 			(function() {

@@ -97,7 +97,7 @@ func waitForClient() chromedp.Action {
 		}
 
 		// Wait for client instance
-		return waitForDOM(`typeof window.liveTemplateClient !== 'undefined'`, 5*time.Second).Do(ctx)
+		return waitForWebSocketReady(5 * time.Second).Do(ctx)
 	})
 }
 
@@ -883,10 +883,19 @@ func TestRendering_WebSocket_Reconnect(t *testing.T) {
 		chromedp.WaitReady("body"),
 		waitForClient(),
 
-		// Verify client is loaded (WebSocket behavior depends on having a real server)
+		// Verify client is loaded — mirrors the exact three-part condition
+		// used by WaitForWebSocketReady (testing/chrome.go:821): wrapper
+		// present + client object exists + client.isReady() returns true.
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			var clientLoaded bool
-			chromedp.Evaluate(`typeof window.liveTemplateClient !== 'undefined'`, &clientLoaded).Do(ctx)
+			if err := chromedp.Evaluate(`(() => {
+				const w = document.querySelector('[data-lvt-id]');
+				const client = window.liveTemplateClient;
+				const ready = typeof client?.isReady === 'function' ? client.isReady() : false;
+				return w !== null && client !== undefined && ready;
+			})()`, &clientLoaded).Do(ctx); err != nil {
+				return fmt.Errorf("failed to evaluate client ready state: %w", err)
+			}
 			if !clientLoaded {
 				return fmt.Errorf("client not loaded")
 			}

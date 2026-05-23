@@ -173,7 +173,7 @@ func TestModalFunctionality(t *testing.T) {
 			`, nil).Do(ctx)
 		}),
 		// Wait for client to fully initialize
-		waitFor(`typeof window.liveTemplateClient !== 'undefined'`, 15*time.Second),
+		waitForWebSocketReady(15*time.Second),
 
 		// Test 1: Dialog should be closed initially
 		chromedp.ActionFunc(func(ctx context.Context) error {
@@ -187,10 +187,17 @@ func TestModalFunctionality(t *testing.T) {
 			return nil
 		}),
 
-		// Test 1.5: Check if client loaded
+		// Test 1.5: Check if client loaded — mirrors the exact three-part
+		// condition used by WaitForWebSocketReady (testing/chrome.go:821):
+		// wrapper present + client object exists + client.isReady() returns true.
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			var clientLoaded bool
-			if err := chromedp.Evaluate(`typeof window.liveTemplateClient !== 'undefined'`, &clientLoaded).Do(ctx); err != nil {
+			if err := chromedp.Evaluate(`(() => {
+				const w = document.querySelector('[data-lvt-id]');
+				const client = window.liveTemplateClient;
+				const ready = typeof client?.isReady === 'function' ? client.isReady() : false;
+				return w !== null && client !== undefined && ready;
+			})()`, &clientLoaded).Do(ctx); err != nil {
 				return fmt.Errorf("failed to check client: %v", err)
 			}
 			if !clientLoaded {
