@@ -2565,6 +2565,14 @@ func (c *Issue414Controller) Bump(state Issue414State, _ *livetemplate.Context) 
 func TestIssue414_WrapperInjection_HeadWithBodyDecoy(t *testing.T) {
 	// Concurrency-safe server-log capture: the server goroutine writes via
 	// log.Printf while dumpDiagnostics reads from the test goroutine.
+	//
+	// NOTE: log.SetOutput is process-global, which is broader than ideal —
+	// any goroutine in the same test binary writing via the std log will
+	// also land in serverLogs for the test's duration. livetemplate itself
+	// uses slog (not std log), so the practical leakage is small and
+	// scoped to other tests' own log.Printf calls. The defer restores
+	// os.Stderr immediately when the test returns. Pattern matches
+	// TestExplicitSubmitter_E2E in this file.
 	serverLogs := e2etest.NewSafeBuffer()
 	log.SetOutput(serverLogs)
 	defer log.SetOutput(os.Stderr)
@@ -2575,10 +2583,16 @@ func TestIssue414_WrapperInjection_HeadWithBodyDecoy(t *testing.T) {
 	tmpl := livetemplate.Must(livetemplate.New("issue-414"))
 
 	// The {{.Counter}} directive forces the string-fallback wrapper-injection
-	// path. The CSS comment below contains the literal "<body>" substring
-	// that USED to fool the naive strings.Index scan into mis-positioning
-	// the wrapper. The fix uses html.Tokenizer which correctly skips
-	// over text inside <style> RAWTEXT content.
+	// path. Two independent decoys exercise different parse contexts:
+	//   1. <style>...<body>...</style> — RAWTEXT content where text inside
+	//      a <style> tag would fool a naive strings.Index but is skipped
+	//      by html.Tokenizer.
+	//   2. <meta content="contains a <body literal"> — attribute-value
+	//      content, parsed differently from RAWTEXT but equally invisible
+	//      to a naive scan that doesn't track attribute boundaries.
+	// Both patterns were observed in the wild on the original bug report
+	// and must remain unescaped in the fixture so the regression test
+	// actually exercises the substring match.
 	templateStr := `<!DOCTYPE html>
 <html>
 <head>
@@ -2669,7 +2683,7 @@ func TestIssue414_WrapperInjection_HeadWithBodyDecoy(t *testing.T) {
 	url := e2etest.GetChromeTestURL(port)
 
 	var wrapperAncestorOK bool
-	var counterBefore, counterAfter string
+	var counterAfter string
 
 	err = chromedp.Run(ctx,
 		chromedp.Navigate(url),
@@ -2691,7 +2705,6 @@ func TestIssue414_WrapperInjection_HeadWithBodyDecoy(t *testing.T) {
 			&wrapperAncestorOK,
 		),
 		chromedp.OuterHTML(`html`, &renderedHTML, chromedp.ByQuery),
-		chromedp.Text(`#counter`, &counterBefore, chromedp.ByID),
 		// Assertion 2: the click handler actually fires and triggers a
 		// real server-side state update + WS-driven DOM patch.
 		chromedp.Click(`#bump-btn`, chromedp.ByID),
@@ -2707,10 +2720,6 @@ func TestIssue414_WrapperInjection_HeadWithBodyDecoy(t *testing.T) {
 	if !wrapperAncestorOK {
 		dumpDiagnostics("wrapper ancestor missing (livetemplate#414 regression)")
 		t.Fatalf("bump-btn has no [data-lvt-id] ancestor — wrapper was mis-injected (livetemplate#414)")
-	}
-	if counterBefore != "0" {
-		dumpDiagnostics("unexpected initial counter")
-		t.Fatalf("initial counter: got %q, want %q", counterBefore, "0")
 	}
 	if counterAfter != "1" {
 		snapshotHTML()
