@@ -173,7 +173,7 @@ func TestModalFunctionality(t *testing.T) {
 			`, nil).Do(ctx)
 		}),
 		// Wait for client to fully initialize
-		waitForWebSocketReady(15 * time.Second),
+		waitForWebSocketReady(15*time.Second),
 
 		// Test 1: Dialog should be closed initially
 		chromedp.ActionFunc(func(ctx context.Context) error {

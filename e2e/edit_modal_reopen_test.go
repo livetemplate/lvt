@@ -80,7 +80,7 @@ func TestEditModalReopenFix(t *testing.T) {
 		chromedp.WaitReady("body"),
 
 		// Wait for LiveTemplate client to initialize
-		waitForWebSocketReady(15 * time.Second),
+		waitForWebSocketReady(15*time.Second),
 	)
 	if err != nil {
 		t.Fatalf("Failed initial navigation: %v", err)
