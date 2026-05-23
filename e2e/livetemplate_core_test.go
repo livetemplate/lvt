@@ -2572,7 +2572,9 @@ func TestIssue414_WrapperInjection_HeadWithBodyDecoy(t *testing.T) {
 	// uses slog (not std log), so the practical leakage is small and
 	// scoped to other tests' own log.Printf calls. The defer restores
 	// os.Stderr immediately when the test returns. Pattern matches
-	// TestExplicitSubmitter_E2E in this file.
+	// TestExplicitSubmitter_E2E in this file. Do NOT add t.Parallel() to
+	// this test — global log capture is incompatible with parallel
+	// execution and would silently interleave or lose logs.
 	serverLogs := e2etest.NewSafeBuffer()
 	log.SetOutput(serverLogs)
 	defer log.SetOutput(os.Stderr)
@@ -2683,9 +2685,12 @@ func TestIssue414_WrapperInjection_HeadWithBodyDecoy(t *testing.T) {
 	url := e2etest.GetChromeTestURL(port)
 
 	var wrapperAncestorOK bool
-	var counterAfter string
 
-	err = chromedp.Run(ctx,
+	// Segment 1: navigate, wait for WS connect, run the structural
+	// assertion, and snapshot the pre-click DOM. Splitting click+wait
+	// into Segment 2 lets the click-propagation failure carry a more
+	// specific diagnostic label than the generic "chromedp.Run failed".
+	if err := chromedp.Run(ctx,
 		chromedp.Navigate(url),
 		chromedp.WaitVisible(`#bump-btn`, chromedp.ByID),
 		// Wait for the framework's "WS connected" signal — data-lvt-loading
@@ -2705,26 +2710,29 @@ func TestIssue414_WrapperInjection_HeadWithBodyDecoy(t *testing.T) {
 			&wrapperAncestorOK,
 		),
 		chromedp.OuterHTML(`html`, &renderedHTML, chromedp.ByQuery),
-		// Assertion 2: the click handler actually fires and triggers a
-		// real server-side state update + WS-driven DOM patch.
-		chromedp.Click(`#bump-btn`, chromedp.ByID),
-		e2etest.WaitFor(`document.getElementById('counter').textContent === '1'`, 3*time.Second),
-		chromedp.Text(`#counter`, &counterAfter, chromedp.ByID),
-	)
-	if err != nil {
+	); err != nil {
 		snapshotHTML()
-		dumpDiagnostics("chromedp Run failed")
-		t.Fatalf("chromedp.Run: %v", err)
+		dumpDiagnostics("setup / structural-check phase failed")
+		t.Fatalf("chromedp.Run (setup): %v", err)
 	}
 
 	if !wrapperAncestorOK {
 		dumpDiagnostics("wrapper ancestor missing (livetemplate#414 regression)")
 		t.Fatalf("bump-btn has no [data-lvt-id] ancestor — wrapper was mis-injected (livetemplate#414)")
 	}
-	if counterAfter != "1" {
+
+	// Segment 2: click and wait for the counter to reach "1". A failure
+	// here (WaitFor timeout) means the click was dropped or the WS patch
+	// didn't apply — the canonical #414 symptom. The WaitFor itself is
+	// the assertion; no follow-up text comparison is needed because a
+	// successful WaitFor proves the DOM already shows "1".
+	if err := chromedp.Run(ctx,
+		chromedp.Click(`#bump-btn`, chromedp.ByID),
+		e2etest.WaitFor(`document.getElementById('counter').textContent === '1'`, 3*time.Second),
+	); err != nil {
 		snapshotHTML()
 		dumpDiagnostics("lvt-on:click never propagated (livetemplate#414 regression)")
-		t.Fatalf("counter after click: got %q, want %q — click handler was silently dropped", counterAfter, "1")
+		t.Fatalf("click did not propagate to counter update: %v", err)
 	}
 
 	t.Logf("✅ wrapper ancestor present, lvt-on:click fired through head decoy")
