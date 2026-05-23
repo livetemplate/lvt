@@ -2533,3 +2533,173 @@ func TestExplicitSubmitter_E2E(t *testing.T) {
 		t.Errorf("counter after delete: got %q, want %q", counterAfterDelete, "0")
 	}
 }
+
+// Issue414Controller / Issue414State drive the wrapper-injection regression
+// test below.
+type Issue414Controller struct{}
+
+type Issue414State struct {
+	Counter int
+}
+
+// Bump handles "bump" lvt-on:click events.
+func (c *Issue414Controller) Bump(state Issue414State, _ *livetemplate.Context) (Issue414State, error) {
+	state.Counter++
+	return state, nil
+}
+
+// TestIssue414_WrapperInjection_HeadWithBodyDecoy is the end-to-end regression
+// guard for livetemplate#414. It serves a full-HTML template whose <head>
+// contains a CSS comment with a literal "<body>" string — exactly the
+// pattern that previously caused the wrapper injection to mis-position
+// itself and silently break ALL lvt-on:* delegation. The test asserts:
+//
+//  1. The wrapper [data-lvt-id] element exists and is an ANCESTOR of the
+//     interactive button (i.e., wrapper is placed correctly in the DOM).
+//  2. The lvt-on:click handler actually fires end-to-end (counter increments
+//     after click). Before the fix this assertion would fail because the
+//     client-side `inWrapper` ancestor check would reject every click.
+//
+// Observability per CLAUDE.md e2e mandate: browser console + server logs +
+// the rendered HTML are all dumped on failure for fast triage.
+func TestIssue414_WrapperInjection_HeadWithBodyDecoy(t *testing.T) {
+	// Server-side log capture for failure diagnostics.
+	var serverLogs bytes.Buffer
+	log.SetOutput(&serverLogs)
+	defer log.SetOutput(os.Stderr)
+
+	controller := &Issue414Controller{}
+	state := &Issue414State{Counter: 0}
+
+	tmpl := livetemplate.Must(livetemplate.New("issue-414"))
+
+	// The {{.Counter}} directive forces the string-fallback wrapper-injection
+	// path. The CSS comment below contains the literal "<body>" substring
+	// that USED to fool the naive strings.Index scan into mis-positioning
+	// the wrapper. The fix uses html.Tokenizer which correctly skips
+	// over text inside <style> RAWTEXT content.
+	templateStr := `<!DOCTYPE html>
+<html>
+<head>
+	<title>Issue 414 Regression</title>
+	<style>
+		/* layout sits between <body> and the footer */
+		body { font-family: sans-serif; }
+	</style>
+	<meta property="og:description" content="contains a <body literal">
+</head>
+<body>
+	<h1>Wrapper Regression Test</h1>
+	<p>Counter: <strong id="counter">{{.Counter}}</strong></p>
+	<button type="button" id="bump-btn" lvt-on:click="bump">Bump</button>
+	<script src="/client.js"></script>
+</body>
+</html>`
+
+	if _, err := tmpl.Parse(templateStr); err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+
+	mux := http.NewServeMux()
+	mux.Handle("/", tmpl.Handle(controller, livetemplate.AsState(state)))
+	mux.HandleFunc("/client.js", e2etest.ServeClientLibrary)
+
+	port, err := e2etest.GetFreePort()
+	if err != nil {
+		t.Fatalf("GetFreePort: %v", err)
+	}
+	server := &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: mux}
+	go func() {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Printf("Server error: %v", err)
+		}
+	}()
+	e2etest.WaitForServer(t, fmt.Sprintf("http://localhost:%d", port), 10*time.Second)
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := server.Shutdown(shutdownCtx); err != nil {
+			t.Logf("Server shutdown warning: %v", err)
+		}
+	}()
+
+	chromeCtx, cleanup := e2etest.SetupDockerChrome(t, 30*time.Second)
+	defer cleanup()
+	ctx := chromeCtx.Context
+
+	// Browser console capture.
+	var consoleLines []string
+	chromedp.ListenTarget(ctx, func(ev interface{}) {
+		if api, ok := ev.(*runtime.EventConsoleAPICalled); ok {
+			for _, arg := range api.Args {
+				consoleLines = append(consoleLines, string(arg.Value))
+			}
+		}
+	})
+
+	// WebSocket frame capture — the click round-trips over WS; if delegation
+	// breaks, no frame is sent. WS frames are the smoking gun.
+	wsLog := e2etest.RecordWSFrames(ctx)
+
+	// Helper: dump observability on any subsequent failure.
+	dumpDiagnostics := func(label string, renderedHTML string) {
+		t.Logf("=== %s ===", label)
+		t.Logf("--- BROWSER CONSOLE (%d lines) ---", len(consoleLines))
+		for _, line := range consoleLines {
+			t.Logf("console> %s", line)
+		}
+		t.Logf("--- SERVER LOGS ---")
+		t.Logf("%s", serverLogs.String())
+		wsFrames := wsLog.GetMessages()
+		t.Logf("--- WEBSOCKET FRAMES (%d) ---", len(wsFrames))
+		for _, m := range wsFrames {
+			t.Logf("ws %s> %s", m.Direction, m.Data)
+		}
+		t.Logf("--- RENDERED HTML ---")
+		t.Logf("%s", renderedHTML)
+	}
+
+	url := e2etest.GetChromeTestURL(port)
+
+	var wrapperAncestorOK bool
+	var counterBefore, counterAfter string
+	var renderedHTML string
+
+	err = chromedp.Run(ctx,
+		chromedp.Navigate(url),
+		chromedp.WaitVisible(`#bump-btn`, chromedp.ByID),
+		e2etest.WaitFor(`typeof window.liveTemplateClient !== 'undefined'`, 5*time.Second),
+		// Assertion 1: the bump button has a [data-lvt-id] ancestor —
+		// the canonical structural check the client uses for inWrapper.
+		chromedp.Evaluate(
+			`document.getElementById('bump-btn').closest('[data-lvt-id]') !== null`,
+			&wrapperAncestorOK,
+		),
+		chromedp.OuterHTML(`html`, &renderedHTML, chromedp.ByQuery),
+		chromedp.Text(`#counter`, &counterBefore, chromedp.ByID),
+		// Assertion 2: the click handler actually fires and triggers a
+		// real server-side state update + WS-driven DOM patch.
+		chromedp.Click(`#bump-btn`, chromedp.ByID),
+		e2etest.WaitFor(`document.getElementById('counter').textContent === '1'`, 3*time.Second),
+		chromedp.Text(`#counter`, &counterAfter, chromedp.ByID),
+	)
+	if err != nil {
+		dumpDiagnostics("chromedp Run failed", renderedHTML)
+		t.Fatalf("chromedp.Run: %v", err)
+	}
+
+	if !wrapperAncestorOK {
+		dumpDiagnostics("wrapper ancestor missing (livetemplate#414 regression)", renderedHTML)
+		t.Fatalf("bump-btn has no [data-lvt-id] ancestor — wrapper was mis-injected (livetemplate#414)")
+	}
+	if counterBefore != "0" {
+		dumpDiagnostics("unexpected initial counter", renderedHTML)
+		t.Fatalf("initial counter: got %q, want %q", counterBefore, "0")
+	}
+	if counterAfter != "1" {
+		dumpDiagnostics("lvt-on:click never propagated (livetemplate#414 regression)", renderedHTML)
+		t.Fatalf("counter after click: got %q, want %q — click handler was silently dropped", counterAfter, "1")
+	}
+
+	t.Logf("✅ wrapper ancestor present, lvt-on:click fired through head decoy")
+}
