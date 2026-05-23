@@ -173,7 +173,7 @@ func TestModalFunctionality(t *testing.T) {
 			`, nil).Do(ctx)
 		}),
 		// Wait for client to fully initialize
-		waitFor(`typeof window.liveTemplateClient !== 'undefined'`, 15*time.Second),
+		waitForWebSocketReady(15 * time.Second),
 
 		// Test 1: Dialog should be closed initially
 		chromedp.ActionFunc(func(ctx context.Context) error {
@@ -190,7 +190,10 @@ func TestModalFunctionality(t *testing.T) {
 		// Test 1.5: Check if client loaded
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			var clientLoaded bool
-			if err := chromedp.Evaluate(`typeof window.liveTemplateClient !== 'undefined'`, &clientLoaded).Do(ctx); err != nil {
+			if err := chromedp.Evaluate(`(() => {
+				const w = document.querySelector('[data-lvt-id]');
+				return w !== null && !w.hasAttribute('data-lvt-loading');
+			})()`, &clientLoaded).Do(ctx); err != nil {
 				return fmt.Errorf("failed to check client: %v", err)
 			}
 			if !clientLoaded {

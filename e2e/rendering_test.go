@@ -97,7 +97,7 @@ func waitForClient() chromedp.Action {
 		}
 
 		// Wait for client instance
-		return waitForDOM(`typeof window.liveTemplateClient !== 'undefined'`, 5*time.Second).Do(ctx)
+		return waitForWebSocketReady(5 * time.Second).Do(ctx)
 	})
 }
 
@@ -886,7 +886,10 @@ func TestRendering_WebSocket_Reconnect(t *testing.T) {
 		// Verify client is loaded (WebSocket behavior depends on having a real server)
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			var clientLoaded bool
-			chromedp.Evaluate(`typeof window.liveTemplateClient !== 'undefined'`, &clientLoaded).Do(ctx)
+			chromedp.Evaluate(`(() => {
+				const w = document.querySelector('[data-lvt-id]');
+				return w !== null && !w.hasAttribute('data-lvt-loading');
+			})()`, &clientLoaded).Do(ctx)
 			if !clientLoaded {
 				return fmt.Errorf("client not loaded")
 			}
