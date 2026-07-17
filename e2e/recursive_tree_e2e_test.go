@@ -53,6 +53,33 @@ func (c *fileTreeController) AddDeepFile(state fileTreeState, _ *livetemplate.Co
 	return state, nil
 }
 
+// renameDeepNode walks to a node by path and sets its Name (leaving Path — the
+// data-key — unchanged), returning true if found.
+func renameDeepNode(n *fileTreeNode, path, name string) bool {
+	if n.Path == path {
+		n.Name = name
+		return true
+	}
+	for i := range n.Children {
+		if renameDeepNode(&n.Children[i], path, name) {
+			return true
+		}
+	}
+	return false
+}
+
+// RenameDeep handles lvt-on:click="renameDeep": rename the deepest node
+// (/src/util/hash.go, three levels down) WITHOUT changing its Path. Because the
+// data-key stays stable, this is a pure content edit — the diff engine must scope
+// it to a nested chain of ["u", key, …] ops down to that single leaf (statics-free,
+// no ancestor branch re-sent), and the client must apply it by morphing the
+// existing <li> in place rather than rebuilding the branch. This is the payload +
+// DOM-preservation win under test.
+func (c *fileTreeController) RenameDeep(state fileTreeState, _ *livetemplate.Context) (fileTreeState, error) {
+	renameDeepNode(&state.Root, "/src/util/hash.go", "hash-RENAMED.go")
+	return state, nil
+}
+
 // recursiveTreeE2ETemplate is a full HTML document whose body renders a recursive
 // file tree via a self-referential {{define "treeNode"}} and a button that mutates
 // a deep branch. Serving a full document exercises wrapper injection around a
@@ -65,6 +92,7 @@ const recursiveTreeE2ETemplate = `<!DOCTYPE html>
 <h1>File Tree</h1>
 <ul id="tree">{{template "treeNode" .Root}}</ul>
 <button type="button" id="add-btn" lvt-on:click="addDeepFile">Add file to /src</button>
+<button type="button" id="rename-btn" lvt-on:click="renameDeep">Rename deep file</button>
 <script src="/client.js"></script>
 </body>
 </html>`
@@ -226,6 +254,77 @@ func TestRecursiveTemplate_E2E(t *testing.T) {
 	if len(wsLog.GetMessages()) == 0 {
 		dumpDiagnostics("no WebSocket frames captured")
 		t.Fatalf("expected WebSocket frames for the reactive update, got none")
+	}
+
+	// Phase 3: a DEEP RENAME (content edit on /src/util/hash.go, three levels down,
+	// keeping its Path/data-key stable) exercises the per-leaf ["u"] chain. We mark
+	// two DOM nodes with a JS property BEFORE the click: the node that will be
+	// renamed, and an unaffected sibling (/src/main.go). A per-leaf update morphs the
+	// existing <li> in place, so BOTH markers must survive — proof the branch was not
+	// rebuilt. A branch re-send would recreate these elements and drop the markers.
+	wsBefore := len(wsLog.GetMessages())
+	var renamedMarkerSurvived, siblingMarkerSurvived, renamedTextUpdated bool
+	if err := chromedp.Run(ctx,
+		chromedp.Evaluate(`(() => {
+			document.querySelector('li[data-key="/src/util/hash.go"]').__lvtMark = 'RENAMED_NODE';
+			document.querySelector('li[data-key="/src/main.go"]').__lvtMark = 'SIBLING_NODE';
+			return true;
+		})()`, nil),
+		chromedp.Click(`#rename-btn`, chromedp.ByID),
+		// Wait for the renamed name to appear in the SAME data-key node.
+		e2etest.WaitFor(`(() => {
+			const li = document.querySelector('li[data-key="/src/util/hash.go"]');
+			return li && li.querySelector('.node-name').textContent === 'hash-RENAMED.go';
+		})()`, 5*time.Second),
+		chromedp.Evaluate(`document.querySelector('li[data-key="/src/util/hash.go"]').querySelector('.node-name').textContent === 'hash-RENAMED.go'`, &renamedTextUpdated),
+		// The renamed <li> element itself was morphed in place (marker survives).
+		chromedp.Evaluate(`document.querySelector('li[data-key="/src/util/hash.go"]').__lvtMark === 'RENAMED_NODE'`, &renamedMarkerSurvived),
+		// The unaffected sibling <li> was untouched (marker survives).
+		chromedp.Evaluate(`document.querySelector('li[data-key="/src/main.go"]').__lvtMark === 'SIBLING_NODE'`, &siblingMarkerSurvived),
+		chromedp.OuterHTML(`html`, &renderedHTML, chromedp.ByQuery),
+	); err != nil {
+		snapshotHTML()
+		dumpDiagnostics("deep-rename phase failed")
+		t.Fatalf("chromedp.Run (deep rename): %v", err)
+	}
+	if !renamedTextUpdated {
+		dumpDiagnostics("deep rename did not update the node text")
+		t.Fatalf("deep rename did not update /src/util/hash.go's displayed name")
+	}
+	if !renamedMarkerSurvived {
+		dumpDiagnostics("renamed node was rebuilt, not morphed in place")
+		t.Fatalf("per-leaf update must morph the existing <li> in place (marker lost → element replaced)")
+	}
+	if !siblingMarkerSurvived {
+		dumpDiagnostics("unaffected sibling was rebuilt during deep rename")
+		t.Fatalf("per-leaf update must not rebuild the unaffected sibling /src/main.go (marker lost)")
+	}
+
+	// The rename's WS update must be scoped: the frame(s) it produced must NOT carry
+	// unaffected nodes (README.md, main.go, the /src/new-1.go added earlier). A branch
+	// re-send would include them; a per-leaf ["u"] chain does not.
+	renameFrames := wsLog.GetMessages()[wsBefore:]
+	var renameServerToClient string
+	for _, m := range renameFrames {
+		if m.Direction == "received" || m.Direction == "recv" || m.Direction == "in" {
+			renameServerToClient += m.Data
+		}
+	}
+	if renameServerToClient == "" {
+		// Direction labels vary; fall back to concatenating all new frames.
+		for _, m := range renameFrames {
+			renameServerToClient += m.Data
+		}
+	}
+	if strings.Contains(renameServerToClient, "README.md") ||
+		strings.Contains(renameServerToClient, "main.go") ||
+		strings.Contains(renameServerToClient, "new-1.go") {
+		dumpDiagnostics("deep-rename WS update re-sent unaffected nodes (not per-leaf)")
+		t.Fatalf("deep-rename update must be scoped to the changed leaf; frame carried unaffected nodes:\n%s", renameServerToClient)
+	}
+	if !strings.Contains(renameServerToClient, "hash-RENAMED.go") {
+		dumpDiagnostics("deep-rename WS frame missing the renamed value")
+		t.Fatalf("expected the deep-rename WS frame to carry 'hash-RENAMED.go', got:\n%s", renameServerToClient)
 	}
 
 	// No browser-console errors (a client-side apply failure surfaces here).
