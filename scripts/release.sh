@@ -83,10 +83,31 @@ bump_version() {
 }
 
 # Update version files
+# Restore VERSION / CHANGELOG.md if the release aborts after they are written
+# but before the release commit lands. Without this, an abort (a flaky test, a
+# failed tag) leaves a dirty tree — and main() refuses to run on a dirty tree,
+# so the retry is blocked until someone works out what to revert.
+release_files_written=false
+release_committed=false
+
+restore_release_files() {
+    if [ "$release_files_written" = true ] && [ "$release_committed" = false ]; then
+        log_warn "Release aborted before committing — restoring VERSION and CHANGELOG.md"
+        # Restore from HEAD, not from the index: commit_and_tag stages both files
+        # before committing, so if the commit itself fails they are already
+        # staged and a plain `git checkout --` would restore them from the index
+        # — copying the modified versions back over themselves.
+        git checkout HEAD -- VERSION CHANGELOG.md 2>/dev/null || \
+            log_warn "Could not restore VERSION / CHANGELOG.md; revert them by hand before retrying"
+    fi
+}
+trap restore_release_files EXIT
+
 update_versions() {
     local new_version=$1
 
     log_step "Updating VERSION file to $new_version"
+    release_files_written=true
     echo "$new_version" > VERSION
 
     log_info "Version files updated to $new_version"
@@ -152,6 +173,10 @@ commit_and_tag() {
 Release LVT CLI v$new_version
 
 🤖 Generated with automated release script"
+
+    # VERSION / CHANGELOG.md now live in a commit; restoring them on a later
+    # failure would discard the release commit itself, so stand the guard down.
+    release_committed=true
 
     log_step "Creating git tag v$new_version"
     git tag -a "v$new_version" -m "Release v$new_version"
@@ -420,10 +445,15 @@ main() {
     log_info "Starting release process..."
     echo ""
 
-    # Execute release steps
+    # Execute release steps. Tests run FIRST, before anything is written: the
+    # only Go code reading the VERSION file is getCurrentVersion(), which no
+    # test exercises (and which resolves to "unknown" under `go test` anyway,
+    # since it reads a relative path from the package directory). So the bump
+    # cannot change the result, and a failure — a flaky test especially — leaves
+    # the tree untouched instead of half-bumped.
+    build_and_test
     update_versions "$new_version"
     generate_changelog "$new_version"
-    build_and_test
     commit_and_tag "$new_version"
     publish_github "$new_version" "$branch"
 
