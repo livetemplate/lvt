@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [v0.2.0] - 2026-07-18
 
+Adopts **livetemplate v0.19.0** (from v0.11.1). Two things matter for apps scaffolded or served by this CLI:
+
+- **Range updates use a different wire format.** The differential range path now emits granular ops (`r`/`u`/`i`/`o`/`p`) instead of re-sending the whole range payload, so deep edits scope to the changed leaf. No app change is required, and published `@livetemplate/client` builds have handled the format since v0.8.2 — but any pinned client older than that should be moved forward.
+- **Recursive `{{template}}` now renders.** Self-referential templates (file trees, comment threads, nested navigation) are supported rather than rejected at parse time.
+
 ### Changes
 
 - chore(deps): adopt livetemplate v0.19.0 + land release-gated C8 goldens and e2e (#337) (bc1659c)
