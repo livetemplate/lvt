@@ -5,6 +5,17 @@ All notable changes to the LVT CLI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.2.0] - 2026-07-18
+
+### Changes
+
+- chore(deps): adopt livetemplate v0.19.0 + land release-gated C8 goldens and e2e (#337) (bc1659c)
+- test(e2e): migrate older WS-ready guards to WaitForWebSocketReady (closes #335) (#336) (f3a6dff)
+- test(e2e): chromedp regression for livetemplate#414 + bump to v0.11.1 (#334) (2a7b37a)
+- docs(roadmap): clarify lvt transport broadcast vs livetemplate topic publish (#333) (8cfe136)
+
+
+
 ## [v0.1.8] - 2026-05-21
 
 ### Changes
