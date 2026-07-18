@@ -44,7 +44,6 @@ check_prerequisites() {
     fi
 }
 
-# Get current version
 # Detect a release that was committed locally but never reached origin — a push
 # or goreleaser failure after commit_and_tag. Left undetected, the next run reads
 # the already-bumped VERSION and offers to bump *on top of it*, skipping a
@@ -83,6 +82,7 @@ check_unpublished_release() {
     return 0
 }
 
+# Get current version
 get_current_version() {
     if [ ! -f VERSION ]; then
         log_error "VERSION file not found"
@@ -453,9 +453,25 @@ main() {
         echo "  git push origin $branch"
         # Nested module tags (components/vX.Y.Z) are part of the release too —
         # enumerate whatever this version actually tagged rather than guessing.
-        for t in $(git tag -l "v$pending" "*/v$pending"); do
-            echo "  git push origin $t"
-        done
+        #
+        # An empty list is a real state, not just a defensive branch:
+        # commit_and_tag sets release_committed immediately after the commit and
+        # tags afterwards, so a failure at the tag step leaves a release commit
+        # with no tags at all. Saying nothing here would print guidance that
+        # looks complete while omitting the step that actually failed.
+        local tags
+        tags=$(git tag -l "v$pending" "*/v$pending")
+        if [ -n "$tags" ]; then
+            for t in $tags; do
+                echo "  git push origin $t"
+            done
+        else
+            echo ""
+            echo "  # No v$pending tag exists locally — the tag step never completed."
+            echo "  # Recreate the tags before pushing:"
+            echo "  git tag -a v$pending -m \"Release v$pending\""
+            echo "  # ...plus one per nested Go module, e.g. components/v$pending"
+        fi
         echo ""
         echo "Then check whether the GitHub release and binaries exist:"
         echo ""
