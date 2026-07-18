@@ -45,6 +45,44 @@ check_prerequisites() {
 }
 
 # Get current version
+# Detect a release that was committed locally but never reached origin — a push
+# or goreleaser failure after commit_and_tag. Left undetected, the next run reads
+# the already-bumped VERSION and offers to bump *on top of it*, skipping a
+# version in the published sequence and leaving local tags on a commit the
+# remote has never seen. See livetemplate#500 for the same bug in core.
+#
+# This runs on every release while the state it catches is rare, so it fails
+# toward "proceed with the normal release": any check it cannot complete returns
+# 1 (not detected) rather than guessing. A false positive would block a healthy
+# release; a false negative only restores the previous behaviour.
+check_unpublished_release() {
+    local branch=$1
+    local version
+    version=$(get_current_version)
+
+    # Only meaningful when HEAD is this version's release commit.
+    [ "$(git log -1 --pretty=%s 2>/dev/null)" = "chore(release): v$version" ] || return 1
+
+    # Deciding this needs an up-to-date origin/$branch. Immediately after a
+    # SUCCESSFUL release the HEAD subject and VERSION look identical to the
+    # unpublished case, so the ancestry test below is the only thing telling
+    # them apart — on a stale ref it would report a published release as
+    # unpublished. A fetch that fails therefore means "cannot tell", not
+    # "unpublished".
+    git fetch --quiet origin "$branch" 2>/dev/null || return 1
+
+    # An ancestor of the remote branch means it is published.
+    if git merge-base --is-ancestor HEAD "refs/remotes/origin/$branch" 2>/dev/null; then
+        return 1
+    fi
+
+    # Not an ancestor — but merge-base also fails when the ref is missing
+    # entirely (a branch never pushed), which is not this bug.
+    git rev-parse -q --verify "refs/remotes/origin/$branch" >/dev/null 2>&1 || return 1
+
+    return 0
+}
+
 get_current_version() {
     if [ ! -f VERSION ]; then
         log_error "VERSION file not found"
@@ -398,6 +436,38 @@ main() {
         log_error "Repository is in a detached HEAD state. Please check out a branch before running this script."
         exit 1
     fi
+    # Before pulling: a rebase would move the release commit out from under its
+    # tags, leaving them on an orphaned commit.
+    if check_unpublished_release "$branch"; then
+        local pending t
+        pending=$(get_current_version)
+        echo ""
+        log_error "v$pending is committed locally but has not reached origin/$branch"
+        echo ""
+        echo "A previous release committed and tagged v$pending, then failed before"
+        echo "publishing it. Releasing again from here would bump on top of v$pending"
+        echo "and skip it in the published sequence."
+        echo ""
+        echo "Finish that release first:"
+        echo ""
+        echo "  git push origin $branch"
+        # Nested module tags (components/vX.Y.Z) are part of the release too —
+        # enumerate whatever this version actually tagged rather than guessing.
+        for t in $(git tag -l "v$pending" "*/v$pending"); do
+            echo "  git push origin $t"
+        done
+        echo ""
+        echo "Then check whether the GitHub release and binaries exist:"
+        echo ""
+        echo "  gh release view v$pending"
+        echo ""
+        echo "If it reports no release, goreleaser never ran — re-run it from a"
+        echo "clean tree at that tag (see publish_github in this script)."
+        echo ""
+        echo "Once v$pending is published, re-run this script for the next version."
+        exit 1
+    fi
+
     if [ "$dry_run_mode" = true ]; then
         log_info "[dry-run] Would pull latest from origin/$branch"
     else
