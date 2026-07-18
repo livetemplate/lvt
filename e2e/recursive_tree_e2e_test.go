@@ -222,7 +222,7 @@ func TestRecursiveTemplate_E2E(t *testing.T) {
 	// Phase 2: click adds a file to the DEEP /src branch. The reactive update must
 	// insert exactly that node into the existing DOM (no reload) while leaving the
 	// unrelated deep node /src/util/hash.go in place.
-	var newNodePresent, deepNodeStillPresent, reloaded bool
+	var newNodePresent, deepNodeStillPresent, singleNavigation bool
 	if err := chromedp.Run(ctx,
 		chromedp.Click(`#add-btn`, chromedp.ByID),
 		chromedp.WaitVisible(`li[data-key="/src/new-1.go"]`, chromedp.ByQuery),
@@ -230,7 +230,7 @@ func TestRecursiveTemplate_E2E(t *testing.T) {
 		// The sibling deep node must survive the minimal update (tree not rebuilt).
 		chromedp.Evaluate(`document.querySelector('li[data-key="/src/util/hash.go"]') !== null`, &deepNodeStillPresent),
 		// Sanity: the WS-driven update should not have navigated/reloaded the page.
-		chromedp.Evaluate(`window.performance.getEntriesByType('navigation').length === 1`, &reloaded),
+		chromedp.Evaluate(`window.performance.getEntriesByType('navigation').length === 1`, &singleNavigation),
 		chromedp.OuterHTML(`html`, &renderedHTML, chromedp.ByQuery),
 	); err != nil {
 		snapshotHTML()
@@ -245,7 +245,7 @@ func TestRecursiveTemplate_E2E(t *testing.T) {
 		dumpDiagnostics("deep sibling lost during reactive update")
 		t.Fatalf("reactive update tore down the unrelated deep node /src/util/hash.go")
 	}
-	if !reloaded {
+	if !singleNavigation {
 		dumpDiagnostics("page navigated/reloaded instead of a WS update")
 		t.Fatalf("expected an in-place WS update, but the page performed a full navigation")
 	}
