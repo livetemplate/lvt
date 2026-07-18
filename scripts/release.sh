@@ -451,27 +451,32 @@ main() {
         echo "Finish that release first:"
         echo ""
         echo "  git push origin $branch"
-        # Nested module tags (components/vX.Y.Z) are part of the release too —
-        # enumerate whatever this version actually tagged rather than guessing.
+        # Build the tag set this release SHOULD have — the main tag plus one per
+        # nested Go module — mirroring commit_and_tag, then report each one.
         #
-        # An empty list is a real state, not just a defensive branch:
-        # commit_and_tag sets release_committed immediately after the commit and
-        # tags afterwards, so a failure at the tag step leaves a release commit
-        # with no tags at all. Saying nothing here would print guidance that
-        # looks complete while omitting the step that actually failed.
-        local tags
-        tags=$(git tag -l "v$pending" "*/v$pending")
-        if [ -n "$tags" ]; then
-            for t in $tags; do
+        # Deriving the expected set matters more than listing what exists.
+        # commit_and_tag creates the main tag and then loops over nested modules,
+        # so a failure partway through that loop leaves a PARTIAL set: main tag
+        # present, a nested one missing. Asking only "did we find any tags?"
+        # would take the push-what's-there path and never mention the missing
+        # one — silently incomplete guidance, which is the same failure this
+        # check exists to prevent, one level down.
+        local expected=("v$pending") subdir gomod
+        while IFS= read -r gomod; do
+            subdir=$(dirname "$gomod")
+            subdir=${subdir#./}
+            [ "$subdir" != "." ] && expected+=("${subdir}/v$pending")
+        done < <(find . -name "go.mod" -not -path "./vendor/*" -not -path "./.git/*" -not -path "./.worktrees/*" | grep -v "^\./go.mod$" | sort)
+
+        local t
+        for t in "${expected[@]}"; do
+            if git rev-parse -q --verify "refs/tags/$t" >/dev/null 2>&1; then
                 echo "  git push origin $t"
-            done
-        else
-            echo ""
-            echo "  # No v$pending tag exists locally — the tag step never completed."
-            echo "  # Recreate the tags before pushing:"
-            echo "  git tag -a v$pending -m \"Release v$pending\""
-            echo "  # ...plus one per nested Go module, e.g. components/v$pending"
-        fi
+            else
+                echo "  git tag -a $t -m \"Release $t\"   # missing — tag step did not complete"
+                echo "  git push origin $t"
+            fi
+        done
         echo ""
         echo "Then check whether the GitHub release and binaries exist:"
         echo ""
