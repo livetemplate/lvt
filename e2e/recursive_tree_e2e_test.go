@@ -306,15 +306,16 @@ func TestRecursiveTemplate_E2E(t *testing.T) {
 	renameFrames := wsLog.GetMessages()[wsBefore:]
 	var renameServerToClient string
 	for _, m := range renameFrames {
-		if m.Direction == "received" || m.Direction == "recv" || m.Direction == "in" {
+		if m.Direction == "received" {
 			renameServerToClient += m.Data
 		}
 	}
+	// Only server->client frames may be inspected here: the assertions below judge
+	// whether the *update payload* is scoped to the changed leaf, and folding in
+	// "sent" frames would let the client's own action payload satisfy them.
 	if renameServerToClient == "" {
-		// Direction labels vary; fall back to concatenating all new frames.
-		for _, m := range renameFrames {
-			renameServerToClient += m.Data
-		}
+		dumpDiagnostics("no server->client WS frames captured after the deep rename")
+		t.Fatalf("expected a server->client WS frame after the deep rename; got none among %d new frames", len(renameFrames))
 	}
 	if strings.Contains(renameServerToClient, "README.md") ||
 		strings.Contains(renameServerToClient, "main.go") ||
