@@ -32,6 +32,7 @@ type E2ETest struct {
 // SetupOptions configures the test environment.
 type SetupOptions struct {
 	AppPath        string        // Path to main.go (e.g., "./main.go")
+	BinaryPath     string        // Pre-built binary path; skips "go run" when set
 	Port           int           // Server port (auto-allocated if 0)
 	Timeout        time.Duration // Test timeout (default 60s)
 	CaptureConsole bool          // Capture browser console (default true)
@@ -79,8 +80,8 @@ func Setup(t *testing.T, opts *SetupOptions) *E2ETest {
 	if opts.ChromeMode == "" {
 		opts.ChromeMode = ChromeDocker
 	}
-	if opts.AppPath == "" {
-		t.Fatal("AppPath is required in SetupOptions")
+	if opts.AppPath == "" && opts.BinaryPath == "" {
+		t.Fatal("AppPath or BinaryPath is required in SetupOptions")
 	}
 
 	// Allocate ports
@@ -99,7 +100,12 @@ func Setup(t *testing.T, opts *SetupOptions) *E2ETest {
 	}
 
 	// Start server
-	serverCmd := StartTestServer(t, opts.AppPath, serverPort)
+	var serverCmd *exec.Cmd
+	if opts.BinaryPath != "" {
+		serverCmd = StartTestServerBinary(t, opts.BinaryPath, serverPort)
+	} else {
+		serverCmd = StartTestServer(t, opts.AppPath, serverPort)
+	}
 
 	// Start Chrome based on mode
 	var (

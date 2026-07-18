@@ -503,6 +503,57 @@ func StartTestServer(t *testing.T, mainPath string, port int) *exec.Cmd {
 	return cmd
 }
 
+// StartTestServerBinary starts a pre-built binary as the test server, bypassing
+// "go run" compilation. Use when the build cache is cold or I/O makes "go run"
+// too slow for the 5-second startup timeout.
+func StartTestServerBinary(t *testing.T, binaryPath string, port int) *exec.Cmd {
+	t.Helper()
+
+	portStr := fmt.Sprintf("%d", port)
+	serverURL := fmt.Sprintf("http://localhost:%d", port)
+
+	t.Logf("Starting test server (binary) on port %s", portStr)
+	cmd := exec.Command(binaryPath)
+	cmd.Env = append(os.Environ(), "PORT="+portStr, "LVT_DEV_MODE=true")
+	cmd.Stdout = nil
+	cmd.Stderr = nil
+
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("Failed to start server binary: %v", err)
+	}
+
+	ready := false
+	for i := 0; i < 50; i++ {
+		resp, err := http.Get(serverURL)
+		if err == nil {
+			resp.Body.Close()
+			ready = true
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	if !ready {
+		_ = cmd.Process.Kill()
+		t.Fatal("Server failed to start within 5 seconds")
+	}
+
+	t.Cleanup(func() {
+		if cmd.Process != nil {
+			t.Logf("Killing test server process (PID: %d)...", cmd.Process.Pid)
+			if err := cmd.Process.Kill(); err != nil {
+				t.Logf("Warning: Failed to kill test server process (PID: %d): %v", cmd.Process.Pid, err)
+			} else {
+				t.Logf("✅ Test server process killed (PID: %d)", cmd.Process.Pid)
+			}
+			_ = cmd.Wait()
+		}
+	})
+
+	t.Logf("✅ Test server ready at %s", serverURL)
+	return cmd
+}
+
 // ServeClientLibrary serves the LiveTemplate client browser bundle fetched from CDN.
 // This is for development/testing purposes only. In production, serve from CDN directly.
 func ServeClientLibrary(w http.ResponseWriter, r *http.Request) {
