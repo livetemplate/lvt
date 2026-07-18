@@ -82,7 +82,6 @@ bump_version() {
     echo "${major}.${minor}.${patch}"
 }
 
-# Update version files
 # Restore VERSION / CHANGELOG.md if the release aborts after they are written
 # but before the release commit lands. Without this, an abort (a flaky test, a
 # failed tag) leaves a dirty tree — and main() refuses to run on a dirty tree,
@@ -91,18 +90,36 @@ release_files_written=false
 release_committed=false
 
 restore_release_files() {
-    if [ "$release_files_written" = true ] && [ "$release_committed" = false ]; then
-        log_warn "Release aborted before committing — restoring VERSION and CHANGELOG.md"
-        # Restore from HEAD, not from the index: commit_and_tag stages both files
-        # before committing, so if the commit itself fails they are already
-        # staged and a plain `git checkout --` would restore them from the index
-        # — copying the modified versions back over themselves.
-        git checkout HEAD -- VERSION CHANGELOG.md 2>/dev/null || \
-            log_warn "Could not restore VERSION / CHANGELOG.md; revert them by hand before retrying"
-    fi
+    [ "$release_files_written" = true ] || return 0
+    [ "$release_committed" = false ] || return 0
+
+    log_warn "Release aborted before committing — restoring VERSION and CHANGELOG.md"
+
+    # Restore from HEAD, not from the index: commit_and_tag stages both files
+    # before committing, so if the commit itself fails they are already staged
+    # and a plain `git checkout --` would restore them from the index — copying
+    # the modified versions back over themselves.
+    #
+    # One path per invocation. `git checkout HEAD -- a b` resolves the pathspec
+    # first and bails before touching the worktree if any entry is missing from
+    # HEAD, so a single call would restore *neither* file when one is untracked.
+    # That is reachable here: commit_and_tag guards CHANGELOG.md with `[ -f ]`,
+    # so this script already allows for a repo without one. git's stderr is left
+    # visible; a generic "couldn't restore" would send the next person down the
+    # wrong trail.
+    local f
+    for f in VERSION CHANGELOG.md; do
+        if git cat-file -e "HEAD:$f" 2>/dev/null; then
+            git checkout HEAD -- "$f" || \
+                log_warn "Could not restore $f; revert it by hand before retrying"
+        else
+            log_warn "$f is not in HEAD — this run created it; delete it by hand before retrying"
+        fi
+    done
 }
 trap restore_release_files EXIT
 
+# Update version files
 update_versions() {
     local new_version=$1
 
