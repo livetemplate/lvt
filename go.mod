@@ -6,7 +6,7 @@ go 1.26.0
 // (livetemplate#414); the chromedp E2E test in
 // e2e/livetemplate_core_test.go (TestIssue414_WrapperInjection_HeadWithBodyDecoy)
 // requires this version to assert the fix end-to-end.
-require github.com/livetemplate/livetemplate v0.11.1
+require github.com/livetemplate/livetemplate v0.19.0
 
 replace github.com/livetemplate/lvt/components => ./components
 
@@ -93,8 +93,6 @@ require (
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/sethvargo/go-retry v0.3.0 // indirect
-	github.com/tdewolff/minify/v2 v2.24.8 // indirect
-	github.com/tdewolff/parse/v2 v2.8.5 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/exp v0.0.0-20251219203646-944ab1f22d93 // indirect
