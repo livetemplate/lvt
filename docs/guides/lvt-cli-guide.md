@@ -820,6 +820,6 @@ go run cmd/mysocial/main.go
 5. **Deploy** - Build and deploy your app
 
 For more information:
-- [API Reference](../references/api-reference.md)
-- [Template Support Matrix](../references/template-support-matrix.md)
+- [API Reference](https://livetemplate.fly.dev/reference/api)
+- [Template Support Matrix](https://livetemplate.fly.dev/reference/template-support-matrix)
 - [LiveTemplate Documentation](https://github.com/livetemplate/livetemplate)
