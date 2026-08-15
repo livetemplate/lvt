@@ -160,7 +160,7 @@ lvt gen products name price quantity enabled created_at
 - Form validation
 - Statistics/counts
 - CSS styling (from kit)
-- Comprehensive tests
+- Generated tests covering each flow
 
 **Type Mappings:**
 
@@ -291,7 +291,7 @@ Default names (can be customized):
 - **Auto-updates `go.mod` dependencies**
 - **EmailSender interface** (console logger + SMTP/Mailgun examples)
 - **Case-insensitive email matching**
-- **Production-ready security** (HTTP-only, secure, SameSite cookies)
+- **Secure session cookies** (HTTP-only, Secure, SameSite)
 
 **Next Steps:**
 
@@ -345,7 +345,7 @@ The generated auth templates use Tailwind CSS by default. To use a different CSS
 
 **E2E Testing:**
 
-The auth command generates comprehensive E2E tests using chromedp that test all auth flows:
+The auth command generates E2E tests using chromedp that cover every auth flow:
 - Registration flow (with email confirmation if enabled)
 - Login flow (password and magic-link)
 - Password reset flow (if enabled)
@@ -541,7 +541,7 @@ lvt gen articles title content published_at author email price
 
 ## Testing
 
-Each generated resource includes comprehensive tests.
+Each generated resource comes with tests.
 
 ### WebSocket Tests (`*_ws_test.go`)
 

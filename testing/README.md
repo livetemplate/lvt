@@ -1,6 +1,6 @@
 # LiveTemplate Testing Framework
 
-A comprehensive e2e testing framework for LiveTemplate applications that reduces boilerplate by 85-90%.
+An e2e testing framework for LiveTemplate applications. It cuts test boilerplate by 85-90%.
 
 ## Installation
 
@@ -46,7 +46,7 @@ func TestMyApp(t *testing.T) {
 - **WebSocket Ready**: Waits for LiveTemplate WebSocket connection
 - **Cleanup**: Automatic teardown of all resources
 
-### Comprehensive Loggers
+### Loggers
 ```go
 // Browser console logs
 test.Console.GetLogs()

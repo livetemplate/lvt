@@ -2,7 +2,7 @@
 
 ![Components Independence](https://github.com/livetemplate/lvt/actions/workflows/components-independence.yml/badge.svg)
 
-A comprehensive collection of reusable UI components for the [LiveTemplate](https://github.com/livetemplate/livetemplate) framework.
+A set of reusable UI components for the [LiveTemplate](https://github.com/livetemplate/livetemplate) framework.
 
 ## Features
 
@@ -82,7 +82,7 @@ CountrySelect: dropdown.NewSearchable("country", countries,
 |-----------|---------|-----------|-------------|
 | Toast | `toast` | default, container | Toast notifications |
 | Tooltip | `tooltip` | default | Tooltips |
-| Popover | `popover` | default | Rich content popovers |
+| Popover | `popover` | default | Content popovers |
 | Progress | `progress` | default, circular, spinner | Progress indicators |
 | Skeleton | `skeleton` | default, avatar, card | Loading placeholders |
 

@@ -19,7 +19,7 @@ After running `lvt gen auth`, edit `internal/app/auth/auth.tmpl` to use your pre
 
 ### Option 2: Use a Kit
 
-The lvt kit system allows you to customize templates project-wide.
+The lvt kit system lets you customize templates across the whole project.
 
 1. **Copy the auth template to your project kit:**
    ```bash
