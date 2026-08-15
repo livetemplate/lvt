@@ -5,6 +5,18 @@ All notable changes to the LVT CLI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.2.1] - 2026-08-15
+
+### Changes
+
+- docs: drop the hype words from the mirrored CLI pages (#343) (08914ed)
+- docs: point the cross-repo reference links at the docs site (#342) (5374b32)
+- fix(release): refuse to bump on top of an unpublished release (#340) (beb5608)
+- fix(release): survive an aborted release instead of leaving a half-bumped tree (#339) (dca2768)
+- docs(changelog): note the v0.19.0 wire-format and recursion changes in v0.2.0 (d0d669c)
+
+
+
 ## [v0.2.0] - 2026-07-18
 
 Adopts **livetemplate v0.19.0** (from v0.11.1). Two things matter for apps scaffolded or served by this CLI:
