@@ -6,7 +6,7 @@ go 1.26.0
 // (livetemplate#414); the chromedp E2E test in
 // e2e/livetemplate_core_test.go (TestIssue414_WrapperInjection_HeadWithBodyDecoy)
 // requires this version to assert the fix end-to-end.
-require github.com/livetemplate/livetemplate v0.19.0
+require github.com/livetemplate/livetemplate v0.25.0
 
 replace github.com/livetemplate/lvt/components => ./components
 

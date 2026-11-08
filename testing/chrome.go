@@ -50,8 +50,20 @@ func getClientCDNURL() string {
 // GetClientLibraryJS returns the LiveTemplate client library JS fetched from CDN.
 // The result is cached in memory (per-process) and on disk (with TTL).
 // On CDN failure, falls back to an expired disk cache if available.
+//
+// Set LVT_LOCAL_CLIENT_JS to the path of a locally built bundle to use that
+// file instead, so the browser suite can exercise an unreleased client. It
+// bypasses the CDN fetch and its disk cache, which is keyed by filename and
+// would otherwise keep serving the published copy.
 func GetClientLibraryJS() []byte {
 	clientOnce.Do(func() {
+		if p := os.Getenv("LVT_LOCAL_CLIENT_JS"); p != "" {
+			clientBytes, clientFetchErr = os.ReadFile(p)
+			if clientFetchErr == nil {
+				log.Printf("[lvt/testing] Using local client library %s (%d bytes)", p, len(clientBytes))
+			}
+			return
+		}
 		clientBytes, clientFetchErr = fetchClientLibrary()
 	})
 	if clientFetchErr != nil {
