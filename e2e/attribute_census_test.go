@@ -4,11 +4,13 @@ package e2e_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -44,6 +46,7 @@ func TestE2E_AttributeLifecycle(t *testing.T) {
 	serverLogger := e2etest.NewServerLogger()
 	serverLogger.Start()
 	defer serverLogger.Stop()
+	// slog.SetDefault is process-global, so this test must not run in parallel.
 	prevSlog := slog.Default()
 	slog.SetDefault(slog.New(slog.NewTextHandler(
 		io.MultiWriter(os.Stderr, serverLogger.Writer()),
@@ -137,6 +140,9 @@ func TestE2E_AttributeLifecycle(t *testing.T) {
 	e2e.PollUntil(t, ctx, `window.__ssrAdded === 1 && window.__ssrValue() === "armed-1"`,
 		10*time.Second, "handler re-fired on re-render, or ctx.value was captured", dump)
 
+	// Give a duplicate warning time to show up after the action's renders
+	// before counting: "exactly once" is the claim under test.
+	time.Sleep(500 * time.Millisecond)
 	census := censusLines()
 	var registry []string
 	for _, line := range consoleLines() {
@@ -159,7 +165,15 @@ func TestE2E_AttributeLifecycle(t *testing.T) {
 	// case folding a real test rather than a lowercase-only one.
 	var sawAuthored bool
 	for _, m := range wsLog.GetMessages() {
-		if m.Direction == "received" && strings.Contains(m.Data, `"lvt-el:addClass"`) {
+		var frame struct {
+			Meta struct {
+				Attributes []string `json:"attributes"`
+			} `json:"meta"`
+		}
+		if m.Direction != "received" || json.Unmarshal([]byte(m.Data), &frame) != nil {
+			continue
+		}
+		if slices.Contains(frame.Meta.Attributes, "lvt-el:addClass") {
 			sawAuthored = true
 		}
 	}

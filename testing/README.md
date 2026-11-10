@@ -170,7 +170,9 @@ LVT_LOCAL_CLIENT_JS=../client/dist/livetemplate-client.browser.js \
   go test -tags browser ./e2e/...
 ```
 
-`GetClientLibraryJS` (and so `ServeClientLibrary`) then serves that file and
+A relative path resolves against the test package's directory (`e2e/` above),
+which is where `go test` runs it. `GetClientLibraryJS` (and so
+`ServeClientLibrary`) then serves that file and
 logs `[lvt/testing] Using local client library <path> (<n> bytes)`; an
 unreadable path panics with an error naming it.
 

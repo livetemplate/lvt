@@ -58,6 +58,11 @@ func getClientCDNURL() string {
 func GetClientLibraryJS() []byte {
 	clientOnce.Do(func() {
 		if p := os.Getenv("LVT_LOCAL_CLIENT_JS"); p != "" {
+			// A relative path would resolve against each test package's own
+			// directory; make it absolute so the log says which file was used.
+			if abs, err := filepath.Abs(p); err == nil {
+				p = abs
+			}
 			var err error
 			if clientBytes, err = os.ReadFile(p); err != nil {
 				clientFetchErr = fmt.Errorf("LVT_LOCAL_CLIENT_JS: %w", err)
