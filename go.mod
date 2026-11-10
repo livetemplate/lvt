@@ -2,10 +2,10 @@ module github.com/livetemplate/lvt
 
 go 1.26.0
 
-// v0.11.1 ships the html.Tokenizer-based wrapper injection fix
-// (livetemplate#414); the chromedp E2E test in
-// e2e/livetemplate_core_test.go (TestIssue414_WrapperInjection_HeadWithBodyDecoy)
-// requires this version to assert the fix end-to-end.
+// v0.25.0 is the first release that sends meta.attributes (the attribute
+// census, livetemplate#473), which e2e/attribute_census_test.go
+// (TestE2E_AttributeLifecycle) asserts on the wire. It also carries the
+// livetemplate#414 wrapper-injection fix TestIssue414_* asserts (v0.11.1+).
 require github.com/livetemplate/livetemplate v0.25.0
 
 replace github.com/livetemplate/lvt/components => ./components

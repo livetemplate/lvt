@@ -38,7 +38,7 @@ import (
 //     through lvt-on:my-widget-change once a handler declares the type.
 //
 // Set LVT_LOCAL_CLIENT_JS to a built client bundle to run this against an
-// unreleased client (see e2etest.ServeClientLibrary); otherwise it uses the
+// unreleased client (see e2etest.GetClientLibraryJS); otherwise it uses the
 // published one.
 func TestE2E_AttributeLifecycle(t *testing.T) {
 	serverLogger := e2etest.NewServerLogger()
@@ -94,11 +94,33 @@ func TestE2E_AttributeLifecycle(t *testing.T) {
 	}
 
 	// (1)+(2): the queued declarative handler armed the SSR'd element once.
+	// The count is checked first so && short-circuits before __ssrValue, which
+	// only exists once the handler has run.
 	e2e.PollUntil(t, ctx, `window.__ssrAdded === 1 && window.__ssrValue() === "armed-0"`,
 		10*time.Second, "queued handler never armed the server-rendered element", dump)
 
-	// (3): census runs after window load. Wait for it to have had its chance.
-	e2e.PollUntil(t, ctx, `document.readyState === "complete"`, 10*time.Second, "page never finished loading", dump)
+	// (3): the census runs after window load, so wait for its warning itself
+	// rather than for load, which only schedules it. The count is re-checked
+	// once more below, after the renders the action causes.
+	// The matched strings are the client's own wording: attribute-census.ts
+	// for the census, attribute-registry.ts for the registry diagnostics.
+	const censusNeedle = "no attribute handler claims it"
+	censusLines := func() []string {
+		var out []string
+		for _, line := range consoleLines() {
+			if strings.Contains(line, censusNeedle) {
+				out = append(out, line)
+			}
+		}
+		return out
+	}
+	for deadline := time.Now().Add(10 * time.Second); len(censusLines()) == 0; {
+		if time.Now().After(deadline) {
+			dump()
+			t.Fatal("the census never warned about lvt-x:nope")
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
 
 	// (4): the custom element's event dispatches Bump through lvt-on:.
 	if err := chromedp.Run(ctx, chromedp.Evaluate(
@@ -115,11 +137,9 @@ func TestE2E_AttributeLifecycle(t *testing.T) {
 	e2e.PollUntil(t, ctx, `window.__ssrAdded === 1 && window.__ssrValue() === "armed-1"`,
 		10*time.Second, "handler re-fired on re-render, or ctx.value was captured", dump)
 
-	var census, registry []string
+	census := censusLines()
+	var registry []string
 	for _, line := range consoleLines() {
-		if strings.Contains(line, "no attribute handler claims it") {
-			census = append(census, line)
-		}
 		for _, needle := range []string{"AttributeRegistry", "already claims this name", "can never match"} {
 			if strings.Contains(line, needle) {
 				registry = append(registry, line)

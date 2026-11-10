@@ -58,16 +58,18 @@ func getClientCDNURL() string {
 func GetClientLibraryJS() []byte {
 	clientOnce.Do(func() {
 		if p := os.Getenv("LVT_LOCAL_CLIENT_JS"); p != "" {
-			clientBytes, clientFetchErr = os.ReadFile(p)
-			if clientFetchErr == nil {
-				log.Printf("[lvt/testing] Using local client library %s (%d bytes)", p, len(clientBytes))
+			var err error
+			if clientBytes, err = os.ReadFile(p); err != nil {
+				clientFetchErr = fmt.Errorf("LVT_LOCAL_CLIENT_JS: %w", err)
+				return
 			}
+			log.Printf("[lvt/testing] Using local client library %s (%d bytes)", p, len(clientBytes))
 			return
 		}
 		clientBytes, clientFetchErr = fetchClientLibrary()
 	})
 	if clientFetchErr != nil {
-		panic(fmt.Sprintf("failed to fetch client library from CDN: %v", clientFetchErr))
+		panic(fmt.Sprintf("failed to load client library: %v", clientFetchErr))
 	}
 	return clientBytes
 }

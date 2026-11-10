@@ -160,6 +160,20 @@ test := lvttest.Setup(t, &lvttest.SetupOptions{
 })
 ```
 
+### Testing an unreleased client build
+
+The browser tests load the published `@livetemplate/client` bundle. To run them
+against a local build instead, point `LVT_LOCAL_CLIENT_JS` at it:
+
+```bash
+LVT_LOCAL_CLIENT_JS=../client/dist/livetemplate-client.browser.js \
+  go test -tags browser ./e2e/...
+```
+
+`GetClientLibraryJS` (and so `ServeClientLibrary`) then serves that file and
+logs `[lvt/testing] Using local client library <path> (<n> bytes)`; an
+unreadable path panics with an error naming it.
+
 ## Field Types
 
 ```go
