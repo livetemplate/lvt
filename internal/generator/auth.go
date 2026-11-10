@@ -302,9 +302,14 @@ func GenerateAuth(projectRoot string, authConfig *AuthConfig) error {
 	if _, err := os.Stat(goModPath); err == nil {
 		dependencies := []string{
 			"github.com/google/uuid@latest",
-			"github.com/chromedp/chromedp@latest", // For E2E tests
-			"github.com/livetemplate/lvt@latest",  // Auth utilities (password, email)
-			"golang.org/x/time@latest",            // Rate limiting
+			// Auth utilities (password, email), and lvt/testing for the E2E
+			// tests. chromedp is deliberately NOT fetched @latest: the
+			// generated tests drive it through lvt/testing, so it must stay at
+			// the version lvt itself requires, which this get already selects.
+			// Newer chromedp releases made chromedp.Action generic, which
+			// lvt/testing does not compile against.
+			"github.com/livetemplate/lvt@latest",
+			"golang.org/x/time@latest", // Rate limiting
 		}
 		if authConfig.EnablePassword {
 			dependencies = append(dependencies, "golang.org/x/crypto@latest")
@@ -438,6 +443,18 @@ func GenerateAuth(projectRoot string, authConfig *AuthConfig) error {
 		if err := updateHomeForAuth(projectRoot, authConfig); err != nil {
 			fmt.Printf("⚠️  Could not update home page for auth: %v\n", err)
 			fmt.Println("   You may need to manually add login/logout buttons to your home page")
+		}
+	}
+
+	// Last, once every file above is written: go get records only the modules
+	// it was named, not every module the generated code imports through them
+	// (chromedp via the E2E tests, go-mail via lvt/pkg/email), so the app
+	// would not build until a tidy, and `lvt gen auth` never asks for one.
+	if _, err := os.Stat(filepath.Join(projectRoot, "go.mod")); err == nil {
+		cmd := exec.Command("go", "mod", "tidy")
+		cmd.Dir = projectRoot
+		if output, err := cmd.CombinedOutput(); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: go mod tidy failed in %s (run it after fixing the error):\n%s\n", projectRoot, output)
 		}
 	}
 

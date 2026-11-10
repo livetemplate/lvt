@@ -336,27 +336,28 @@ func TestGeneratedAppFullFlow(t *testing.T) {
 	}
 	t.Log("✅ Auth generated")
 
-	// Step 5: Run go mod tidy
-	t.Log("Step 5: Running go mod tidy...")
-	cmd := exec.Command("go", "mod", "tidy")
-	cmd.Dir = appDir
-	// Don't set GOWORK=off - we want to use the go.work file
-	if output, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("go mod tidy failed: %v\nOutput: %s", err, output)
-	}
-	t.Log("✅ go mod tidy completed")
+	// No go mod tidy here: GenerateAuth must leave a module graph the app
+	// builds and tests with, because `lvt gen auth`'s next steps never ask the
+	// user to tidy. A tidy step in this test hid exactly that gap.
 
-	// Step 6: Generate sqlc code
-	t.Log("Step 6: Generating sqlc code...")
-	cmd = exec.Command("sqlc", "generate")
+	// The generated E2E tests drive chromedp through lvt/testing, so the app
+	// must resolve the chromedp lvt itself requires. A newer one (it was once
+	// fetched @latest) changes chromedp.Action and stops lvt/testing compiling.
+	if want, got := chromedpVersion(t, filepath.Join(origDir, "go.mod")), chromedpVersion(t, goModPath); got != want {
+		t.Fatalf("generated app requires chromedp %s, lvt requires %s", got, want)
+	}
+
+	// Step 5: Generate sqlc code
+	t.Log("Step 5: Generating sqlc code...")
+	cmd := exec.Command("sqlc", "generate")
 	cmd.Dir = filepath.Join(appDir, "database")
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("sqlc generate failed: %v\nOutput: %s", err, output)
 	}
 	t.Log("✅ sqlc generate completed")
 
-	// Step 7: Build the app (uses go.work to find local lvt packages)
-	t.Log("Step 7: Building app...")
+	// Step 6: Build the app (uses go.work to find local lvt packages)
+	t.Log("Step 6: Building app...")
 	cmd = exec.Command("go", "build", "./...")
 	cmd.Dir = appDir
 	if output, err := cmd.CombinedOutput(); err != nil {
@@ -364,8 +365,8 @@ func TestGeneratedAppFullFlow(t *testing.T) {
 	}
 	t.Log("✅ Build successful")
 
-	// Step 8: Run short tests (skip E2E which requires Docker/Chrome)
-	t.Log("Step 8: Running generated tests (short mode)...")
+	// Step 7: Run short tests (skip E2E which requires Docker/Chrome)
+	t.Log("Step 7: Running generated tests (short mode)...")
 	cmd = exec.Command("go", "test", "./...", "-short", "-v")
 	cmd.Dir = appDir
 	output, err := cmd.CombinedOutput()
@@ -1214,4 +1215,21 @@ func TestAPIFullFlow(t *testing.T) {
 	t.Log("✅ Build successful — API code compiles")
 
 	t.Log("✅ API full flow test passed!")
+}
+
+// chromedpVersion returns the github.com/chromedp/chromedp version a go.mod requires.
+func chromedpVersion(t *testing.T, goModPath string) string {
+	t.Helper()
+	b, err := os.ReadFile(goModPath)
+	if err != nil {
+		t.Fatalf("read %s: %v", goModPath, err)
+	}
+	for _, line := range strings.Split(string(b), "\n") {
+		f := strings.Fields(strings.TrimPrefix(strings.TrimSpace(line), "require "))
+		if len(f) >= 2 && f[0] == "github.com/chromedp/chromedp" {
+			return f[1]
+		}
+	}
+	t.Fatalf("%s does not require github.com/chromedp/chromedp", goModPath)
+	return ""
 }
