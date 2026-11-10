@@ -326,6 +326,15 @@ func GenerateAuth(projectRoot string, authConfig *AuthConfig) error {
 				fmt.Fprintf(os.Stderr, "Warning: could not fetch some dependencies (run 'go mod tidy' in %s to resolve):\n%s\n", projectRoot, output)
 			}
 		}
+
+		// go get records only the modules it was named, not every module the
+		// generated code imports through them (chromedp via the E2E tests,
+		// go-mail via lvt/pkg/email), so the app would not build until a tidy.
+		cmd := exec.Command("go", "mod", "tidy")
+		cmd.Dir = projectRoot
+		if output, err := cmd.CombinedOutput(); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: go mod tidy failed in %s (run it after fixing the error):\n%s\n", projectRoot, output)
+		}
 	}
 
 	// Inject auth routes into main.go
