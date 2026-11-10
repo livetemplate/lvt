@@ -340,6 +340,13 @@ func TestGeneratedAppFullFlow(t *testing.T) {
 	// builds and tests with, because `lvt gen auth`'s next steps never ask the
 	// user to tidy. A tidy step in this test hid exactly that gap.
 
+	// The generated E2E tests drive chromedp through lvt/testing, so the app
+	// must resolve the chromedp lvt itself requires. A newer one (it was once
+	// fetched @latest) changes chromedp.Action and stops lvt/testing compiling.
+	if want, got := chromedpVersion(t, filepath.Join(origDir, "go.mod")), chromedpVersion(t, goModPath); got != want {
+		t.Fatalf("generated app requires chromedp %s, lvt requires %s", got, want)
+	}
+
 	// Step 5: Generate sqlc code
 	t.Log("Step 5: Generating sqlc code...")
 	cmd := exec.Command("sqlc", "generate")
@@ -670,7 +677,7 @@ func TestFileUploadFullFlow(t *testing.T) {
 	}
 
 	// Step 6: sqlc generate
-	t.Log("Step 5: Generating sqlc code...")
+	t.Log("Step 6: Generating sqlc code...")
 	cmd = exec.Command("sqlc", "generate")
 	cmd.Dir = filepath.Join(appDir, "database")
 	if output, err := cmd.CombinedOutput(); err != nil {
@@ -1208,4 +1215,21 @@ func TestAPIFullFlow(t *testing.T) {
 	t.Log("✅ Build successful — API code compiles")
 
 	t.Log("✅ API full flow test passed!")
+}
+
+// chromedpVersion returns the github.com/chromedp/chromedp version a go.mod requires.
+func chromedpVersion(t *testing.T, goModPath string) string {
+	t.Helper()
+	b, err := os.ReadFile(goModPath)
+	if err != nil {
+		t.Fatalf("read %s: %v", goModPath, err)
+	}
+	for _, line := range strings.Split(string(b), "\n") {
+		f := strings.Fields(strings.TrimPrefix(strings.TrimSpace(line), "require "))
+		if len(f) >= 2 && f[0] == "github.com/chromedp/chromedp" {
+			return f[1]
+		}
+	}
+	t.Fatalf("%s does not require github.com/chromedp/chromedp", goModPath)
+	return ""
 }
