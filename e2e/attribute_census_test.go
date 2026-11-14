@@ -5,6 +5,7 @@ package e2e_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -47,12 +48,14 @@ func TestE2E_AttributeLifecycle(t *testing.T) {
 	serverLogger.Start()
 	defer serverLogger.Stop()
 	// slog.SetDefault is process-global, so this test must not run in parallel.
+	// Restored by a defer registered after serverLogger.Stop's, so it runs
+	// first: slog never points at the stopped logger's closed pipe.
 	prevSlog := slog.Default()
 	slog.SetDefault(slog.New(slog.NewTextHandler(
 		io.MultiWriter(os.Stderr, serverLogger.Writer()),
 		&slog.HandlerOptions{Level: slog.LevelDebug},
 	)))
-	t.Cleanup(func() { slog.SetDefault(prevSlog) })
+	defer slog.SetDefault(prevSlog)
 
 	port, shutdown := startAttributeLifecycleServer(t)
 	defer shutdown()
@@ -247,7 +250,7 @@ func startAttributeLifecycleServer(t *testing.T) (int, func()) {
 	}
 	server := &http.Server{Addr: fmt.Sprintf(":%d", p), Handler: mux}
 	go func() {
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			slog.Error("attribute lifecycle server failed", slog.Any("error", err))
 		}
 	}()
