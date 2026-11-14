@@ -6,7 +6,7 @@ go 1.26.0
 // census, livetemplate#473), which e2e/attribute_census_test.go
 // (TestE2E_AttributeLifecycle) asserts on the wire. It also carries the
 // livetemplate#414 wrapper-injection fix TestIssue414_* asserts (v0.11.1+).
-require github.com/livetemplate/livetemplate v0.25.0
+require github.com/livetemplate/livetemplate v0.25.1
 
 replace github.com/livetemplate/lvt/components => ./components
 
