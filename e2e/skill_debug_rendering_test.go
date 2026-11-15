@@ -5,6 +5,7 @@ package e2e
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -132,15 +133,17 @@ func TestDebugRenderingSkill_ReferencesValid(t *testing.T) {
 
 		contentStr := string(content)
 
-		entryPoints := []string{
-			"(window as any).liveTemplateClient = client",
-			"getTreeState()",
-			"public ws: WebSocket",
+		// Patterns, not exact source, so formatting or a renamed local doesn't
+		// fail the test while the entry point still works.
+		entryPoints := map[string]*regexp.Regexp{
+			"window.liveTemplateClient": regexp.MustCompile(`\.liveTemplateClient\s*=`),
+			"getTreeState()":            regexp.MustCompile(`\bgetTreeState\s*\(`),
+			"public ws":                 regexp.MustCompile(`public\s+ws\s*:`),
 		}
 
-		for _, ep := range entryPoints {
-			assert.True(t, strings.Contains(contentStr, ep),
-				"Client should contain debug entry point '%s'", ep)
+		for name, re := range entryPoints {
+			assert.True(t, re.MatchString(contentStr),
+				"Client should contain debug entry point %s (/%s/)", name, re)
 		}
 	})
 
