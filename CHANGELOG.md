@@ -5,6 +5,18 @@ All notable changes to the LVT CLI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.3.0] - 2026-11-15
+
+### Changes
+
+- fix: stop relying on client debug globals removed in client 58cf0c2 (#348) (e654def)
+- chore(deps): adopt livetemplate v0.25.2 (serves client 0.25.4) (#347) (da89089)
+- test(e2e): cover attribute queue, connect pass, census and delegatedEvents (#473) (#346) (3b9be42)
+- fix(generator): generated auth apps build with lvt's chromedp, no manual tidy (#345) (d5f640e)
+- test(e2e): cover the client's lvt-* attribute handler registry (#344) (86aefc1)
+
+
+
 ## [v0.2.1] - 2026-08-15
 
 ### Changes
