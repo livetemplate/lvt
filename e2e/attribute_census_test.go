@@ -168,21 +168,37 @@ func TestE2E_AttributeLifecycle(t *testing.T) {
 	}
 	clickArmed(1, "the armed listener never fired")
 	toggleArmed(false)
+	armedClicks := func() int {
+		var n int
+		if err := chromedp.Run(ctx, chromedp.Evaluate(`window.__armedClicks`, &n)); err != nil {
+			dump()
+			t.Fatalf("read __armedClicks: %v", err)
+		}
+		return n
+	}
 	if err := chromedp.Run(ctx, chromedp.Click("#armed", chromedp.ByID)); err != nil {
 		dump()
 		t.Fatalf("click disarmed #armed: %v", err)
 	}
-	toggleArmed(true)
-	clickArmed(2, "listener survived disarming or stacked on re-arm")
-	var armedClicks int
-	if err := chromedp.Run(ctx, chromedp.Evaluate(`window.__armedClicks`, &armedClicks)); err != nil || armedClicks != 2 {
+	// A negative: nothing to wait on, so settle and read. Checked here, before
+	// re-arming, so a late count from this click cannot pass as the re-armed one.
+	time.Sleep(300 * time.Millisecond)
+	if n := armedClicks(); n != 1 {
 		dump()
-		t.Errorf("want 2 counted clicks on #armed (armed, disarmed, re-armed), got %d (err %v)", armedClicks, err)
+		t.Fatalf("the disarmed click counted: __armedClicks = %d, want 1", n)
 	}
+	toggleArmed(true)
+	clickArmed(2, "listener did not come back on re-arm")
 
 	// Give a duplicate warning time to show up after the action's renders
 	// before counting: "exactly once" is the claim under test.
 	time.Sleep(500 * time.Millisecond)
+	// Read after the settle, so a stacked second listener has had time to add
+	// its count.
+	if n := armedClicks(); n != 2 {
+		dump()
+		t.Errorf("want 2 counted clicks on #armed (armed, disarmed, re-armed), got %d", n)
+	}
 	census := censusLines()
 	var registry []string
 	for _, line := range consoleLines() {
