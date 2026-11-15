@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [v0.3.0] - 2026-11-15
 
+Adopts **livetemplate v0.25.2** (from v0.19.0), so apps that load the client through `ClientScriptURL` get **client 0.25.4**, including the `lvt-*` attribute handler registry (livetemplate#473). Also:
+
+- **`lvt gen auth` apps build without a manual `go mod tidy`** (#345). Generated auth apps had been fetching `chromedp@latest`, which no longer compiles against `lvt/testing`.
+- **`lvt/testing` removes `WaitForMessageCount` and `WaitForActionResponse`** (#348). Both polled client debug globals the client no longer sets, so they could only time out. To wait on or inspect WebSocket traffic, use `RecordWSFrames` and its logger.
+- **`lvt/testing` honours `LVT_LOCAL_CLIENT_JS`** (#346): point it at a local client build to run the browser suite against an unreleased client.
+
 ### Changes
 
 - fix: stop relying on client debug globals removed in client 58cf0c2 (#348) (e654def)
