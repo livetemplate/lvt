@@ -43,7 +43,7 @@ This skill typically runs in **existing LiveTemplate projects** (.lvtrc exists).
 | Symptom | Likely Phase | First Check | Key Files |
 |---------|--------------|-------------|-----------|
 | Template not updating after data change | Diff | Tree cache state | `tree_compare.go`, `template.go` |
-| Partial/broken HTML | Build | Statics array alignment | `parse.go`, `types.go` |
+| Partial/broken HTML | Build | Statics array alignment | `internal/parse/`, `types.go` |
 | Action dispatch error | Dispatch | Method signature | `dispatch.go` |
 | Range items not updating | Diff/Range | Key detection | `range_ops.go`, `tree-renderer.ts` |
 | Empty response from server | Build | Tree generation errors | `template.go` |
@@ -81,7 +81,7 @@ LiveTemplate uses a 5-phase rendering pipeline:
 **Symptoms:**
 - Data changes but UI stays the same
 - Actions execute (server logs show) but no visual update
-- `window.__wsMessages` shows messages but DOM unchanged
+- DevTools Network → WS tab shows the update frame but DOM unchanged
 
 **Investigation Checklist:**
 
@@ -104,9 +104,9 @@ LiveTemplate uses a 5-phase rendering pipeline:
    - Verify changed fields appear in result
    - Check if fingerprint changed
 
-5. [ ] Check WebSocket delivery (Browser Console)
-   window.__wsMessages  // See all messages
-   window.__lastWSMessage  // Last message content
+5. [ ] Check WebSocket delivery
+   - Browser: DevTools Network → WS → Messages
+   - chromedp: e2etest.RecordWSFrames(ctx), then wsLog.PrintLast(n)
 
 6. [ ] Check client-side merge
    liveTemplateClient.getTreeState()  // Current state
@@ -276,7 +276,7 @@ func (c *Counter) Increment(state CounterState, ctx *livetemplate.Context) (Coun
 
 **Key functions:**
 - `Parse()` - Main entry point
-- `evaluatePipe()` - Expression evaluation
+- `evaluator.evalPipe()` (`eval.go`) - Expression evaluation
 
 **Debug points:**
 ```go
@@ -416,19 +416,12 @@ wsWriteErrors      // WebSocket write failures
 
 ### WebSocket Layer (`transport/websocket.ts`)
 
-**Debug variables (Browser Console):**
+**Inspect frames:** DevTools Network → WS → Messages shows every frame sent and received. The client exposes no message-capture globals.
+
+**Debug (Browser Console):**
 ```javascript
-// All received WebSocket messages
-window.__wsMessages
-
-// Last message received
-window.__lastWSMessage
-
 // Connection state: 0=CONNECTING, 1=OPEN, 2=CLOSING, 3=CLOSED
 liveTemplateClient.ws?.readyState
-
-// Transport used for last message
-window.__lvtSendPath  // "websocket" | "http" | "http-fallback"
 ```
 
 **Connection issues:**
@@ -483,19 +476,7 @@ liveTemplateClient.getTreeState()
 - `onNodeAdded` - `lvt-mounted` lifecycle hook
 - `onBeforeNodeDiscarded` - `lvt-destroyed` lifecycle hook
 
-**Debug variables:**
-```javascript
-// Check if send was called
-window.__lvtSendCalled
-
-// Action name of last message
-window.__lvtMessageAction
-
-// Form submission tracking
-window.__lvtSubmitListenerTriggered
-window.__lvtActionFound
-window.__lvtInWrapper
-```
+**Debug:** the client sets no tracking globals. To confirm an action was sent, look for its outgoing frame (DevTools WS tab, or `wsLog.GetSent()` in chromedp).
 
 **Common issues:**
 - Key mismatch causing full replace instead of update
@@ -594,9 +575,11 @@ chromedp.Evaluate(`liveTemplateClient.ws?.readyState || -1`, &wsState)
 var treeState map[string]interface{}
 chromedp.Evaluate(`liveTemplateClient.getTreeState()`, &treeState)
 
-// Get all WebSocket messages
-var wsMessages []interface{}
-chromedp.Evaluate(`window.__wsMessages || []`, &wsMessages)
+// Record every WebSocket frame (CDP, no client globals). Start before Navigate.
+wsLog := e2etest.RecordWSFrames(ctx) // e2etest "github.com/livetemplate/lvt/testing"
+// ... after the action:
+wsLog.PrintLast(5)
+sent := wsLog.GetSent()
 ```
 
 ---
@@ -616,7 +599,7 @@ chromedp.Evaluate(`window.__wsMessages || []`, &wsMessages)
 | Cause | Symptom | Fix |
 |-------|---------|-----|
 | Same fingerprint | No update sent | Verify data actually changed |
-| Registry mistrack | Statics wrongly stripped | Check `MarkSeen()` calls |
+| Fingerprint mismatch | Statics wrongly stripped or resent | Check `ClientNeedsStatics()` in `tree_compare.go` |
 | Range match failure | Full replace instead of diff | Check key extraction logic |
 
 ### Client Issues
@@ -656,7 +639,8 @@ These are the key files and functions this skill references. If any change signi
 |------|---------------------|
 | `template.go` | `buildTree()`, `ExecuteUpdates()`, `Clone()` |
 | `dispatch.go` | `DispatchError`, `DispatchWithState()` |
-| `internal/parse/parse.go` | `Parse()`, `evaluatePipe()` |
+| `internal/parse/api.go` | `Parse()` |
+| `internal/parse/eval.go` | `evaluator.evalPipe()` |
 | `internal/build/types.go` | `TreeNode`, `RangeData`, `TreeMetadata` |
 | `internal/diff/tree_compare.go` | `CompareTreesAndGetChangesWithPath()` |
 | `internal/diff/range_ops.go` | Range differential operations |
@@ -666,7 +650,7 @@ These are the key files and functions this skill references. If any change signi
 
 | File | Key Functions/Variables |
 |------|-------------------------|
-| `livetemplate-client.ts` | `updateDOM()`, `handleWebSocketPayload()`, `window.__wsMessages`, `window.__lvtSendPath` |
+| `livetemplate-client.ts` | `updateDOM()`, `handleWebSocketPayload()`, `getTreeState()`, `window.liveTemplateClient` |
 | `state/tree-renderer.ts` | `applyUpdate()`, `reconstructFromTree()`, `deepMergeTreeNodes()` |
 | `transport/websocket.ts` | `WebSocketTransport`, `WebSocketManager`, `getReadyState()` |
 | `dom/event-delegation.ts` | `lvt-*` attribute handlers |
@@ -675,20 +659,20 @@ These are the key files and functions this skill references. If any change signi
 
 ## Maintenance
 
-**Last Validated:** 2024-12-20 against commit 696b1fd
+**Last Validated:** 2026-11-15 against livetemplate 2127473 and client 745f461
 
 **Update Checklist:**
 
 When updating this skill, verify:
 - [ ] Pipeline phases still match (Parse -> Build -> Diff -> Render -> Send)
-- [ ] Debug variables in client still exist (`__wsMessages`, `__lvtSendPath`, etc.)
+- [ ] Debugging entry points still exist (`window.liveTemplateClient`, `getTreeState()`, `ws`)
 - [ ] DispatchError structure unchanged
 - [ ] TreeNode type unchanged
-- [ ] Run validation test: `go test ./e2e -run TestDebugRenderingSkillReferences`
+- [ ] Run validation test: `GOWORK=off go test -tags=http ./e2e -run TestDebugRenderingSkill` (needs sibling `livetemplate/` and `client/` checkouts, otherwise it skips)
 
 **Monitored Files:**
 
-Server: `template.go`, `dispatch.go`, `internal/parse/parse.go`, `internal/build/types.go`, `internal/diff/tree_compare.go`
+Server: `template.go`, `dispatch.go`, `internal/parse/api.go`, `internal/parse/eval.go`, `internal/build/types.go`, `internal/diff/tree_compare.go`
 
 Client: `livetemplate-client.ts`, `state/tree-renderer.ts`, `transport/websocket.ts`
 
@@ -698,13 +682,13 @@ Client: `livetemplate-client.ts`, `state/tree-renderer.ts`, `transport/websocket
 
 **Do:**
 - Check server logs first for DispatchError
-- Use `window.__wsMessages` to verify WebSocket delivery
+- Verify WebSocket delivery from the frames (DevTools WS tab, or `RecordWSFrames` in chromedp)
 - Inspect TreeNode structure when debugging partial renders
 - Verify method signatures match Controller+State pattern
 - Check `rangeState` for range update issues
 
 **Don't:**
-- Assume client received updates without checking `__wsMessages`
+- Assume client received updates without checking the WS frames
 - Ignore fingerprint unchanged errors
 - Skip checking method signature when dispatch fails
 - Forget to check both server AND client for rendering issues
