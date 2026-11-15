@@ -39,6 +39,9 @@ import (
 //     case-folded, and warn exactly once for the one unhandled name.
 //  4. delegatedEvents. A custom element's event reaches a Controller action
 //     through lvt-on:my-widget-change once a handler declares the type.
+//  5. ctx.signal. A listener wired with { signal: ctx.signal } stops when a
+//     server render removes the attribute, and does not stack when a later
+//     render restores it.
 //
 // Set LVT_LOCAL_CLIENT_JS to a built client bundle to run this against an
 // unreleased client (see e2etest.GetClientLibraryJS); otherwise it uses the
@@ -143,6 +146,40 @@ func TestE2E_AttributeLifecycle(t *testing.T) {
 	e2e.PollUntil(t, ctx, `window.__ssrAdded === 1 && window.__ssrValue() === "armed-1"`,
 		10*time.Second, "handler re-fired on re-render, or ctx.value was captured", dump)
 
+	// (5): click the armed button, have the server remove its attribute, click
+	// again, have the server restore it, click once more. Two clicks counted
+	// means the listener died with the attribute and came back exactly once.
+	clickArmed := func(want int, msg string) {
+		t.Helper()
+		if err := chromedp.Run(ctx, chromedp.Click("#armed", chromedp.ByID)); err != nil {
+			dump()
+			t.Fatalf("click #armed: %v", err)
+		}
+		e2e.PollUntil(t, ctx, fmt.Sprintf(`window.__armedClicks === %d`, want), 10*time.Second, msg, dump)
+	}
+	toggleArmed := func(present bool) {
+		t.Helper()
+		if err := chromedp.Run(ctx, chromedp.Click("#toggle", chromedp.ByID)); err != nil {
+			dump()
+			t.Fatalf("click #toggle: %v", err)
+		}
+		e2e.PollUntil(t, ctx, fmt.Sprintf(`document.getElementById("armed").hasAttribute("lvt-x:e2e-armed") === %t`, present),
+			10*time.Second, "the server render never toggled lvt-x:e2e-armed", dump)
+	}
+	clickArmed(1, "the armed listener never fired")
+	toggleArmed(false)
+	if err := chromedp.Run(ctx, chromedp.Click("#armed", chromedp.ByID)); err != nil {
+		dump()
+		t.Fatalf("click disarmed #armed: %v", err)
+	}
+	toggleArmed(true)
+	clickArmed(2, "listener survived disarming or stacked on re-arm")
+	var armedClicks int
+	if err := chromedp.Run(ctx, chromedp.Evaluate(`window.__armedClicks`, &armedClicks)); err != nil || armedClicks != 2 {
+		dump()
+		t.Errorf("want 2 counted clicks on #armed (armed, disarmed, re-armed), got %d (err %v)", armedClicks, err)
+	}
+
 	// Give a duplicate warning time to show up after the action's renders
 	// before counting: "exactly once" is the claim under test.
 	time.Sleep(500 * time.Millisecond)
@@ -186,12 +223,20 @@ func TestE2E_AttributeLifecycle(t *testing.T) {
 	}
 }
 
-type attrLifecycleState struct{ Count int }
+type attrLifecycleState struct {
+	Count    int
+	Disarmed bool
+}
 
 type attrLifecycleController struct{}
 
 func (c *attrLifecycleController) Bump(s attrLifecycleState, _ *livetemplate.Context) (attrLifecycleState, error) {
 	s.Count++
+	return s, nil
+}
+
+func (c *attrLifecycleController) ToggleArmed(s attrLifecycleState, _ *livetemplate.Context) (attrLifecycleState, error) {
+	s.Disarmed = !s.Disarmed
 	return s, nil
 }
 
@@ -212,6 +257,13 @@ const attrLifecycleTemplate = `<!DOCTYPE html>
       window.__ssrValue = () => ctx.value;
     },
   });
+  window.__armedClicks = 0;
+  (window.lvtAttributes ||= []).push({
+    attribute: "lvt-x:e2e-armed",
+    onElementAdded(el, ctx) {
+      el.addEventListener("click", () => window.__armedClicks++, { signal: ctx.signal });
+    },
+  });
   (window.lvtAttributes ||= []).push({
     attribute: "lvt-x:widget",
     delegatedEvents: ["my-widget-change"],
@@ -222,6 +274,8 @@ const attrLifecycleTemplate = `<!DOCTYPE html>
 <body>
   <div id="count">{{.Count}}</div>
   <button id="ssr" lvt-x:e2e-ssr="armed-{{.Count}}">ssr</button>
+  <button id="armed" {{if not .Disarmed}}lvt-x:e2e-armed="on"{{end}}>armed</button>
+  <button id="toggle" lvt-on:click="ToggleArmed">toggle</button>
   <my-widget id="widget" lvt-x:widget="on" lvt-on:my-widget-change="Bump"></my-widget>
   <button id="bump" lvt-on:click="Bump" lvt-mod:debounce="10" lvt-el:addClass:on:click="pressed">bump</button>
   <input id="k" lvt-on:keydown="Bump" lvt-key="Enter">
