@@ -14,6 +14,7 @@ import (
 
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
+	e2etest "github.com/livetemplate/lvt/testing"
 )
 
 // TestTutorialE2E tests the complete blog tutorial workflow
@@ -204,13 +205,13 @@ func TestTutorialE2E(t *testing.T) {
 		// Create per-subtest context with individual timeout
 		testCtx, cancel := chromedp.NewContext(ctx)
 		defer cancel()
+		wsLog := e2etest.RecordWSFrames(testCtx)
 		testCtx, timeoutCancel := context.WithTimeout(testCtx, getBrowserTimeout())
 		defer timeoutCancel()
 
 		var titleValueBeforeSubmit string
 		var contentValueBeforeSubmit string
 		var activeElementAfterTyping string
-		var lastFocusedName string
 		err := chromedp.Run(testCtx,
 			// Navigate to /posts and wait for it to load
 			chromedp.Navigate(testURL+"/posts"),
@@ -253,18 +254,12 @@ func TestTutorialE2E(t *testing.T) {
 
 		// Debug: Capture the tree state from the client
 		var treeState string
-		var lastWSMessage string
-		var lastFormData string
 		_ = chromedp.Run(testCtx,
-			chromedp.Evaluate(`JSON.stringify(window.liveTemplateClient?.treeState || {}, null, 2)`, &treeState),
-			chromedp.Evaluate(`window.__lastWSMessage || 'No WS message captured'`, &lastWSMessage),
-			chromedp.Evaluate(`JSON.stringify(window.__lvtLastFormData || JSON.parse(window.sessionStorage.getItem("__lvtLastFormData") || "null"))`, &lastFormData),
-			chromedp.Evaluate(`window.__lvtLastFocusedName || 'unknown'`, &lastFocusedName),
+			chromedp.Evaluate(`JSON.stringify(window.liveTemplateClient?.getTreeState() || {}, null, 2)`, &treeState),
 		)
 		t.Logf("=== CLIENT TREE STATE ===\n%s\n", treeState)
-		t.Logf("=== LAST WS MESSAGE ===\n%s\n", lastWSMessage)
-		t.Logf("=== LAST FORM DATA ===\n%s\n", lastFormData)
-		t.Logf("=== VALUES BEFORE SUBMIT === title=%q content=%q activeElement=%q lastFocused=%q\n", titleValueBeforeSubmit, contentValueBeforeSubmit, activeElementAfterTyping, lastFocusedName)
+		wsLog.PrintLast(5)
+		t.Logf("=== VALUES BEFORE SUBMIT === title=%q content=%q activeElement=%q\n", titleValueBeforeSubmit, contentValueBeforeSubmit, activeElementAfterTyping)
 
 		// Verify the post appears in the table
 		var postInTable bool
@@ -658,6 +653,7 @@ func TestTutorialE2E(t *testing.T) {
 		// Create per-subtest context with individual timeout
 		testCtx, cancel := chromedp.NewContext(ctx)
 		defer cancel()
+		wsLog := e2etest.RecordWSFrames(testCtx)
 		// Use 180s timeout - validation test does multiple operations and can be slow
 		// in CI with Docker Chrome. Matches complete_workflow_test.go timeout.
 		testCtx, timeoutCancel := context.WithTimeout(testCtx, 180*time.Second)
@@ -757,25 +753,14 @@ func TestTutorialE2E(t *testing.T) {
 		}
 
 		// Debug: Check what the client has
-		var lastWSMessage, clientErrors, activeFormStatus, handleResponseCalled, renderCalled, responseMeta, allWSMessages, errorElementsCount string
-		chromedp.Run(testCtx,
-			chromedp.Evaluate(`window.__lastWSMessage || 'No WS message'`, &lastWSMessage),
-			chromedp.Evaluate(`JSON.stringify(window.liveTemplateClient?.errors || {})`, &clientErrors),
+		var activeFormStatus, errorElementsCount string
+		_ = chromedp.Run(testCtx,
 			chromedp.Evaluate(`window.liveTemplateClient?.formLifecycleManager?.activeForm ? 'active' : 'not-active'`, &activeFormStatus),
-			chromedp.Evaluate(`window.__lvtHandleResponseCalled ? 'yes' : 'no'`, &handleResponseCalled),
-			chromedp.Evaluate(`window.__lvtRenderFieldErrorsCalled ? 'yes' : 'no'`, &renderCalled),
-			chromedp.Evaluate(`JSON.stringify(window.__lvtResponseMeta || {})`, &responseMeta),
-			chromedp.Evaluate(`JSON.stringify(window.__wsMessages?.slice(-5) || [])`, &allWSMessages),
 			chromedp.Evaluate(`document.querySelectorAll('small[data-lvt-error]').length.toString()`, &errorElementsCount),
 		)
 
-		t.Logf("Last WS message: %s", lastWSMessage)
-		t.Logf("All WS messages (last 5): %s", allWSMessages)
-		t.Logf("Client errors state: %s", clientErrors)
+		wsLog.PrintLast(5)
 		t.Logf("Active form status: %s", activeFormStatus)
-		t.Logf("HandleResponse called: %s", handleResponseCalled)
-		t.Logf("RenderFieldErrors called: %s", renderCalled)
-		t.Logf("Response meta: %s", responseMeta)
 		t.Logf("Error elements count: %s", errorElementsCount)
 		t.Logf("Form HTML (first 500 chars): %s", formHTML[:min(500, len(formHTML))])
 

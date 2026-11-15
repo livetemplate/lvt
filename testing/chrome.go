@@ -945,45 +945,6 @@ func ValidateNoTemplateExpressions(selector string) chromedp.Action {
 	})
 }
 
-// WaitForMessageCount waits for the WebSocket message counter to reach the expected value.
-// This is a deterministic way to wait for updates without relying on arbitrary timeouts.
-// The client increments window.__wsMessageCount after each DOM update completes.
-//
-// Example:
-//
-//	var initialCount int
-//	chromedp.Evaluate(`window.__wsMessageCount || 0`, &initialCount)
-//	// ... trigger action ...
-//	WaitForMessageCount(initialCount+1, 5*time.Second)  // Wait for exactly 1 new message
-func WaitForMessageCount(expectedCount int, timeout time.Duration) chromedp.Action {
-	condition := fmt.Sprintf(`(window.__wsMessageCount || 0) >= %d`, expectedCount)
-	return WaitFor(condition, timeout)
-}
-
-// WaitForActionResponse waits for a WebSocket message with the specified action name in metadata.
-// This is deterministic - it waits for the exact action to complete, not arbitrary time.
-//
-// The test should clear window.__wsMessages before triggering the action:
-//
-//	chromedp.Evaluate(`window.__wsMessages = [];`, nil)
-//	// ... trigger action ...
-//	WaitForActionResponse("search", 5*time.Second)
-//
-// Example:
-//
-//	chromedp.Evaluate(`window.__wsMessages = [];`, nil),
-//	chromedp.SendKeys(`input[name="query"]`, "test", chromedp.ByQuery),
-//	WaitForActionResponse("search", 5*time.Second),
-func WaitForActionResponse(actionName string, timeout time.Duration) chromedp.Action {
-	condition := fmt.Sprintf(`
-		(() => {
-			const msgs = window.__wsMessages || [];
-			return msgs.some(m => m.meta && m.meta.action === %q);
-		})()
-	`, actionName)
-	return WaitFor(condition, timeout)
-}
-
 // SetupUpdateEventListener sets up a non-blocking event listener that captures
 // 'lvt:updated' events in window.__capturedEvents array.
 // This must be called BEFORE the action that triggers the event.

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -47,7 +48,8 @@ func TestDebugRenderingSkill_ReferencesValid(t *testing.T) {
 		serverFiles := []string{
 			"template.go",
 			"dispatch.go",
-			"internal/parse/parse.go",
+			"internal/parse/api.go",
+			"internal/parse/eval.go",
 			"internal/build/types.go",
 			"internal/diff/tree_compare.go",
 			"internal/diff/range_ops.go",
@@ -56,7 +58,7 @@ func TestDebugRenderingSkill_ReferencesValid(t *testing.T) {
 
 		for _, file := range serverFiles {
 			fullPath := filepath.Join(livetemplateRoot, file)
-			require.FileExists(t, fullPath, "Server file %s should exist", file)
+			assert.FileExists(t, fullPath, "Server file %s should exist", file)
 		}
 	})
 
@@ -74,27 +76,33 @@ func TestDebugRenderingSkill_ReferencesValid(t *testing.T) {
 				functions: []string{"DispatchError", "DispatchWithState"},
 			},
 			{
-				file:      "internal/parse/parse.go",
-				functions: []string{"Parse"},
+				file:      "internal/parse/api.go",
+				functions: []string{"func Parse("},
+			},
+			{
+				file:      "internal/parse/eval.go",
+				functions: []string{"evalPipe"},
 			},
 			{
 				file:      "internal/build/types.go",
-				functions: []string{"TreeNode", "RangeData"},
+				functions: []string{"TreeNode", "RangeData", "TreeMetadata"},
 			},
 			{
 				file:      "internal/diff/tree_compare.go",
-				functions: []string{"CompareTreesAndGetChangesWithPath"},
+				functions: []string{"CompareTreesAndGetChangesWithPath", "ClientNeedsStatics"},
 			},
 		}
 
 		for _, check := range functionChecks {
 			fullPath := filepath.Join(livetemplateRoot, check.file)
 			content, err := os.ReadFile(fullPath)
-			require.NoError(t, err, "Should read %s", check.file)
+			if !assert.NoError(t, err, "Should read %s", check.file) {
+				continue
+			}
 
 			contentStr := string(content)
 			for _, fn := range check.functions {
-				require.True(t, strings.Contains(contentStr, fn),
+				assert.True(t, strings.Contains(contentStr, fn),
 					"File %s should contain function/type '%s'", check.file, fn)
 			}
 		}
@@ -110,29 +118,29 @@ func TestDebugRenderingSkill_ReferencesValid(t *testing.T) {
 
 		for _, file := range clientFiles {
 			fullPath := filepath.Join(clientRoot, file)
-			require.FileExists(t, fullPath, "Client file %s should exist", file)
+			assert.FileExists(t, fullPath, "Client file %s should exist", file)
 		}
 	})
 
-	t.Run("ClientDebugVariablesExist", func(t *testing.T) {
-		// Check main client file for debug variables
+	// The skill points at these console entry points. The client's old
+	// window.__wsMessages-style capture globals are gone, so WS delivery is
+	// checked from frames instead (DevTools, or e2etest.RecordWSFrames).
+	t.Run("ClientDebugEntryPointsExist", func(t *testing.T) {
 		clientFile := filepath.Join(clientRoot, "livetemplate-client.ts")
 		content, err := os.ReadFile(clientFile)
 		require.NoError(t, err, "Should read livetemplate-client.ts")
 
 		contentStr := string(content)
 
-		debugVars := []string{
-			"__wsMessages",
-			"__lastWSMessage",
-			"__lvtSendCalled",
-			"__lvtMessageAction",
-			"__lvtSendPath",
+		entryPoints := []string{
+			"(window as any).liveTemplateClient = client",
+			"getTreeState()",
+			"public ws: WebSocket",
 		}
 
-		for _, varName := range debugVars {
-			require.True(t, strings.Contains(contentStr, varName),
-				"Client should contain debug variable '%s'", varName)
+		for _, ep := range entryPoints {
+			assert.True(t, strings.Contains(contentStr, ep),
+				"Client should contain debug entry point '%s'", ep)
 		}
 	})
 
@@ -158,11 +166,13 @@ func TestDebugRenderingSkill_ReferencesValid(t *testing.T) {
 		for _, check := range functionChecks {
 			fullPath := filepath.Join(clientRoot, check.file)
 			content, err := os.ReadFile(fullPath)
-			require.NoError(t, err, "Should read %s", check.file)
+			if !assert.NoError(t, err, "Should read %s", check.file) {
+				continue
+			}
 
 			contentStr := string(content)
 			for _, fn := range check.functions {
-				require.True(t, strings.Contains(contentStr, fn),
+				assert.True(t, strings.Contains(contentStr, fn),
 					"File %s should contain function/class '%s'", check.file, fn)
 			}
 		}
