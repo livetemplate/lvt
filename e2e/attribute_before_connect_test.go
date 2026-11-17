@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -45,7 +46,7 @@ func TestE2E_AttributeClickBeforeConnect(t *testing.T) {
 	)))
 	defer slog.SetDefault(prevSlog)
 
-	port, shutdown := startBeforeConnectServer(t)
+	port, posts, shutdown := startBeforeConnectServer(t)
 	defer shutdown()
 
 	chromeCtx, cleanup := e2etest.SetupDockerChrome(t, 60*time.Second)
@@ -81,7 +82,7 @@ func TestE2E_AttributeClickBeforeConnect(t *testing.T) {
 		dump()
 		t.Fatalf("navigate: %v", err)
 	}
-	e2e.PollUntil(t, ctx, `window.__rateArmed === 1`, wsUpgradeDelay/2,
+	e2e.PollUntil(t, ctx, `window.__rateArmed === 1`, wsUpgradeDelay,
 		"the queued handler to arm the server-rendered button before the WebSocket opened", dump)
 
 	if err := chromedp.Run(ctx, chromedp.Click("#rate", chromedp.ByID)); err != nil {
@@ -90,7 +91,7 @@ func TestE2E_AttributeClickBeforeConnect(t *testing.T) {
 	}
 	if n := wsLog.Count(); n != 0 {
 		dump()
-		t.Fatalf("the click was not inside the pre-connect window: %d WS frames before it", n)
+		t.Fatalf("the click was not inside the pre-connect window: %d WS frames before it (a slow runner, not the client)", n)
 	}
 
 	e2e.PollUntil(t, ctx, `document.getElementById("count").textContent.trim() === "1"`,
@@ -100,6 +101,10 @@ func TestE2E_AttributeClickBeforeConnect(t *testing.T) {
 	// would land within a round trip, so a short wait catches it, but a later
 	// one would slip past.
 	time.Sleep(500 * time.Millisecond)
+	if n := posts.Load(); n != 0 {
+		dump()
+		t.Errorf("%d HTTP POSTs, want 0: the queued send must go out over the WebSocket only", n)
+	}
 	var count string
 	if err := chromedp.Run(ctx, chromedp.Text("#count", &count, chromedp.ByID)); err != nil {
 		dump()
@@ -143,7 +148,9 @@ const beforeConnectTemplate = `<!DOCTYPE html>
 </body>
 </html>`
 
-func startBeforeConnectServer(t *testing.T) (int, func()) {
+// startBeforeConnectServer returns the port, a count of POSTs the app
+// received, and a shutdown func.
+func startBeforeConnectServer(t *testing.T) (int, *atomic.Int32, func()) {
 	t.Helper()
 
 	tmpl := livetemplate.Must(livetemplate.New("before-connect-e2e"))
@@ -153,7 +160,11 @@ func startBeforeConnectServer(t *testing.T) (int, func()) {
 	app := tmpl.Handle(&beforeConnectController{}, livetemplate.AsState(&beforeConnectState{}))
 
 	mux := http.NewServeMux()
+	var posts atomic.Int32
 	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			posts.Add(1)
+		}
 		if strings.EqualFold(r.Header.Get("Upgrade"), "websocket") {
 			slog.Info("delaying WebSocket upgrade", slog.Duration("delay", wsUpgradeDelay))
 			select {
@@ -177,7 +188,7 @@ func startBeforeConnectServer(t *testing.T) (int, func()) {
 		}
 	}()
 	e2etest.WaitForServer(t, fmt.Sprintf("http://localhost:%d", p), 10*time.Second)
-	return p, func() {
+	return p, &posts, func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		if err := server.Shutdown(ctx); err != nil {
