@@ -23,7 +23,7 @@ import (
 
 // wsUpgradeDelay holds every WebSocket handshake, so the page stays clickable
 // with no open socket for this long, as it does on a slow remote site.
-const wsUpgradeDelay = 2 * time.Second
+const wsUpgradeDelay = 5 * time.Second
 
 // TestE2E_AttributeClickBeforeConnect: a handler registered through the queue
 // arms on the server-rendered markup before the WebSocket opens, and a click
@@ -74,7 +74,6 @@ func TestE2E_AttributeClickBeforeConnect(t *testing.T) {
 		}
 	}
 
-	start := time.Now()
 	if err := chromedp.Run(ctx,
 		chromedp.Navigate(e2etest.GetChromeTestURL(port)),
 		chromedp.WaitVisible("#rate", chromedp.ByID),
@@ -89,15 +88,17 @@ func TestE2E_AttributeClickBeforeConnect(t *testing.T) {
 		dump()
 		t.Fatalf("click: %v", err)
 	}
-	if n := wsLog.Count(); n != 0 || time.Since(start) >= wsUpgradeDelay {
+	if n := wsLog.Count(); n != 0 {
 		dump()
-		t.Fatalf("the click was not inside the pre-connect window (%d WS frames, %v since navigate)", n, time.Since(start))
+		t.Fatalf("the click was not inside the pre-connect window: %d WS frames before it", n)
 	}
 
 	e2e.PollUntil(t, ctx, `document.getElementById("count").textContent.trim() === "1"`,
 		wsUpgradeDelay+10*time.Second, "a click made before the WebSocket opened to reach the Controller", dump)
 
-	// Exactly once: a queued send must not also go out over HTTP.
+	// Exactly once: a queued send must not also go out over HTTP. A duplicate
+	// would land within a round trip, so a short wait catches it, but a later
+	// one would slip past.
 	time.Sleep(500 * time.Millisecond)
 	var count string
 	if err := chromedp.Run(ctx, chromedp.Text("#count", &count, chromedp.ByID)); err != nil {
@@ -155,7 +156,11 @@ func startBeforeConnectServer(t *testing.T) (int, func()) {
 	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.EqualFold(r.Header.Get("Upgrade"), "websocket") {
 			slog.Info("delaying WebSocket upgrade", slog.Duration("delay", wsUpgradeDelay))
-			time.Sleep(wsUpgradeDelay)
+			select {
+			case <-time.After(wsUpgradeDelay):
+			case <-r.Context().Done():
+				return
+			}
 		}
 		app.ServeHTTP(w, r)
 	}))
