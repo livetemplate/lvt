@@ -36,7 +36,6 @@ const wsUpgradeDelay = 5 * time.Second
 // unreleased client (see e2etest.GetClientLibraryJS).
 func TestE2E_AttributeClickBeforeConnect(t *testing.T) {
 	h := startBeforeConnectHarness(t)
-	defer h.cleanup()
 
 	e2e.PollUntil(t, h.ctx, `window.__rateArmed === 1`, wsUpgradeDelay,
 		"the queued handler to arm the server-rendered button before the WebSocket opened", h.dump)
@@ -44,12 +43,11 @@ func TestE2E_AttributeClickBeforeConnect(t *testing.T) {
 	h.expectOneWSAction()
 }
 
-// TestE2E_BuiltinClickBeforeConnect: an lvt-on:click made before the
+// TestE2E_LvtOnClickBeforeConnect: an lvt-on:click made before the
 // WebSocket opens is queued and reaches the Controller exactly once after the
 // socket opens, the same as a custom attribute handler's send.
-func TestE2E_BuiltinClickBeforeConnect(t *testing.T) {
+func TestE2E_LvtOnClickBeforeConnect(t *testing.T) {
 	h := startBeforeConnectHarness(t)
-	defer h.cleanup()
 
 	h.clickBeforeConnect("#inc")
 	h.expectOneWSAction()
@@ -63,7 +61,6 @@ func TestE2E_BuiltinClickBeforeConnect(t *testing.T) {
 // first render, so there is no pre-connect submit to test.
 func TestE2E_FormSubmitBeforeConnectIsNative(t *testing.T) {
 	h := startBeforeConnectHarness(t, livetemplate.WithLoadingDisabled())
-	defer h.cleanup()
 
 	h.clickBeforeConnect("#submit")
 	if !waitFor(func() bool { return h.posts.Load() >= 1 }, 10*time.Second) {
@@ -77,9 +74,9 @@ func TestE2E_FormSubmitBeforeConnectIsNative(t *testing.T) {
 		t.Fatal("the page loaded by the POST never opened its WebSocket")
 	}
 	time.Sleep(500 * time.Millisecond)
-	if n := h.sentActions(); n != 0 {
+	if n := h.wsLog.CountByDirection("sent"); n != 0 {
 		h.dump()
-		t.Errorf("%d WS action frames, want 0: the submit already went out as a native POST", n)
+		t.Errorf("%d WS frames sent, want 0: the submit already went out as a native POST", n)
 	}
 	if n := h.posts.Load(); n != 1 {
 		h.dump()
@@ -88,12 +85,11 @@ func TestE2E_FormSubmitBeforeConnectIsNative(t *testing.T) {
 }
 
 type beforeConnectHarness struct {
-	t       *testing.T
-	ctx     context.Context
-	posts   *atomic.Int32
-	wsLog   *e2etest.WSMessageLogger
-	dump    func()
-	cleanup func()
+	t     *testing.T
+	ctx   context.Context
+	posts *atomic.Int32
+	wsLog *e2etest.WSMessageLogger
+	dump  func()
 }
 
 // startBeforeConnectHarness starts the app with a delayed WebSocket upgrade
@@ -103,14 +99,18 @@ func startBeforeConnectHarness(t *testing.T, opts ...livetemplate.Option) *befor
 	t.Helper()
 	serverLogger := e2etest.NewServerLogger()
 	serverLogger.Start()
+	t.Cleanup(serverLogger.Stop)
 	prevSlog := slog.Default()
 	slog.SetDefault(slog.New(slog.NewTextHandler(
 		io.MultiWriter(os.Stderr, serverLogger.Writer()),
 		&slog.HandlerOptions{Level: slog.LevelDebug},
 	)))
+	t.Cleanup(func() { slog.SetDefault(prevSlog) })
 
 	port, posts, shutdown := startBeforeConnectServer(t, opts...)
+	t.Cleanup(shutdown)
 	chromeCtx, chromeCleanup := e2etest.SetupDockerChrome(t, 60*time.Second)
+	t.Cleanup(chromeCleanup)
 	ctx := chromeCtx.Context
 
 	consoleLog := e2etest.NewConsoleLogger()
@@ -118,12 +118,6 @@ func startBeforeConnectHarness(t *testing.T, opts ...livetemplate.Option) *befor
 	wsLog := e2etest.RecordWSFrames(ctx)
 
 	h := &beforeConnectHarness{t: t, ctx: ctx, posts: posts, wsLog: wsLog}
-	h.cleanup = func() {
-		chromeCleanup()
-		shutdown()
-		slog.SetDefault(prevSlog)
-		serverLogger.Stop()
-	}
 	h.dump = func() {
 		var lines []string
 		for _, l := range consoleLog.GetLogs() {
@@ -147,7 +141,6 @@ func startBeforeConnectHarness(t *testing.T, opts ...livetemplate.Option) *befor
 		chromedp.WaitVisible("#rate", chromedp.ByID),
 	); err != nil {
 		h.dump()
-		h.cleanup()
 		t.Fatalf("navigate: %v", err)
 	}
 	return h
