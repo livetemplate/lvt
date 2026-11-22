@@ -8,7 +8,7 @@ go 1.26.0
 // livetemplate#414 wrapper-injection fix TestIssue414_* asserts (v0.11.1+).
 // v0.25.2 is pinned for its ClientVersion 0.25.4, so ClientScriptURL
 // serves the client release (with #473 Phase 3) that this test exercises.
-require github.com/livetemplate/livetemplate v0.25.2
+require github.com/livetemplate/livetemplate v0.25.14
 
 replace github.com/livetemplate/lvt/components => ./components
 
