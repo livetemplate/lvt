@@ -448,7 +448,7 @@ func generateForwardingMethods(parentNameCap, parentSingular, childSingular, chi
 	var b strings.Builder
 
 	// ChildAdd
-	b.WriteString(fmt.Sprintf(`// %sAdd forwards to the embedded %s controller
+	fmt.Fprintf(&b, `// %sAdd forwards to the embedded %s controller
 func (c *%sController) %sAdd(state %s, ctx *livetemplate.Context) (%s, error) {
 	var err error
 	state.%s, err = c.%sCtrl.Add(state.%s, ctx, state.EditingID)
@@ -456,10 +456,10 @@ func (c *%sController) %sAdd(state %s, ctx *livetemplate.Context) (%s, error) {
 }
 
 `, childSingular, childPkg, parentNameCap, childSingular, parentState, parentState,
-		childPlural, childPlural, childPlural))
+		childPlural, childPlural, childPlural)
 
 	// ChildEdit
-	b.WriteString(fmt.Sprintf(`// %sEdit forwards to the embedded %s controller
+	fmt.Fprintf(&b, `// %sEdit forwards to the embedded %s controller
 func (c *%sController) %sEdit(state %s, ctx *livetemplate.Context) (%s, error) {
 	var err error
 	state.%s, err = c.%sCtrl.Edit(state.%s, ctx)
@@ -467,10 +467,10 @@ func (c *%sController) %sEdit(state %s, ctx *livetemplate.Context) (%s, error) {
 }
 
 `, childSingular, childPkg, parentNameCap, childSingular, parentState, parentState,
-		childPlural, childPlural, childPlural))
+		childPlural, childPlural, childPlural)
 
 	// ChildUpdate
-	b.WriteString(fmt.Sprintf(`// %sUpdate forwards to the embedded %s controller
+	fmt.Fprintf(&b, `// %sUpdate forwards to the embedded %s controller
 func (c *%sController) %sUpdate(state %s, ctx *livetemplate.Context) (%s, error) {
 	var err error
 	state.%s, err = c.%sCtrl.Update(state.%s, ctx, state.EditingID)
@@ -478,10 +478,10 @@ func (c *%sController) %sUpdate(state %s, ctx *livetemplate.Context) (%s, error)
 }
 
 `, childSingular, childPkg, parentNameCap, childSingular, parentState, parentState,
-		childPlural, childPlural, childPlural))
+		childPlural, childPlural, childPlural)
 
 	// ChildDelete
-	b.WriteString(fmt.Sprintf(`// %sDelete forwards to the embedded %s controller
+	fmt.Fprintf(&b, `// %sDelete forwards to the embedded %s controller
 func (c *%sController) %sDelete(state %s, ctx *livetemplate.Context) (%s, error) {
 	var err error
 	state.%s, err = c.%sCtrl.Delete(state.%s, ctx, state.EditingID)
@@ -489,17 +489,17 @@ func (c *%sController) %sDelete(state %s, ctx *livetemplate.Context) (%s, error)
 }
 
 `, childSingular, childPkg, parentNameCap, childSingular, parentState, parentState,
-		childPlural, childPlural, childPlural))
+		childPlural, childPlural, childPlural)
 
 	// ChildCancelEdit
-	b.WriteString(fmt.Sprintf(`// %sCancelEdit forwards to the embedded %s controller
+	fmt.Fprintf(&b, `// %sCancelEdit forwards to the embedded %s controller
 func (c *%sController) %sCancelEdit(state %s, ctx *livetemplate.Context) (%s, error) {
 	var err error
 	state.%s, err = c.%sCtrl.CancelEdit(state.%s, ctx)
 	return state, err
 }
 `, childSingular, childPkg, parentNameCap, childSingular, parentState, parentState,
-		childPlural, childPlural, childPlural))
+		childPlural, childPlural, childPlural)
 
 	return b.String()
 }

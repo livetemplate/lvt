@@ -135,7 +135,7 @@ func (r *ValidationResult) Format() string {
 		return sb.String()
 	}
 
-	sb.WriteString(fmt.Sprintf("\nFound %d issue(s):\n", len(r.Issues)))
+	fmt.Fprintf(&sb, "\nFound %d issue(s):\n", len(r.Issues))
 
 	// Group by level
 	errors := []ValidationIssue{}
@@ -155,7 +155,7 @@ func (r *ValidationResult) Format() string {
 
 	// Print errors
 	if len(errors) > 0 {
-		sb.WriteString(fmt.Sprintf("\n❌ Errors (%d):\n", len(errors)))
+		fmt.Fprintf(&sb, "\n❌ Errors (%d):\n", len(errors))
 		for _, issue := range errors {
 			sb.WriteString(formatIssue(issue))
 		}
@@ -163,7 +163,7 @@ func (r *ValidationResult) Format() string {
 
 	// Print warnings
 	if len(warnings) > 0 {
-		sb.WriteString(fmt.Sprintf("\n⚠️  Warnings (%d):\n", len(warnings)))
+		fmt.Fprintf(&sb, "\n⚠️  Warnings (%d):\n", len(warnings))
 		for _, issue := range warnings {
 			sb.WriteString(formatIssue(issue))
 		}
@@ -171,7 +171,7 @@ func (r *ValidationResult) Format() string {
 
 	// Print infos
 	if len(infos) > 0 {
-		sb.WriteString(fmt.Sprintf("\nℹ️  Info (%d):\n", len(infos)))
+		fmt.Fprintf(&sb, "\nℹ️  Info (%d):\n", len(infos))
 		for _, issue := range infos {
 			sb.WriteString(formatIssue(issue))
 		}
@@ -185,16 +185,16 @@ func formatIssue(issue ValidationIssue) string {
 
 	if issue.File != "" {
 		if issue.Line > 0 {
-			sb.WriteString(fmt.Sprintf("  %s:%d: %s\n", issue.File, issue.Line, issue.Message))
+			fmt.Fprintf(&sb, "  %s:%d: %s\n", issue.File, issue.Line, issue.Message)
 		} else {
-			sb.WriteString(fmt.Sprintf("  %s: %s\n", issue.File, issue.Message))
+			fmt.Fprintf(&sb, "  %s: %s\n", issue.File, issue.Message)
 		}
 	} else {
-		sb.WriteString(fmt.Sprintf("  %s\n", issue.Message))
+		fmt.Fprintf(&sb, "  %s\n", issue.Message)
 	}
 
 	if issue.Hint != "" {
-		sb.WriteString(fmt.Sprintf("    💡 %s\n", issue.Hint))
+		fmt.Fprintf(&sb, "    💡 %s\n", issue.Hint)
 	}
 
 	return sb.String()
