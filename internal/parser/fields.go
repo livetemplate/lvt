@@ -227,7 +227,7 @@ func FieldsToGoStruct(fields []Field) string {
 	for _, f := range fields {
 		// Capitalize first letter for export
 		fieldName := cases.Title(language.English).String(f.Name)
-		sb.WriteString(fmt.Sprintf("\t%s %s `json:\"%s\"`\n", fieldName, f.GoType, f.Name))
+		fmt.Fprintf(&sb, "\t%s %s `json:\"%s\"`\n", fieldName, f.GoType, f.Name)
 	}
 	return sb.String()
 }
@@ -236,7 +236,7 @@ func FieldsToGoStruct(fields []Field) string {
 func FieldsToSQLColumns(fields []Field) string {
 	var sb strings.Builder
 	for i, f := range fields {
-		sb.WriteString(fmt.Sprintf("  %s %s NOT NULL", f.Name, f.SQLType))
+		fmt.Fprintf(&sb, "  %s %s NOT NULL", f.Name, f.SQLType)
 		if i < len(fields)-1 {
 			sb.WriteString(",\n")
 		}

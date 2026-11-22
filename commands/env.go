@@ -664,7 +664,7 @@ func writeEnvFile(filename string, envVars map[string]string) error {
 		if strings.Contains(value, " ") {
 			value = fmt.Sprintf("\"%s\"", value)
 		}
-		b.WriteString(fmt.Sprintf("%s=%s\n", key, value))
+		fmt.Fprintf(&b, "%s=%s\n", key, value)
 	}
 
 	// Write to file with restricted permissions

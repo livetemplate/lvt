@@ -253,7 +253,7 @@ func (m genResourceModel) renderContent() string {
 				if f.inferred {
 					typeDisplay = HintStyle.Render(f.typ + " (inferred)")
 				}
-				b.WriteString(fmt.Sprintf("  %d. %-15s [%s] %s\n", i+1, f.name, typeDisplay, marker))
+				fmt.Fprintf(&b, "  %d. %-15s [%s] %s\n", i+1, f.name, typeDisplay, marker)
 			}
 			b.WriteString("\n")
 		}
