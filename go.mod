@@ -6,8 +6,11 @@ go 1.26.0
 // census, livetemplate#473), which e2e/attribute_census_test.go
 // (TestE2E_AttributeLifecycle) asserts on the wire. It also carries the
 // livetemplate#414 wrapper-injection fix TestIssue414_* asserts (v0.11.1+).
-// v0.25.2 is pinned for its ClientVersion 0.25.4, so ClientScriptURL
-// serves the client release (with #473 Phase 3) that this test exercises.
+// v0.25.14 serves ClientVersion 0.25.12, which still carries the #473
+// Phase 3 behavior this test exercises (Phase 4 only moved prereview's own
+// attribute handlers out of the client, and lvt uses none of them). It also
+// carries livetemplate#556, which e2e/testdata/e2e/counter/update_05_reset
+// reflects: a nested node's unchanged statics are no longer resent.
 require github.com/livetemplate/livetemplate v0.25.14
 
 replace github.com/livetemplate/lvt/components => ./components
