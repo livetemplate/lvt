@@ -8,61 +8,74 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
+	"testing"
+	"time"
 
-	cdpnetwork "github.com/chromedp/cdproto/network"
-	cdpruntime "github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
+	e2etest "github.com/livetemplate/lvt/testing"
 )
 
-// browserDiag records a tab's console and WebSocket frames so a failing test
-// can print them with the app's server log and the rendered HTML. Run
-// cdpnetwork.Enable() on the tab before navigating, or no frames arrive.
+// startItemsApp generates a multi-kit app with an items resource (name:string,
+// plus genArgs), migrates it, seeds rows, and runs it natively. It returns the
+// app directory and port.
+func startItemsApp(t *testing.T, name string, rows []struct {
+	SQL  string
+	Args []interface{}
+}, genArgs ...string) (string, int) {
+	t.Helper()
+	appDir := createTestApp(t, t.TempDir(), name, &AppOptions{Kit: "multi"})
+	setupLocalClientLibrary(t, appDir)
+
+	if err := runLvtCommand(t, appDir, append([]string{"gen", "resource", "items", "name:string"}, genArgs...)...); err != nil {
+		t.Fatalf("Failed to generate items: %v", err)
+	}
+	if err := runLvtCommand(t, appDir, "migration", "up"); err != nil {
+		t.Fatalf("Failed to run migrations: %v", err)
+	}
+	if err := seedTestData(filepath.Join(appDir, "app.db"), rows); err != nil {
+		t.Fatalf("Failed to seed items: %v", err)
+	}
+
+	_ = injectFrameworkForTest(t, appDir)
+	port := allocateTestPort()
+	_ = buildAndRunNative(t, appDir, port)
+	waitForServer(t, fmt.Sprintf("http://localhost:%d/items", port), 10*time.Second)
+	return appDir, port
+}
+
+// browserDiag is a pooled-Chrome tab that records its console (uncaught
+// exceptions included) and WebSocket frames, so a failing test can print them
+// with the app's server log and the rendered HTML. Run cdpnetwork.Enable() on
+// the tab before navigating, or no frames arrive.
 type browserDiag struct {
-	ctx    context.Context
-	appDir string
-
-	mu       sync.Mutex
-	console  []string
-	wsFrames []string
+	ctx     context.Context
+	appDir  string
+	console *e2etest.ConsoleLogger
+	ws      *e2etest.WSMessageLogger
 }
 
-func recordBrowser(ctx context.Context, appDir string) *browserDiag {
-	d := &browserDiag{ctx: ctx, appDir: appDir}
-	chromedp.ListenTarget(ctx, func(ev interface{}) {
-		d.mu.Lock()
-		defer d.mu.Unlock()
-		switch e := ev.(type) {
-		case *cdpruntime.EventConsoleAPICalled:
-			parts := []string{string(e.Type)}
-			for _, a := range e.Args {
-				parts = append(parts, string(a.Value))
-			}
-			d.console = append(d.console, strings.Join(parts, " "))
-		case *cdpnetwork.EventWebSocketFrameSent:
-			d.wsFrames = append(d.wsFrames, "sent "+e.Response.PayloadData)
-		case *cdpnetwork.EventWebSocketFrameReceived:
-			frame := e.Response.PayloadData
-			if len(frame) > 300 {
-				frame = frame[:300] + "…"
-			}
-			d.wsFrames = append(d.wsFrames, "recv "+frame)
-		}
-	})
-	return d
+func newRecordedTab(t *testing.T, appDir string) *browserDiag {
+	t.Helper()
+	pool, _, release := GetPooledChrome(t)
+	t.Cleanup(release)
+	ctx, cancel := chromedp.NewContext(pool, chromedp.WithLogf(t.Logf))
+	t.Cleanup(cancel)
+	ctx, timeoutCancel := context.WithTimeout(ctx, getBrowserTimeout())
+	t.Cleanup(timeoutCancel)
+
+	console := e2etest.NewConsoleLogger()
+	console.Start(ctx)
+	return &browserDiag{ctx: ctx, appDir: appDir, console: console, ws: e2etest.RecordWSFrames(ctx)}
 }
 
-// sent joins the frames the page sent, for asserting on actions.
-func (d *browserDiag) sent() string {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	var out []string
-	for _, f := range d.wsFrames {
-		if strings.HasPrefix(f, "sent ") {
-			out = append(out, f)
+// sentAction reports whether the page sent a frame with this action.
+func (d *browserDiag) sentAction(action string) bool {
+	for _, m := range d.ws.GetSent() {
+		if m.Parsed["action"] == action {
+			return true
 		}
 	}
-	return strings.Join(out, "\n")
+	return false
 }
 
 // dump returns the server log (buildAndRunNative's server.log), console, WS
@@ -71,8 +84,19 @@ func (d *browserDiag) dump() string {
 	var html string
 	_ = chromedp.Run(d.ctx, chromedp.OuterHTML(`body`, &html, chromedp.ByQuery))
 	serverLog, _ := os.ReadFile(filepath.Join(d.appDir, "server.log"))
-	d.mu.Lock()
-	defer d.mu.Unlock()
+
+	var console []string
+	for _, l := range d.console.GetLogs() {
+		console = append(console, l.Type+" "+l.Message)
+	}
+	var frames []string
+	for _, m := range d.ws.GetMessages() {
+		data := m.Data
+		if len(data) > 300 {
+			data = data[:300] + "…"
+		}
+		frames = append(frames, m.Direction+" "+data)
+	}
 	return fmt.Sprintf("\n--- server ---\n%s\n--- console ---\n%s\n--- ws ---\n%s\n--- html ---\n%s",
-		serverLog, strings.Join(d.console, "\n"), strings.Join(d.wsFrames, "\n"), html)
+		serverLog, strings.Join(console, "\n"), strings.Join(frames, "\n"), html)
 }

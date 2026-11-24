@@ -3,9 +3,7 @@
 package e2e
 
 import (
-	"context"
 	"fmt"
-	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
@@ -16,49 +14,26 @@ import (
 
 // TestFormValueSync checks that the sort <select> and the search input show
 // the server's value after each patch, and keep the user's value while they
-// are focused. The kits shipped a data-expected-value script to force the
-// select back in line; this test is what decides whether the client still
-// needs it.
+// are focused. The kits used to ship a script that forced the select to the
+// server's value; this test showed the client keeps it in line without one.
 func TestFormValueSync(t *testing.T) {
-	tmpDir := t.TempDir()
-	appDir := createTestApp(t, tmpDir, "syncapp", &AppOptions{Kit: "multi"})
-	setupLocalClientLibrary(t, appDir)
-
-	if err := runLvtCommand(t, appDir, "gen", "resource", "items", "name:string"); err != nil {
-		t.Fatalf("Failed to generate items: %v", err)
-	}
-	if err := runLvtCommand(t, appDir, "migration", "up"); err != nil {
-		t.Fatalf("Failed to run migrations: %v", err)
-	}
-
 	// Newest first gives Cherry, Banana, Apple; name A-Z gives Apple first.
-	type row = struct {
+	var rows []struct {
 		SQL  string
 		Args []interface{}
 	}
-	var rows []row
 	for i, name := range []string{"Apple", "Banana", "Cherry"} {
-		rows = append(rows, row{
+		rows = append(rows, struct {
+			SQL  string
+			Args []interface{}
+		}{
 			SQL:  "INSERT INTO items (id, name, created_at) VALUES (?, ?, datetime('now', ?))",
 			Args: []interface{}{fmt.Sprintf("item-%d", i), name, fmt.Sprintf("-%d minutes", 10-i)},
 		})
 	}
-	if err := seedTestData(filepath.Join(appDir, "app.db"), rows); err != nil {
-		t.Fatalf("Failed to seed items: %v", err)
-	}
-
-	_ = injectFrameworkForTest(t, appDir)
-	serverPort := allocateTestPort()
-	_ = buildAndRunNative(t, appDir, serverPort)
-	waitForServer(t, fmt.Sprintf("http://localhost:%d/items", serverPort), 10*time.Second)
-
-	ctx, _, cleanup := GetPooledChrome(t)
-	defer cleanup()
-	bctx, cancel := chromedp.NewContext(ctx, chromedp.WithLogf(t.Logf))
-	defer cancel()
-	bctx, timeoutCancel := context.WithTimeout(bctx, getBrowserTimeout())
-	defer timeoutCancel()
-	rec := recordBrowser(bctx, appDir)
+	appDir, serverPort := startItemsApp(t, "syncapp", rows)
+	rec := newRecordedTab(t, appDir)
+	bctx := rec.ctx
 
 	if err := chromedp.Run(bctx,
 		cdpnetwork.Enable(),
