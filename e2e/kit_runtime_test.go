@@ -57,9 +57,10 @@ func TestKitRuntime_AllKits(t *testing.T) {
 			}
 			defer func() { _ = handle.Shutdown() }()
 
-			// Wait for server to be ready
+			// lvt serve builds the app before it answers, which can take
+			// more than 10s when the suite runs packages in parallel.
 			url := fmt.Sprintf("http://localhost:%s", tt.port)
-			waitForServer(t, url, 10*time.Second)
+			waitForServer(t, url, 30*time.Second)
 
 			// Verify HTTP 200
 			resp, err := http.Get(url)
@@ -149,9 +150,10 @@ func TestKitRuntime_TemplateRendering(t *testing.T) {
 			}
 			defer func() { _ = handle.Shutdown() }()
 
-			// Wait for server to be ready
+			// lvt serve builds the app before it answers, which can take
+			// more than 10s when the suite runs packages in parallel.
 			url := fmt.Sprintf("http://localhost:%s", tt.port)
-			waitForServer(t, url, 10*time.Second)
+			waitForServer(t, url, 30*time.Second)
 
 			// Fetch root page
 			resp, err := http.Get(url)

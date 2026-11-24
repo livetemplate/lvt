@@ -331,33 +331,5 @@
     <script src="https://unpkg.com/@livetemplate/client@latest/dist/livetemplate-client.browser.js"></script>
     {{end}}
 
-    [[- if eq .PaginationMode "infinite"]]
-    <script>
-      (function() {
-        // Wait for DOM to be ready
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', setupInfiniteScroll);
-        } else {
-          setupInfiniteScroll();
-        }
-
-        function setupInfiniteScroll() {
-          const sentinel = document.querySelector('[lvt-scroll-sentinel]');
-          if (!sentinel) return;
-
-          const observer = new IntersectionObserver(function(entries) {
-            if (entries[0].isIntersecting) {
-              // Trigger load_more action via LiveTemplate
-              if (window.livetemplate && window.livetemplate.send) {
-                window.livetemplate.send({ action: 'load_more' });
-              }
-            }
-          }, { rootMargin: '200px' }); // Start loading 200px before reaching end
-
-          observer.observe(sentinel);
-        }
-      })();
-    </script>
-    [[- end]]
   </body>
 </html>
