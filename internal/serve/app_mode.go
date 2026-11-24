@@ -184,6 +184,7 @@ func (am *AppMode) startApp() error {
 		if err != nil {
 			return fmt.Errorf("open app log: %w", err)
 		}
+		fmt.Fprintf(logFile, "=== app start %s\n", time.Now().Format(time.RFC3339))
 		am.appProcess.Stdout = logFile
 		am.appProcess.Stderr = logFile
 		am.appLog = logFile
@@ -199,6 +200,10 @@ func (am *AppMode) startApp() error {
 	)
 
 	if err := am.appProcess.Start(); err != nil {
+		if am.appLog != nil {
+			_ = am.appLog.Close()
+			am.appLog = nil
+		}
 		return fmt.Errorf("failed to start app: %w", err)
 	}
 
