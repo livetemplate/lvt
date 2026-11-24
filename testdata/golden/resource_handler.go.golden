@@ -243,15 +243,6 @@ func (c *UserController) Delete(state UserState, ctx *livetemplate.Context) (Use
 	return state, nil
 }
 
-// DismissToastNotifications handles the "dismiss_toast_notifications" action
-func (c *UserController) DismissToastNotifications(state UserState, ctx *livetemplate.Context) (UserState, error) {
-	toastID := ctx.GetString("toast")
-	if toastID != "" {
-		state.Toasts.Dismiss(toastID)
-	}
-	return state, nil
-}
-
 // Search handles the "search" action to filter resources
 func (c *UserController) Search(state UserState, ctx *livetemplate.Context) (UserState, error) {
 	dbCtx := context.Background()

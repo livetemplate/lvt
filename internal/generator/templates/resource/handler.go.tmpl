@@ -285,17 +285,6 @@ func (c *[[.ResourceName]]Controller) Delete(state [[.ResourceName]]State, ctx *
 	state.LastUpdated = formatTime()
 	return state, nil
 }
-[[- if .Components.UseToast]]
-
-// DismissToastNotifications handles the "dismiss_toast_notifications" action
-func (c *[[.ResourceName]]Controller) DismissToastNotifications(state [[.ResourceName]]State, ctx *livetemplate.Context) ([[.ResourceName]]State, error) {
-	toastID := ctx.GetString("toast")
-	if toastID != "" {
-		state.Toasts.Dismiss(toastID)
-	}
-	return state, nil
-}
-[[- end]]
 
 // Search handles the "search" action to filter resources
 func (c *[[.ResourceName]]Controller) Search(state [[.ResourceName]]State, ctx *livetemplate.Context) ([[.ResourceName]]State, error) {

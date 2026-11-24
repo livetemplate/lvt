@@ -281,15 +281,6 @@ func (c *PostController) Delete(state PostState, ctx *livetemplate.Context) (Pos
 	return state, nil
 }
 
-// DismissToastNotifications handles the "dismiss_toast_notifications" action
-func (c *PostController) DismissToastNotifications(state PostState, ctx *livetemplate.Context) (PostState, error) {
-	toastID := ctx.GetString("toast")
-	if toastID != "" {
-		state.Toasts.Dismiss(toastID)
-	}
-	return state, nil
-}
-
 // Search handles the "search" action to filter resources
 func (c *PostController) Search(state PostState, ctx *livetemplate.Context) (PostState, error) {
 	dbCtx := context.Background()

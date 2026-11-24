@@ -212,6 +212,11 @@ func startServeInBackground(t *testing.T, workDir string, args ...string) (*Serv
 		return nil, fmt.Errorf("failed to get working directory: %w", err)
 	}
 
+	absWorkDir, err := filepath.Abs(workDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve %s: %w", workDir, err)
+	}
+
 	// Change to work directory if specified
 	if workDir != "" {
 		if err := os.Chdir(workDir); err != nil {
@@ -286,7 +291,13 @@ func startServeInBackground(t *testing.T, workDir string, args ...string) (*Serv
 	}
 
 	// Register cleanup handler to shut down server on test completion/failure
+	appLog := filepath.Join(absWorkDir, serve.TestAppLogName)
 	t.Cleanup(func() {
+		if t.Failed() {
+			if out, err := os.ReadFile(appLog); err == nil {
+				t.Logf("--- app output (%s) ---\n%s", appLog, out)
+			}
+		}
 		if err := handle.Shutdown(); err != nil {
 			t.Logf("Warning: Failed to shutdown server: %v", err)
 		} else {

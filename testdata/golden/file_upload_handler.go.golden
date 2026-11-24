@@ -364,15 +364,6 @@ func (c *GalleryController) Delete(state GalleryState, ctx *livetemplate.Context
 	return state, nil
 }
 
-// DismissToastNotifications handles the "dismiss_toast_notifications" action
-func (c *GalleryController) DismissToastNotifications(state GalleryState, ctx *livetemplate.Context) (GalleryState, error) {
-	toastID := ctx.GetString("toast")
-	if toastID != "" {
-		state.Toasts.Dismiss(toastID)
-	}
-	return state, nil
-}
-
 // Search handles the "search" action to filter resources
 func (c *GalleryController) Search(state GalleryState, ctx *livetemplate.Context) (GalleryState, error) {
 	dbCtx := context.Background()
