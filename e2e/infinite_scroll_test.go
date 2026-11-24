@@ -5,15 +5,12 @@ package e2e
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
 	cdpnetwork "github.com/chromedp/cdproto/network"
-	cdpruntime "github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
 )
 
@@ -60,37 +57,8 @@ func TestInfiniteScrollLoadsMore(t *testing.T) {
 	bctx, timeoutCancel := context.WithTimeout(bctx, getBrowserTimeout())
 	defer timeoutCancel()
 
-	var mu sync.Mutex
-	var consoleLines, wsFrames []string
-	chromedp.ListenTarget(bctx, func(ev interface{}) {
-		mu.Lock()
-		defer mu.Unlock()
-		switch e := ev.(type) {
-		case *cdpruntime.EventConsoleAPICalled:
-			parts := []string{string(e.Type)}
-			for _, a := range e.Args {
-				parts = append(parts, string(a.Value))
-			}
-			consoleLines = append(consoleLines, strings.Join(parts, " "))
-		case *cdpnetwork.EventWebSocketFrameSent:
-			wsFrames = append(wsFrames, "sent "+e.Response.PayloadData)
-		case *cdpnetwork.EventWebSocketFrameReceived:
-			frame := e.Response.PayloadData
-			if len(frame) > 300 {
-				frame = frame[:300] + "…"
-			}
-			wsFrames = append(wsFrames, "recv "+frame)
-		}
-	})
-	diag := func() string {
-		var html string
-		_ = chromedp.Run(bctx, chromedp.OuterHTML(`body`, &html, chromedp.ByQuery))
-		serverLog, _ := os.ReadFile(filepath.Join(appDir, "server.log"))
-		mu.Lock()
-		defer mu.Unlock()
-		return fmt.Sprintf("\n--- server ---\n%s\n--- console ---\n%s\n--- ws ---\n%s\n--- html ---\n%s",
-			serverLog, strings.Join(consoleLines, "\n"), strings.Join(wsFrames, "\n"), html)
-	}
+	rec := recordBrowser(bctx, appDir)
+	diag := rec.dump
 
 	const rowCount = `document.querySelectorAll('tbody tr[data-key]').length`
 	if err := chromedp.Run(bctx,
@@ -127,10 +95,7 @@ func TestInfiniteScrollLoadsMore(t *testing.T) {
 		t.Fatalf("the last page didn't load, or the sentinel stayed after it: %v%s", err, diag())
 	}
 
-	mu.Lock()
-	sent := strings.Join(wsFrames, "\n")
-	mu.Unlock()
-	if !strings.Contains(sent, `"load_more"`) {
+	if !strings.Contains(rec.sent(), `"load_more"`) {
 		t.Errorf("no load_more action went over the socket%s", diag())
 	}
 }
