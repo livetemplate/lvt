@@ -286,7 +286,16 @@ func startServeInBackground(t *testing.T, workDir string, args ...string) (*Serv
 	}
 
 	// Register cleanup handler to shut down server on test completion/failure
+	appLog := filepath.Join(origDir, workDir, serve.TestAppLogName)
+	if filepath.IsAbs(workDir) {
+		appLog = filepath.Join(workDir, serve.TestAppLogName)
+	}
 	t.Cleanup(func() {
+		if t.Failed() {
+			if out, err := os.ReadFile(appLog); err == nil {
+				t.Logf("--- app output (%s) ---\n%s", appLog, out)
+			}
+		}
 		if err := handle.Shutdown(); err != nil {
 			t.Logf("Warning: Failed to shutdown server: %v", err)
 		} else {

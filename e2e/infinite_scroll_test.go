@@ -33,15 +33,13 @@ func TestInfiniteScrollLoadsMore(t *testing.T) {
 		t.Fatalf("Failed to run migrations: %v", err)
 	}
 
-	var rows []struct {
+	type row = struct {
 		SQL  string
 		Args []interface{}
 	}
+	var rows []row
 	for i := 1; i <= 25; i++ {
-		rows = append(rows, struct {
-			SQL  string
-			Args []interface{}
-		}{
+		rows = append(rows, row{
 			SQL:  "INSERT INTO items (id, name, created_at) VALUES (?, ?, datetime('now', ?))",
 			Args: []interface{}{fmt.Sprintf("item-%02d", i), fmt.Sprintf("Item %02d", i), fmt.Sprintf("-%d minutes", i)},
 		})
@@ -102,10 +100,16 @@ func TestInfiniteScrollLoadsMore(t *testing.T) {
 		chromedp.Navigate(getTestURL(serverPort)+"/items"),
 		waitForWebSocketReady(5*time.Second),
 		waitFor(rowCount+` === 10`, 5*time.Second),
-		chromedp.Sleep(time.Second),
-		waitFor(rowCount+` === 10`, time.Second),
 	); err != nil {
-		t.Fatalf("first page didn't show 10 rows, or loaded more without a scroll: %v%s", err, diag())
+		t.Fatalf("first page didn't show 10 rows: %v%s", err, diag())
+	}
+	// The client observes the sentinel with a 200px rootMargin, so it must
+	// start further below the fold than that for the scroll to be the trigger.
+	var belowFold bool
+	if err := chromedp.Run(bctx, chromedp.Evaluate(
+		`document.querySelector('[lvt-scroll-sentinel]').getBoundingClientRect().top > window.innerHeight + 200`, &belowFold),
+	); err != nil || !belowFold {
+		t.Fatalf("the sentinel starts within the observer's margin, so the test can't tell a scroll from a page load (err=%v)%s", err, diag())
 	}
 
 	if err := chromedp.Run(bctx,
@@ -113,6 +117,14 @@ func TestInfiniteScrollLoadsMore(t *testing.T) {
 		waitFor(rowCount+` === 20`, 10*time.Second),
 	); err != nil {
 		t.Fatalf("scrolling to the sentinel didn't load the second page: %v%s", err, diag())
+	}
+
+	// The last page holds 5 rows, and with nothing left the sentinel goes.
+	if err := chromedp.Run(bctx,
+		chromedp.Evaluate(`document.querySelector('[lvt-scroll-sentinel]').scrollIntoView()`, nil),
+		waitFor(rowCount+` === 25 && !document.querySelector('[lvt-scroll-sentinel]')`, 10*time.Second),
+	); err != nil {
+		t.Fatalf("the last page didn't load, or the sentinel stayed after it: %v%s", err, diag())
 	}
 
 	mu.Lock()

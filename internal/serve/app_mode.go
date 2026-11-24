@@ -25,6 +25,7 @@ type AppMode struct {
 	stopChan    chan struct{}
 	mainGoPath  string
 	processDone chan struct{} // Signals when current process has exited
+	appLog      *os.File      // The app's output file under a Go test; closed when it exits
 }
 
 func NewAppMode(s *Server) (*AppMode, error) {
@@ -157,6 +158,10 @@ func (am *AppMode) findMainGo() string {
 	return ""
 }
 
+// TestAppLogName is the file in the app directory that holds the app's output
+// when lvt serve runs inside a Go test.
+const TestAppLogName = ".lvt-serve-app.log"
+
 func (am *AppMode) startApp() error {
 	am.mu.Lock()
 	defer am.mu.Unlock()
@@ -171,11 +176,17 @@ func (am *AppMode) startApp() error {
 	am.appProcess = exec.Command("go", "run", am.mainGoPath)
 	am.appProcess.Dir = am.server.config.Dir
 
-	// In test mode, discard output to prevent I/O hanging
+	// In test mode, write output to TestAppLogName in the app directory: a
+	// pipe nobody reads could hang the app, and a failing test prints the file.
 	// Otherwise, pipe to os.Stdout/os.Stderr for visibility
 	if testing.Testing() {
-		am.appProcess.Stdout = nil
-		am.appProcess.Stderr = nil
+		logFile, err := os.OpenFile(filepath.Join(am.server.config.Dir, TestAppLogName), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+		if err != nil {
+			return fmt.Errorf("open app log: %w", err)
+		}
+		am.appProcess.Stdout = logFile
+		am.appProcess.Stderr = logFile
+		am.appLog = logFile
 	} else {
 		am.appProcess.Stdout = os.Stdout
 		am.appProcess.Stderr = os.Stderr
@@ -201,9 +212,14 @@ func (am *AppMode) startApp() error {
 	am.processDone = make(chan struct{})
 	proc := am.appProcess
 	processDone := am.processDone
+	appLog := am.appLog
+	am.appLog = nil
 	go func() {
 		if err := proc.Wait(); err != nil {
 			log.Printf("App process exited: %v", err)
+		}
+		if appLog != nil {
+			_ = appLog.Close()
 		}
 		close(processDone)
 	}()
