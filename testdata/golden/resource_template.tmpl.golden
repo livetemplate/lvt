@@ -19,33 +19,6 @@
       <script src="https://unpkg.com/@livetemplate/client@latest/dist/livetemplate-client.browser.js"></script>
       {{end}}
 
-      <!-- Fix for morphdom not properly syncing form element values -->
-      <script>
-        (function() {
-          function syncFormValues() {
-            // Sync select elements
-            document.querySelectorAll('select[data-expected-value]').forEach(function(select) {
-              var expected = select.getAttribute('data-expected-value');
-              if (select.value !== expected) {
-                select.value = expected;
-              }
-            });
-            // Sync input elements
-            document.querySelectorAll('input[data-expected-value]').forEach(function(input) {
-              var expected = input.getAttribute('data-expected-value');
-              if (input.value !== expected) {
-                input.value = expected;
-              }
-            });
-          }
-          syncFormValues();
-          var observer = new MutationObserver(function(mutations) {
-            syncFormValues();
-          });
-          observer.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['data-expected-value'] });
-        })();
-      </script>
-
       {{template "pageRouting" .}}
     {{end}}
   </body>
@@ -159,7 +132,7 @@
 
     <!-- Sort -->
     <div style="min-width: 200px;">
-        <select class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" name="sort_by" lvt-on:change="sort" data-expected-value="{{.SortBy}}">
+        <select class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" name="sort_by" lvt-on:change="sort">
           <option value="" {{if eq .SortBy ""}}selected{{end}}>Newest First</option>
           <option value="title_asc" {{if eq $.SortBy "title_asc"}}selected{{end}}>Title (A-Z)</option>
           <option value="title_desc" {{if eq $.SortBy "title_desc"}}selected{{end}}>Title (Z-A)</option>
@@ -347,7 +320,7 @@
 <div class="bg-white shadow rounded-lg p-6 mb-6">
   <div class="mb-4">
     <label class="block text-sm font-medium text-gray-700 mb-2">Sort by</label>
-      <select class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" name="sort_by" lvt-on:change="sort" data-expected-value="{{.SortBy}}">
+      <select class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" name="sort_by" lvt-on:change="sort">
         <option value="" {{if eq .SortBy ""}}selected{{end}}>Newest First</option>
         <option value="title_asc" {{if eq $.SortBy "title_asc"}}selected{{end}}>Title (A-Z)</option>
         <option value="title_desc" {{if eq $.SortBy "title_desc"}}selected{{end}}>Title (Z-A)</option>
