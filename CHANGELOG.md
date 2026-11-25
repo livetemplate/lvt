@@ -5,6 +5,21 @@ All notable changes to the LVT CLI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.3.1] - 2026-11-25
+
+### Changes
+
+- chore(kits): drop the data-expected-value select workaround (#359) (73b12ce)
+- chore(kits): drop scripts and an action the client replaced (#355) (ad05cc1)
+- chore(deps): livetemplate v0.25.15; regenerate the two todos goldens (#354) (e924743)
+- chore(deps): livetemplate v0.25.14; regenerate the counter reset golden (#353) (6d0ce02)
+- test(e2e): cover lvt-on:click and form submits before the WebSocket opens (#352) (7bb62ca)
+- test(e2e): custom-attribute click before the WebSocket opens (#351) (d09d5ae)
+- test(e2e): a ctx.signal listener stops when the attribute goes and does not stack when it returns (#350) (386985c)
+- docs(changelog): note the livetemplate v0.25.2 adoption and lvt/testing changes in v0.3.0 (#349) (146655c)
+
+
+
 ## [v0.3.0] - 2026-11-15
 
 Adopts **livetemplate v0.25.2** (from v0.19.0), so apps that load the client through `ClientScriptURL` get **client 0.25.4**, including the `lvt-*` attribute handler registry (livetemplate#473). Also:
