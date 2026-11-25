@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	cdpnetwork "github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
 )
 
@@ -35,7 +34,6 @@ func TestInfiniteScrollLoadsMore(t *testing.T) {
 
 	const rowCount = `document.querySelectorAll('tbody tr[data-key]').length`
 	if err := chromedp.Run(bctx,
-		cdpnetwork.Enable(),
 		// Short enough that the first page's sentinel starts below the fold.
 		chromedp.EmulateViewport(1200, 400),
 		chromedp.Navigate(getTestURL(serverPort)+"/items"),

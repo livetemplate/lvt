@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	cdpnetwork "github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
 	e2etest "github.com/livetemplate/lvt/testing"
 )
@@ -45,8 +46,8 @@ func startItemsApp(t *testing.T, name string, rows []struct {
 
 // browserDiag is a pooled-Chrome tab that records its console (uncaught
 // exceptions included) and WebSocket frames, so a failing test can print them
-// with the app's server log and the rendered HTML. Run cdpnetwork.Enable() on
-// the tab before navigating, or no frames arrive.
+// with the app's server log and the rendered HTML. It enables the network
+// domain, so frames arrive from the first navigation.
 type browserDiag struct {
 	ctx     context.Context
 	appDir  string
@@ -63,6 +64,9 @@ func newRecordedTab(t *testing.T, appDir string) *browserDiag {
 	ctx, timeoutCancel := context.WithTimeout(ctx, getBrowserTimeout())
 	t.Cleanup(timeoutCancel)
 
+	if err := chromedp.Run(ctx, cdpnetwork.Enable()); err != nil {
+		t.Fatalf("enable the network domain: %v", err)
+	}
 	console := e2etest.NewConsoleLogger()
 	console.Start(ctx)
 	return &browserDiag{ctx: ctx, appDir: appDir, console: console, ws: e2etest.RecordWSFrames(ctx)}

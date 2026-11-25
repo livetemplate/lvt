@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	cdpnetwork "github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
 )
 
@@ -36,7 +35,6 @@ func TestFormValueSync(t *testing.T) {
 	bctx := rec.ctx
 
 	if err := chromedp.Run(bctx,
-		cdpnetwork.Enable(),
 		chromedp.Navigate(getTestURL(serverPort)+"/items"),
 		waitForWebSocketReady(5*time.Second),
 		waitFor(firstRowIs("Cherry"), 5*time.Second),
@@ -81,7 +79,9 @@ func TestFormValueSync(t *testing.T) {
 	)
 
 	// 4. A patch that arrives while the select is focused, with a choice the
-	//    user hasn't committed, leaves that choice alone.
+	//    user hasn't committed, leaves that choice alone. Setting .value with
+	//    no change event is that uncommitted choice; the patch comes from a
+	//    search sent through the client.
 	step("a patch keeps a focused select's choice",
 		chromedp.Focus(`select[name="sort_by"]`, chromedp.ByQuery),
 		chromedp.Evaluate(sel+`.value = "oldest_first"`, nil),
